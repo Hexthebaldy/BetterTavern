@@ -1,0 +1,17 @@
+# 构建上下文是仓库根目录：密钥、虚拟环境、依赖目录和缓存都不能进镜像
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.expo
+.git
+.github
+apps/mobile
+apps/server/evals/reports
+docs

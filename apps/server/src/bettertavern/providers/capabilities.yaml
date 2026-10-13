@@ -1,0 +1,25 @@
+# providers/capabilities.yaml：provider 加模型通配，特异度高的规则优先；新增厂商时在这里加一条规则
+# 特异度：指定了 provider 的规则高于没指定的；同一层里模型通配的字面字符越多越优先；再相同则后写的优先。
+# 这里的值是保守的起点，探测结果（POST /v1/credentials/{id}/probe）和路由的 caps_override 会覆盖它们。
+
+- match: { provider: deepseek, model: 'deepseek-*' }
+  caps:
+    context_window: 1000000
+    max_output: 384000
+    structured: [json_object]              # tool_call 需探测确认
+    reasoning: { control: thinking_toggle, efforts: [none, low, high, max], field: reasoning_content }
+    sampling: { temperature_when_thinking: false }
+    echo_reasoning_with_tools: true
+
+- match: { provider: huggingface }
+  caps:
+    structured: []                         # 保守：只走 prompt_json，探测通过再升级
+    roles: { system: true, alternation: loose }
+
+- match: { provider: custom_openai }
+  caps:
+    structured: []                         # 自定义端点能力全靠探测
+    roles: { system: true, alternation: loose }
+
+- match: {}                                 # 兜底
+  caps: { context_window: 32768, max_output: 4096, structured: [], roles: { system: true, alternation: loose } }

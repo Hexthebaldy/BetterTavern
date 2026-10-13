@@ -1,0 +1,67 @@
+[project]
+name = "bettertavern"
+version = "0.1.0"
+description = "BetterTavern 服务端：生成式互动小说的 agent runtime"
+readme = "README.md"
+requires-python = ">=3.12"
+# 直接依赖先用下限约束；第一次 `uv lock` 之后按锁文件改成精确版本（见 README）
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.10",
+  "pydantic-settings>=2.6",
+  "httpx>=0.28,<0.29",
+  "httpcore>=1.0.7,<2",
+  "sqlalchemy[asyncio]>=2.0.36",
+  "asyncpg>=0.30",
+  "alembic>=1.14",
+  "pyyaml>=6.0.2",
+  "jinja2>=3.1.4",
+]
+
+[project.scripts]
+bettertavern = "bettertavern.entrypoints.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "anyio>=4.6",
+  "ruff>=0.8",
+  "pyright>=1.1.390",
+  "import-linter>=2.1",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bettertavern"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-ra --strict-markers"
+markers = [
+  "integration: 需要真实 Postgres，设置 BT_TEST_DATABASE_URL 后才会运行",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "evals"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "ASYNC", "SIM", "RUF"]
+# 中文文本里的全角标点会被 RUF001-003 当成“易混淆字符”；ASYNC109 与 httpcore 接口签名冲突
+ignore = ["RUF001", "RUF002", "RUF003", "ASYNC109"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bettertavern", "tests", "evals"]
+
+[tool.pyright]
+include = ["src", "tests", "evals"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
