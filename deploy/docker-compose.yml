@@ -1,6 +1,10 @@
 # 自己部署全套：docker compose -f deploy/docker-compose.yml up -d
 # 单实例用进程内事件缓冲，所以只需要 api、worker、postgres 三个常驻容器；migrate 跑完即退出。
 # api 只监听本机 8000 端口：对外请放在带 TLS 的反向代理后面（示例见 nginx.example.conf）。
+#
+# 第一次部署前先生成密钥，把输出的两行（MASTER_KEYS、AUTH_SECRET）写进 deploy/.env：
+#   docker compose -f deploy/docker-compose.yml run --rm migrate bettertavern keygen
+# 生产环境缺这两项 api 不会启动。主密钥丢了，已保存的模型 Key 就解不开了，请另外备份。
 x-server: &server
   build:
     context: ..
@@ -8,6 +12,8 @@ x-server: &server
   environment:
     DATABASE_URL: postgresql+asyncpg://bettertavern:${POSTGRES_PASSWORD:-bettertavern}@postgres:5432/bettertavern
     ENV: prod
+    MASTER_KEYS: ${MASTER_KEYS:-}
+    AUTH_SECRET: ${AUTH_SECRET:-}
     ENABLE_PROBE_ENDPOINTS: ${ENABLE_PROBE_ENDPOINTS:-false}
     ALLOW_PRIVATE_ENDPOINTS: ${ALLOW_PRIVATE_ENDPOINTS:-false}
   depends_on:
