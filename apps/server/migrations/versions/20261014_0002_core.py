@@ -79,7 +79,8 @@ CREATE TABLE scenarios (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
-    source_kind     TEXT NOT NULL CHECK (source_kind IN ('card_v1', 'card_v2', 'card_v3', 'manual')),
+    source_kind     TEXT NOT NULL
+                    CHECK (source_kind IN ('card_v1', 'card_v2', 'card_v3', 'manual')),
     source_sha256   TEXT,
     raw             JSONB NOT NULL,
     card            JSONB NOT NULL,
