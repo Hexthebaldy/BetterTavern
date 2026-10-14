@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>关键交互</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.doc{--ink:#111111;--ink2:#37352F;--mut:#6B6A66;--line:#E8E8E5;--line2:#D3D3CF;--bg2:#F7F7F5;--acc:#2747FF;--accBg:#EEF1FF;--err:#D92D20;--errBg:#FDECEA;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.doc *{box-sizing:border-box;border-radius:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.k{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.08em;color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--ink);border-left:1px solid var(--line)}
+.c{padding:32px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:20px}
+.ct{margin:0;font-size:26px;line-height:32px;font-weight:700;letter-spacing:-.01em}
+.flow{display:flex;align-items:stretch}
+.n{flex:1;min-width:0;padding:12px 14px;box-shadow:inset 0 0 0 1px var(--ink);display:flex;flex-direction:column;gap:2px;font-size:14px;font-weight:500;background:#FFFFFF}
+.n span{font-size:12px;line-height:17px;color:var(--mut);font-weight:400}
+.nb{background:var(--ink);color:#FFFFFF}
+.nb span{color:#C9C9C5}
+.na{box-shadow:inset 0 0 0 2px var(--acc)}
+.ne{box-shadow:inset 0 0 0 2px var(--err);background:var(--errBg)}
+.ar{width:72px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:14px;color:var(--mut);text-align:center;padding:0 4px}
+.ar i{display:block;width:100%;height:1px;background:var(--ink);position:relative}
+.li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;font-size:14.5px;line-height:24px;color:var(--ink2);padding:10px 0;border-top:1px solid var(--line)}
+.li b{color:var(--ink)}
+.tbl{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1.3fr);border-top:1px solid var(--ink)}
+.tbl>div{padding:12px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:22px}
+</style>
+</helmet>
+<div class="doc" style="width: 1600px; min-height: 1800px; background: #FFFFFF; padding: 64px 72px 72px; display: flex; flex-direction: column; gap: 36px">
+  <header style="display: grid; grid-template-columns: minmax(0, 1fr) 520px; gap: 48px; align-items: end">
+    <div style="display: flex; flex-direction: column; gap: 14px"><span class="k">BetterTavern · Interaction</span><h1 style="margin: 0; font-size: 72px; line-height: 72px; font-weight: 900; letter-spacing: -.04em">读不打扰，<br>动手在拇指下。</h1></div>
+    <p style="margin: 0; font-size: 15px; line-height: 26px; color: var(--ink2)">顶部只放低频入口（返回、世界、更多），所有回合操作都在屏幕下三分之一。行动栏只换内容，不换位置。</p>
+  </header>
+
+  <div class="grid">
+    <section class="c">
+      <span class="k">01</span><h2 class="ct">滚动跟随</h2>
+      <div class="flow">
+        <div class="n na">跟随中<span>新字出现就贴底</span></div>
+        <div class="ar">手指拖离<br>&gt; 80pt<i></i></div>
+        <div class="n">暂停跟随<span>浮出“回到最新”</span></div>
+        <div class="ar">点按钮或<br>滑回底部<i></i></div>
+        <div class="n na">跟随中<span>滚到底</span></div>
+      </div>
+      <div>
+        <div class="li"><span class="mono">a</span><span><b>只认手指。</b>内容变长时程序滚动触发的事件不算“翻走”，只有拖动和惯性滚动才会关掉跟随（沿用现有 StoryFeed 的逻辑）。</span></div>
+        <div class="li"><span class="mono">b</span><span><b>打开就停在最新一段。</b>往上翻到顶，是一页书名页：封面、标题，以及“我是谁”。</span></div>
+        <div class="li"><span class="mono">c</span><span><b>出字不跳。</b>新字只追加在最后一个文本节点，120ms 淡入；光标是 2px 宽的蓝色竖条，不闪烁；已经写完的回合不跟着流式输出重新渲染。</span></div>
+        <div class="li"><span class="mono">d</span><span><b>动态字体与读屏。</b>正文跟随系统字号（15–24pt），“更多”菜单里可以单独调阅读字号，也可以在宋体和黑体之间切换。每段写完后整段播报，行动前隐藏地读出“我的行动：”。</span></div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">02</span><h2 class="ct">行动栏状态</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--ink); border-left: 1px solid var(--ink)">
+        <div class="n nb" style="box-shadow: none; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink)">A / B 选项<span>两行 + 自己写</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink)">没有选项<span>直接是输入框</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink)">自由输入<span>聚焦、收起、发送</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink)">发送中<span>选中项变蓝</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink)">生成中<span>蓝线扫动 + 停止</span></div>
+        <div class="n ne" style="box-shadow: none; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink)">失败<span>重试 / 去设置模型；换个行动 / 关闭</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink)">开场没写<span>只有“开始故事”</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink)">同步中<span>暂时锁住</span></div>
+      </div>
+      <div>
+        <div class="li"><span class="mono">a</span><span><b>顶边就是状态灯。</b>行动栏顶边的 1px 线会变色：空闲时黑，生成中有蓝色扫动，重连时变琥珀，失败时变红。</span></div>
+        <div class="li"><span class="mono">b</span><span><b>防重复提交。</b>点下选项后它立刻变成蓝底，其他选项变灰，直到服务端确认；自动重试不会重复提交（沿用现有逻辑）。</span></div>
+        <div class="li"><span class="mono">c</span><span><b>键盘与返回键。</b>输入框跟着键盘上移，收起键盘不清空草稿。剩 200 字以内时在“收起”旁边显示“剩 186”。Android 返回键依次：收起输入框 → 关闭面板 → 离开阅读页；离开时生成不会中断。</span></div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">03</span><h2 class="ct">删除</h2>
+      <div class="flow">
+        <div class="n">左滑或长按<span>重命名 / 删除</span></div>
+        <div class="ar">点删除<i></i></div>
+        <div class="n ne">确认框<span>顶边红线，写清后果</span></div>
+        <div class="ar">确认<i></i></div>
+        <div class="n nb">行收起<span>墨色浮条“已删除”</span></div>
+      </div>
+      <div>
+        <div class="li"><span class="mono">a</span><span><b>左滑到底也不会直接删。</b>删除不可恢复，所以每次都要经过确认框。</span></div>
+        <div class="li"><span class="mono">b</span><span><b>长按弹出同一个菜单，</b>照顾不习惯左滑的人和读屏用户。剧本、密钥、账户的删除放在详情页最底部，用红色描边按钮。</span></div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">04</span><h2 class="ct">导入角色卡</h2>
+      <div class="flow">
+        <div class="n nb">点 +<span>剧本页右上</span></div>
+        <div class="ar"><i></i></div>
+        <div class="n">系统文件选择器<span>只开放 .png .json</span></div>
+        <div class="ar">本地先检查<br>≤16MB<i></i></div>
+        <div class="n">网格里出现上传中的格子<span>蓝色进度条</span></div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-left: 1px solid var(--ink)">
+        <div class="n na" style="box-shadow: inset 0 0 0 2px var(--acc)">成功<span>直接进入剧本详情</span></div>
+        <div class="n">导入过<span>墨色浮条“之前已经导入过了 · 打开”</span></div>
+        <div class="n ne">失败<span>红色提示条，说明原因，留在剧本页</span></div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">05</span><h2 class="ct">选，而不是写</h2>
+      <div class="tbl">
+        <div class="k" style="padding-top: 10px">原来</div><div></div><div class="k" style="padding-top: 10px">现在</div>
+        <div>服务器地址输入框</div><div class="mono" style="color: var(--mut)">→</div><div>最近用过的服务器单选 + “输入新地址”</div>
+        <div>你扮演的角色叫什么</div><div class="mono" style="color: var(--mut)">→</div><div>名字建议标签 + 随机骰子（仍然可以自己输入）</div>
+        <div>这个角色是谁（多行）</div><div class="mono" style="color: var(--mut)">→</div><div>身份图块，选中后自动填一句底稿</div>
+        <div>每段的长度</div><div class="mono" style="color: var(--mut)">→</div><div>用行数图示的三格分段</div>
+        <div>文风（自由文本）</div><div class="mono" style="color: var(--mut)">→</div><div>多选标签 + 自定义</div>
+        <div>不想看到的内容</div><div class="mono" style="color: var(--mut)">→</div><div>勾选清单 + 其他</div>
+        <div>服务商分段 + 端点输入</div><div class="mono" style="color: var(--mut)">→</div><div>服务商图块 + “使用官方地址”勾选（默认勾上）</div>
+        <div>模型名输入框</div><div class="mono" style="color: var(--mut)">→</div><div>自动拉取的单选列表，搜索框兼做手动输入</div>
+        <div>连接测试时长</div><div class="mono" style="color: var(--mut)">→</div><div>30s / 60s / 2m / 5m 分段</div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">06</span><h2 class="ct">新增入口</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--ink); border-left: 1px solid var(--line)">
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px">世界状态<span>阅读页右上的罗盘 → 面板，分“人物与地点 / 关系图 / 事实”三栏</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px">揭示秘密<span>琥珀色锁 → 确认框“会剧透” → 标为“秘密 · 已揭示”</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px">重命名故事 / 剧本<span>列表左滑或长按；阅读页和剧本详情的“更多”菜单</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px">编辑密钥<span>密钥详情标题旁的铅笔：改备注名和端点</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px">取消导演模型<span>导演模型页底部的红字按钮</span></div>
+        <div class="n" style="box-shadow: none; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px">阅读设置<span>“更多”菜单里：宋体 / 黑体，字号滑块</span></div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":1800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

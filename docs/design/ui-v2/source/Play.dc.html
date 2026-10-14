@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>阅读页 · 核心状态</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F7F7F5;--bg3:#EFEFEC;--ink:#111111;--ink2:#37352F;--mut:#6B6A66;--line:#E8E8E5;--line2:#D3D3CF;--acc:#2747FF;--accBg:#EEF1FF;--ok:#0B8A55;--warn:#B45309;--warnBg:#FDF3E3;--err:#D92D20;--errBg:#FDECEA;--narr:#1C1C1C;--pri:#111111;--onPri:#FFFFFF;--fade:rgba(255,255,255,0)}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:16px;letter-spacing:.06em;color:#6B6A66;height:28px;display:flex;align-items:flex-end;border-bottom:1px solid #111111;padding-bottom:6px}
+.ph{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;box-shadow:0 0 0 1px #E8E8E5}
+.ph *{box-sizing:border-box;border-radius:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter;flex:none}
+.nav{position:absolute;z-index:3;top:0;left:0;right:0;height:100px;padding:56px 6px 0;display:flex;align-items:center;background:var(--bg);border-bottom:1px solid var(--line)}
+.ib{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--ink);text-decoration:none;position:relative;flex:none}
+.ttl{flex:1;min-width:0;text-align:center;font-size:15px;line-height:20px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{position:absolute;top:9px;right:9px;width:7px;height:7px;background:var(--acc);box-shadow:0 0 0 2px var(--bg)}
+.feed{position:absolute;left:0;right:0;top:100px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;padding-bottom:20px}
+.narr{font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--narr);margin:0 0 16px;padding:0 24px;text-align:justify;letter-spacing:.01em}
+.act{display:flex;gap:12px;align-items:flex-start;margin:12px 0 22px;padding:14px 24px;background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:15px;line-height:24px;font-weight:500;color:var(--ink)}
+.act svg{color:var(--acc);margin-top:1px}
+.status{display:flex;align-items:center;gap:8px;padding:0 24px;margin:0 0 10px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:16px;letter-spacing:.06em}
+.caret{display:inline-block;width:2px;height:20px;margin-left:3px;vertical-align:-4px;background:var(--acc)}
+.bar{position:absolute;z-index:3;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--ink);padding-bottom:34px}
+.opt{display:flex;align-items:center;gap:14px;width:100%;min-height:64px;padding:12px 16px 12px 20px;border:0;border-bottom:1px solid var(--line);background:var(--bg);font-family:inherit;font-size:15px;line-height:22px;color:var(--ink);text-align:left;text-decoration:none}
+.key{width:28px;height:28px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px var(--ink);font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 20px;border:0;font-family:inherit;font-size:16px;line-height:22px;font-weight:500;text-decoration:none;cursor:pointer}
+.bp{background:var(--pri);color:var(--onPri)}
+.bs{background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line2)}
+.top{position:absolute;z-index:2;left:0;right:0;top:100px;height:32px;background:linear-gradient(var(--bg),var(--fade))}
+.gen{display:flex;align-items:center;gap:12px;height:68px;padding:0 12px 0 20px}
+</style>
+</helmet>
+<div class="bd0 L" style="width: 2540px; height: 884px">
+
+  <div class="cell">
+    <div class="tag">01 · 空闲 · 两个选项</div>
+    <section class="ph" aria-label="阅读页空闲">
+      <nav class="nav">
+        <a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+        <span style="width: 44px"></span>
+        <h1 class="ttl">雨夜渡口</h1>
+        <a class="ib" href="#" aria-label="世界状态，有新变化"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span class="badge"></span></a>
+        <button class="ib" type="button" aria-label="更多"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><rect x="4" y="11" width="3" height="3"/><rect x="10.5" y="11" width="3" height="3"/><rect x="17" y="11" width="3" height="3"/></svg></button>
+      </nav>
+      <div class="top"></div>
+      <main class="feed" style="bottom: 226px">
+        <p class="narr">我推开茶馆的门，檐下的铜铃响了两声。柜台后的女人没有抬头，只把一只粗瓷杯推到桌沿：“最后一班船已经走了。客人要等，就得等到明天。”</p>
+        <p class="narr">她的手指很白，指节上却有一道旧疤，像是被绳索勒过。</p>
+        <div class="act"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v9h13M14 9l4 4-4 4"/></svg><span><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">我的行动：</span>我在她对面坐下，问她这道疤是怎么来的。</span></div>
+        <p class="narr">沈知微终于抬起眼。那是一双很静的眼睛，静得让我想起深夜无人的河面。</p>
+        <p class="narr">“客人问得太多了。”她往我杯里续了茶，水声很轻，“在这个渡口，问得多的人，往往走不了。”</p>
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+      </main>
+      <section class="bar" aria-label="下一步">
+        <a class="opt" href="#"><span class="key">A</span><span style="flex: 1">起身走到窗边，看清河上是什么船</span><svg class="i" style="width: 18px; height: 18px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+        <a class="opt" href="#"><span class="key">B</span><span style="flex: 1">按住她续茶的手，追问“走不了”是什么意思</span><svg class="i" style="width: 18px; height: 18px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+        <a class="opt" href="#" style="border-bottom: 0; color: var(--mut); min-height: 56px"><span class="key" style="box-shadow: inset 0 0 0 1px var(--line2)"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg></span>自己写…</a>
+      </section>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">02 · 自由输入展开</div>
+    <section class="ph" aria-label="自由输入">
+      <nav class="nav">
+        <a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+        <span style="width: 44px"></span>
+        <h1 class="ttl">雨夜渡口</h1>
+        <a class="ib" href="#" aria-label="世界状态"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></a>
+        <button class="ib" type="button" aria-label="更多"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><rect x="4" y="11" width="3" height="3"/><rect x="10.5" y="11" width="3" height="3"/><rect x="17" y="11" width="3" height="3"/></svg></button>
+      </nav>
+      <div class="top"></div>
+      <main class="feed" style="bottom: 534px">
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+      </main>
+      <section aria-label="写下你要做的事" style="position: absolute; z-index: 3; left: 0; right: 0; bottom: 336px; background: var(--bg); border-top: 1px solid var(--ink); padding: 12px 12px 8px">
+        <label for="t1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">我要做的事</label>
+        <textarea id="t1" rows="3" style="display: block; width: 100%; height: 124px; border: 0; box-shadow: inset 0 0 0 2px var(--ink); padding: 12px 14px; font-family: inherit; font-size: 16px; line-height: 25px; color: var(--ink); resize: none; outline: none; background: var(--bg)">我把怀里那封信取出来，压在茶杯下，推到她面前，看她认不认得信封上的字。</textarea>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px">
+          <button type="button" style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px 0 6px; border: 0; background: transparent; color: var(--ink); font-family: inherit; font-size: 15px"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>收起</button>
+          <span style="flex: 1"></span>
+          <a href="#" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px 0 14px; background: var(--ink); color: var(--bg); font-size: 15px; font-weight: 500; text-decoration: none"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5M6 11l6-6 6 6"/></svg>发送</a>
+        </div>
+      </section>
+      <div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 336px; background: repeating-linear-gradient(135deg, var(--bg2) 0 8px, var(--bg3) 8px 9px); display: flex; align-items: center; justify-content: center"><span class="mono" style="font-size: 11.5px; letter-spacing: .1em; color: var(--mut); background: var(--bg); padding: 4px 10px">系统键盘</span></div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">03 · 生成中 · 流式出字</div>
+    <section class="ph" aria-label="生成中">
+      <nav class="nav">
+        <a class="ib" href="#" aria-label="返回（后台继续生成）"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+        <span style="width: 44px"></span>
+        <h1 class="ttl">雨夜渡口</h1>
+        <a class="ib" href="#" aria-label="世界状态"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></a>
+        <button class="ib" type="button" aria-label="更多"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><rect x="4" y="11" width="3" height="3"/><rect x="10.5" y="11" width="3" height="3"/><rect x="17" y="11" width="3" height="3"/></svg></button>
+      </nav>
+      <div class="top"></div>
+      <main class="feed" style="bottom: 102px">
+        <p class="narr">“客人问得太多了。”她往我杯里续了茶，水声很轻，“在这个渡口，问得多的人，往往走不了。”</p>
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+        <div class="act"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v9h13M14 9l4 4-4 4"/></svg><span>起身走到窗边，看清河上是什么船</span></div>
+        <p class="narr">我推开半扇窗，冷雨立刻扑了进来。河面上浮着一层薄雾，雾里有一点昏黄的灯，正一下一下地朝渡口靠近。</p>
+        <p class="narr" style="margin-bottom: 0">那是一条乌篷船。船头站着一个披蓑衣的人，竹篙每点一下水，灯就晃一晃。我看不清他的脸，只看见蓑衣下露出的一截袖口——和沈知微身上的一样，是素色的布<span class="caret"></span></p>
+      </main>
+      <section class="bar" aria-label="生成状态">
+        <div style="position: absolute; top: -1px; left: 0; right: 0; height: 2px; background: var(--ink)"><div style="position: absolute; left: 38%; width: 28%; height: 2px; background: var(--acc)"></div></div>
+        <div class="gen">
+          <span style="width: 8px; height: 8px; background: var(--acc)" aria-hidden="true"></span>
+          <span style="flex: 1; font-size: 15px">正在写下一段</span>
+          <button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 14px; border: 0; background: var(--bg); box-shadow: inset 0 0 0 1px var(--ink); color: var(--ink); font-family: inherit; font-size: 15px"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" fill="currentColor"/></svg>停止</button>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">04 · 生成中 · 断线重连</div>
+    <section class="ph" aria-label="重连中">
+      <nav class="nav">
+        <a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+        <span style="width: 44px"></span>
+        <h1 class="ttl">雨夜渡口</h1>
+        <a class="ib" href="#" aria-label="世界状态"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></a>
+        <button class="ib" type="button" aria-label="更多"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><rect x="4" y="11" width="3" height="3"/><rect x="10.5" y="11" width="3" height="3"/><rect x="17" y="11" width="3" height="3"/></svg></button>
+      </nav>
+      <div class="top"></div>
+      <main class="feed" style="bottom: 102px">
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+        <div class="act"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v9h13M14 9l4 4-4 4"/></svg><span>起身走到窗边，看清河上是什么船</span></div>
+        <div class="status" style="color: var(--warn)" aria-live="polite"><svg class="i" style="width: 15px; height: 15px" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.7M20 4v5h-5"/></svg>连接断了，正在重连…<span style="color: var(--mut)">已写好的不会丢</span></div>
+        <p class="narr">我推开半扇窗，冷雨立刻扑了进来。河面上浮着一层薄雾，雾里有一点昏黄的灯，正一下一下地朝渡口靠近。</p>
+        <p class="narr" style="margin-bottom: 0">那是一条乌篷船。船头站着一个披蓑衣的人，竹篙每点一下水，灯就晃一晃<span class="caret" style="background: var(--line2)"></span></p>
+      </main>
+      <section class="bar" aria-label="生成状态" style="border-top-color: var(--warn)">
+        <div class="gen">
+          <span style="width: 8px; height: 8px; box-shadow: inset 0 0 0 1.5px var(--warn)" aria-hidden="true"></span>
+          <span style="flex: 1; font-size: 15px">正在写下一段</span>
+          <button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 14px; border: 0; background: var(--bg); box-shadow: inset 0 0 0 1px var(--ink); color: var(--ink); font-family: inherit; font-size: 15px"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" fill="currentColor"/></svg>停止</button>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">05 · 生成失败</div>
+    <section class="ph" aria-label="生成失败">
+      <nav class="nav">
+        <a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+        <span style="width: 44px"></span>
+        <h1 class="ttl">雨夜渡口</h1>
+        <a class="ib" href="#" aria-label="世界状态"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></a>
+        <button class="ib" type="button" aria-label="更多"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><rect x="4" y="11" width="3" height="3"/><rect x="10.5" y="11" width="3" height="3"/><rect x="17" y="11" width="3" height="3"/></svg></button>
+      </nav>
+      <div class="top"></div>
+      <main class="feed" style="bottom: 170px">
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+        <div class="act"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v9h13M14 9l4 4-4 4"/></svg><span>起身走到窗边，看清河上是什么船</span></div>
+        <p class="narr" style="color: var(--mut)">我推开半扇窗，冷雨立刻扑了进来。河面上浮着一层薄雾，雾里有一点昏黄的灯，正一下一下地朝渡口靠近。</p>
+        <p class="narr" style="color: var(--mut); margin-bottom: 0">那是一条乌篷船。船头站着一个披蓑衣的人，竹篙每点一下<span class="mono" style="display: inline-block; margin-left: 8px; padding: 0 6px; font-size: 11px; line-height: 20px; letter-spacing: .06em; box-shadow: inset 0 0 0 1px var(--line2); color: var(--mut); vertical-align: 3px">中断</span></p>
+      </main>
+      <section class="bar" aria-label="生成失败" style="border-top-color: var(--err); padding: 14px 12px 34px; display: flex; flex-direction: column; gap: 12px">
+        <div role="alert" style="display: flex; gap: 10px; align-items: flex-start; padding: 0 8px; color: var(--err); font-size: 14px; line-height: 21px"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20z"/><path d="M12 10v4M12 17v.5"/></svg><span>这一段没写完：模型服务拒绝了请求（429 请求太频繁）。</span></div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <a class="btn bs" href="#">换个行动</a>
+          <a class="btn bp" href="#"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.7M20 4v5h-5"/></svg>重试</a>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">06 · 上翻 · 回到最新</div>
+    <section class="ph" aria-label="上翻后回到最新">
+      <nav class="nav">
+        <a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+        <span style="width: 44px"></span>
+        <h1 class="ttl">雨夜渡口</h1>
+        <a class="ib" href="#" aria-label="世界状态"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></a>
+        <button class="ib" type="button" aria-label="更多"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><rect x="4" y="11" width="3" height="3"/><rect x="10.5" y="11" width="3" height="3"/><rect x="17" y="11" width="3" height="3"/></svg></button>
+      </nav>
+      <main style="position: absolute; top: 100px; left: 0; right: 0; bottom: 102px; overflow: hidden">
+        <header style="padding: 24px 24px 28px; display: flex; flex-direction: column; gap: 14px; border-bottom: 1px solid var(--line); margin-bottom: 24px">
+          <svg width="342" height="120" viewBox="0 0 342 120" aria-hidden="true"><rect width="342" height="120" style="fill: var(--bg2)"/><path d="M0 76q21-8 42 0t42 0 42 0 42 0 42 0 42 0 42 0 42 0 42 0M0 92q21-8 42 0t42 0 42 0 42 0 42 0 42 0 42 0 42 0 42 0M0 108q21-8 42 0t42 0 42 0 42 0 42 0 42 0 42 0 42 0 42 0" style="fill: none; stroke: var(--ink); stroke-width: 1.5"/><rect x="250" y="24" width="20" height="20" style="fill: var(--acc)"/></svg>
+          <div style="font-size: 30px; line-height: 36px; font-weight: 900; letter-spacing: -.03em">雨夜渡口</div>
+          <div class="mono" style="font-size: 11.5px; letter-spacing: .06em; color: var(--mut)">沈知微 · 我是 林川</div>
+        </header>
+        <p class="narr">雨是从傍晚开始下的。渡口的灯一盏接一盏亮起来，又被风吹得摇摇晃晃，像谁在水面上撒了一把碎金。</p>
+        <p class="narr">我推开茶馆的门，檐下的铜铃响了两声。柜台后的女人没有抬头，只把一只粗瓷杯推到桌沿。</p>
+      </main>
+      <a href="#" aria-label="回到最新，有新内容" style="position: absolute; z-index: 4; left: 50%; bottom: 122px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; background: var(--ink); color: var(--bg); font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; box-shadow: 0 8px 24px rgba(17,17,17,.18)"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M6 13l6 6 6-6"/></svg>回到最新<span style="width: 6px; height: 6px; background: #7C8CFF" aria-hidden="true"></span></a>
+      <section class="bar" aria-label="生成状态">
+        <div style="position: absolute; top: -1px; left: 0; right: 0; height: 2px; background: var(--ink)"><div style="position: absolute; left: 62%; width: 28%; height: 2px; background: var(--acc)"></div></div>
+        <div class="gen">
+          <span style="width: 8px; height: 8px; background: var(--acc)" aria-hidden="true"></span>
+          <span style="flex: 1; font-size: 15px">正在写下一段</span>
+          <button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 14px; border: 0; background: var(--bg); box-shadow: inset 0 0 0 1px var(--ink); color: var(--ink); font-family: inherit; font-size: 15px"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" fill="currentColor"/></svg>停止</button>
+        </div>
+      </section>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2540,"height":884}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

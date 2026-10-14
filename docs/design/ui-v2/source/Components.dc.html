@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>组件库</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F7F7F5;--bg3:#EFEFEC;--ink:#111111;--ink2:#37352F;--mut:#6B6A66;--line:#E8E8E5;--line2:#D3D3CF;--acc:#2747FF;--accBg:#EEF1FF;--ok:#0B8A55;--okBg:#E7F5EE;--warn:#B45309;--warnBg:#FDF3E3;--err:#D92D20;--errBg:#FDECEA;--narr:#1C1C1C;--pri:#111111;--onPri:#FFFFFF}
+.doc{font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif;color:var(--ink);font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased}
+.doc *{box-sizing:border-box;border-radius:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter;flex:none}
+.k{font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:16px;letter-spacing:.08em;color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--ink);border-left:1px solid var(--line)}
+.c{padding:28px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:18px}
+.ct{margin:0;font-size:20px;line-height:26px;font-weight:700}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 16px;border:0;font-family:inherit;font-size:15px;font-weight:500}
+.bp{background:var(--pri);color:var(--onPri)}
+.bs{background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line2)}
+.bq{background:transparent;color:var(--ink);height:44px;text-decoration:underline;text-underline-offset:4px;text-decoration-color:var(--line2)}
+.bx{background:var(--bg);color:var(--err);box-shadow:inset 0 0 0 1px var(--err)}
+.inp{display:block;width:100%;height:52px;background:var(--bg);border:0;box-shadow:inset 0 0 0 1px var(--line2);padding:0 14px;font-family:inherit;font-size:15px;color:var(--ink);outline:none}
+.inp::placeholder{color:var(--mut)}
+.lab{font-size:13px;line-height:18px;color:var(--ink2);font-weight:500}
+.chip{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px;border:0;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line2);font-family:inherit;font-size:14px;color:var(--ink)}
+.on{background:var(--ink);color:var(--bg);box-shadow:none}
+.cap{font-size:12.5px;line-height:19px;color:var(--mut)}
+.dots span{display:inline-block;width:6px;height:6px;background:currentColor;margin-right:4px}
+</style>
+</helmet>
+<div class="doc L" style="width: 1440px; min-height: 2240px; background: var(--bg); padding: 64px 72px 72px; display: flex; flex-direction: column; gap: 36px">
+  <header style="display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 48px; align-items: end">
+    <div style="display: flex; flex-direction: column; gap: 14px"><span class="k">BetterTavern · Components</span><h1 style="margin: 0; font-size: 72px; line-height: 72px; font-weight: 900; letter-spacing: -.04em">组件</h1></div>
+    <p style="margin: 0; font-size: 15px; line-height: 26px; color: var(--ink2)">所有组件只靠三种手段表达状态：线的粗细（1px → 2px）、黑白反转、蓝色焦点。触控目标 44pt 起，按钮高 52pt。按下态统一为底色加深一档，或者黑白反转。</p>
+  </header>
+
+  <div class="grid">
+    <section class="c">
+      <span class="k">01</span><h2 class="ct">按钮</h2>
+      <div style="display: grid; grid-template-columns: 52px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: center">
+        <span></span><span class="k">默认</span><span class="k">加载</span><span class="k">禁用</span>
+        <span class="k">主要</span>
+        <button class="btn bp" type="button">开始</button>
+        <button class="btn bp" type="button" aria-label="加载中"><span class="dots" style="display: flex"><span></span><span style="opacity: .45"></span><span style="opacity: .2"></span></span></button>
+        <button class="btn" type="button" disabled style="background: var(--bg3); color: var(--mut)">开始</button>
+        <span class="k">次要</span>
+        <button class="btn bs" type="button">测试</button>
+        <button class="btn bs" type="button" aria-label="加载中"><span class="dots" style="display: flex"><span></span><span style="opacity: .45"></span><span style="opacity: .2"></span></span></button>
+        <button class="btn bs" type="button" disabled style="color: var(--mut); box-shadow: inset 0 0 0 1px var(--line)">测试</button>
+        <span class="k">文字</span>
+        <button class="btn bq" type="button">去设置</button>
+        <button class="btn bq" type="button" style="color: var(--mut)">…</button>
+        <button class="btn bq" type="button" disabled style="color: var(--line2)">去设置</button>
+        <span class="k">危险</span>
+        <button class="btn bx" type="button">删除</button>
+        <button class="btn" type="button" style="background: var(--err); color: #FFFFFF">确认删除</button>
+        <button class="btn bx" type="button" disabled style="opacity: .35">删除</button>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button class="btn bp" type="button" style="flex: 1; justify-content: space-between">带方向<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>
+        <button class="btn bs" type="button" aria-label="随机" style="width: 52px; padding: 0"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18"/><rect x="7" y="7" width="2" height="2" fill="currentColor"/><rect x="15" y="15" width="2" height="2" fill="currentColor"/><rect x="11" y="11" width="2" height="2" fill="currentColor"/></svg></button>
+      </div>
+      <p class="cap" style="margin: 0">主按钮推进流程时，文字左对齐、箭头右对齐，像在翻下一页。</p>
+    </section>
+
+    <section class="c">
+      <span class="k">02</span><h2 class="ct">输入</h2>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="x1">默认</label><input id="x1" class="inp" placeholder="you@example.com"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="x2">聚焦 · 2px 黑线</label><input id="x2" class="inp" value="林川" style="box-shadow: inset 0 0 0 2px var(--ink)"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="x3">错误</label><input id="x3" class="inp" value="abc1234" style="box-shadow: inset 0 0 0 1.5px var(--err)"><span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--err)"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>至少 8 位</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="x4">附带动作</label><div style="display: flex; gap: 8px"><input id="x4" class="inp mono" placeholder="sk-…" style="flex: 1"><button class="btn bp" type="button" style="height: 52px">粘贴</button></div></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="x5">禁用</label><input id="x5" class="inp" value="官方地址" disabled style="background: var(--bg2); color: var(--mut); box-shadow: none"></div>
+    </section>
+
+    <section class="c">
+      <span class="k">03</span><h2 class="ct">选择 · 替代输入</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px"><button class="chip on" type="button"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5 11-11"/></svg>克制</button><button class="chip" type="button">诗意</button><button class="chip" type="button">轻快</button><button class="chip" type="button" style="color: var(--mut)">+ 自定义</button></div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); box-shadow: inset 0 0 0 1px var(--line2)" role="radiogroup" aria-label="分段">
+        <button type="button" style="height: 48px; border: 0; border-right: 1px solid var(--line2); background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 14px">32K</button>
+        <button type="button" style="height: 48px; border: 0; background: var(--ink); color: var(--bg); font-family: 'IBM Plex Mono', monospace; font-size: 14px">64K</button>
+        <button type="button" style="height: 48px; border: 0; border-right: 1px solid var(--line2); background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 14px">128K</button>
+        <button type="button" style="height: 48px; border: 0; background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 14px">256K</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px">
+        <span style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px"><span style="width: 20px; height: 20px; background: var(--acc); color: #FFF; display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5 11-11"/></svg></span>勾选</span>
+        <span style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px"><span style="width: 20px; height: 20px; box-shadow: inset 0 0 0 1.5px var(--line2)"></span>未勾选</span>
+        <span style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px"><span style="width: 20px; height: 20px; box-shadow: inset 0 0 0 6px var(--ink)"></span>单选 · 选中</span>
+        <span style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px"><span style="position: relative; width: 52px; height: 28px; background: var(--acc)"><span style="position: absolute; top: 4px; left: 28px; width: 20px; height: 20px; background: #FFF"></span></span>开关</span>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <button type="button" style="display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 14px; border: 0; box-shadow: inset 0 0 0 2px var(--ink); background: var(--bg); font-family: inherit; text-align: left"><span class="mono" style="flex: 1; font-size: 14px">192.168.1.10:8000</span><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14l5-5 5 5"/></svg></button>
+        <div role="listbox" style="box-shadow: inset 0 0 0 1px var(--ink); border-top: 0; margin-top: -1px">
+          <div role="option" aria-selected="true" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; background: var(--accBg)"><svg class="i" style="width: 16px; height: 16px; color: var(--acc)" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5 11-11"/></svg><span class="mono" style="font-size: 13px">192.168.1.10:8000</span></div>
+          <div role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px 0 40px; border-top: 1px solid var(--line)"><span class="mono" style="font-size: 13px">tavern.home.arpa</span></div>
+          <div role="option" aria-selected="false" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-top: 1px solid var(--line); color: var(--mut); font-size: 13px"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg>输入新地址</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">04</span><h2 class="ct">提示条</h2>
+      <div role="alert" style="display: flex; gap: 10px; align-items: center; padding: 4px 4px 4px 14px; background: var(--errBg); box-shadow: inset 0 0 0 1px var(--err); font-size: 14px"><svg class="i" style="width: 18px; height: 18px; color: var(--err)" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20z"/><path d="M12 10v4M12 17v.5"/></svg><span style="flex: 1">没有可用模型</span><span style="display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 12px; font-weight: 700">去设置<svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></div>
+      <div style="display: flex; gap: 10px; align-items: center; padding: 12px 14px; background: var(--accBg); box-shadow: inset 0 0 0 1px var(--acc); font-size: 14px"><svg class="i" style="width: 18px; height: 18px; color: var(--acc)" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16"/><path d="M12 11v5M12 8v.5"/></svg>已设为导演模型</div>
+      <div style="display: flex; gap: 10px; align-items: center; padding: 12px 14px; background: var(--warnBg); box-shadow: inset 0 0 0 1px var(--warn); font-size: 14px"><svg class="i" style="width: 18px; height: 18px; color: var(--warn)" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20z"/><path d="M12 10v4M12 17v.5"/></svg>工作窗口会按 128K 算</div>
+      <div role="status" style="display: flex; gap: 10px; align-items: center; padding: 0 8px 0 14px; height: 52px; background: var(--ink); color: var(--bg); font-size: 14px"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5 11-11"/></svg><span style="flex: 1">已删除“白鹭镇异闻”</span></div>
+      <p class="cap" style="margin: 0">四种都用图标形状区分（三角、方框、对勾），不只靠颜色。墨色浮条 3 秒后自动消失，带操作的提示条不会自动消失。</p>
+    </section>
+
+    <section class="c">
+      <span class="k">05</span><h2 class="ct">列表行</h2>
+      <div style="display: flex; flex-direction: column; box-shadow: inset 0 0 0 1px var(--line)">
+        <div style="display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 14px; border-bottom: 1px solid var(--line)">
+          <svg width="48" height="48" viewBox="0 0 96 96" aria-hidden="true"><rect width="96" height="96" style="fill: var(--bg2)"/><path d="M0 60q12-6 24 0t24 0 24 0 24 0M0 72q12-6 24 0t24 0 24 0 24 0" style="fill: none; stroke: var(--ink); stroke-width: 2.5"/><rect x="62" y="20" width="12" height="12" style="fill: var(--acc)"/></svg>
+          <div style="display: flex; flex-direction: column; gap: 3px"><div style="display: flex; justify-content: space-between"><b>雨夜渡口</b><span class="mono" style="font-size: 11px; color: var(--mut)">刚刚</span></div><span class="mono" style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--acc); letter-spacing: .06em"><i style="width: 7px; height: 7px; background: var(--acc)"></i>正在写下一段</span></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 14px; border-bottom: 1px solid var(--line); background: var(--bg2)"><span style="width: 32px; height: 32px; background: var(--bg); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg></span><span style="flex: 1">按下态</span><svg class="i" style="width: 16px; height: 16px; color: var(--line2)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></div>
+        <div style="display: flex; overflow: hidden; height: 64px"><div style="flex: 1; display: flex; align-items: center; padding: 0 14px; margin-left: -90px; font-weight: 700">左滑露出操作</div><span style="width: 64px; background: var(--bg3); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg></span><span style="width: 64px; background: var(--err); color: #FFF; display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/></svg></span></div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">06</span><h2 class="ct">状态</h2>
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px">
+        <span style="display: flex; align-items: center; gap: 8px; color: var(--ok)"><svg class="i" style="width: 16px; height: 16px; stroke-width: 2" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5 11-11"/></svg>可用</span>
+        <span style="display: flex; align-items: center; gap: 8px; color: var(--warn)"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" stroke-dasharray="3 3"/></svg>还没测试</span>
+        <span style="display: flex; align-items: center; gap: 8px; color: var(--err)"><svg class="i" style="width: 16px; height: 16px; stroke-width: 2" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>Key 无效</span>
+      </div>
+      <div style="height: 1px; background: var(--line)"></div>
+      <div style="display: flex; gap: 8px; align-items: center"><span style="width: 24px; height: 24px; background: var(--ok); color: #FFF; display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5 11-11"/></svg></span><span style="width: 24px; height: 24px; background: var(--err); color: #FFF; display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span style="width: 24px; height: 24px; box-shadow: inset 0 0 0 1.5px var(--line2); color: var(--mut); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></span><span class="cap">通过 / 失败 / 跳过</span></div>
+      <div style="display: flex; gap: 8px; align-items: center"><span class="mono" style="font-size: 10.5px; padding: 2px 6px; background: var(--acc); color: #FFF; letter-spacing: .06em">导演</span><span class="mono" style="font-size: 10.5px; padding: 2px 6px; box-shadow: inset 0 0 0 1px var(--acc); color: var(--acc)">新</span><span class="mono" style="font-size: 10.5px; padding: 2px 6px; box-shadow: inset 0 0 0 1px var(--line2)">128K</span><span class="cap">标签</span></div>
+    </section>
+
+    <section class="c" style="grid-column: span 2">
+      <span class="k">07</span><h2 class="ct">阅读页小件</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px">
+        <div style="display: flex; flex-direction: column; gap: 14px">
+          <div class="k">“我的行动”色带</div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 20px; background: var(--bg2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 15px; line-height: 24px; font-weight: 500"><svg class="i" style="color: var(--acc); margin-top: 2px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v9h13M14 9l4 4-4 4"/></svg>我在她对面坐下，问她这道疤是怎么来的。</div>
+          <p class="cap" style="margin: 0">通栏浅灰色带 + 蓝色转折箭头（↳），既是回合分隔，也表示“这是你”。行动用黑体 500，叙述用宋体，字体本身就把两者分开了。</p>
+          <div class="k">流式光标 · 状态行</div>
+          <p style="margin: 0; font-family: 'Noto Serif SC', serif; font-size: 17.5px; line-height: 31px; color: var(--narr)">窗外忽然传来船桨拍水的声音<span style="display: inline-block; width: 2px; height: 20px; margin-left: 3px; vertical-align: -4px; background: var(--acc)"></span></p>
+          <span class="mono" style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; letter-spacing: .06em; color: var(--mut)"><span style="display: flex; gap: 3px"><span style="width: 5px; height: 5px; background: var(--acc)"></span><span style="width: 5px; height: 5px; background: var(--acc); opacity: .5"></span><span style="width: 5px; height: 5px; background: var(--acc); opacity: .2"></span></span>正在构思…</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px">
+          <div class="k">选项行 · 默认 / 按下</div>
+          <div style="box-shadow: inset 0 0 0 1px var(--line)">
+            <div style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 14px; border-bottom: 1px solid var(--line)"><span class="mono" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px var(--ink); font-size: 13px">A</span><span style="flex: 1">起身走到窗边，看清河上是什么船</span><svg class="i" style="width: 16px; height: 16px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+            <div style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 14px; background: var(--accBg)"><span class="mono" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: var(--acc); color: #FFF; font-size: 13px">B</span><span style="flex: 1">按住她续茶的手</span><svg class="i" style="width: 16px; height: 16px; color: var(--acc)" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+          </div>
+          <div class="k">回到最新 · 生成进度线</div>
+          <div style="display: flex; gap: 16px; align-items: center">
+            <span style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; background: var(--ink); color: var(--bg); font-size: 14px"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M6 13l6 6 6-6"/></svg>回到最新<span style="width: 6px; height: 6px; background: #7C8CFF"></span></span>
+            <div style="flex: 1; height: 2px; background: var(--ink); position: relative"><span style="position: absolute; left: 30%; width: 28%; height: 2px; background: var(--acc)"></span></div>
+          </div>
+          <p class="cap" style="margin: 0">进度线是行动栏顶边上的一段蓝色，左右往返扫动，表示“在写”，不代表具体进度。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">08</span><h2 class="ct">对话框 · 面板</h2>
+      <div style="background: rgba(17,17,17,.45); padding: 24px 16px; display: flex; flex-direction: column; gap: 16px">
+        <div role="alertdialog" aria-label="删除确认" style="background: var(--bg); border-top: 4px solid var(--err)">
+          <div style="padding: 18px; display: flex; flex-direction: column; gap: 6px"><b style="font-size: 17px">删除“雨夜渡口”？</b><span style="font-size: 13.5px; line-height: 21px; color: var(--ink2)">删除后故事和世界状态都无法恢复。</span></div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line)"><button type="button" style="height: 52px; border: 0; border-right: 1px solid var(--line); background: var(--bg); font-family: inherit; font-size: 15px">取消</button><button type="button" style="height: 52px; border: 0; background: var(--err); color: #FFF; font-family: inherit; font-size: 15px; font-weight: 500">删除</button></div>
+        </div>
+        <div style="background: var(--bg); border-top: 2px solid var(--ink); padding: 16px 16px 20px"><b style="font-size: 18px">底部面板</b><div class="cap" style="margin-top: 4px">顶边 2px 黑线代替拖拽条；下拉或点遮罩关闭，Android 返回键先关面板。</div></div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">09</span><h2 class="ct">加载 · 空 · 错</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px"><span style="height: 14px; width: 50%; background: var(--bg3)"></span><span style="height: 10px; width: 90%; background: var(--bg2)"></span><span style="height: 10px; width: 70%; background: var(--bg2)"></span></div>
+      <span class="mono" style="display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--mut); letter-spacing: .06em"><span style="display: flex; gap: 4px"><span style="width: 8px; height: 8px; background: var(--ink)"></span><span style="width: 8px; height: 8px; background: var(--ink); opacity: .35"></span><span style="width: 8px; height: 8px; background: var(--ink); opacity: .12"></span></span>三格墨点 · 通用加载</span>
+      <div style="border-top: 1px solid var(--ink); padding-top: 14px; display: flex; flex-direction: column; gap: 8px"><span class="mono" style="font-size: 11px; color: var(--err); letter-spacing: .08em">连接失败</span><b style="font-size: 17px">故事列表没加载出来</b><button class="btn bs" type="button" style="justify-content: space-between">重新加载<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.7M20 4v5h-5"/></svg></button></div>
+    </section>
+
+    <section class="c">
+      <span class="k">10</span><h2 class="ct">导航</h2>
+      <div style="box-shadow: inset 0 0 0 1px var(--line); display: flex; align-items: center; height: 52px; padding: 0 4px; border-bottom: 1px solid var(--line)">
+        <span style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span style="width: 44px"></span><b style="flex: 1; text-align: center; font-size: 15px">雨夜渡口</b>
+        <span style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; position: relative"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span style="position: absolute; top: 9px; right: 9px; width: 7px; height: 7px; background: var(--acc)"></span></span>
+        <span style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><rect x="4" y="11" width="3" height="3"/><rect x="10.5" y="11" width="3" height="3"/><rect x="17" y="11" width="3" height="3"/></svg></span>
+      </div>
+      <div style="padding: 0 0 14px; border-bottom: 1px solid var(--ink); display: flex; align-items: flex-end; justify-content: space-between"><span style="font-size: 34px; line-height: 40px; font-weight: 700; letter-spacing: -.02em">故事</span><span class="mono" style="font-size: 13px; color: var(--mut); padding-bottom: 6px">05</span></div>
+      <p class="cap" style="margin: 0">一级页：大标题压一道黑线，右侧放等宽数字计数。二级页：只有返回箭头和居中标题，标题下一条浅线。</p>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2240}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

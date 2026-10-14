@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>阅读页 · 整页特殊状态</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F7F7F5;--bg3:#EFEFEC;--ink:#111111;--ink2:#37352F;--mut:#6B6A66;--line:#E8E8E5;--line2:#D3D3CF;--acc:#2747FF;--accBg:#EEF1FF;--ok:#0B8A55;--warn:#B45309;--warnBg:#FDF3E3;--err:#D92D20;--errBg:#FDECEA;--narr:#1C1C1C;--pri:#111111;--onPri:#FFFFFF}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:16px;letter-spacing:.06em;color:#6B6A66;height:28px;display:flex;align-items:flex-end;border-bottom:1px solid #111111;padding-bottom:6px}
+.ph{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;box-shadow:0 0 0 1px #E8E8E5}
+.ph *{box-sizing:border-box;border-radius:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter;flex:none}
+.nav{position:absolute;z-index:3;top:0;left:0;right:0;height:100px;padding:56px 6px 0;display:flex;align-items:center;background:var(--bg);border-bottom:1px solid var(--line)}
+.ib{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--ink);text-decoration:none;flex:none}
+.ttl{flex:1;min-width:0;text-align:center;font-size:15px;line-height:20px;font-weight:700;margin:0}
+.narr{font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--narr);margin:0 0 16px;padding:0 24px;text-align:justify}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 20px;border:0;font-family:inherit;font-size:16px;line-height:22px;font-weight:500;text-decoration:none;cursor:pointer}
+.bp{background:var(--pri);color:var(--onPri)}
+.bs{background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line2)}
+.bar{position:absolute;z-index:3;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--ink);padding:12px 12px 34px}
+.book{position:absolute;top:100px;left:0;right:0;padding:24px 24px 28px;display:flex;flex-direction:column;gap:14px;border-bottom:1px solid var(--line)}
+.bt{font-size:30px;line-height:36px;font-weight:900;letter-spacing:-.03em}
+.bm{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.06em;color:var(--mut)}
+.status{display:flex;align-items:center;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:16px;letter-spacing:.06em}
+.sk{height:12px;background:var(--bg2)}
+</style>
+</helmet>
+<div class="bd0 L" style="width: 2540px; height: 884px">
+
+  <div class="cell">
+    <div class="tag">01 · 首次加载</div>
+    <section class="ph" aria-label="首次加载">
+      <nav class="nav"><a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><span style="width: 44px"></span><h1 class="ttl">雨夜渡口</h1><span style="width: 88px"></span></nav>
+      <div style="position: absolute; top: 132px; left: 24px; right: 24px; display: flex; flex-direction: column; gap: 19px" aria-hidden="true">
+        <div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk" style="width: 58%"></div>
+        <div class="sk" style="margin-top: 16px"></div><div class="sk"></div><div class="sk" style="width: 74%"></div>
+        <div style="height: 52px; background: var(--bg2); margin: 16px -24px"></div>
+        <div class="sk"></div><div class="sk"></div><div class="sk" style="width: 40%"></div>
+      </div>
+      <div class="status" style="position: absolute; bottom: 120px; left: 24px; color: var(--mut)" role="status"><span style="display: flex; gap: 4px"><span style="width: 6px; height: 6px; background: var(--ink)"></span><span style="width: 6px; height: 6px; background: var(--ink); opacity: .4"></span><span style="width: 6px; height: 6px; background: var(--ink); opacity: .15"></span></span>正在打开故事</div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">02 · 加载失败</div>
+    <section class="ph" aria-label="加载失败">
+      <nav class="nav"><a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><span style="width: 44px"></span><h1 class="ttl">雨夜渡口</h1><span style="width: 88px"></span></nav>
+      <div style="position: absolute; top: 280px; left: 24px; right: 24px; display: flex; flex-direction: column; gap: 16px" role="alert">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><rect x="0.75" y="0.75" width="54.5" height="54.5" style="fill: none; stroke: var(--err); stroke-width: 1.5"/><path d="M18 18l20 20M38 18L18 38" style="stroke: var(--err); stroke-width: 1.5"/></svg>
+        <div style="font-size: 24px; line-height: 32px; font-weight: 700">故事没能打开</div>
+        <div style="font-size: 15px; line-height: 24px; color: var(--mut)">请求超时，服务器没有回应。</div>
+        <button class="btn bs" type="button" style="justify-content: space-between; margin-top: 8px">重新加载<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.7M20 4v5h-5"/></svg></button>
+      </div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">03 · 故事有更新 · 同步中</div>
+    <section class="ph" aria-label="同步中">
+      <nav class="nav"><a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><span style="width: 44px"></span><h1 class="ttl">雨夜渡口</h1><span style="width: 88px"></span></nav>
+      <div role="status" style="position: absolute; z-index: 4; top: 100px; left: 0; right: 0; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 20px; background: var(--accBg); border-bottom: 1px solid var(--acc); color: var(--acc); font-size: 13px; font-weight: 500">
+        <svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="8" height="12"/><rect x="13" y="7" width="8" height="12"/><path d="M11 11h2"/></svg>故事有更新，正在同步…
+      </div>
+      <main style="position: absolute; top: 144px; left: 0; right: 0; bottom: 102px; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 20px; opacity: .4">
+        <p class="narr">“客人问得太多了。”她往我杯里续了茶，水声很轻，“在这个渡口，问得多的人，往往走不了。”</p>
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+      </main>
+      <div class="bar" style="display: flex; align-items: center; gap: 10px; height: 102px; padding: 0 20px 34px; color: var(--mut); font-size: 14px; border-top-color: var(--line)"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>同步完成前，暂时不能行动</div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">04 · 开场还没写</div>
+    <section class="ph" aria-label="开场还没写">
+      <nav class="nav"><a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><span style="width: 44px"></span><h1 class="ttl">林间旅店</h1><span style="width: 88px"></span></nav>
+      <header class="book">
+        <svg width="342" height="120" viewBox="0 0 342 120" aria-hidden="true"><rect width="342" height="120" style="fill: var(--bg2)"/><path d="M40 108l26-56 26 56zM110 108l34-80 34 80zM200 108l22-44 22 44zM0 108h342" style="fill: none; stroke: var(--ink); stroke-width: 1.5"/><rect x="138" y="80" width="12" height="16" style="fill: var(--acc)"/></svg>
+        <div class="bt">林间旅店</div>
+        <div class="bm">林间旅店 · 我是 阿柏</div>
+      </header>
+      <div style="position: absolute; top: 400px; left: 24px; right: 24px; display: flex; gap: 12px; align-items: flex-start; font-size: 15px; line-height: 24px; color: var(--ink2)">
+        <svg class="i" style="width: 20px; height: 20px; color: var(--warn); margin-top: 2px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" stroke-dasharray="3 3"/></svg>
+        <span>开场还没有写好，上次可能中断了。</span>
+      </div>
+      <div class="bar"><a class="btn bp" href="#" style="justify-content: space-between">开始故事<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a></div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">05 · 第一次开场 · 搭建世界</div>
+    <section class="ph" aria-label="搭建世界">
+      <nav class="nav"><a class="ib" href="#" aria-label="返回（后台继续）"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><span style="width: 44px"></span><h1 class="ttl">第七号观测站</h1><span style="width: 88px"></span></nav>
+      <header class="book">
+        <svg width="342" height="120" viewBox="0 0 342 120" aria-hidden="true"><rect width="342" height="120" style="fill: var(--bg2)"/><path d="M0 40h342M0 80h342M86 0v120M171 0v120M256 0v120" style="stroke: var(--line2); stroke-width: 1"/><path d="M0 120A200 200 0 01200 0" style="fill: none; stroke: var(--ink); stroke-width: 1.5"/><rect x="164" y="33" width="14" height="14" style="fill: var(--acc)"/></svg>
+        <div class="bt">第七号观测站</div>
+        <div class="bm">阿澄 · 我是 莫远</div>
+      </header>
+      <div style="position: absolute; top: 400px; left: 24px; right: 24px; display: flex; flex-direction: column; gap: 14px" aria-live="polite">
+        <div style="display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; align-items: center">
+          <span style="width: 18px; height: 18px; display: flex; align-items: center; justify-content: center"><span style="width: 8px; height: 8px; background: var(--acc)"></span></span><span class="mono" style="font-size: 12px; color: var(--acc); letter-spacing: .04em">正在根据角色卡搭建世界…</span>
+          <span style="width: 18px; height: 18px; box-shadow: inset 0 0 0 1.5px var(--line2)"></span><span class="mono" style="font-size: 12px; color: var(--mut); letter-spacing: .04em">写开场</span>
+        </div>
+        <div style="font-size: 13px; line-height: 20px; color: var(--mut); padding-top: 12px; border-top: 1px solid var(--line)">第一次开场比较慢。可以先离开，写好后会出现在“故事”里。</div>
+      </div>
+      <div class="bar" style="display: flex; align-items: center; gap: 12px; padding: 0 12px 34px 20px; height: 102px">
+        <div style="position: absolute; top: -1px; left: 0; right: 0; height: 2px; background: var(--ink)"><div style="position: absolute; left: 20%; width: 28%; height: 2px; background: var(--acc)"></div></div>
+        <span style="width: 8px; height: 8px; background: var(--acc)" aria-hidden="true"></span>
+        <span style="flex: 1">正在写开场</span>
+        <button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 14px; border: 0; background: var(--bg); box-shadow: inset 0 0 0 1px var(--ink); color: var(--ink); font-family: inherit; font-size: 15px"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" fill="currentColor"/></svg>停止</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">06 · 开场失败 · 没有模型</div>
+    <section class="ph" aria-label="开场失败">
+      <nav class="nav"><a class="ib" href="#" aria-label="返回"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><span style="width: 44px"></span><h1 class="ttl">第七号观测站</h1><span style="width: 88px"></span></nav>
+      <header class="book">
+        <svg width="342" height="120" viewBox="0 0 342 120" aria-hidden="true"><rect width="342" height="120" style="fill: var(--bg2)"/><path d="M0 40h342M0 80h342M86 0v120M171 0v120M256 0v120" style="stroke: var(--line2); stroke-width: 1"/><path d="M0 120A200 200 0 01200 0" style="fill: none; stroke: var(--ink); stroke-width: 1.5"/><rect x="164" y="33" width="14" height="14" style="fill: var(--acc)"/></svg>
+        <div class="bt">第七号观测站</div>
+        <div class="bm">阿澄 · 我是 莫远</div>
+      </header>
+      <div class="bar" style="border-top-color: var(--err); display: flex; flex-direction: column; gap: 12px; padding-top: 14px">
+        <div role="alert" style="display: flex; gap: 10px; align-items: flex-start; padding: 0 8px; color: var(--err); font-size: 14px; line-height: 21px"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20z"/><path d="M12 10v4M12 17v.5"/></svg><span>没有可用模型。先添加密钥，再选一个导演模型。</span></div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <a class="btn bs" href="#">关闭</a>
+          <a class="btn bp" href="#">去设置模型</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2540,"height":884}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

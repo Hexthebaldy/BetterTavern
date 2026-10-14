@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>连接测试</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F7F7F5;--bg3:#EFEFEC;--ink:#111111;--ink2:#37352F;--mut:#6B6A66;--line:#E8E8E5;--line2:#D3D3CF;--acc:#2747FF;--accBg:#EEF1FF;--ok:#0B8A55;--okBg:#E7F5EE;--warn:#B45309;--err:#D92D20;--pri:#111111;--onPri:#FFFFFF}
+.ph{width:390px;min-height:1500px;position:relative;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased}
+.ph *{box-sizing:border-box;border-radius:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;height:52px;padding:0 10px;border:0;font-family:inherit;font-size:15px;line-height:22px;font-weight:500;cursor:pointer}
+.sec{display:flex;align-items:baseline;justify-content:space-between;padding:28px 20px 12px;border-bottom:2px solid var(--ink)}
+.sec h2{margin:0;font-size:20px;line-height:26px;font-weight:700}
+.sec span{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--mut);letter-spacing:.06em}
+.lab{font-size:13px;line-height:18px;color:var(--ink2);font-weight:500}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));box-shadow:inset 0 0 0 1px var(--line2)}
+.sg{height:48px;border:0;border-right:1px solid var(--line2);background:transparent;font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink2)}
+.sg:last-child{border-right:0}
+.on{background:var(--ink);color:var(--bg);font-weight:500}
+.cellv{padding:14px 16px 16px 20px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--line)}
+.k{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;color:var(--mut)}
+.v{font-family:"IBM Plex Mono",monospace;font-size:28px;line-height:34px;font-weight:500;letter-spacing:-.02em}
+.kv{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 20px;border-bottom:1px solid var(--line);font-size:14px}
+</style>
+</helmet>
+<div class="ph L">
+  <a href="#" aria-label="返回" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 56px 0 0 10px; color: var(--ink)"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+  <header style="padding: 12px 20px 20px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--ink)">
+    <span class="mono" style="font-size: 11.5px; letter-spacing: .08em; color: var(--mut)">开发者工具</span>
+    <h1 style="margin: 0; font-size: 34px; line-height: 40px; font-weight: 700; letter-spacing: -.02em">连接测试</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 22px; color: var(--mut)">模拟一次长时间的流式输出，检查断线续传是否完整、延迟是否够低。</p>
+  </header>
+
+  <div style="padding: 20px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div class="lab" id="sv">服务器</div>
+      <button type="button" aria-haspopup="listbox" aria-labelledby="sv" style="display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 14px; border: 0; box-shadow: inset 0 0 0 1px var(--line2); background: var(--bg); font-family: inherit; color: var(--ink); text-align: left">
+        <svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7"/><rect x="3" y="13" width="18" height="7"/><path d="M7 7.5h1M7 16.5h1"/></svg>
+        <span class="mono" style="flex: 1; font-size: 14px">192.168.1.10:8000</span>
+        <svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div class="lab" id="du">测试时长</div>
+      <div class="seg" role="radiogroup" aria-labelledby="du">
+        <button class="sg" type="button" role="radio" aria-checked="false">30s</button>
+        <button class="sg on" type="button" role="radio" aria-checked="true">60s</button>
+        <button class="sg" type="button" role="radio" aria-checked="false">2m</button>
+        <button class="sg" type="button" role="radio" aria-checked="false">5m</button>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <button class="btn" type="button" aria-disabled="true" style="background: var(--bg3); color: var(--mut)"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l14 8-14 8z" fill="currentColor"/></svg>开始</button>
+      <button class="btn" type="button" style="background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line2)"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h6M15 12h6M9 8v8M15 8v8"/></svg>模拟断线</button>
+      <button class="btn" type="button" style="background: var(--ink); color: var(--bg)"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" fill="currentColor"/></svg>停止</button>
+    </div>
+  </div>
+
+  <div class="sec"><h2>实时</h2><span style="display: flex; align-items: center; gap: 6px; color: var(--acc)"><i style="display: block; width: 8px; height: 8px; background: var(--acc)"></i>接收中 · 00:41</span></div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr))">
+    <div class="cellv" style="border-right: 1px solid var(--line)"><span class="k">事件数</span><span class="v">1,284</span></div>
+    <div class="cellv"><span class="k">重连次数</span><span class="v">1</span></div>
+    <div class="cellv" style="grid-column: span 2">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><span class="k">最近延迟</span><span class="mono" style="font-size: 20px; font-weight: 500">86 <span style="font-size: 12px; color: var(--mut)">ms</span></span></div>
+      <svg width="350" height="56" viewBox="0 0 350 56" role="img" aria-label="延迟走势，大多在 100 毫秒以下，断线时有一个尖峰" style="margin-top: 6px">
+        <path d="M0 14.5h350" style="stroke: var(--err); stroke-dasharray: 3 3"/>
+        <text x="350" y="10" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" style="fill: var(--err)">300ms</text>
+        <path d="M0 44L14 42 28 45 42 40 56 43 70 41 84 44 98 38 112 42 126 40 140 43 154 41 168 8 182 30 196 40 210 43 224 41 238 44 252 39 266 42 280 40 294 43 308 41 322 44 336 40 350 42" style="fill: none; stroke: var(--ink); stroke-width: 1.5"/>
+        <rect x="165" y="5" width="6" height="6" style="fill: var(--warn)"/>
+      </svg>
+    </div>
+  </div>
+  <div style="margin: 0 20px; padding: 12px 14px; background: var(--bg2); height: 116px; overflow: hidden; position: relative">
+    <div class="k" style="margin-bottom: 6px">最近 300 字</div>
+    <p class="mono" style="margin: 0; font-size: 12px; line-height: 19px; color: var(--ink2); word-break: break-all">…0438 0439 0440 0441 0442 0443 0444 0445 0446 0447 0448 0449 0450 0451 0452 0453 0454 0455 0456 0457 0458 0459 0460 0461 0462 0463 0464 0465<span style="display: inline-block; width: 7px; height: 13px; background: var(--acc); vertical-align: -2px; margin-left: 2px"></span></p>
+  </div>
+
+  <div class="sec" style="margin-top: 12px"><h2>报告</h2><span>上一次 · 60s</span></div>
+  <div style="display: flex; align-items: center; gap: 16px; padding: 20px; background: var(--okBg); border-bottom: 1px solid var(--ok)">
+    <span style="width: 56px; height: 56px; background: var(--ok); color: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 28px; height: 28px; stroke-width: 2" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5 11-11"/></svg></span>
+    <div style="display: flex; flex-direction: column"><span style="font-size: 26px; line-height: 32px; font-weight: 900">通过</span><span class="mono" style="font-size: 11.5px; color: var(--ink2)">断线 1 次 · 续传完整</span></div>
+  </div>
+  <div class="kv"><span>模式</span><span class="mono" style="font-weight: 500">SSE</span></div>
+  <div class="kv"><span>字符数</span><span class="mono">12,480</span></div>
+  <div class="kv"><span>完整性</span><span style="display: flex; align-items: center; gap: 4px; color: var(--ok)"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l5 5 11-11"/></svg>完整</span></div>
+  <div class="kv"><span>重复数</span><span class="mono">0</span></div>
+  <div style="padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; font-size: 14px"><span>延迟</span><span class="mono">p50 82 · p95 214 ms</span></div>
+    <div style="position: relative; height: 24px" role="img" aria-label="p50 82 毫秒，p95 214 毫秒，目标低于 300 毫秒">
+      <div style="position: absolute; left: 0; right: 0; top: 11px; height: 2px; background: var(--line2)"></div>
+      <div style="position: absolute; left: 20.5%; width: 33%; top: 6px; height: 12px; background: var(--ink)"></div>
+      <div style="position: absolute; left: 75%; top: 0; bottom: 0; width: 2px; background: var(--err)"></div>
+    </div>
+    <div class="mono" style="display: flex; justify-content: space-between; font-size: 10.5px; color: var(--mut)"><span>0</span><span>p50</span><span>p95</span><span style="color: var(--err)">目标 300</span><span>400ms</span></div>
+  </div>
+  <div class="kv"><span>积压</span><span class="mono">0</span></div>
+  <div class="kv"><span>时钟偏差</span><span class="mono">+12 ms</span></div>
+  <div style="height: 48px"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

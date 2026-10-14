@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>闪屏 · 登录 · 注册</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F7F7F5;--bg3:#EFEFEC;--ink:#111111;--ink2:#37352F;--mut:#6B6A66;--line:#E8E8E5;--line2:#D3D3CF;--acc:#2747FF;--accBg:#EEF1FF;--ok:#0B8A55;--okBg:#E7F5EE;--warn:#B45309;--warnBg:#FDF3E3;--err:#D92D20;--errBg:#FDECEA;--narr:#1C1C1C;--pri:#111111;--onPri:#FFFFFF;--scrim:rgba(17,17,17,.45)}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:16px;letter-spacing:.06em;color:#6B6A66;height:28px;display:flex;align-items:flex-end;border-bottom:1px solid #111111;padding-bottom:6px}
+.ph{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;box-shadow:0 0 0 1px #E8E8E5}
+.ph *{box-sizing:border-box;border-radius:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 20px;border:0;font-family:inherit;font-size:16px;line-height:22px;font-weight:500;text-decoration:none;cursor:pointer;width:100%}
+.bp{background:var(--pri);color:var(--onPri)}
+.bs{background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line2)}
+.ib{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--ink);text-decoration:none;position:relative;flex:none}
+.big{font-size:34px;line-height:42px;font-weight:700;letter-spacing:-.02em;margin:0}
+.cap{font-size:13px;line-height:19px;color:var(--mut)}
+.lab{font-size:13px;line-height:18px;color:var(--ink2);font-weight:500}
+.inp{display:block;width:100%;height:52px;background:var(--bg);border:0;box-shadow:inset 0 0 0 1px var(--line2);padding:0 14px;font-family:inherit;font-size:16px;color:var(--ink);outline:none}
+.inp::placeholder{color:var(--mut)}
+.focus{box-shadow:inset 0 0 0 2px var(--ink)}
+.bad{box-shadow:inset 0 0 0 1.5px var(--err)}
+.err{display:flex;gap:6px;align-items:center;color:var(--err);font-size:13px;line-height:18px}
+.f{display:flex;flex-direction:column;gap:8px}
+.srv{position:absolute;left:0;right:0;bottom:0;padding:0 8px 34px 20px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;height:90px;color:var(--mut);font-size:13px;text-decoration:none}
+</style>
+</helmet>
+<div class="bd0 L" style="width: 1680px; height: 884px">
+
+  <div class="cell">
+    <div class="tag">01 · 闪屏</div>
+    <section class="ph" aria-label="闪屏">
+      <div style="position: absolute; left: 32px; top: 0; bottom: 0; width: 1px; background: var(--line)"></div>
+      <div style="position: absolute; left: 0; right: 0; top: 380px; height: 1px; background: var(--line)"></div>
+      <div style="position: absolute; left: 32px; top: 340px; display: flex; flex-direction: column; gap: 20px; padding-left: 24px">
+        <svg width="56" height="56" viewBox="0 0 28 28" aria-hidden="true" style="margin-left: -24px; margin-top: -16px"><rect width="28" height="28" fill="#111111"/><path d="M7 21V7h7a4 4 0 010 8H7M14 15l6 6" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="square"/><rect x="18" y="5" width="4" height="4" fill="#2747FF"/></svg>
+      </div>
+      <div style="position: absolute; left: 32px; top: 396px; display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 28px; line-height: 34px; font-weight: 900; letter-spacing: -.03em">BetterTavern</div>
+        <div class="mono" style="font-size: 12px; letter-spacing: .08em; color: var(--mut)">FIRST-PERSON FICTION</div>
+      </div>
+      <div style="position: absolute; left: 32px; bottom: 80px; display: flex; gap: 6px" role="status" aria-label="正在恢复登录状态">
+        <span style="width: 8px; height: 8px; background: #111111"></span><span style="width: 8px; height: 8px; background: #111111; opacity: .35"></span><span style="width: 8px; height: 8px; background: #111111; opacity: .12"></span>
+      </div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">02 · 登录</div>
+    <section class="ph" aria-label="登录">
+      <div style="position: absolute; top: 72px; left: 24px; right: 24px; display: flex; flex-direction: column; gap: 36px">
+        <svg width="32" height="32" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" fill="#111111"/><path d="M7 21V7h7a4 4 0 010 8H7M14 15l6 6" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="square"/><rect x="18" y="5" width="4" height="4" fill="#2747FF"/></svg>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <h1 class="big">继续你的故事</h1>
+          <p style="margin: 0; font-size: 15px; line-height: 24px; color: var(--mut)">导入一张角色卡，用第一人称把故事写下去。</p>
+        </div>
+        <form style="margin: 0; display: flex; flex-direction: column; gap: 18px">
+          <div class="f"><label class="lab" for="a1">邮箱</label><input id="a1" class="inp" type="email" placeholder="you@example.com"></div>
+          <div class="f"><label class="lab" for="a2">密码</label>
+            <div style="position: relative"><input id="a2" class="inp" type="password" placeholder="至少 8 位" style="padding-right: 52px"><button class="ib" type="button" aria-label="显示密码" style="position: absolute; right: 4px; top: 4px; color: var(--mut)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><rect x="10" y="10" width="4" height="4"/></svg></button></div>
+          </div>
+          <button class="btn bp" type="submit" style="justify-content: space-between; margin-top: 8px">登录<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>
+          <a href="#register" style="display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 20px; box-shadow: inset 0 0 0 1px var(--line2); color: var(--ink); text-decoration: none; font-size: 15px">还没有账户？<span style="display: flex; align-items: center; gap: 6px; font-weight: 500">注册<svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span></a>
+        </form>
+      </div>
+      <button type="button" class="srv" aria-expanded="false" style="border: 0; border-top: 1px solid var(--line); background: transparent; font-family: inherit; width: 100%; text-align: left; cursor: pointer">
+        <svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7"/><rect x="3" y="13" width="18" height="7"/><path d="M7 7.5h1M7 16.5h1"/></svg>
+        <span style="flex: 1">服务器 <span class="mono" style="color: var(--ink)">192.168.1.10:8000</span></span>
+        <span style="display: flex; align-items: center; gap: 2px; height: 44px; padding: 0 12px; color: var(--ink); font-weight: 500">更改<svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></span>
+      </button>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">03 · 登录失败 · 服务器面板</div>
+    <section class="ph" aria-label="登录失败并展开服务器设置">
+      <div role="alert" style="position: absolute; z-index: 4; top: 56px; left: 0; right: 0; display: flex; gap: 10px; align-items: center; padding: 14px 20px; background: var(--errBg); color: var(--ink); font-size: 14px; line-height: 20px; border-bottom: 1px solid var(--err)">
+        <svg class="i" style="width: 20px; height: 20px; color: var(--err)" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3L2 20h20z"/><path d="M12 10v4M12 17v.5"/></svg>
+        <span style="flex: 1">连不上服务器，检查地址或网络。</span>
+      </div>
+      <div style="position: absolute; top: 140px; left: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; opacity: .35" aria-hidden="true">
+        <h1 class="big">继续你的故事</h1>
+        <div style="height: 52px; box-shadow: inset 0 0 0 1px var(--line2); margin-top: 24px"></div>
+        <div style="height: 52px; box-shadow: inset 0 0 0 1px var(--line2)"></div>
+      </div>
+      <div style="position: absolute; inset: 0; background: var(--scrim)"></div>
+      <div role="dialog" aria-label="服务器" style="position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 2px solid var(--ink); padding: 20px 20px 34px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <div style="font-size: 20px; line-height: 28px; font-weight: 700">服务器</div>
+          <button class="ib" type="button" aria-label="关闭" style="margin-right: -10px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+        </div>
+        <div role="radiogroup" aria-label="选择服务器" style="display: flex; flex-direction: column; border-top: 1px solid var(--line)">
+          <button type="button" role="radio" aria-checked="true" style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font-family: inherit; text-align: left; color: var(--ink)">
+            <span style="width: 20px; height: 20px; box-shadow: inset 0 0 0 6px var(--ink); flex: none"></span>
+            <span style="flex: 1; display: flex; flex-direction: column"><span class="mono" style="font-size: 14px">192.168.1.10:8000</span><span class="cap" style="display: flex; align-items: center; gap: 4px; color: var(--err)"><svg class="i" style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>刚才无法连接</span></span>
+          </button>
+          <button type="button" role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font-family: inherit; text-align: left; color: var(--ink)">
+            <span style="width: 20px; height: 20px; box-shadow: inset 0 0 0 1.5px var(--line2); flex: none"></span>
+            <span style="flex: 1; display: flex; flex-direction: column"><span class="mono" style="font-size: 14px">tavern.home.arpa</span><span class="cap">上次使用 · 3 天前</span></span>
+          </button>
+          <div style="display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 0 2px">
+            <span style="width: 20px; height: 20px; box-shadow: inset 0 0 0 1.5px var(--line2); flex: none" aria-hidden="true"></span>
+            <label class="sr" for="ns" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">新服务器地址</label>
+            <input id="ns" class="inp mono" placeholder="例如 http://192.168.1.10:8000" style="height: 44px; font-size: 14px">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <button class="btn bs" type="button"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>测试连接</button>
+          <button class="btn bp" type="button">保存</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="cell" id="register">
+    <div class="tag">04 · 注册 · 字段错误</div>
+    <section class="ph" aria-label="注册">
+      <a class="ib" href="#" aria-label="返回登录" style="position: absolute; top: 56px; left: 10px"><svg class="i" style="width: 24px; height: 24px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+      <div style="position: absolute; top: 116px; left: 24px; right: 24px; display: flex; flex-direction: column; gap: 28px">
+        <h1 class="big">创建账户</h1>
+        <form style="margin: 0; display: flex; flex-direction: column; gap: 20px">
+          <div class="f"><label class="lab" for="r1">邮箱</label><input id="r1" class="inp bad" type="email" value="linchuan@example.com" aria-describedby="r1e"><div id="r1e" class="err"><svg class="i" style="width: 15px; height: 15px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>这个邮箱已经注册过了</div></div>
+          <div class="f"><label class="lab" for="r2">密码</label><input id="r2" class="inp focus" type="password" value="abc1234" aria-describedby="r2e">
+            <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px" aria-hidden="true"><span style="height: 3px; background: var(--ink)"></span><span style="height: 3px; background: var(--ink)"></span><span style="height: 3px; background: var(--ink)"></span><span style="height: 3px; background: var(--ink)"></span><span style="height: 3px; background: var(--ink)"></span><span style="height: 3px; background: var(--ink)"></span><span style="height: 3px; background: var(--ink)"></span><span style="height: 3px; background: var(--line2)"></span></div>
+            <div id="r2e" class="mono" style="font-size: 12px; color: var(--mut)">7 / 8 · 至少 8 位</div>
+          </div>
+          <div class="f"><div style="display: flex; justify-content: space-between"><label class="lab" for="r3">昵称 <span style="color: var(--mut); font-weight: 400">可选</span></label><span class="mono" style="font-size: 12px; color: var(--mut)">2 / 40</span></div><input id="r3" class="inp" value="林川"></div>
+          <button class="btn bp" type="submit" style="justify-content: space-between; margin-top: 4px; opacity: .35" aria-disabled="true">注册并登录<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>
+        </form>
+      </div>
+      <button type="button" class="srv" aria-expanded="false" style="border: 0; border-top: 1px solid var(--line); background: transparent; font-family: inherit; width: 100%; text-align: left">
+        <svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7"/><rect x="3" y="13" width="18" height="7"/><path d="M7 7.5h1M7 16.5h1"/></svg>
+        <span style="flex: 1">服务器 <span class="mono" style="color: var(--ink)">192.168.1.10:8000</span></span>
+        <span style="display: flex; align-items: center; gap: 2px; height: 44px; padding: 0 12px; color: var(--ink); font-weight: 500">更改<svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></span>
+      </button>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1680,"height":884}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
