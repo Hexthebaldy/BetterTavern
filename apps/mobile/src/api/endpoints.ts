@@ -23,9 +23,6 @@ import type {
   WorldView,
 } from "./types.ts";
 
-/** 选好的本地文件（expo-document-picker 的结果） */
-export type PickedFile = { uri: string; name: string; mimeType?: string | null };
-
 export type NewCredential = {
   provider: string;
   label?: string;
@@ -90,11 +87,11 @@ export function createApi(client: ApiClient) {
       remove: (task: string) => client.delete<void>(`/v1/model-routes/${enc(task)}`),
     },
     scenarios: {
-      importFile: (file: PickedFile) => {
+      importFile: (file: Blob) => {
         const form = new FormData();
-        // React Native 的 FormData 接受 { uri, name, type }，上传时从本地文件读取内容
-        const part = { uri: file.uri, name: file.name, type: file.mimeType ?? "application/octet-stream" };
-        form.append("file", part as unknown as Blob);
+        // SDK 57 的全局 fetch 是 expo/fetch，不认 RN 的 { uri, name, type }，只认能读出字节的对象：
+        // 调用方传 expo-file-system 的 File。服务端按内容识别 PNG 或 JSON，不看文件名
+        form.append("file", file);
         return client.request<Scenario>("POST", "/v1/scenarios/import", { form, timeoutMs: 120_000 });
       },
       list: () => client.get<Scenario[]>("/v1/scenarios"),

@@ -3,6 +3,7 @@
  */
 
 import * as DocumentPicker from "expo-document-picker";
+import { File } from "expo-file-system";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
@@ -49,11 +50,7 @@ export default function LibraryScreen() {
     }
     setImporting(true);
     try {
-      const scenario = await api.scenarios.importFile({
-        uri: file.uri,
-        name: file.name,
-        mimeType: file.mimeType ?? null,
-      });
+      const scenario = await api.scenarios.importFile(new File(file.uri));
       void reload();
       if (scenario.duplicate) setNotice({ tone: "info", message: `“${scenario.name}”之前已经导入过了` });
       router.push({ pathname: "/scenario/[id]", params: { id: scenario.id } });

@@ -220,6 +220,8 @@ export class ApiClient {
       return { status: response.status, ok: response.ok, text };
     } catch (error) {
       if (outer?.aborted) throw error; // 调用方主动取消：原样抛出，由调用方忽略
+      // 界面上一律显示“连不上服务器”，原始异常只在开发时打到 Metro 终端，便于区分真断网和请求没发出去
+      if (typeof __DEV__ !== "undefined" && __DEV__) console.log(`[api] ${method} ${path} 失败：`, error);
       throw networkError(error, timedOut);
     } finally {
       clearTimeout(timer);
