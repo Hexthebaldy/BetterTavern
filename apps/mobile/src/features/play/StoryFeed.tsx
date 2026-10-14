@@ -1,15 +1,17 @@
 /**
  * 故事流：书名页、已完成的回合（memo 固定，不随流式文字重渲染）加上正在生成的那一段。
  *
- * “我的行动”是一条通栏浅灰色带，前面一个蓝色转折箭头，同时充当回合之间的分隔。叙述用宋体（阅读设置里可换黑体），
- * 左右页边距 24，段落之间空 16，两端对齐。流式光标是 2px 宽的蓝色竖条，不闪烁。
+ * “我的行动”是一张缩进的灰色圆角卡片（左右 16），前面一个浅蓝小圆里的转折箭头，同时充当回合之间的分隔；
+ * 它不是聊天气泡。叙述用宋体（阅读设置里可换黑体），左右页边距 24，段落之间空 16，两端对齐。
+ * 流式光标是 3×20 的蓝色圆头竖条，不闪烁。
  *
+ * 底部浮着行动面板：内容底部按 bottomInset 留白，“回到最新”浮在面板上方。
  * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 浮出“回到最新”。
  * 只有玩家亲手拖动或惯性滚动才会关掉跟随：内容变长时程序滚动产生的事件里，偏移量常常落后于新的内容高度，
  * 不能当成玩家翻走了。
  */
 
-import { memo, useCallback, useMemo, useRef, useState, type ReactElement } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import {
   FlatList,
   Pressable,
@@ -22,8 +24,8 @@ import {
 } from "react-native";
 
 import { Cover } from "../../components/Cover.tsx";
-import { Dots, Icon } from "../../components/ui.tsx";
-import { font, space, usePalette } from "../../theme/index.ts";
+import { Dots, Icon, Pill } from "../../components/ui.tsx";
+import { font, radius, size, space, usePalette } from "../../theme/index.ts";
 import { BASE_SIZE, lineHeightFor, MAX_SIZE, readingSize, type ReadingPrefs } from "./reading.ts";
 import type { PendingTurn, Phase, PlayState, StoryTurn } from "./turnMachine.ts";
 
@@ -64,7 +66,7 @@ export function useNarrativeStyle(prefs: ReadingPrefs): {
 
 type Narr = ReturnType<typeof useNarrativeStyle>;
 
-/** 书名页：往上翻到顶看到的第一屏 */
+/** 书名页：往上翻到顶看到的第一屏（灰色圆角卡片，里面是封面、书名和两个小标签） */
 export function BookHeader({
   seed,
   blobId,
@@ -81,27 +83,38 @@ export function BookHeader({
   width: number;
 }) {
   const palette = usePalette();
-  const meta = [card, protagonist ? `我是 ${protagonist}` : null].filter(Boolean).join(" · ");
   return (
-    <View style={[styles.book, { borderBottomColor: palette.line }]}>
-      <Cover seed={seed} blobId={blobId} width={width - space.read * 2} height={120} />
+    <View style={[styles.book, { backgroundColor: palette.bg2 }]}>
+      <Cover
+        seed={seed}
+        blobId={blobId}
+        width={width - space.list * 2 - space.m * 2}
+        height={112}
+        surface="card"
+        rounded={BOOK_RADIUS - space.m}
+      />
       <Text style={[styles.bookTitle, { color: palette.ink }]}>{title}</Text>
-      {meta ? <Text style={[styles.mono, { color: palette.mut }]}>{meta}</Text> : null}
+      {card || protagonist ? (
+        <View style={styles.bookChips}>
+          {card ? <Pill label={card} tone="card" height={26} /> : null}
+          {protagonist ? <Pill label={`我是 ${protagonist}`} tone="acc" height={26} /> : null}
+        </View>
+      ) : null}
     </View>
   );
 }
 
-/** “我的行动”色带；读屏时前面加上“我的行动：” */
+/** “我的行动”卡片；读屏时前面加上“我的行动：” */
 export function ActionNote({ text }: { text: string }) {
   const palette = usePalette();
   return (
     <View
       accessible
       accessibilityLabel={`我的行动：${text}`}
-      style={[styles.note, { backgroundColor: palette.bg2, borderColor: palette.line }]}
+      style={[styles.note, { backgroundColor: palette.bg2 }]}
     >
-      <View style={{ marginTop: 2 }}>
-        <Icon name="turn" size={20} color={palette.acc} />
+      <View style={[styles.noteIcon, { backgroundColor: palette.accBg }]}>
+        <Icon name="turn" size={14} color={palette.acc} strokeWidth={2.4} />
       </View>
       <Text style={[styles.noteText, { color: palette.ink }]} selectable>
         {text}
@@ -111,7 +124,8 @@ export function ActionNote({ text }: { text: string }) {
 }
 
 function Caret({ color, height }: { color: string; height: number }) {
-  return <View style={{ width: 2, height, marginLeft: 3, backgroundColor: color }} />;
+  const width = size.caret.width;
+  return <View style={{ width, height, marginLeft: 3, borderRadius: width / 2, backgroundColor: color }} />;
 }
 
 function Narrative({
@@ -158,7 +172,7 @@ function Narrative({
             {p}
             {last && caret ? <Caret color={caret} height={caretHeight} /> : null}
             {last && interrupted ? (
-              <View style={[styles.cutBox, { borderColor: palette.line2 }]}>
+              <View style={[styles.cutBox, { backgroundColor: palette.bg2 }]}>
                 <Text style={[styles.cut, { color: palette.mut }]}>中断</Text>
               </View>
             ) : null}
@@ -179,22 +193,20 @@ const TurnBlock = memo(function TurnBlock({ turn, narr }: { turn: StoryTurn; nar
   );
 });
 
-/** 正文上方的一行状态（等宽小字） */
+/** 正文上方的状态胶囊：重连时琥珀色，其余是浅灰 */
 function StatusLine({ pending, phase }: { pending: PendingTurn; phase: Phase }) {
   const palette = usePalette();
   let icon: ReactElement | null = <Dots color={palette.acc} cell={5} gap={3} />;
   let text: string | null = null;
-  let note: string | null = null;
-  let color = palette.mut;
+  let warn = false;
   if (phase === "reconnecting") {
-    icon = <Icon name="retry" size={15} color={palette.warn} />;
+    icon = <Icon name="retry" size={14} color={palette.warn} />;
     text = "连接断了，正在重连…";
-    note = "已写好的不会丢";
-    color = palette.warn;
+    warn = true;
   } else if (phase === "polling") {
-    icon = <Icon name="retry" size={15} color={palette.warn} />;
+    icon = <Icon name="retry" size={14} color={palette.warn} />;
     text = "网络不太稳定，正在等待结果…";
-    color = palette.warn;
+    warn = true;
   } else if (phase === "submitting") {
     text = "正在发送…";
   } else if (pending.waitingState) {
@@ -204,38 +216,50 @@ function StatusLine({ pending, phase }: { pending: PendingTurn; phase: Phase }) 
   }
   if (!text) return null;
   return (
-    <View style={styles.status} accessibilityLiveRegion="polite">
+    <View
+      style={[styles.status, { backgroundColor: warn ? palette.warnBg : palette.bg2 }]}
+      accessibilityLiveRegion="polite"
+    >
       {icon}
-      <Text style={[styles.mono, { color }]}>{text}</Text>
-      {note ? <Text style={[styles.mono, { color: palette.mut }]}>{note}</Text> : null}
+      <Text style={{ fontSize: 12.5, color: warn ? palette.warn : palette.mut }}>{text}</Text>
     </View>
   );
 }
 
-/** 第一次开场：先搭建世界，再写开场 */
+/** 第一次开场：先搭建世界，再写开场。当前一步是白色的圆角行 */
 function OpeningSteps({ building }: { building: boolean }) {
   const palette = usePalette();
   const step = (label: string, state: "active" | "done" | "todo") => (
-    <View style={styles.stepRow}>
-      <View style={styles.stepMark}>
-        {state === "active" ? (
-          <View style={{ width: 8, height: 8, backgroundColor: palette.acc }} />
-        ) : state === "done" ? (
-          <Icon name="check" size={16} color={palette.ok} strokeWidth={2} />
-        ) : (
-          <View style={{ width: 18, height: 18, borderWidth: 1.5, borderColor: palette.line2 }} />
-        )}
-      </View>
-      <Text style={[styles.mono, { fontSize: 12, color: state === "active" ? palette.acc : palette.mut }]}>
+    <View style={[styles.stepRow, state === "active" ? { backgroundColor: palette.card } : null]}>
+      {state === "active" ? (
+        <View style={[styles.stepMark, { backgroundColor: palette.accBg }]}>
+          <View style={[styles.stepDot, { backgroundColor: palette.acc }]} />
+        </View>
+      ) : state === "done" ? (
+        <View style={[styles.stepMark, { backgroundColor: palette.okBg }]}>
+          <Icon name="check" size={14} color={palette.ok} strokeWidth={2.4} />
+        </View>
+      ) : (
+        <View style={[styles.stepMark, { boxShadow: `inset 0 0 0 1.75px ${palette.line2}` }]} />
+      )}
+      <Text
+        style={{
+          fontSize: 14,
+          fontWeight: state === "active" ? "500" : "400",
+          color: state === "active" ? palette.acc : palette.mut,
+        }}
+      >
         {label}
       </Text>
     </View>
   );
   return (
-    <View style={styles.steps} accessibilityLiveRegion="polite">
-      {step(building ? "正在根据角色卡搭建世界…" : "搭建世界", building ? "active" : "done")}
-      {step(building ? "写开场" : "正在写开场…", building ? "todo" : "active")}
-      <Text style={[styles.stepNote, { color: palette.mut, borderTopColor: palette.line }]}>
+    <View accessibilityLiveRegion="polite">
+      <View style={[styles.steps, { backgroundColor: palette.bg2 }]}>
+        {step(building ? "正在根据角色卡搭建世界…" : "搭建世界", building ? "active" : "done")}
+        {step(building ? "写开场" : "正在写开场…", building ? "todo" : "active")}
+      </View>
+      <Text style={[styles.stepNote, { color: palette.mut }]}>
         第一次开场比较慢。可以先离开，写好后会出现在“故事”里。
       </Text>
     </View>
@@ -276,8 +300,8 @@ function OpeningMissing() {
   const palette = usePalette();
   return (
     <View style={styles.missing}>
-      <View style={{ marginTop: 2 }}>
-        <Icon name="untested" size={20} color={palette.warn} />
+      <View style={[styles.missingIcon, { backgroundColor: palette.warnBg }]}>
+        <Icon name="untested" size={18} color={palette.warn} />
       </View>
       <Text style={{ flex: 1, fontSize: 15, lineHeight: 24, color: palette.ink2 }}>
         开场还没有写好，上次可能中断了。
@@ -291,12 +315,15 @@ export function StoryFeed({
   header,
   reading,
   dimmed,
+  bottomInset,
 }: {
   state: PlayState;
   header?: ReactElement;
   reading: ReadingPrefs;
   /** 同步中：内容变淡 */
   dimmed?: boolean;
+  /** 底部被浮动行动面板盖住的高度：内容在它上方结束，“回到最新”浮在它上方 */
+  bottomInset: number;
 }) {
   const palette = usePalette();
   const narr = useNarrativeStyle(reading);
@@ -340,6 +367,11 @@ export function StoryFeed({
     });
   }, []);
 
+  // 行动面板换了内容、高度变了：底部留白跟着变，停在底部时继续贴住最新
+  useEffect(() => {
+    stickToEnd();
+  }, [bottomInset, stickToEnd]);
+
   const jumpToLatest = useCallback(() => {
     following.current = true;
     setShowLatest(false);
@@ -366,8 +398,15 @@ export function StoryFeed({
         keyExtractor={(item) => item.key}
         renderItem={renderItem}
         ListHeaderComponent={header}
-        ListFooterComponent={missingOpening ? <OpeningMissing /> : null}
-        contentContainerStyle={styles.content}
+        // 面板下面的留白放在列表尾部而不是 paddingBottom：scrollToEnd 只算到尾部组件，不算内边距。
+        // 每个回合下面自带 16 的间距，合起来最后一行离面板 18
+        ListFooterComponent={
+          <>
+            {missingOpening ? <OpeningMissing /> : null}
+            <View style={{ height: bottomInset + 2 }} />
+          </>
+        }
+        scrollIndicatorInsets={{ bottom: bottomInset }}
         onScroll={track}
         onScrollBeginDrag={onDragStart}
         onScrollEndDrag={onUserScrollEnd}
@@ -386,72 +425,111 @@ export function StoryFeed({
           accessibilityRole="button"
           accessibilityLabel={live ? "回到最新，有新内容" : "回到最新"}
           onPress={jumpToLatest}
-          style={[styles.latest, { backgroundColor: palette.ink }]}
+          style={({ pressed }) => [
+            styles.latest,
+            {
+              bottom: bottomInset + space.l,
+              backgroundColor: palette.ink,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            },
+          ]}
         >
-          <Icon name="down" size={18} color={palette.bg} />
+          <Icon name="down" size={16} color={palette.bg} />
           <Text style={{ fontSize: 14, fontWeight: "500", color: palette.bg }}>回到最新</Text>
-          {live ? <View style={styles.latestDot} /> : null}
+          {live ? <View style={[styles.latestDot, { backgroundColor: palette.accOnInk }]} /> : null}
         </Pressable>
       ) : null}
     </View>
   );
 }
 
+const BOOK_RADIUS = 30;
+
 const styles = StyleSheet.create({
-  content: { paddingBottom: space.page },
   book: {
-    padding: space.read,
-    paddingBottom: space.xl,
-    gap: 14,
-    borderBottomWidth: 1,
-    marginBottom: space.read,
+    marginTop: space.s,
+    marginHorizontal: space.list,
+    marginBottom: space.page,
+    paddingTop: space.m,
+    paddingHorizontal: space.m,
+    paddingBottom: 20,
+    borderRadius: BOOK_RADIUS,
+    gap: space.m,
   },
-  bookTitle: { fontSize: 30, lineHeight: 36, fontWeight: "900", letterSpacing: -0.9 },
-  mono: { fontFamily: font.mono, fontSize: 11.5, lineHeight: 16, letterSpacing: 0.7 },
+  bookTitle: { paddingHorizontal: 6, fontSize: 28, lineHeight: 34, fontWeight: "900", letterSpacing: -0.84 },
+  bookChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 6 },
   turn: { marginBottom: space.l },
   note: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: space.m,
-    marginTop: space.m,
+    marginTop: 6,
     marginBottom: 22,
+    marginHorizontal: space.l,
     paddingVertical: 14,
-    paddingHorizontal: space.read,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
+    paddingHorizontal: space.l,
+    borderRadius: radius.card,
+  },
+  noteIcon: {
+    width: size.actionIcon,
+    height: size.actionIcon,
+    borderRadius: size.actionIcon / 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   noteText: { flex: 1, fontSize: 15, lineHeight: 24, fontWeight: "500" },
   paragraph: { marginBottom: space.l, paddingHorizontal: space.read },
   caretOnly: { paddingHorizontal: space.read - 3, justifyContent: "center" },
-  cutBox: { marginLeft: space.s, paddingHorizontal: 6, borderWidth: 1 },
-  cut: { fontFamily: font.mono, fontSize: 11, lineHeight: 18, letterSpacing: 0.7 },
+  cutBox: {
+    marginLeft: space.s,
+    height: 22,
+    paddingHorizontal: 9,
+    borderRadius: 11,
+    justifyContent: "center",
+  },
+  cut: { fontSize: 12, lineHeight: 16 },
   status: {
+    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
     gap: space.s,
-    paddingHorizontal: space.read,
-    marginBottom: 10,
+    height: 28,
+    paddingHorizontal: space.m,
+    marginLeft: space.read,
+    marginBottom: space.m,
+    borderRadius: 14,
   },
-  steps: { paddingHorizontal: space.read, paddingTop: space.s, gap: 14 },
-  stepRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  stepMark: { width: 20, height: 20, alignItems: "center", justifyContent: "center" },
-  stepNote: { fontSize: 13, lineHeight: 20, paddingTop: space.m, borderTopWidth: 1 },
-  missing: { flexDirection: "row", gap: space.m, paddingHorizontal: space.read, paddingTop: space.s },
+  steps: { marginHorizontal: space.list, padding: space.s, borderRadius: 26, gap: 4 },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.m,
+    height: 52,
+    paddingHorizontal: space.m,
+    borderRadius: radius.card,
+  },
+  stepMark: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  stepDot: { width: 8, height: 8, borderRadius: 4 },
+  stepNote: { fontSize: 13, lineHeight: 20, paddingHorizontal: space.page, paddingTop: space.m },
+  missing: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.m,
+    paddingHorizontal: space.read,
+    paddingTop: space.s,
+  },
+  missingIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   latest: {
     position: "absolute",
     alignSelf: "center",
-    bottom: space.page,
     flexDirection: "row",
     alignItems: "center",
     gap: space.s,
     height: 44,
-    paddingLeft: space.m,
-    paddingRight: space.l,
-    shadowColor: "#111111",
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    paddingLeft: 14,
+    paddingRight: 18,
+    borderRadius: 22,
+    boxShadow: "0 6px 20px rgba(20,20,20,0.22)",
   },
-  latestDot: { width: 6, height: 6, backgroundColor: "#7C8CFF" },
+  latestDot: { width: 7, height: 7, borderRadius: 3.5 },
 });

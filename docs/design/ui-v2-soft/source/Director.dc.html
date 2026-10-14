@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>导演模型 · 柔和圆角</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--ok:#13875A;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF}
+.D{--bg:#111113;--bg2:#1C1C1F;--bg3:#27272B;--ink:#F2F2F0;--ink2:#D3D3CF;--mut:#9C9C97;--line:#2A2A2F;--line2:#3A3A40;--acc:#8597FF;--accBg:#1F2546;--ok:#43C98C;--warn:#F0B257;--warnBg:#2C2213;--err:#FF7466;--errBg:#2F1715;--pri:#F2F2F0;--onPri:#111113;--card:#2A2A2F}
+.ph{width:390px;min-height:1560px;position:relative;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;border-radius:44px;overflow:hidden;box-shadow:0 0 0 1px #EEEEEA}
+.ph *{box-sizing:border-box}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 22px;border:0;border-radius:26px;font-family:inherit;font-size:16px;font-weight:500;text-decoration:none;cursor:pointer;width:100%}
+.bp{background:var(--pri);color:var(--onPri)}
+.bs{background:var(--bg2);color:var(--ink)}
+.card{margin:0 12px;padding:18px 16px;border-radius:30px;background:var(--bg2);display:flex;flex-direction:column;gap:14px}
+.sec{padding:26px 24px 10px;font-size:19px;line-height:26px;font-weight:700}
+.lg{display:flex;align-items:center;gap:8px;font-size:12.5px;line-height:18px;color:var(--ink2)}
+.sw{width:12px;height:12px;border-radius:6px;flex:none}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;border-radius:26px;background:var(--bg3)}
+.sg{height:44px;border:0;border-radius:22px;background:transparent;font-family:"IBM Plex Mono",monospace;font-size:15px;color:var(--ink2);cursor:pointer}
+.cap{font-size:13px;line-height:20px;color:var(--mut)}
+</style>
+</helmet>
+<div class="ph {{theme}}">
+  <a href="#" aria-label="返回设置" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 56px 0 0 16px; border-radius: 22px; background: var(--bg2); color: var(--ink)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+
+  <sc-if value="{{isSet}}" hint-placeholder-val="{{true}}">
+    <header style="padding: 18px 24px 18px; display: flex; flex-direction: column; gap: 10px">
+      <span class="cap">导演模型</span>
+      <h1 class="mono" style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 500; letter-spacing: -.02em; word-break: break-all">deepseek-chat</h1>
+      <a href="#" style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 4px; border-radius: 18px; background: var(--bg2); font-size: 13.5px; color: var(--ink2); text-decoration: none"><span class="mono" style="width: 28px; height: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--bg); font-size: 10px">DS</span>我的 DeepSeek · <span class="mono">3f9a</span></a>
+    </header>
+
+    <div class="card">
+      <div style="display: flex; align-items: baseline; justify-content: space-between"><span style="font-weight: 700; font-size: 17px">能记住多少</span><span class="mono" style="font-size: 12.5px; color: var(--mut)">上下文 128K</span></div>
+      <div style="display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 4px; padding: 14px; border-radius: 22px; background: var(--card)" role="img" aria-label="{{barLabel}}">
+        <sc-for list="{{blocks}}" as="b" hint-placeholder-count="32">
+          <span style="aspect-ratio: 1; border-radius: 999px; {{b.style}}"></span>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px 14px">
+        <span class="lg"><span class="sw" style="background: var(--ink)"></span>故事 {{storyK}}</span>
+        <span class="lg"><span class="sw" style="background: var(--acc)"></span>每轮输出 8K</span>
+        <span class="lg"><span class="sw" style="background: var(--bg3)"></span>不使用 {{freeK}}</span>
+        <span class="lg"><span class="sw" style="box-shadow: inset 0 0 0 2.5px var(--warn)"></span>开始压缩</span>
+      </div>
+      <p style="margin: 0; font-size: 14px; line-height: 23px; color: var(--ink2)">{{explain}}</p>
+    </div>
+
+    <div class="sec" id="wl">工作窗口上限</div>
+    <div style="padding: 0 12px; display: flex; flex-direction: column; gap: 10px">
+      <div class="seg" role="radiogroup" aria-labelledby="wl">
+        <sc-for list="{{wins}}" as="w" hint-placeholder-count="4">
+          <button class="sg" type="button" role="radio" aria-checked="{{w.on}}" onClick="{{w.pick}}" style="{{w.style}}">{{w.label}}</button>
+        </sc-for>
+      </div>
+      <div class="cap" style="padding: 0 12px">窗口越大，导演记得越多，但每轮更慢、更贵。用到 80% 时，早期剧情会被压缩成摘要。</div>
+      <sc-if value="{{capped}}" hint-placeholder-val="{{false}}">
+        <div role="alert" style="display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: 22px; background: var(--warnBg); font-size: 13.5px; line-height: 21px">
+          <svg class="i" style="width: 18px; height: 18px; color: var(--warn); margin-top: 1px" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 4.3L2.6 18a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/><path d="M12 10v4M12 17h.01"/></svg>
+          <span>这个模型只有 128K 上下文，工作窗口会按 128K 算。</span>
+        </div>
+      </sc-if>
+    </div>
+
+    <div class="sec">写法</div>
+    <button type="button" role="switch" aria-checked="{{think}}" onClick="{{toggle}}" style="display: flex; align-items: center; gap: 14px; width: calc(100% - 24px); margin: 0 12px; min-height: 76px; padding: 12px 16px; border: 0; border-radius: 26px; background: var(--bg2); font-family: inherit; color: var(--ink); text-align: left; cursor: pointer">
+      <span style="width: 40px; height: 40px; border-radius: 20px; background: var(--card); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5V16h8v-2.5A6 6 0 0012 3z"/></svg></span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px">深度思考</span><span class="cap">模型支持时先思考再写，更慢</span></span>
+      <span style="position: relative; width: 51px; height: 31px; border-radius: 16px; background: {{swBg}}; flex: none"><span style="position: absolute; top: 2px; left: {{swLeft}}; width: 27px; height: 27px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,.25)"></span></span>
+    </button>
+
+    <div style="padding: 28px 12px 0; display: flex; flex-direction: column; gap: 8px">
+      <button class="btn bp" type="button" style="{{saveStyle}}" aria-disabled="{{clean}}">{{saveLabel}}</button>
+      <a class="btn bs" href="#"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/></svg>换一个模型</a>
+      <button class="btn" type="button" style="background: transparent; color: var(--err); height: 44px; font-size: 15px; margin-top: 4px">取消导演模型</button>
+      <div class="cap" style="text-align: center">取消后，新的回合会因为没有模型而无法生成。</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{notSet}}" hint-placeholder-val="{{false}}">
+    <header style="padding: 18px 24px; display: flex; flex-direction: column; gap: 8px">
+      <h1 style="margin: 0; font-size: 32px; line-height: 40px; font-weight: 700">导演模型</h1>
+      <p style="margin: 0; font-size: 14px; line-height: 22px; color: var(--mut)">导演负责写每一段故事。先选一个密钥。</p>
+    </header>
+    <a href="#" style="display: flex; align-items: center; gap: 12px; margin: 0 12px; min-height: 72px; padding: 12px 14px; border-radius: 26px; background: var(--bg2); color: inherit; text-decoration: none"><span class="mono" style="width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--bg); font-size: 13px">DS</span><span style="flex: 1; display: flex; flex-direction: column"><span style="font-weight: 500">我的 DeepSeek</span><span class="cap">尾号 3f9a · 可用</span></span><svg class="i" style="width: 18px; height: 18px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+    <div style="padding: 12px"><a class="btn bs" href="#"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>添加密钥</a></div>
+  </sc-if>
+  <div style="height: 56px"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"modelSet":{"editor":"boolean","default":true},"$preview":{"width":390,"height":1560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { win: 64, think: true };
+  }
+  renderVals() {
+    const ctx = 128, out = 8, unit = 4;
+    const saved = { win: 64, think: true };
+    const win = this.state.win;
+    const used = Math.min(win, ctx);
+    const story = used - out;
+    const usedB = used / unit, outB = out / unit, markB = Math.floor(used * 0.8 / unit) - 1;
+    const blocks = [];
+    for (let k = 0; k < ctx / unit; k++) {
+      let style;
+      if (k < usedB - outB) style = 'background: var(--ink)';
+      else if (k < usedB) style = 'background: var(--acc)';
+      else style = 'background: var(--bg3)';
+      if (k === markB) style += '; box-shadow: 0 0 0 2.5px var(--card), 0 0 0 4.5px var(--warn)';
+      blocks.push({ style });
+    }
+    const dirty = win !== saved.win || this.state.think !== saved.think;
+    const set = this.props.modelSet ?? true;
+    return {
+      theme: (this.props.dark ?? false) ? 'D' : 'L',
+      isSet: set,
+      notSet: !set,
+      blocks,
+      storyK: story + 'K',
+      freeK: (ctx - used) + 'K',
+      barLabel: '上下文 128K，故事 ' + story + 'K，每轮输出 8K，不使用 ' + (ctx - used) + 'K',
+      explain: '每个圆点是 4K。模型最多能读 128K，你给导演 ' + used + 'K：每轮最多写 8K，剩下约 ' + story + 'K 用来记前情和世界状态。',
+      capped: win > ctx,
+      wins: [32, 64, 128, 256].map((w) => ({
+        label: w + 'K',
+        on: w === win ? 'true' : 'false',
+        style: w === win ? 'background: var(--card); color: var(--ink); font-weight: 500; box-shadow: 0 1px 3px rgba(20,20,20,.12)' : '',
+        pick: () => this.setState({ win: w })
+      })),
+      think: this.state.think ? 'true' : 'false',
+      swBg: this.state.think ? 'var(--acc)' : 'var(--line2)',
+      swLeft: this.state.think ? '22px' : '2px',
+      toggle: () => this.setState({ think: !this.state.think }),
+      clean: dirty ? 'false' : 'true',
+      saveStyle: dirty ? '' : 'opacity: .3; cursor: default',
+      saveLabel: dirty ? '保存' : '保存 · 没有改动'
+    };
+  }
+}
+</script>
+</body>
+</html>

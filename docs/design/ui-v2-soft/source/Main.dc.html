@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设计语言 · 柔和圆角</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.doc{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--sh:0 1px 2px rgba(20,20,20,.04),0 8px 24px rgba(20,20,20,.07);font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.doc *{box-sizing:border-box}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.serif{font-family:"Noto Serif SC","Songti SC",serif}
+.k{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:16px;letter-spacing:.06em;color:var(--mut)}
+.card{background:var(--bg2);border-radius:28px;padding:28px;display:flex;flex-direction:column;gap:16px}
+.sh2{font-size:22px;line-height:28px;font-weight:700;margin:0}
+.p{font-size:14px;line-height:23px;color:var(--ink2);margin:0}
+.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;height:104px;border-radius:20px;background:var(--bg);font-size:12px;color:var(--ink2)}
+.sw{display:flex;flex-direction:column;gap:8px;font-size:12px;line-height:16px}
+.sw div:first-child{height:72px;border-radius:18px}
+.row{display:grid;grid-template-columns:220px minmax(0,1fr);gap:40px;padding:40px 0 0}
+</style>
+</helmet>
+<div class="doc" style="width: 1440px; min-height: 1960px; background: var(--bg); padding: 64px 72px 72px; display: flex; flex-direction: column; gap: 28px">
+
+  <header style="display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 48px; align-items: end; padding-bottom: 20px">
+    <div style="display: flex; flex-direction: column; gap: 28px">
+      <div style="display: flex; align-items: center; gap: 14px">
+        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="10" fill="#1A1A1A"/><path d="M10 23V9h6.5a4.5 4.5 0 010 9H10M16.5 18l6 5" stroke="#FFFFFF" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="23" cy="9" r="2.6" fill="#2F55F4"/></svg>
+        <span class="k" style="color: var(--ink)">BetterTavern · Design Language 02 · Soft</span>
+      </div>
+      <h1 style="margin: 0; font-size: 112px; line-height: 108px; font-weight: 900; letter-spacing: -.04em">白，柔线，<br>大圆角。</h1>
+    </div>
+    <p style="margin: 0; font-size: 17px; line-height: 30px; color: var(--ink2)">和直角版用同一套颜色、字体和结构，只换形状语言：所有容器都是大圆角，按钮和标签是胶囊；分区不再靠黑线，而是靠浅灰圆角卡片和留白；图标改成圆头圆角的描边。目的是让人放松地读很久，而不是像一份规格说明。</p>
+  </header>
+
+  <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+    <div class="card">
+      <div class="k">01</div>
+      <svg viewBox="0 0 240 120" width="100%" height="120" aria-hidden="true"><rect x="0" y="0" width="240" height="120" rx="24" fill="#FFFFFF"/><rect x="16" y="16" width="208" height="40" rx="14" fill="#F5F5F2"/><rect x="16" y="66" width="208" height="38" rx="14" fill="#F5F5F2"/><rect x="30" y="31" width="80" height="10" rx="5" fill="#1A1A1A"/><rect x="30" y="80" width="120" height="10" rx="5" fill="#DCDCD6"/></svg>
+      <div class="sh2">白底灰卡</div>
+      <p class="p">页面是纯白，内容放在 #F5F5F2 的圆角卡片里。层级靠“卡片套在白底上”来表达，不用线。</p>
+    </div>
+    <div class="card">
+      <div class="k">02</div>
+      <svg viewBox="0 0 240 120" width="100%" height="120" aria-hidden="true"><rect x="0" y="0" width="240" height="120" rx="24" fill="#FFFFFF"/><rect x="24" y="30" width="120" height="44" rx="22" fill="#1A1A1A"/><text x="84" y="57" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#FFFFFF">开始故事</text><rect x="152" y="30" width="64" height="44" rx="22" fill="none" stroke="#DCDCD6" stroke-width="1.5"/><circle cx="184" cy="52" r="5" fill="#2F55F4"/><path d="M24 96h192" stroke="#EEEEEA" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <div class="sh2">胶囊与大圆角</div>
+      <p class="p">按钮、标签、分段控件做成胶囊；输入框圆角 14，卡片 20–28，底部面板 32。头像和封面是 16 的圆角方块。</p>
+    </div>
+    <div class="card">
+      <div class="k">03</div>
+      <svg viewBox="0 0 240 120" width="100%" height="120" aria-hidden="true"><rect x="0" y="0" width="240" height="120" rx="24" fill="#FFFFFF"/><path d="M40 84c20-40 50-40 70 0s50 40 70 0" stroke="#1A1A1A" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M40 40h40M40 52h24" stroke="#DCDCD6" stroke-width="6" stroke-linecap="round"/><circle cx="196" cy="36" r="8" fill="#2F55F4"/></svg>
+      <div class="sh2">柔线</div>
+      <p class="p">线条只剩极浅的 #EEEEEA，作用是分隔卡片里的行，不再画外框。描边图标 1.75 粗、圆头圆角，接近手写。</p>
+    </div>
+    <div class="card">
+      <div class="k">04</div>
+      <svg viewBox="0 0 240 120" width="100%" height="120" aria-hidden="true"><rect x="0" y="0" width="240" height="120" rx="24" fill="#FFFFFF"/><rect x="16" y="24" width="208" height="56" rx="28" fill="#FFFFFF" style="filter: drop-shadow(0 4px 10px rgba(20,20,20,.12))"/><rect x="22" y="30" width="82" height="44" rx="22" fill="#1A1A1A"/><circle cx="44" cy="52" r="6" fill="none" stroke="#FFFFFF" stroke-width="2"/><rect x="56" y="48" width="36" height="8" rx="4" fill="#FFFFFF"/><circle cx="148" cy="52" r="7" fill="none" stroke="#6E6D68" stroke-width="2"/><circle cx="194" cy="52" r="7" fill="none" stroke="#6E6D68" stroke-width="2"/></svg>
+      <div class="sh2">浮起，而不是贴底</div>
+      <p class="p">Tab 栏和阅读页的行动栏都离开屏幕边缘，成为带柔和投影的浮层。这是整套里唯一使用阴影的地方。</p>
+    </div>
+  </section>
+
+  <section class="row">
+    <div style="display: flex; flex-direction: column; gap: 8px"><div class="k">Compare</div><h2 class="sh2">和直角版对比</h2><p class="p" style="font-size: 13px; color: var(--mut)">同样的内容，左边是直角版，右边是这一版。</p></div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+      <div style="padding: 24px; box-shadow: inset 0 0 0 1px #E8E8E5; display: flex; flex-direction: column; gap: 14px">
+        <span class="k">直角 · 线</span>
+        <div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 20px; background: #F7F7F5; border-top: 1px solid #E8E8E5; border-bottom: 1px solid #E8E8E5; font-size: 15px; line-height: 24px; font-weight: 500"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #2747FF; stroke-width: 1.5; stroke-linecap: square; margin-top: 2px"><path d="M5 4v9h13M14 9l4 4-4 4"/></svg>我在她对面坐下，问她这道疤是怎么来的。</div>
+        <div style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 14px; box-shadow: inset 0 0 0 1px #E8E8E5"><span class="mono" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px #111; font-size: 13px">A</span><span style="flex: 1; font-size: 15px">起身走到窗边，看清河上是什么船</span></div>
+        <div style="display: flex; gap: 8px"><span style="flex: 1; height: 52px; background: #111; color: #FFF; display: flex; align-items: center; padding: 0 20px; font-size: 15px; font-weight: 500">开始故事</span><span style="height: 52px; padding: 0 18px; box-shadow: inset 0 0 0 1px #D3D3CF; display: flex; align-items: center; font-size: 15px">克制</span></div>
+      </div>
+      <div style="padding: 24px; background: var(--bg2); border-radius: 28px; display: flex; flex-direction: column; gap: 14px">
+        <span class="k">圆角 · 卡</span>
+        <div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; background: var(--bg); border-radius: 18px; font-size: 15px; line-height: 24px; font-weight: 500"><span style="width: 24px; height: 24px; border-radius: 12px; background: var(--accBg); color: var(--acc); display: flex; align-items: center; justify-content: center; flex: none"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round"><path d="M6 5v7h12M14 8l4 4-4 4"/></svg></span>我在她对面坐下，问她这道疤是怎么来的。</div>
+        <div style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 14px; background: var(--bg); border-radius: 18px"><span class="mono" style="width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; background: var(--bg2); font-size: 13px; font-weight: 500">A</span><span style="flex: 1; font-size: 15px">起身走到窗边，看清河上是什么船</span></div>
+        <div style="display: flex; gap: 8px"><span style="flex: 1; height: 52px; border-radius: 26px; background: var(--ink); color: #FFF; display: flex; align-items: center; padding: 0 22px; font-size: 15px; font-weight: 500">开始故事</span><span style="height: 52px; padding: 0 20px; border-radius: 26px; background: var(--bg); display: flex; align-items: center; font-size: 15px">克制</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div style="display: flex; flex-direction: column; gap: 8px"><div class="k">Color</div><h2 class="sh2">色板</h2><p class="p" style="font-size: 13px; color: var(--mut)">和直角版基本相同：黑色稍微柔化成 #1A1A1A，蓝色略亮，灰度偏一点暖。</p></div>
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 12px">
+        <sc-for list="{{light}}" as="s" hint-placeholder-count="9">
+          <div class="sw"><div style="background: {{s.hex}}; box-shadow: inset 0 0 0 1px rgba(20,20,20,.08)"></div><b style="font-weight: 600">{{s.name}}</b><span class="mono" style="color: var(--mut)">{{s.hex}}</span><span style="color: var(--ink2)">{{s.use}}</span></div>
+        </sc-for>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 12px; padding: 20px; border-radius: 28px; background: #111113; color: #F2F2F0">
+        <sc-for list="{{dark}}" as="s" hint-placeholder-count="9">
+          <div class="sw"><div style="background: {{s.hex}}; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08)"></div><b style="font-weight: 600">{{s.name}}</b><span class="mono" style="color: #9C9C97">{{s.hex}}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div style="display: flex; flex-direction: column; gap: 8px"><div class="k">Radius</div><h2 class="sh2">圆角阶梯</h2><p class="p" style="font-size: 13px; color: var(--mut)">规则：容器越大，圆角越大；嵌套时内层圆角 = 外层圆角 − 内边距。</p></div>
+    <div style="display: flex; align-items: flex-end; gap: 20px">
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center"><div style="width: 56px; height: 56px; border-radius: 10px; background: var(--bg2); box-shadow: inset 0 0 0 1.5px var(--line2)"></div><span class="mono" style="font-size: 12px">10 · 标签</span></div>
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center"><div style="width: 72px; height: 56px; border-radius: 14px; background: var(--bg2); box-shadow: inset 0 0 0 1.5px var(--line2)"></div><span class="mono" style="font-size: 12px">14 · 输入框</span></div>
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center"><div style="width: 56px; height: 56px; border-radius: 16px; background: var(--bg2); box-shadow: inset 0 0 0 1.5px var(--line2)"></div><span class="mono" style="font-size: 12px">16 · 封面</span></div>
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center"><div style="width: 96px; height: 72px; border-radius: 20px; background: var(--bg2); box-shadow: inset 0 0 0 1.5px var(--line2)"></div><span class="mono" style="font-size: 12px">20 · 卡片</span></div>
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center"><div style="width: 120px; height: 88px; border-radius: 28px; background: var(--bg2); box-shadow: inset 0 0 0 1.5px var(--line2)"></div><span class="mono" style="font-size: 12px">28 · 分组</span></div>
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center"><div style="width: 140px; height: 88px; border-radius: 32px 32px 0 0; background: var(--bg2); box-shadow: inset 0 0 0 1.5px var(--line2)"></div><span class="mono" style="font-size: 12px">32 · 面板</span></div>
+      <div style="display: flex; flex-direction: column; gap: 8px; align-items: center"><div style="width: 140px; height: 52px; border-radius: 26px; background: var(--ink)"></div><span class="mono" style="font-size: 12px">全圆 · 按钮</span></div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div style="display: flex; flex-direction: column; gap: 8px"><div class="k">Type</div><h2 class="sh2">字体</h2><p class="p" style="font-size: 13px; color: var(--mut)">和直角版相同。标题字重从 700 降到 600，大标题不压线，显得松一些。</p></div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: grid; grid-template-columns: 160px minmax(0, 1fr) 200px; gap: 24px; align-items: baseline; padding: 14px 20px; border-radius: 18px; background: var(--bg2)"><span class="k">Display</span><span style="font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: -.02em">故事</span><span class="mono" style="font-size: 12px; color: var(--mut)">黑 32/40 · 700</span></div>
+      <div style="display: grid; grid-template-columns: 160px minmax(0, 1fr) 200px; gap: 24px; align-items: baseline; padding: 14px 20px"><span class="k">Title</span><span style="font-size: 20px; line-height: 28px; font-weight: 600">雨夜渡口</span><span class="mono" style="font-size: 12px; color: var(--mut)">黑 20/28 · 600</span></div>
+      <div style="display: grid; grid-template-columns: 160px minmax(0, 1fr) 200px; gap: 24px; align-items: baseline; padding: 14px 20px; border-radius: 18px; background: var(--bg2)"><span class="k">Narrative</span><span class="serif" style="font-size: 17.5px; line-height: 31px">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</span><span class="mono" style="font-size: 12px; color: var(--mut)">宋 17.5/31</span></div>
+      <div style="display: grid; grid-template-columns: 160px minmax(0, 1fr) 200px; gap: 24px; align-items: baseline; padding: 14px 20px"><span class="k">Meta</span><span class="mono" style="font-size: 12px; color: var(--mut)">刚刚 · 128K · 尾号 3f9a</span><span class="mono" style="font-size: 12px; color: var(--mut)">Plex Mono 12/16</span></div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div style="display: flex; flex-direction: column; gap: 8px"><div class="k">Icons</div><h2 class="sh2">图标与 Tab</h2><p class="p" style="font-size: 13px; color: var(--mut)">24 栅格，1.75 描边，圆头圆角。Tab 栏是一条浮起的胶囊，选中项展开成黑色小胶囊，图标和文字横排。</p></div>
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <div style="display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 10px; padding: 14px; border-radius: 28px; background: var(--bg2)">
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>世界</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3"/></svg>导入</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg>自己写</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg>发送</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor"/></svg>停止</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 11-2.4-5.7M20 4v4.5h-4.5"/></svg>重试</div>
+        <div class="ic"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>秘密</div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+        <div style="padding: 24px; border-radius: 28px; background: var(--bg2); display: flex; justify-content: center">
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 340px; height: 64px; padding: 0 8px; border-radius: 32px; background: #FFFFFF; box-shadow: var(--sh)">
+            <span style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px 0 14px; border-radius: 24px; background: var(--ink); color: #FFF; font-size: 14px; font-weight: 500"><svg class="i" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</span>
+            <span style="display: flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; font-size: 11px; color: var(--mut)"><svg class="i" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</span>
+            <span style="display: flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; font-size: 11px; color: var(--mut)"><svg class="i" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</span>
+          </div>
+        </div>
+        <div style="padding: 24px; border-radius: 28px; background: #111113; display: flex; justify-content: center">
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 340px; height: 64px; padding: 0 8px; border-radius: 32px; background: #1C1C1F; box-shadow: 0 8px 24px rgba(0,0,0,.4)">
+            <span style="display: flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; font-size: 11px; color: #9C9C97"><svg class="i" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</span>
+            <span style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px 0 14px; border-radius: 24px; background: #F2F2F0; color: #111113; font-size: 14px; font-weight: 500"><svg class="i" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</span>
+            <span style="display: flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; font-size: 11px; color: #9C9C97"><svg class="i" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      light: [
+        { name: '白', hex: '#FFFFFF', use: '页面' },
+        { name: '卡', hex: '#F5F5F2', use: '卡片、分组' },
+        { name: '凹', hex: '#EBEBE7', use: '骨架、轨道' },
+        { name: '线', hex: '#EEEEEA', use: '卡内分隔' },
+        { name: '灰', hex: '#6E6D68', use: '说明 5.2:1' },
+        { name: '墨', hex: '#1A1A1A', use: '文字、主按钮' },
+        { name: '蓝', hex: '#2F55F4', use: '我、选中' },
+        { name: '红', hex: '#D3392B', use: '错误、删除' },
+        { name: '绿 / 琥珀', hex: '#13875A', use: '可用 · #B25A0B' }
+      ],
+      dark: [
+        { name: '夜', hex: '#111113' },
+        { name: '卡', hex: '#1C1C1F' },
+        { name: '凹', hex: '#27272B' },
+        { name: '线', hex: '#232327' },
+        { name: '灰', hex: '#9C9C97' },
+        { name: '月白', hex: '#F2F2F0' },
+        { name: '蓝', hex: '#8597FF' },
+        { name: '红', hex: '#FF7466' },
+        { name: '绿', hex: '#43C98C' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

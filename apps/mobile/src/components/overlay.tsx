@@ -1,10 +1,10 @@
 /**
  * 浮层：底部面板、对话框、墨色浮条，以及给页面用的 useOverlay()（确认、输入、菜单、浮条）。
  *
- * 底部面板顶边一道 2px 黑线代替拖拽条；点遮罩、下拉标题行或 Android 返回键关闭。
- * 对话框顶边 4px 色线写清后果；删除用红色，揭示秘密之类的提醒用琥珀色。
+ * 底部面板浮起，四周离屏幕边缘 8，圆角 32，顶部一根 40×5 的拖拽条；点遮罩、下拉或 Android 返回键关闭。
+ * 对话框是居中的白色圆角卡片，上方一个圆形图标写清后果；删除用红色，揭示秘密之类的提醒用琥珀色。
  * 有底部面板开着时，对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）。
- * 墨色浮条 3 秒后自动消失（带操作的多留一会儿）。
+ * 墨色胶囊浮条贴着标签栏上方浮起，3 秒后自动消失（带操作的多留一会儿）。
  */
 
 import {
@@ -33,7 +33,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { space, type, usePalette } from "../theme/index.ts";
+import { radius, space, useIsDark, usePalette } from "../theme/index.ts";
+import { tabBarTop } from "./bars.tsx";
 import { Dialog, type DialogTone } from "./dialog.tsx";
 import { Icon, type IconName } from "./icons.tsx";
 import { IconButton } from "./primitives.tsx";
@@ -59,7 +60,7 @@ export function Sheet({
   title?: string;
   /** 自定义标题区（替换默认标题行，仍然可以下拉关闭） */
   header?: ReactNode;
-  /** 占满导航栏以下的整屏 */
+  /** 从状态栏下方一直到底（世界状态面板） */
   full?: boolean;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -125,26 +126,27 @@ export function Sheet({
           style={[
             styles.sheet,
             {
-              backgroundColor: palette.bg,
-              borderTopColor: palette.ink,
-              paddingBottom: insets.bottom,
+              bottom: space.s,
+              backgroundColor: palette.sheet,
+              paddingBottom: Math.max(insets.bottom - space.s, space.l),
               transform: [{ translateY }],
             },
-            full ? { top: insets.top + 4 } : null,
+            full ? { top: insets.top + space.xxl, paddingBottom: 0 } : null,
             style,
           ]}
         >
           <View {...pan.panHandlers}>
+            <View style={[styles.handle, { backgroundColor: palette.line2 }]} />
             {header ??
               (title ? (
                 <View style={styles.sheetTitleRow}>
-                  <Text accessibilityRole="header" style={[type.section, { color: palette.ink, flex: 1 }]}>
+                  <Text accessibilityRole="header" style={[styles.sheetTitle, { color: palette.ink }]}>
                     {title}
                   </Text>
-                  <IconButton icon="close" label="关闭" onPress={onClose} style={{ marginRight: -10 }} />
+                  <IconButton icon="close" label="关闭" size={18} diameter={36} onPress={onClose} />
                 </View>
               ) : (
-                <View style={{ height: space.s }} />
+                <View style={{ height: space.xs }} />
               ))}
           </View>
           {children}
@@ -155,19 +157,36 @@ export function Sheet({
   );
 }
 
+/**
+ * 面板里再嵌一层的底色（深色下面板比页面亮，不能直接用 bg2）：
+ * - inset：凹下去的分组（浅色 bg2，深色 bg）；raised：分组里选中的那一格（浅色白，深色 bg3）
+ * - fill：直接放在面板上的灰色块，比如阅读页的选项、次要按钮（浅色 bg2，深色 bg3）
+ */
+export function useSheetSurfaces(): { inset: string; raised: string; fill: string } {
+  const palette = usePalette();
+  const dark = useIsDark();
+  return dark
+    ? { inset: palette.bg, raised: palette.bg3, fill: palette.bg3 }
+    : { inset: palette.bg2, raised: palette.card, fill: palette.bg2 };
+}
+
+/** 面板里的一组菜单（凹下去的圆角卡片） */
+export function MenuGroup({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { inset } = useSheetSurfaces();
+  return <View style={[styles.menuGroup, { backgroundColor: inset }, style]}>{children}</View>;
+}
+
 /** 面板里的一行菜单项 */
 export function MenuItem({
   icon,
   label,
   onPress,
   danger,
-  last,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
   danger?: boolean;
-  last?: boolean;
 }) {
   const palette = usePalette();
   const color = danger ? palette.err : palette.ink;
@@ -177,8 +196,10 @@ export function MenuItem({
       onPress={onPress}
       style={({ pressed }) => [
         styles.menuItem,
-        { borderBottomColor: palette.line, backgroundColor: pressed ? palette.bg2 : "transparent" },
-        last ? { borderBottomWidth: 0 } : null,
+        {
+          backgroundColor: pressed ? palette.bg3 : "transparent",
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
       ]}
     >
       <Icon name={icon} color={color} />
@@ -420,7 +441,10 @@ function PromptDialog({
         accessibilityLabel={options.label}
         returnKeyType="done"
         onSubmitEditing={() => text && onSettle(text)}
-        style={[styles.promptInput, { color: palette.ink, borderColor: palette.ink }]}
+        style={[
+          styles.promptInput,
+          { color: palette.ink, backgroundColor: palette.bg2, boxShadow: `inset 0 0 0 2px ${palette.acc}` },
+        ]}
       />
     </Dialog>
   );
@@ -439,18 +463,17 @@ function MenuSheet({
   const shown = options ?? last.current;
   return (
     <Sheet visible={options !== null} onClose={() => onSettle(null)} title={shown?.title}>
-      <View style={{ marginTop: shown?.title ? 0 : space.s }}>
-        {shown?.items.map((item, i) => (
+      <MenuGroup style={{ marginHorizontal: space.s }}>
+        {shown?.items.map((item) => (
           <MenuItem
             key={item.key}
             icon={item.icon}
             label={item.label}
             danger={item.danger}
-            last={i === shown.items.length - 1}
             onPress={() => onSettle(item.key)}
           />
         ))}
-      </View>
+      </MenuGroup>
     </Sheet>
   );
 }
@@ -462,9 +485,16 @@ function Toast({ message, options, onDone }: { message: string; options: ToastOp
     <View
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
-      style={[styles.toast, { bottom: insets.bottom + 50, backgroundColor: palette.ink }]}
+      style={[
+        styles.toast,
+        {
+          bottom: tabBarTop(insets.bottom) + space.m,
+          backgroundColor: palette.ink,
+          boxShadow: palette.shadowFloat,
+        },
+      ]}
     >
-      <Icon name={options.icon ?? "check"} size={18} color={palette.bg} />
+      <Icon name={options.icon ?? "checkCircle"} size={18} color={palette.bg} />
       <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, color: palette.bg }} numberOfLines={2}>
         {message}
       </Text>
@@ -475,10 +505,9 @@ function Toast({ message, options, onDone }: { message: string; options: ToastOp
             options.onAction?.();
             onDone();
           }}
-          style={styles.toastAction}
+          style={[styles.toastAction, { backgroundColor: palette.arrowBg }]}
         >
           <Text style={{ fontSize: 14, fontWeight: "500", color: palette.bg }}>{options.actionLabel}</Text>
-          <Icon name="arrowRight" size={16} color={palette.bg} />
         </Pressable>
       ) : null}
     </View>
@@ -487,33 +516,58 @@ function Toast({ message, options, onDone }: { message: string; options: ToastOp
 
 const styles = StyleSheet.create({
   sheetHost: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, justifyContent: "flex-end" },
-  sheet: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopWidth: 2 },
+  sheet: {
+    position: "absolute",
+    left: space.s,
+    right: space.s,
+    borderRadius: radius.sheet,
+    overflow: "hidden",
+  },
+  handle: { alignSelf: "center", width: 40, height: 5, borderRadius: 2.5, marginTop: 10 },
   sheetTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: space.page,
+    paddingTop: space.m,
     paddingBottom: space.m,
-    paddingHorizontal: space.page,
+    paddingLeft: space.page - 4,
+    paddingRight: space.l,
   },
+  sheetTitle: { flex: 1, fontSize: 20, lineHeight: 28, fontWeight: "700" },
+  menuGroup: { borderRadius: 26, padding: space.xs },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     height: 56,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
+    paddingHorizontal: space.l,
+    borderRadius: radius.card,
   },
-  promptInput: { height: 52, borderWidth: 2, paddingHorizontal: 14, fontSize: 16, marginTop: space.xs },
+  promptInput: {
+    alignSelf: "stretch",
+    height: 52,
+    borderRadius: radius.input,
+    paddingHorizontal: space.l,
+    fontSize: 16,
+    marginTop: space.xs,
+  },
   toast: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    minHeight: 56,
+    left: space.page,
+    right: space.page,
+    minHeight: 52,
+    borderRadius: 26,
     flexDirection: "row",
     alignItems: "center",
-    gap: space.m,
-    paddingLeft: space.page,
-    paddingRight: space.s,
+    gap: 10,
+    paddingVertical: 6,
+    paddingLeft: 18,
+    paddingRight: 6,
   },
-  toastAction: { flexDirection: "row", alignItems: "center", gap: 4, height: 44, paddingHorizontal: space.m },
+  toastAction: {
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

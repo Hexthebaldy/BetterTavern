@@ -139,14 +139,17 @@ make dev
 
 真机上最可能出问题的地方（都没验证过）：
 
-- **键盘**：阅读页、登录页、剧本详情用 `KeyboardAvoidingView behavior="padding"`（两个平台都是），前提是 Android 处于 edge-to-edge（Expo SDK 54 起默认）。
-  如果 Android 上输入框被挡或者留白翻倍，改阅读页（`app/play/[id]/index.tsx`）的 behavior。键盘弹起时底部还多留了一个安全区高度，属于外观问题。
+- **键盘**：登录页、注册页、剧本详情用 `KeyboardAvoidingView`（iOS 上 `padding`）。阅读页不用它：行动面板是浮层，
+  iOS 上自己监听键盘事件浮到键盘上方（`ActionBar` 的 `useKeyboardLift`），故事流的底部留白跟着加上键盘高度；Android 靠窗口随键盘缩小，
+  没有额外处理。如果 Android 上面板被键盘挡住，在 `useKeyboardLift` 里给 Android 也加上抬升。
 - **自动滚动**：`StoryFeed` 停在底部时 `onContentSizeChange` 里 `scrollToEnd`，上翻超过 80px 暂停并显示“回到最新”。长故事的首次定位依赖多次 `scrollToEnd` 收敛。
+  面板下面的留白必须放在列表尾部组件里：`FlatList.scrollToEnd` 只算到尾部组件，不算 `contentContainerStyle` 的内边距（放在内边距里时打开故事会停在最后两段被面板盖住的位置）。
 - **导入**：`DocumentPicker.getDocumentAsync({ type: "*/*" })` 之后按扩展名过滤，把 `new File(uri)`（expo-file-system）放进 `FormData` 上传。
   不能用 RN 的 `{ uri, name, type }`：SDK 57 的全局 `fetch` 是 `expo/fetch`，遇到这种对象直接抛 `Unsupported FormDataPart implementation`，
   请求根本发不出去，界面上显示成“连不上服务器”（2026-10-14 真机上遇到并修复）。iOS 上的上传可能没有 Content-Length，
   服务端的大小限制中间件（`api/body_limit.py`）对此是边收边数的。
-- **标签栏**：只用文字（`tabBarIcon: () => null` 加 `tabBarLabelPosition: "beside-icon"`），没有图标库；看一下实际效果。
+- **标签栏**：自己画的浮动胶囊（`bars.tsx` 的 `TabBar`），绝对定位在内容上面；有 Home 指示条的机型离底 `安全区 − 6`，没有的离底 16。
+  标签页的列表底部要用 `useTabBarSpace()` 留白，新加标签页时别忘了。
 - **SecureStore**：会话以一个 JSON 存在 `bt.session`，远小于 2 KB。
 - **WorldBuilder**：结构化输出阶梯在真实模型上可能降级到 `prompt_json`；失败时退回只用卡片文字的最小 Seed（`world.ready` 的 `source` 会标出来）。
 
@@ -192,7 +195,7 @@ make dev
 | `src/features/play/playSession.ts` | `PlaySession`：加载、提交（网络错误用同一个幂等键退避重试）、409 处理、接事件流、轮询降级、回到前台立即重连 |
 | `src/features/play/usePlaySession.ts`、`StoryFeed.tsx`、`ActionBar.tsx` | hook（每帧最多渲染一次）、故事流、底部选项与输入 |
 | `app/` | 路由：`(auth)/login`、`(auth)/register`、`(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings`、`scenario/[id]`、`play/[id]`、`settings/credentials`、`settings/credential/[id]`、`settings/routes`、`settings/account`、`dev/probe`；`_layout.tsx` 用 `Stack.Protected` 按登录状态切换 |
-| `src/theme/index.ts`、`src/components/ui.tsx` | UI v2「白 / 线 / 直角」的设计 token 与部件（设计稿 `docs/design/ui-v2/`）。`ui.tsx` 是门面，部件分在同目录的 primitives、feedback、controls、bars、overlay、dialog、icons 里；页头、标签栏、对话框、底部面板都是自己画的，原生导航栏不显示 |
+| `src/theme/index.ts`、`src/components/ui.tsx` | UI v2 柔和圆角版「白 / 柔线 / 大圆角」的设计 token 与部件（设计稿 `docs/design/ui-v2-soft/`，行为规则仍看 `docs/design/ui-v2/`）。`ui.tsx` 是门面，部件分在同目录的 primitives、feedback、controls、bars、overlay、dialog、icons 里；页头、标签栏、对话框、底部面板都是自己画的，原生导航栏不显示 |
 
 ## 7 不能破坏的约束
 

@@ -111,18 +111,18 @@ export function composeBoundaries(items: string[]): string {
   return joinWithin(items, BOUNDARIES_MAX);
 }
 
-/** 表单底部的一行摘要：林川 · 过路的旅人 · 适中 · 克制 / 白描 · 避开 2 项 */
-export function summaryLine(form: {
+/** 表单底部的摘要，每段一个小胶囊：林川 / 过路的旅人 / 适中 / 克制 · 白描 / 避开 2 项 */
+export function summaryParts(form: {
   name: string;
   identity: string | null;
   length: Preferences["length"];
   styles: string[];
   boundaries: number;
-}): string {
+}): string[] {
   const parts = [form.name.trim() || "还没起名"];
   if (form.identity) parts.push(form.identity);
   parts.push(LENGTH_LABELS[form.length]);
-  if (form.styles.length > 0) parts.push(form.styles.join(" / "));
+  if (form.styles.length > 0) parts.push(form.styles.join(" · "));
   if (form.boundaries > 0) parts.push(`避开 ${form.boundaries} 项`);
-  return parts.join(" · ");
+  return parts;
 }

@@ -37,3 +37,10 @@ export function formatBytes(bytes: number): string {
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${bytes} B`;
 }
+
+/** 日期：2026 年 9 月 3 日 */
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+}

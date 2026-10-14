@@ -1,6 +1,6 @@
 /**
- * 服务器地址：登录、注册页底部的一行，点“更改”打开服务器面板。
- * 面板里是最近用过的服务器（单选）加一行“输入新地址”；连接测试页也用这个面板选地址。
+ * 服务器地址：登录、注册页底部的一条灰色胶囊，点“更改”打开服务器面板。
+ * 面板里是最近用过的服务器（单选卡片）加一张“输入新地址”；连接测试页也用这个面板选地址。
  */
 
 import { useRouter } from "expo-router";
@@ -12,7 +12,7 @@ import { normalizeServerUrl } from "../config.ts";
 import { displayServer, serverChoices, type RecentServer } from "../features/settings/servers.ts";
 import { useApp } from "../state/AppProvider.tsx";
 import { usePrefs } from "../state/PrefsProvider.tsx";
-import { font, space, usePalette } from "../theme/index.ts";
+import { font, radius, space, usePalette } from "../theme/index.ts";
 import { formatRelative } from "../utils/format.ts";
 import { Button, Icon, RadioMark, Sheet } from "./ui.tsx";
 
@@ -29,15 +29,20 @@ export function ServerRow({ onChange }: { onChange: () => void }) {
       accessibilityRole="button"
       accessibilityLabel={`服务器 ${displayServer(serverUrl)}，更改`}
       onPress={onChange}
-      style={[styles.row, { borderTopColor: palette.line, paddingBottom: insets.bottom }]}
+      style={({ pressed }) => [
+        styles.row,
+        {
+          marginBottom: Math.max(insets.bottom, space.l),
+          backgroundColor: pressed ? palette.bg3 : palette.bg2,
+        },
+      ]}
     >
-      <Icon name="server" size={20} color={palette.mut} />
+      <Icon name="server" size={18} color={palette.mut} />
       <Text style={[styles.rowText, { color: palette.mut }]} numberOfLines={1}>
         服务器 <Text style={{ fontFamily: font.mono, color: palette.ink }}>{displayServer(serverUrl)}</Text>
       </Text>
-      <View style={styles.change}>
+      <View style={[styles.change, { backgroundColor: palette.card }]}>
         <Text style={{ fontSize: 13, fontWeight: "500", color: palette.ink }}>更改</Text>
-        <Icon name="chevronDown" size={18} color={palette.ink} />
       </View>
     </Pressable>
   );
@@ -103,11 +108,7 @@ export function ServerSheet({
   return (
     <Sheet visible={visible} onClose={onClose} title="服务器">
       <View style={styles.body}>
-        <View
-          accessibilityRole="radiogroup"
-          accessibilityLabel="选择服务器"
-          style={{ borderTopWidth: 1, borderTopColor: palette.line }}
-        >
+        <View accessibilityRole="radiogroup" accessibilityLabel="选择服务器" style={{ gap: 6 }}>
           {choices.map((server) => {
             const on = selected === server.url;
             const note = describe(server, now);
@@ -117,7 +118,12 @@ export function ServerSheet({
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
                 onPress={() => setSelected(server.url)}
-                style={[styles.option, { borderBottomColor: palette.line }]}
+                style={[
+                  styles.option,
+                  on
+                    ? { backgroundColor: palette.accBg, boxShadow: `inset 0 0 0 2px ${palette.acc}` }
+                    : { backgroundColor: palette.bg2 },
+                ]}
               >
                 <RadioMark selected={on} />
                 <View style={{ flex: 1 }}>
@@ -129,8 +135,8 @@ export function ServerSheet({
                       {note.failed ? <Icon name="cross" size={14} color={palette.err} /> : null}
                       <Text
                         style={{
-                          fontSize: 13,
-                          lineHeight: 19,
+                          fontSize: 12.5,
+                          lineHeight: 18,
                           color: note.failed ? palette.err : palette.mut,
                         }}
                       >
@@ -142,29 +148,38 @@ export function ServerSheet({
               </Pressable>
             );
           })}
-          <View style={styles.newRow}>
+          <View
+            style={[
+              styles.newRow,
+              selected === null
+                ? { backgroundColor: palette.accBg, boxShadow: `inset 0 0 0 2px ${palette.acc}` }
+                : { backgroundColor: palette.bg2 },
+            ]}
+          >
             <Pressable
               accessibilityRole="radio"
+              accessibilityLabel="输入新地址"
               accessibilityState={{ selected: selected === null }}
               onPress={() => setSelected(null)}
+              hitSlop={10}
             >
-              <RadioMark selected={selected === null} />
+              {selected === null ? (
+                <RadioMark selected />
+              ) : (
+                <Icon name="plus" size={20} color={palette.mut} />
+              )}
             </Pressable>
             <TextInput
               value={draft}
               onChangeText={setDraft}
               onFocus={() => setSelected(null)}
-              placeholder="例如 http://192.168.1.10:8000"
+              placeholder="输入新地址，例如 http://192.168.1.10:8000"
               placeholderTextColor={palette.mut}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
               accessibilityLabel="新服务器地址"
-              style={[
-                styles.input,
-                { color: palette.ink, borderColor: selected === null ? palette.ink : palette.line2 },
-                selected === null ? { borderWidth: 2 } : null,
-              ]}
+              style={[styles.input, { color: palette.ink }]}
             />
           </View>
         </View>
@@ -199,26 +214,35 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    minHeight: 56,
-    paddingLeft: space.page,
-    paddingRight: space.s,
-    borderTopWidth: 1,
+    height: 56,
+    marginHorizontal: 20,
+    paddingLeft: space.l,
+    paddingRight: 6,
+    borderRadius: 28,
   },
   rowText: { flex: 1, fontSize: 13, lineHeight: 19 },
-  change: { flexDirection: "row", alignItems: "center", gap: 2, height: 44, paddingHorizontal: space.m },
-  body: { paddingHorizontal: space.page, paddingBottom: space.page, gap: space.l },
+  change: { height: 44, paddingHorizontal: space.l, borderRadius: 22, justifyContent: "center" },
+  body: { paddingHorizontal: space.l, paddingBottom: space.s, gap: 14 },
   option: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    minHeight: 60,
-    paddingHorizontal: 2,
+    minHeight: 64,
+    paddingHorizontal: space.l,
     paddingVertical: space.s,
-    borderBottomWidth: 1,
+    borderRadius: radius.card,
   },
   url: { fontFamily: font.mono, fontSize: 14, lineHeight: 20 },
   note: { flexDirection: "row", alignItems: "center", gap: 4 },
-  newRow: { flexDirection: "row", alignItems: "center", gap: 14, minHeight: 64, paddingHorizontal: 2 },
-  input: { flex: 1, height: 44, borderWidth: 1, paddingHorizontal: 14, fontFamily: font.mono, fontSize: 14 },
+  newRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 64,
+    paddingLeft: space.l,
+    paddingRight: space.s,
+    borderRadius: radius.card,
+  },
+  input: { flex: 1, height: 44, fontFamily: font.mono, fontSize: 14 },
   buttons: { flexDirection: "row", gap: space.s },
 });

@@ -16,6 +16,7 @@ import {
   IconButton,
   Loading,
   Notice,
+  Pill,
   Status,
   useOverlay,
 } from "../../../src/components/ui.tsx";
@@ -168,24 +169,32 @@ export default function CredentialScreen() {
     >
       <BackBar />
       <ScrollView contentContainerStyle={{ paddingBottom: 56 }} keyboardShouldPersistTaps="handled">
-        <View style={[styles.head, { borderBottomColor: palette.ink }]}>
+        <View style={styles.head}>
           <View style={{ flex: 1, gap: space.s }}>
             <Text accessibilityRole="header" style={[styles.title, { color: palette.ink }]}>
               {credentialTitle(credential, providers)}
             </Text>
             <View style={styles.statusLine}>
-              <Status kind={kind} label={CREDENTIAL_STATUS[credential.status]} size={13} />
+              <Status kind={kind} label={CREDENTIAL_STATUS[credential.status]} />
               {isDirector && director ? (
-                <>
-                  <Text style={{ color: palette.line2 }}>/</Text>
-                  <Text style={{ fontSize: 13, color: palette.ink, flexShrink: 1 }} numberOfLines={1}>
-                    导演：<Text style={{ fontFamily: font.mono }}>{director.model}</Text>
-                  </Text>
-                </>
+                <Pill
+                  tone="acc"
+                  label={
+                    <>
+                      导演：<Text style={{ fontFamily: font.mono }}>{director.model}</Text>
+                    </>
+                  }
+                />
               ) : null}
             </View>
           </View>
-          <IconButton icon="write" label="编辑备注名和端点" onPress={() => setEditing(true)} />
+          <IconButton
+            icon="write"
+            label="编辑备注名和端点"
+            size={20}
+            diameter={44}
+            onPress={() => setEditing(true)}
+          />
         </View>
         <View style={styles.grid}>
           {[
@@ -193,16 +202,9 @@ export default function CredentialScreen() {
             ["KEY", `•••• ${credential.key_last4}`, true],
             ["状态", CREDENTIAL_STATUS[credential.status], false],
             ["端点", credential.base_url ?? "官方地址", !!credential.base_url],
-          ].map(([key, value, mono], i) => (
-            <View
-              key={String(key)}
-              style={[
-                styles.cell,
-                { borderBottomColor: palette.line },
-                i % 2 === 0 ? { borderRightWidth: 1, borderRightColor: palette.line } : null,
-              ]}
-            >
-              <Text style={[styles.cellKey, { color: palette.mut }]}>{key}</Text>
+          ].map(([key, value, mono]) => (
+            <View key={String(key)} style={[styles.cell, { backgroundColor: palette.bg2 }]}>
+              <Text style={[styles.cellKey, { color: palette.mut }]}>{key === "KEY" ? "Key" : key}</Text>
               <Text
                 numberOfLines={1}
                 style={[
@@ -251,7 +253,11 @@ export default function CredentialScreen() {
           />
         </View>
         {message ? (
-          <Notice tone={message.tone} message={message.text} style={{ marginHorizontal: space.page }} />
+          <Notice
+            tone={message.tone}
+            message={message.text}
+            style={{ marginHorizontal: space.list, marginTop: space.s, borderRadius: 22 }}
+          />
         ) : null}
         {report ? <ProbeResults report={report} /> : null}
         {credential.probed_models.length > 0 ? (
@@ -259,24 +265,11 @@ export default function CredentialScreen() {
         ) : null}
 
         <View style={styles.bottom}>
-          <Button
-            label="更换 Key"
-            variant="secondary"
-            trailingIcon="key"
-            between
-            onPress={() => setReplacing(true)}
-          />
-          <View
-            style={{ height: 1, backgroundColor: palette.line, marginTop: space.page, marginBottom: space.s }}
-          />
-          <Button
-            label="删除密钥"
-            variant="danger"
-            trailingIcon="trash"
-            between
-            onPress={() => void remove()}
-          />
-          <Text style={{ fontSize: 12.5, color: palette.mut }}>用到它的模型分配会失效。</Text>
+          <Button label="更换 Key" variant="secondary" icon="key" onPress={() => setReplacing(true)} />
+          <Button label="删除密钥" variant="danger" icon="trash" onPress={() => void remove()} />
+          <Text style={{ fontSize: 12.5, color: palette.mut, textAlign: "center" }}>
+            用到它的模型分配会失效。
+          </Text>
         </View>
       </ScrollView>
       <EditSheet
@@ -301,27 +294,27 @@ export default function CredentialScreen() {
 
 const styles = StyleSheet.create({
   action: { flex: 1, minHeight: 60, paddingHorizontal: space.s },
-  actions: { flexDirection: "row", gap: space.s, padding: space.page, paddingTop: space.l },
-  bottom: { paddingHorizontal: space.page, paddingTop: 32, gap: space.m },
+  actions: { flexDirection: "row", gap: space.s, paddingHorizontal: space.list, paddingTop: 10 },
+  bottom: { paddingHorizontal: space.list, paddingTop: space.xl, gap: space.s },
   cell: {
-    width: "50%",
+    width: "48.9%",
+    flexGrow: 1,
     paddingVertical: 14,
-    paddingHorizontal: space.page,
-    gap: space.xs,
-    borderBottomWidth: 1,
+    paddingHorizontal: space.l,
+    gap: 2,
+    borderRadius: 22,
   },
-  cellKey: { fontFamily: font.mono, fontSize: 11, letterSpacing: 0.9 },
-  grid: { flexDirection: "row", flexWrap: "wrap" },
+  cellKey: { fontSize: 12 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginHorizontal: space.list },
   head: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: space.s,
     paddingLeft: space.page,
-    paddingRight: space.s,
-    paddingTop: space.m,
-    paddingBottom: space.page,
-    borderBottomWidth: 1,
+    paddingRight: space.l,
+    paddingTop: space.l,
+    paddingBottom: space.l,
   },
-  statusLine: { flexDirection: "row", alignItems: "center", gap: space.s },
-  title: { fontSize: 30, lineHeight: 36, fontWeight: "700", letterSpacing: -0.6 },
+  statusLine: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
+  title: { fontSize: 28, lineHeight: 36, fontWeight: "700", letterSpacing: -0.56 },
 });

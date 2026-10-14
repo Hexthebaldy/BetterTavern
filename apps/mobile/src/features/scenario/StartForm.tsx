@@ -10,7 +10,7 @@ import Svg, { Path } from "react-native-svg";
 
 import type { Preferences } from "../../api/types.ts";
 import { Checkbox, Chip, Field, Icon, useOverlay } from "../../components/ui.tsx";
-import { font, space, usePalette } from "../../theme/index.ts";
+import { font, liftShadow, onColor, radius, space, usePalette } from "../../theme/index.ts";
 import {
   BOUNDARY_ITEMS,
   composeBoundaries,
@@ -22,7 +22,7 @@ import {
   STYLE_TAGS,
   suggestNames,
   SUMMARY_MAX,
-  summaryLine,
+  summaryParts,
 } from "./startForm.ts";
 
 export type StartValues = {
@@ -33,6 +33,7 @@ export type StartValues = {
   boundaries: string;
 };
 
+/** 一步：浅灰圆角卡片，标题前一个白色圆形序号 */
 function Step({
   n,
   title,
@@ -46,34 +47,37 @@ function Step({
 }) {
   const palette = usePalette();
   return (
-    <View style={[styles.step, { borderBottomColor: palette.line }]}>
-      <Text style={[styles.stepNo, { color: palette.mut }]}>{n}</Text>
-      <View style={{ flex: 1, gap: 14 }}>
+    <View style={[styles.step, { backgroundColor: palette.bg2 }]}>
+      <View style={styles.stepHead}>
+        <View style={[styles.stepNo, { backgroundColor: palette.card }]}>
+          <Text style={{ fontFamily: font.monoMedium, fontSize: 12, color: palette.ink }}>{n}</Text>
+        </View>
         <Text accessibilityRole="header" style={[styles.stepTitle, { color: palette.ink }]}>
           {title}
           {optional ? <Text style={[styles.optional, { color: palette.mut }]}> {optional}</Text> : null}
         </Text>
-        {children}
       </View>
+      {children}
     </View>
   );
 }
 
-const LENGTH_GLYPHS: Record<Preferences["length"], string> = {
-  short: "M0 4h40M0 12h26",
-  medium: "M0 4h40M0 12h40M0 20h30",
-  long: "M0 2h40M0 8h40M0 14h40M0 20h40M0 26h22",
+/** 篇幅图示：几行圆头的横线，越长行数越多 */
+const LENGTH_GLYPHS: Record<Preferences["length"], { d: string; width: number }> = {
+  short: { d: "M2 4h32M2 11h20", width: 2.4 },
+  medium: { d: "M2 4h32M2 11h32M2 18h22", width: 2.4 },
+  long: { d: "M2 2h32M2 7h32M2 12h32M2 17h32M2 21h16", width: 2 },
 };
 
 /**
- * 表单本体：选择留在这里，变化时通过 onChange 报出拼好的字段和底部的摘要行。
+ * 表单本体：选择留在这里，变化时通过 onChange 报出拼好的字段和底部摘要的几段。
  */
 export function StartForm({
   cardName,
   onChange,
 }: {
   cardName: string;
-  onChange: (values: StartValues, summaryText: string) => void;
+  onChange: (values: StartValues, summary: string[]) => void;
 }) {
   const palette = usePalette();
   const overlay = useOverlay();
@@ -102,7 +106,7 @@ export function StartForm({
     const identityLabel = IDENTITIES.find((i) => i.key === identity)?.label ?? null;
     onChangeRef.current(
       values,
-      summaryLine({ name, identity: identityLabel, length, styles: styles_, boundaries: bounds.length }),
+      summaryParts({ name, identity: identityLabel, length, styles: styles_, boundaries: bounds.length }),
     );
   }, [name, identity, summary, length, styles_, bounds]);
 
@@ -139,37 +143,40 @@ export function StartForm({
 
   return (
     <View>
-      <Step n="01" title="你扮演谁">
-        <View style={styles.nameRow}>
-          <Field
-            label="主角的名字"
-            hideLabel
-            value={name}
-            onChangeText={changeName}
-            maxLength={NAME_MAX}
-            placeholder="名字"
-            style={{ flex: 1 }}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="随机一个名字"
-            onPress={() => changeName(randomName(name))}
-            style={({ pressed }) => [
-              styles.dice,
-              { borderColor: palette.line2, backgroundColor: pressed ? palette.bg2 : palette.bg },
-            ]}
-          >
-            <Icon name="dice" />
-          </Pressable>
-        </View>
+      <Step n="1" title="你扮演谁">
+        <Field
+          label="主角的名字"
+          hideLabel
+          onGrey
+          value={name}
+          onChangeText={changeName}
+          maxLength={NAME_MAX}
+          placeholder="名字"
+          trailing={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="随机一个名字"
+              onPress={() => changeName(randomName(name))}
+              style={({ pressed }) => [
+                styles.dice,
+                {
+                  backgroundColor: pressed ? palette.bg3 : palette.bg2,
+                  transform: [{ scale: pressed ? 0.97 : 1 }],
+                },
+              ]}
+            >
+              <Icon name="dice" size={20} />
+            </Pressable>
+          }
+        />
         <View style={styles.wrap}>
           {suggestions.map((n) => (
-            <Chip key={n} label={n} selected={name.trim() === n} onPress={() => changeName(n)} />
+            <Chip key={n} label={n} onGrey selected={name.trim() === n} onPress={() => changeName(n)} />
           ))}
         </View>
       </Step>
 
-      <Step n="02" title="这个角色是谁" optional="可选">
+      <Step n="2" title="这个角色是谁" optional="可选">
         <View style={styles.tiles} accessibilityRole="radiogroup" accessibilityLabel="身份">
           {[
             ...IDENTITIES.map((i) => ({ key: i.key, label: i.label, icon: i.icon })),
@@ -183,20 +190,21 @@ export function StartForm({
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={i.label}
                 onPress={() => pickIdentity(i.key || null)}
-                style={[
+                style={({ pressed }) => [
                   styles.tile,
-                  on
-                    ? { borderWidth: 2, borderColor: palette.ink }
-                    : { borderWidth: 1, borderColor: palette.line2 },
+                  {
+                    backgroundColor: on ? palette.accBg : palette.card,
+                    boxShadow: on ? `inset 0 0 0 2px ${palette.acc}` : undefined,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  },
                 ]}
               >
-                <Icon name={i.icon} color={i.key ? palette.ink : palette.mut} />
-                <View style={styles.tileLabel}>
-                  <Text style={{ flex: 1, fontSize: 14, color: i.key ? palette.ink : palette.mut }}>
-                    {i.label}
-                  </Text>
-                  {on ? <Icon name="check" size={18} /> : null}
+                <View style={[styles.tileIcon, { backgroundColor: on ? palette.acc : palette.bg2 }]}>
+                  <Icon name={i.icon} size={20} color={on ? onColor : i.key ? palette.ink : palette.mut} />
                 </View>
+                <Text style={{ fontSize: 14, lineHeight: 20, color: i.key ? palette.ink : palette.mut }}>
+                  {i.label}
+                </Text>
               </Pressable>
             );
           })}
@@ -205,6 +213,7 @@ export function StartForm({
           ref={summaryInput}
           label="补充描述"
           hideLabel
+          onGrey
           multiline
           counter
           value={summary}
@@ -215,11 +224,15 @@ export function StartForm({
         />
       </Step>
 
-      <Step n="03" title="每段的长度">
-        <View style={styles.lengths} accessibilityRole="radiogroup" accessibilityLabel="每段的长度">
-          {(["short", "medium", "long"] as const).map((value, i) => {
+      <Step n="3" title="每段的长度">
+        <View
+          style={[styles.lengths, { backgroundColor: palette.bg3 }]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="每段的长度"
+        >
+          {(["short", "medium", "long"] as const).map((value) => {
             const on = length === value;
-            const fg = on ? palette.bg : palette.ink;
+            const glyph = LENGTH_GLYPHS[value];
             return (
               <Pressable
                 key={value}
@@ -227,39 +240,49 @@ export function StartForm({
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={LENGTH_LABELS[value]}
                 onPress={() => setLength(value)}
-                style={[
-                  styles.length,
-                  on ? { backgroundColor: palette.ink } : { borderWidth: 1, borderColor: palette.line2 },
-                  i > 0 && !on ? { marginLeft: -1 } : null,
-                ]}
+                style={[styles.length, on ? { backgroundColor: palette.card, boxShadow: liftShadow } : null]}
               >
-                <Svg width={40} height={28} viewBox="0 0 40 28">
-                  <Path d={LENGTH_GLYPHS[value]} stroke={fg} strokeWidth={2} />
+                <Svg width={36} height={22} viewBox="0 0 36 22">
+                  <Path
+                    d={glyph.d}
+                    stroke={on ? palette.acc : palette.ink2}
+                    strokeWidth={glyph.width}
+                    strokeLinecap="round"
+                  />
                 </Svg>
-                <Text style={{ fontSize: 14, color: fg }}>{LENGTH_LABELS[value]}</Text>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: on ? "600" : "400",
+                    color: on ? palette.ink : palette.ink2,
+                  }}
+                >
+                  {LENGTH_LABELS[value]}
+                </Text>
               </Pressable>
             );
           })}
         </View>
       </Step>
 
-      <Step n="04" title="文风" optional="可选 · 可多选">
+      <Step n="4" title="文风" optional="可选 · 可多选">
         <View style={styles.wrap}>
           {[...STYLE_TAGS, ...customStyles].map((tag) => (
             <Chip
               key={tag}
               label={tag}
               check
+              onGrey
               selected={styles_.includes(tag)}
               onPress={() => setStyles((list) => toggle(list, tag))}
             />
           ))}
-          <Chip label="自定义" icon="plus" muted onPress={() => void addCustom("style")} />
+          <Chip label="自定义" icon="plus" muted onGrey onPress={() => void addCustom("style")} />
         </View>
       </Step>
 
-      <Step n="05" title="不想看到的内容" optional="可选">
-        <View style={styles.checks}>
+      <Step n="5" title="不想看到的内容" optional="可选">
+        <View style={[styles.checks, { backgroundColor: palette.card }]}>
           {[...BOUNDARY_ITEMS, ...customBounds].map((item) => (
             <View key={item} style={styles.checkCell}>
               <Checkbox
@@ -280,23 +303,31 @@ export function StartForm({
 
 const styles = StyleSheet.create({
   step: {
-    flexDirection: "row",
-    gap: space.m,
-    paddingVertical: space.read,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
+    marginHorizontal: space.list,
+    marginBottom: space.s,
+    paddingVertical: 20,
+    paddingHorizontal: space.l,
+    borderRadius: radius.group,
+    gap: 14,
   },
-  stepNo: { width: 40, fontFamily: font.mono, fontSize: 12, lineHeight: 24, letterSpacing: 0.5 },
-  stepTitle: { fontSize: 17, lineHeight: 24, fontWeight: "700" },
-  optional: { fontFamily: font.mono, fontSize: 12, fontWeight: "400" },
-  nameRow: { flexDirection: "row", gap: space.s },
-  dice: { width: 52, height: 52, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  stepHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  stepNo: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  stepTitle: { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: "700" },
+  optional: { fontSize: 12.5, fontWeight: "400" },
+  dice: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: space.s },
-  tile: { width: "48.5%", minHeight: 96, padding: 14, justifyContent: "space-between", gap: 10 },
-  tileLabel: { flexDirection: "row", alignItems: "center" },
-  lengths: { flexDirection: "row" },
-  length: { flex: 1, minHeight: 104, padding: 14, justifyContent: "space-between" },
-  checks: { flexDirection: "row", flexWrap: "wrap", columnGap: space.m },
+  tile: { width: "48.5%", minHeight: 96, padding: 14, borderRadius: radius.card, gap: space.m },
+  tileIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  lengths: { flexDirection: "row", padding: 4, gap: 4, borderRadius: 26 },
+  length: { flex: 1, alignItems: "center", gap: 10, paddingTop: 16, paddingBottom: 12, borderRadius: 22 },
+  checks: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: radius.card,
+  },
   checkCell: { width: "47%" },
 });

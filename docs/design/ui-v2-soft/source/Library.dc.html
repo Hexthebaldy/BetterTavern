@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>剧本库 · 柔和圆角</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--err:#D3392B;--errBg:#FDEEEB;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF;--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10)}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;height:28px;padding:0 12px;border-radius:14px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12px;color:#6E6D68}
+.ph{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;border-radius:44px;box-shadow:0 0 0 1px #EEEEEA}
+.ph *{box-sizing:border-box}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 22px;border:0;border-radius:26px;font-family:inherit;font-size:16px;font-weight:500;text-decoration:none;width:100%}
+.bp{background:var(--pri);color:var(--onPri)}
+.hd{position:absolute;top:0;left:0;right:0;padding:64px 16px 12px 24px;display:flex;align-items:center;justify-content:space-between}
+.big{font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.grid{position:absolute;top:120px;left:12px;right:12px;bottom:0;overflow:hidden;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-content:start}
+.tile{display:flex;flex-direction:column;gap:0;padding:8px;border-radius:26px;background:var(--bg2);color:inherit;text-decoration:none}
+.meta{padding:10px 8px 8px;display:flex;flex-direction:column;gap:3px}
+.nm{font-size:16px;line-height:22px;font-weight:700}
+.sm{font-size:12.5px;line-height:18px;color:var(--mut);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:36px}
+.cv{display:block;width:100%;height:auto}
+.cv path,.cv circle.o{fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cv .bgr{fill:var(--card)}
+.cv .dot{fill:var(--acc)}
+.cv .soft{stroke:var(--line2)}
+.seg{display:flex;gap:2px;padding:3px;border-radius:22px;background:var(--bg2)}
+.seg button{width:38px;height:38px;border:0;border-radius:19px;background:transparent;color:var(--mut);display:flex;align-items:center;justify-content:center}
+.seg .on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(20,20,20,.12)}
+.add{width:44px;height:44px;border:0;border-radius:22px;background:var(--ink);color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.tabs{position:absolute;z-index:5;left:20px;right:20px;bottom:28px;height:64px;padding:0 8px;border-radius:32px;background:var(--card);box-shadow:var(--sh);display:flex;align-items:center;justify-content:space-between}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;width:84px;font-size:11px;line-height:14px;color:var(--mut);text-decoration:none}
+.ton{flex-direction:row;gap:8px;width:auto;height:48px;padding:0 18px 0 14px;border-radius:24px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:500}
+</style>
+</helmet>
+<div class="bd0 L" style="width: 1250px; height: 884px">
+
+  <div class="cell">
+    <div class="tag">01 · 剧本库 · 已导入过</div>
+    <section class="ph" aria-label="剧本库">
+      <header class="hd">
+        <h1 class="big">剧本</h1>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <div class="seg" role="radiogroup" aria-label="视图">
+            <button class="on" type="button" role="radio" aria-checked="true" aria-label="网格"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></button>
+            <button type="button" role="radio" aria-checked="false" aria-label="列表"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+          </div>
+          <button class="add" type="button" aria-label="导入角色卡"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+      </header>
+      <div class="grid">
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path d="M8 46q10-6 20 0t20 0 20 0 20 0M8 58q10-6 20 0t20 0 20 0 20 0"/><circle class="dot" cx="68" cy="22" r="7"/></svg><div class="meta"><div class="nm">沈知微</div><div class="sm">江南渡口茶馆的掌柜，话很少，像是在等一个不会回来的人。</div></div></a>
+        <a class="tile" href="#"><div style="aspect-ratio: 96 / 76; border-radius: 18px; background: var(--bg3); display: flex; align-items: center; justify-content: center; color: var(--mut)" aria-label="角色卡图片"><svg class="i" style="width: 28px; height: 28px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="4"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5-5 4 4 3-3 5 5"/></svg></div><div class="meta"><div class="nm">维克多·霍兰</div><div class="sm">雾都钟楼下的钟表匠，替人修表，也替人保管不能寄出的信。</div></div></a>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path class="soft" d="M18 28h60M18 48h60M38 10v56M58 10v56"/><path d="M18 66A50 50 0 0168 14"/><circle class="dot" cx="58" cy="28" r="6"/></svg><div class="meta"><div class="nm">阿澄</div><div class="sm">第七号极地观测站的值守系统，已经独自运行了四百天。</div></div></a>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path class="soft" d="M12 22h72M12 32h40"/><path d="M12 60h72M24 60a24 24 0 0148 0"/><circle class="dot" cx="70" cy="27" r="6"/></svg><div class="meta"><div class="nm">白鹭镇</div><div class="sm">“雾起的时候，别过石桥。”</div></div></a>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path d="M16 62l12-24 12 24zM38 62l14-32 14 32zM62 62l9-16 9 16z"/><circle class="dot" cx="52" cy="52" r="4.5"/></svg><div class="meta"><div class="nm">林间旅店</div><div class="sm">作者：松风</div></div></a>
+      </div>
+      <div role="status" style="position: absolute; z-index: 6; left: 24px; right: 24px; bottom: 104px; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 6px 0 18px; border-radius: 26px; background: var(--ink); color: #FFFFFF; font-size: 14px; box-shadow: var(--sh)">
+        <svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <span style="flex: 1">“沈知微”之前已经导入过了</span>
+        <span style="height: 40px; padding: 0 14px; border-radius: 20px; background: rgba(255,255,255,.14); display: flex; align-items: center; font-weight: 500">打开</span>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">02 · 导入中 · 导入失败</div>
+    <section class="ph" aria-label="导入中与失败">
+      <header class="hd">
+        <h1 class="big">剧本</h1>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <div class="seg"><button class="on" type="button" aria-label="网格"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></button><button type="button" aria-label="列表"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button></div>
+          <button class="add" type="button" aria-label="正在导入" aria-disabled="true" style="background: var(--bg3); color: var(--mut)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+      </header>
+      <div role="alert" style="position: absolute; z-index: 6; top: 120px; left: 12px; right: 12px; display: flex; gap: 12px; align-items: flex-start; padding: 14px 8px 14px 16px; border-radius: 24px; background: var(--errBg); font-size: 14px; line-height: 21px">
+        <svg class="i" style="width: 20px; height: 20px; color: var(--err)" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 4.3L2.6 18a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 500">霜月城.webp 不是角色卡</span><span style="color: var(--ink2)">只支持 PNG 或 JSON，最大 16 MB。</span></div>
+        <button type="button" aria-label="关闭" style="width: 36px; height: 36px; margin: -6px 0; border: 0; border-radius: 18px; background: rgba(255,255,255,.6); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="grid" style="top: 222px">
+        <div class="tile" role="status" aria-label="正在导入 雪夜信使.png">
+          <div style="aspect-ratio: 96 / 76; border-radius: 18px; background: var(--card); display: flex; align-items: center; justify-content: center">
+            <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="22" style="fill: none; stroke: var(--bg3); stroke-width: 5"/><path d="M28 6a22 22 0 0119.8 31.6" style="fill: none; stroke: var(--acc); stroke-width: 5; stroke-linecap: round"/></svg>
+          </div>
+          <div class="meta"><div class="nm" style="color: var(--mut)">正在导入</div><div class="sm mono" style="font-size: 11.5px">雪夜信使.png · 2.4 MB</div></div>
+        </div>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path d="M8 46q10-6 20 0t20 0 20 0 20 0M8 58q10-6 20 0t20 0 20 0 20 0"/><circle class="dot" cx="68" cy="22" r="7"/></svg><div class="meta"><div class="nm">沈知微</div><div class="sm">江南渡口茶馆的掌柜，话很少，像是在等一个不会回来的人。</div></div></a>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path class="soft" d="M18 28h60M18 48h60M38 10v56M58 10v56"/><path d="M18 66A50 50 0 0168 14"/><circle class="dot" cx="58" cy="28" r="6"/></svg><div class="meta"><div class="nm">阿澄</div><div class="sm">第七号极地观测站的值守系统，已经独自运行了四百天。</div></div></a>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path class="soft" d="M12 22h72M12 32h40"/><path d="M12 60h72M24 60a24 24 0 0148 0"/><circle class="dot" cx="70" cy="27" r="6"/></svg><div class="meta"><div class="nm">白鹭镇</div><div class="sm">“雾起的时候，别过石桥。”</div></div></a>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">03 · 空状态</div>
+    <section class="ph" aria-label="剧本空状态">
+      <header class="hd"><h1 class="big">剧本</h1></header>
+      <div style="position: absolute; top: 124px; left: 16px; right: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <div style="padding: 20px; border-radius: 26px; background: var(--bg2); display: flex; flex-direction: column; gap: 14px">
+            <svg width="44" height="52" viewBox="0 0 44 52" aria-hidden="true"><path d="M8 2h20l14 14v28a6 6 0 01-6 6H8a6 6 0 01-6-6V8a6 6 0 016-6z" style="fill: var(--card); stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round"/><path d="M28 2v10a4 4 0 004 4h10" style="fill: none; stroke: var(--ink); stroke-width: 1.8"/><rect x="10" y="24" width="20" height="16" rx="4" style="fill: var(--bg2)"/><circle cx="24" cy="29" r="3" style="fill: var(--acc)"/></svg>
+            <div><div style="font-weight: 700">PNG</div><div style="font-size: 12.5px; line-height: 18px; color: var(--mut)">卡面图片里带数据</div></div>
+          </div>
+          <div style="padding: 20px; border-radius: 26px; background: var(--bg2); display: flex; flex-direction: column; gap: 14px">
+            <svg width="44" height="52" viewBox="0 0 44 52" aria-hidden="true"><path d="M8 2h20l14 14v28a6 6 0 01-6 6H8a6 6 0 01-6-6V8a6 6 0 016-6z" style="fill: var(--card); stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round"/><path d="M28 2v10a4 4 0 004 4h10" style="fill: none; stroke: var(--ink); stroke-width: 1.8"/><path d="M14 26l-5 6 5 6M30 26l5 6-5 6M20 40l4-16" style="fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"/></svg>
+            <div><div style="font-weight: 700">JSON</div><div style="font-size: 12.5px; line-height: 18px; color: var(--mut)">纯文本角色卡</div></div>
+          </div>
+        </div>
+        <div style="padding: 24px 20px; border-radius: 26px; background: var(--bg2); display: flex; flex-direction: column; gap: 16px">
+          <div style="font-size: 22px; line-height: 30px; font-weight: 700">导入第一张角色卡</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap" aria-label="支持 SillyTavern V1、V2、V3">
+            <span class="mono" style="height: 30px; padding: 0 12px; border-radius: 15px; display: flex; align-items: center; font-size: 12px; background: var(--card)">SillyTavern</span>
+            <span class="mono" style="height: 30px; padding: 0 12px; border-radius: 15px; display: flex; align-items: center; font-size: 12px; background: var(--ink); color: #FFF">V1</span>
+            <span class="mono" style="height: 30px; padding: 0 12px; border-radius: 15px; display: flex; align-items: center; font-size: 12px; background: var(--ink); color: #FFF">V2</span>
+            <span class="mono" style="height: 30px; padding: 0 12px; border-radius: 15px; display: flex; align-items: center; font-size: 12px; background: var(--ink); color: #FFF">V3</span>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 22px; color: var(--ink2)"><span style="width: 32px; height: 32px; border-radius: 16px; background: var(--card); display: flex; align-items: center; justify-content: center; flex: none"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span><span style="padding-top: 5px">卡里附带的世界书，会转成故事的世界状态。</span></div>
+          <button class="btn bp" type="button" style="justify-content: space-between; padding: 0 8px 0 24px">导入角色卡<span style="width: 36px; height: 36px; border-radius: 18px; background: rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3"/></svg></span></button>
+          <div class="mono" style="font-size: 11.5px; color: var(--mut); text-align: center">.PNG / .JSON · ≤ 16 MB</div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1250,"height":884}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

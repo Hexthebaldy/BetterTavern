@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>故事列表 · 柔和圆角</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF;--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10)}
+.D{--bg:#111113;--bg2:#1C1C1F;--bg3:#27272B;--ink:#F2F2F0;--ink2:#D3D3CF;--mut:#9C9C97;--line:#2A2A2F;--line2:#3A3A40;--acc:#8597FF;--accBg:#1F2546;--warn:#F0B257;--warnBg:#2C2213;--err:#FF7466;--errBg:#2F1715;--pri:#F2F2F0;--onPri:#111113;--card:#2A2A2F;--sh:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.5)}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;height:28px;padding:0 12px;border-radius:14px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12px;color:#6E6D68}
+.ph{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;border-radius:44px;box-shadow:0 0 0 1px #EEEEEA}
+.ph *{box-sizing:border-box}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 22px;border:0;border-radius:26px;font-family:inherit;font-size:16px;font-weight:500;text-decoration:none;width:100%}
+.bp{background:var(--pri);color:var(--onPri)}
+.hd{position:absolute;top:0;left:0;right:0;padding:64px 20px 12px 24px;display:flex;align-items:center;justify-content:space-between}
+.big{font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.cnt{font-family:"IBM Plex Mono",monospace;font-size:13px;height:32px;min-width:32px;padding:0 10px;border-radius:16px;background:var(--bg2);display:flex;align-items:center;justify-content:center;color:var(--ink2)}
+.list{position:absolute;top:120px;left:12px;right:12px;bottom:0;overflow:hidden;display:flex;flex-direction:column;gap:8px}
+.st{display:grid;grid-template-columns:56px minmax(0,1fr);gap:14px;padding:14px;border-radius:24px;background:var(--bg2);color:inherit;text-decoration:none}
+.tt{font-size:17px;line-height:24px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--mut);white-space:nowrap}
+.ex{font-size:14px;line-height:21px;color:var(--ink2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.live{align-self:flex-start;display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:12px;background:var(--accBg);font-size:12px;color:var(--acc);font-weight:500}
+.live i{display:block;width:6px;height:6px;border-radius:3px;background:var(--acc)}
+.cv path,.cv circle.o{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.cv .bgr{fill:var(--card)}
+.cv .dot{fill:var(--acc)}
+.cv .soft{stroke:var(--line2)}
+.tabs{position:absolute;z-index:5;left:20px;right:20px;bottom:28px;height:64px;padding:0 8px;border-radius:32px;background:var(--card);box-shadow:var(--sh);display:flex;align-items:center;justify-content:space-between}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;width:84px;font-size:11px;line-height:14px;color:var(--mut);text-decoration:none}
+.ton{flex-direction:row;gap:8px;width:auto;height:48px;padding:0 18px 0 14px;border-radius:24px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:500}
+</style>
+</helmet>
+<div class="bd0 L" style="width: 1250px; height: 884px">
+
+  <div class="cell">
+    <div class="tag">01 · 列表 · 左滑露出操作</div>
+    <section class="ph L" aria-label="故事列表">
+      <header class="hd"><h1 class="big">故事</h1><span class="cnt">5</span></header>
+      <div class="list">
+        <a class="st" href="#">
+          <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><path d="M8 60q10-7 20 0t20 0 20 0 20 0M8 74q10-7 20 0t20 0 20 0 20 0"/><circle class="dot" cx="66" cy="28" r="9"/></svg>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: baseline; gap: 10px"><span class="tt">雨夜渡口</span><span class="tm">刚刚</span></div>
+            <span class="live"><i></i>正在写下一段</span>
+            <div class="ex">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</div>
+          </div>
+        </a>
+        <a class="st" href="#">
+          <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><path class="soft" d="M20 36h56M20 60h56M36 20v56M60 20v56" style="stroke-width: 1.6"/><path d="M20 80A60 60 0 0180 20"/><circle class="dot" cx="60" cy="36" r="7"/></svg>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: baseline; gap: 10px"><span class="tt">第七号观测站</span><span class="tm">2 分钟前</span></div>
+            <span class="live"><i></i>正在写开场</span>
+          </div>
+        </a>
+        <a class="st" href="#">
+          <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><circle class="o" cx="48" cy="46" r="24"/><path d="M48 46V30M48 46l11 7"/><circle class="dot" cx="48" cy="46" r="4"/></svg>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: baseline; gap: 10px"><span class="tt">钟楼下的信</span><span class="tm">3 小时前</span></div>
+            <div class="ex">霍兰先生把信封翻过来，火漆上印着的不是钟楼，而是一只合拢的眼睛。“你从哪儿拿到的？”</div>
+          </div>
+        </a>
+        <div style="display: flex; gap: 8px; margin-right: -12px">
+          <a class="st" href="#" style="flex: none; width: 236px; margin-left: -110px; grid-template-columns: 56px minmax(0, 1fr)">
+            <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><path class="soft" d="M14 30h68M14 42h40"/><path d="M14 72h68M26 72a22 22 0 0144 0"/><circle class="dot" cx="70" cy="36" r="7"/></svg>
+            <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px"><span class="tt">白鹭镇异闻</span><div class="ex">镇口的石桥在雾里只露出半截。</div></div>
+          </a>
+          <button type="button" style="width: 72px; border: 0; border-radius: 24px; background: var(--bg2); color: var(--ink); font-family: inherit; font-size: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg>重命名</button>
+          <button type="button" style="width: 72px; border: 0; border-radius: 24px; background: var(--err); color: #FFFFFF; font-family: inherit; font-size: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>删除</button>
+        </div>
+        <a class="st" href="#">
+          <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><path d="M18 74l12-26 12 26zM40 74l14-36 14 36zM62 74l9-18 9 18z"/><circle class="dot" cx="54" cy="62" r="5"/></svg>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: baseline; gap: 10px"><span class="tt">林间旅店</span><span class="tm">10月9日</span></div>
+            <span class="live" style="background: var(--warnBg); color: var(--warn)"><svg class="i" style="width: 13px; height: 13px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></svg>开场还没有写好</span>
+          </div>
+        </a>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">02 · 深色 · 下拉刷新</div>
+    <section class="ph D" aria-label="故事列表深色" style="box-shadow: 0 0 0 1px #2A2A2F">
+      <header class="hd"><h1 class="big">故事</h1><span class="cnt">5</span></header>
+      <div style="position: absolute; top: 120px; left: 0; right: 0; height: 48px; display: flex; align-items: center; justify-content: center" role="status" aria-label="正在刷新">
+        <span style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px; border-radius: 16px; background: var(--bg2); color: var(--mut); font-size: 12.5px"><span style="display: flex; gap: 3px"><i style="width: 5px; height: 5px; border-radius: 3px; background: var(--ink)"></i><i style="width: 5px; height: 5px; border-radius: 3px; background: var(--ink); opacity: .4"></i><i style="width: 5px; height: 5px; border-radius: 3px; background: var(--ink); opacity: .15"></i></span>刷新中</span>
+      </div>
+      <div class="list" style="top: 176px">
+        <a class="st" href="#">
+          <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><path d="M8 60q10-7 20 0t20 0 20 0 20 0M8 74q10-7 20 0t20 0 20 0 20 0"/><circle class="dot" cx="66" cy="28" r="9"/></svg>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: baseline; gap: 10px"><span class="tt">雨夜渡口</span><span class="tm">刚刚</span></div>
+            <span class="live"><i></i>正在写下一段</span>
+            <div class="ex">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</div>
+          </div>
+        </a>
+        <a class="st" href="#">
+          <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><path class="soft" d="M20 36h56M20 60h56M36 20v56M60 20v56" style="stroke-width: 1.6"/><path d="M20 80A60 60 0 0180 20"/><circle class="dot" cx="60" cy="36" r="7"/></svg>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: baseline; gap: 10px"><span class="tt">第七号观测站</span><span class="tm">2 分钟前</span></div>
+            <span class="live"><i></i>正在写开场</span>
+          </div>
+        </a>
+        <a class="st" href="#">
+          <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><circle class="o" cx="48" cy="46" r="24"/><path d="M48 46V30M48 46l11 7"/><circle class="dot" cx="48" cy="46" r="4"/></svg>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: baseline; gap: 10px"><span class="tt">钟楼下的信</span><span class="tm">3 小时前</span></div>
+            <div class="ex">霍兰先生把信封翻过来，火漆上印着的不是钟楼，而是一只合拢的眼睛。</div>
+          </div>
+        </a>
+        <a class="st" href="#">
+          <svg class="cv" width="56" height="56" viewBox="0 0 96 96" aria-hidden="true"><rect class="bgr" width="96" height="96" rx="28"/><path class="soft" d="M14 30h68M14 42h40"/><path d="M14 72h68M26 72a22 22 0 0144 0"/><circle class="dot" cx="70" cy="36" r="7"/></svg>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: baseline; gap: 10px"><span class="tt">白鹭镇异闻</span><span class="tm">昨天</span></div>
+            <div class="ex">镇口的石桥在雾里只露出半截，桥那头有人提着灯，一直在等。</div>
+          </div>
+        </a>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">03 · 空状态 · 加载失败提示</div>
+    <section class="ph L" aria-label="故事空状态">
+      <header class="hd"><h1 class="big">故事</h1><span class="cnt">0</span></header>
+      <div style="position: absolute; top: 132px; left: 16px; right: 16px; padding: 28px 24px; border-radius: 32px; background: var(--bg2); display: flex; flex-direction: column; gap: 16px">
+        <svg width="294" height="150" viewBox="0 0 294 150" aria-hidden="true"><rect width="294" height="150" rx="24" style="fill: var(--card)"/><path d="M147 40c-14-10-34-14-60-14v84c26 0 46 4 60 14 14-10 34-14 60-14V26c-26 0-46 4-60 14z" style="fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round"/><path d="M147 40v84" style="stroke: var(--ink); stroke-width: 2"/><path d="M104 56h28M104 70h22M162 56h28M162 70h20" style="stroke: var(--line2); stroke-width: 5; stroke-linecap: round"/><circle cx="214" cy="40" r="10" style="fill: var(--acc)"/></svg>
+        <div style="font-size: 22px; line-height: 30px; font-weight: 700">还没有故事</div>
+        <div style="font-size: 15px; line-height: 24px; color: var(--mut)">去“剧本”导入一张角色卡，设定你扮演的角色，第一段故事就会写出来。</div>
+        <a class="btn bp" href="#" style="justify-content: space-between; padding: 0 8px 0 24px">去导入角色卡<span style="width: 36px; height: 36px; border-radius: 18px; background: rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+      </div>
+      <div role="alert" style="position: absolute; left: 16px; right: 16px; top: 600px; display: flex; gap: 12px; align-items: center; padding: 8px 8px 8px 16px; border-radius: 24px; background: var(--errBg)">
+        <svg class="i" style="width: 20px; height: 20px; color: var(--err)" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9a14 14 0 0120 0M5.5 12.5a9 9 0 0113 0M9 16a4 4 0 016 0M3 3l18 18"/></svg>
+        <span style="flex: 1; font-size: 14px; line-height: 20px">连不上服务器，列表没加载出来</span>
+        <button type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: var(--err); color: #FFF; font-family: inherit; font-size: 13.5px; font-weight: 500">重新加载</button>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1250,"height":884}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

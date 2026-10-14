@@ -1,5 +1,6 @@
 /**
- * 左滑露出操作的列表行（重命名、删除）。左滑到底也不会直接删除，操作仍然要经过确认。
+ * 左滑露出操作的列表卡片（重命名、删除）：卡片往左移，右边露出两个圆角方块按钮。
+ * 左滑到底也不会直接删除，操作仍然要经过确认。
  * 长按和读屏的“操作”菜单给出同样的选项，照顾不习惯左滑的人。同一时间只有一行是打开的。
  */
 
@@ -17,13 +18,14 @@ export type SwipeAction = {
   onPress: () => void;
 };
 
-const ACTION_WIDTH = 80;
+const ACTION_WIDTH = 72;
+const GAP = 8;
 
 let closeOpenRow: (() => void) | null = null;
 
 export function SwipeRow({ actions, children }: { actions: SwipeAction[]; children: ReactNode }) {
   const palette = usePalette();
-  const width = actions.length * ACTION_WIDTH;
+  const width = actions.length * (ACTION_WIDTH + GAP);
   const x = useRef(new Animated.Value(0)).current;
   const offset = useRef(0);
   const [open, setOpen] = useState(false);
@@ -74,7 +76,17 @@ export function SwipeRow({ actions, children }: { actions: SwipeAction[]; childr
       accessibilityActions={actions.map((a) => ({ name: a.key, label: a.label }))}
       onAccessibilityAction={(e) => actions.find((a) => a.key === e.nativeEvent.actionName)?.onPress()}
     >
-      <View style={[styles.actions, { width }]} importantForAccessibility="no-hide-descendants">
+      {/* 卡片没滑开时把下面的按钮藏起来，不然会从卡片的圆角边缘透出一圈颜色 */}
+      <Animated.View
+        style={[
+          styles.actions,
+          {
+            width,
+            opacity: x.interpolate({ inputRange: [-24, 0], outputRange: [1, 0], extrapolate: "clamp" }),
+          },
+        ]}
+        importantForAccessibility="no-hide-descendants"
+      >
         {actions.map((a) => (
           <Pressable
             key={a.key}
@@ -83,13 +95,19 @@ export function SwipeRow({ actions, children }: { actions: SwipeAction[]; childr
               close();
               a.onPress();
             }}
-            style={[styles.action, { backgroundColor: a.danger ? palette.err : palette.bg3 }]}
+            style={({ pressed }) => [
+              styles.action,
+              {
+                backgroundColor: a.danger ? palette.err : palette.bg2,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              },
+            ]}
           >
             <Icon name={a.icon} color={a.danger ? onColor : palette.ink} />
             <Text style={{ fontSize: 12, color: a.danger ? onColor : palette.ink }}>{a.label}</Text>
           </Pressable>
         ))}
-      </View>
+      </Animated.View>
       <Animated.View {...pan.panHandlers} style={{ transform: [{ translateX: x }] }}>
         {children}
         {/* 打开时点行本身只是收起，不进入详情 */}
@@ -101,6 +119,14 @@ export function SwipeRow({ actions, children }: { actions: SwipeAction[]; childr
 
 const styles = StyleSheet.create({
   root: { overflow: "hidden" },
-  actions: { position: "absolute", top: 0, right: 0, bottom: 0, flexDirection: "row" },
-  action: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6 },
+  actions: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    gap: GAP,
+    paddingLeft: GAP,
+  },
+  action: { width: ACTION_WIDTH, borderRadius: 24, alignItems: "center", justifyContent: "center", gap: 6 },
 });

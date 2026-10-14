@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { formatBytes, formatTokens } from "./format.ts";
+import { formatBytes, formatDate, formatTokens } from "./format.ts";
 
 describe("数字格式", () => {
   it("token 数：二进制的整数和十进制的整千都显示成整数 K", () => {
@@ -12,6 +12,11 @@ describe("数字格式", () => {
     assert.equal(formatTokens(8192), "8K");
     assert.equal(formatTokens(65536 + 512), "64.5K");
     assert.equal(formatTokens(500), "500");
+  });
+
+  it("日期", () => {
+    assert.equal(formatDate("2026-09-03T08:00:00"), "2026 年 9 月 3 日");
+    assert.equal(formatDate("不是日期"), "");
   });
 
   it("文件大小", () => {

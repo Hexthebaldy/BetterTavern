@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>组件库 · 柔和圆角</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--ok:#13875A;--okBg:#E9F6EF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--narr:#222222;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF;--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10)}
+.doc{font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif;color:var(--ink);font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased}
+.doc *{box-sizing:border-box}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.k{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:16px;letter-spacing:.06em;color:var(--mut)}
+.c{background:var(--bg2);border-radius:32px;padding:28px;display:flex;flex-direction:column;gap:18px}
+.ct{margin:0;font-size:20px;line-height:26px;font-weight:700}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 20px;border:0;border-radius:26px;font-family:inherit;font-size:15px;font-weight:500}
+.bp{background:var(--pri);color:var(--onPri)}
+.bs{background:var(--card);color:var(--ink)}
+.bq{background:transparent;color:var(--acc);height:44px}
+.bx{background:var(--errBg);color:var(--err)}
+.inp{display:block;width:100%;height:52px;border-radius:14px;background:var(--card);border:0;padding:0 16px;font-family:inherit;font-size:15px;color:var(--ink);outline:none}
+.inp::placeholder{color:var(--mut)}
+.lab{font-size:13px;line-height:18px;color:var(--ink2);font-weight:500}
+.chip{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border:0;border-radius:20px;background:var(--card);font-family:inherit;font-size:14px;color:var(--ink)}
+.on{background:var(--ink);color:#FFFFFF}
+.cap{font-size:12.5px;line-height:19px;color:var(--mut)}
+.wh{background:var(--card);border-radius:20px}
+</style>
+</helmet>
+<div class="doc L" style="width: 1440px; min-height: 2240px; background: var(--bg); padding: 64px 72px 72px; display: flex; flex-direction: column; gap: 32px">
+  <header style="display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 48px; align-items: end">
+    <div style="display: flex; flex-direction: column; gap: 14px"><span class="k">BetterTavern · Components · Soft</span><h1 style="margin: 0; font-size: 72px; line-height: 72px; font-weight: 900; letter-spacing: -.04em">组件</h1></div>
+    <p style="margin: 0; font-size: 15px; line-height: 26px; color: var(--ink2)">状态的表达方式从“换线”改成“换底”：未选中是浅灰，选中是黑或浅蓝，聚焦是一圈 2px 蓝色。按下态统一为缩到 97% 加底色加深。</p>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start">
+    <section class="c">
+      <span class="k">01</span><h2 class="ct">按钮</h2>
+      <div style="display: grid; grid-template-columns: 52px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: center">
+        <span></span><span class="k">默认</span><span class="k">加载</span><span class="k">禁用</span>
+        <span class="k">主要</span><button class="btn bp" type="button">开始</button><button class="btn bp" type="button" aria-label="加载中"><span style="display: flex; gap: 4px"><i style="width: 6px; height: 6px; border-radius: 3px; background: #FFF"></i><i style="width: 6px; height: 6px; border-radius: 3px; background: #FFF; opacity: .5"></i><i style="width: 6px; height: 6px; border-radius: 3px; background: #FFF; opacity: .2"></i></span></button><button class="btn" type="button" disabled style="background: var(--bg3); color: var(--mut)">开始</button>
+        <span class="k">次要</span><button class="btn bs" type="button">测试</button><button class="btn bs" type="button" aria-label="加载中"><span style="display: flex; gap: 4px"><i style="width: 6px; height: 6px; border-radius: 3px; background: var(--ink)"></i><i style="width: 6px; height: 6px; border-radius: 3px; background: var(--ink); opacity: .5"></i><i style="width: 6px; height: 6px; border-radius: 3px; background: var(--ink); opacity: .2"></i></span></button><button class="btn bs" type="button" disabled style="color: var(--line2)">测试</button>
+        <span class="k">文字</span><button class="btn bq" type="button">去设置</button><button class="btn bq" type="button">…</button><button class="btn bq" type="button" disabled style="color: var(--line2)">去设置</button>
+        <span class="k">危险</span><button class="btn bx" type="button">删除</button><button class="btn" type="button" style="background: var(--err); color: #FFF">确认删除</button><button class="btn bx" type="button" disabled style="opacity: .4">删除</button>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button class="btn bp" type="button" style="flex: 1; justify-content: space-between; padding: 0 8px 0 22px">带方向<span style="width: 36px; height: 36px; border-radius: 18px; background: rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></button>
+        <button class="btn bs" type="button" aria-label="随机" style="width: 52px; padding: 0"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button>
+      </div>
+      <p class="cap" style="margin: 0">推进流程的主按钮右侧嵌一个半透明的小圆，里面放箭头。</p>
+    </section>
+
+    <section class="c">
+      <span class="k">02</span><h2 class="ct">输入</h2>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="y1">默认 · 填色无边</label><input id="y1" class="inp" placeholder="you@example.com"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="y2">聚焦 · 2px 蓝圈</label><input id="y2" class="inp" value="林川" style="box-shadow: 0 0 0 2px var(--acc)"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="y3">错误</label><input id="y3" class="inp" value="abc1234" style="background: var(--errBg); box-shadow: inset 0 0 0 1.5px var(--err)"><span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--err)"><svg class="i" style="width: 15px; height: 15px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>至少 8 位</span></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="y4">附带动作</label><div style="position: relative"><input id="y4" class="inp mono" placeholder="sk-…" style="padding-right: 88px"><button type="button" style="position: absolute; right: 6px; top: 6px; height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: var(--ink); color: #FFF; font-family: inherit; font-size: 13px">粘贴</button></div></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><label class="lab" for="y5">禁用</label><input id="y5" class="inp" value="官方地址" disabled style="background: var(--bg3); color: var(--mut)"></div>
+    </section>
+
+    <section class="c">
+      <span class="k">03</span><h2 class="ct">选择</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px"><button class="chip on" type="button"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.4" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>克制</button><button class="chip" type="button">诗意</button><button class="chip" type="button">轻快</button><button class="chip" type="button" style="color: var(--mut)">+ 自定义</button></div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 24px; background: var(--bg3)" role="radiogroup" aria-label="分段">
+        <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: var(--ink2)">32K</button>
+        <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: var(--card); font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 500; box-shadow: 0 1px 3px rgba(20,20,20,.12)">64K</button>
+        <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: var(--ink2)">128K</button>
+        <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: var(--ink2)">256K</button>
+      </div>
+      <div class="wh" style="padding: 6px 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px">
+        <span style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px"><span style="width: 22px; height: 22px; border-radius: 7px; background: var(--acc); color: #FFF; display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>勾选</span>
+        <span style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px"><span style="width: 22px; height: 22px; border-radius: 7px; box-shadow: inset 0 0 0 1.75px var(--line2)"></span>未勾选</span>
+        <span style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px"><span style="width: 22px; height: 22px; border-radius: 11px; box-shadow: inset 0 0 0 7px var(--acc)"></span>单选</span>
+        <span style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px"><span style="position: relative; width: 50px; height: 30px; border-radius: 15px; background: var(--acc)"><span style="position: absolute; top: 3px; left: 23px; width: 24px; height: 24px; border-radius: 12px; background: #FFF; box-shadow: 0 1px 3px rgba(0,0,0,.2)"></span></span>开关</span>
+      </div>
+      <div class="wh" style="overflow: hidden; box-shadow: var(--sh)">
+        <div style="display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-bottom: 1px solid var(--line)"><span class="mono" style="flex: 1; font-size: 14px">192.168.1.10:8000</span><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14l5-5 5 5"/></svg></div>
+        <div style="padding: 6px">
+          <div style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border-radius: 14px; background: var(--accBg)"><svg class="i" style="width: 16px; height: 16px; color: var(--acc); stroke-width: 2.4" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="mono" style="font-size: 13px">192.168.1.10:8000</span></div>
+          <div style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px 0 38px"><span class="mono" style="font-size: 13px">tavern.home.arpa</span></div>
+          <div style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; color: var(--acc); font-size: 13px"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>输入新地址</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">04</span><h2 class="ct">提示条</h2>
+      <div role="alert" style="display: flex; gap: 10px; align-items: center; padding: 6px 6px 6px 16px; border-radius: 20px; background: var(--errBg); font-size: 14px"><svg class="i" style="color: var(--err)" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 4.3L2.6 18a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/><path d="M12 10v4M12 17h.01"/></svg><span style="flex: 1">没有可用模型</span><span style="height: 40px; padding: 0 14px; border-radius: 20px; background: var(--err); color: #FFF; display: flex; align-items: center; font-weight: 500">去设置</span></div>
+      <div style="display: flex; gap: 10px; align-items: center; padding: 14px 16px; border-radius: 20px; background: var(--accBg); font-size: 14px"><svg class="i" style="color: var(--acc)" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>已设为导演模型</div>
+      <div style="display: flex; gap: 10px; align-items: center; padding: 14px 16px; border-radius: 20px; background: var(--warnBg); font-size: 14px"><svg class="i" style="color: var(--warn)" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 4.3L2.6 18a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/><path d="M12 10v4M12 17h.01"/></svg>工作窗口会按 128K 算</div>
+      <div role="status" style="display: flex; gap: 10px; align-items: center; height: 52px; padding: 0 20px; border-radius: 26px; background: var(--ink); color: #FFF; font-size: 14px; box-shadow: var(--sh)"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 10"/></svg>已删除“白鹭镇异闻”</div>
+      <p class="cap" style="margin: 0">墨色胶囊浮条贴着 Tab 栏上方浮起，3 秒后自动消失。</p>
+    </section>
+
+    <section class="c">
+      <span class="k">05</span><h2 class="ct">列表 · 分组卡</h2>
+      <div class="wh" style="overflow: hidden">
+        <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 14px 16px">
+          <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true"><rect width="52" height="52" rx="16" style="fill: var(--bg2)"/><path d="M6 34q5-4 10 0t10 0 10 0 10 0M6 41q5-4 10 0t10 0 10 0 10 0" style="fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round"/><circle cx="36" cy="16" r="5" style="fill: var(--acc)"/></svg>
+          <div style="display: flex; flex-direction: column; gap: 4px"><div style="display: flex; justify-content: space-between"><b>雨夜渡口</b><span class="mono" style="font-size: 11px; color: var(--mut)">刚刚</span></div><span style="align-self: flex-start; display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; background: var(--accBg); font-size: 12px; color: var(--acc); font-weight: 500"><i style="width: 6px; height: 6px; border-radius: 3px; background: var(--acc)"></i>正在写下一段</span></div>
+        </div>
+        <div style="height: 1px; background: var(--line); margin: 0 16px"></div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 0 16px; background: var(--bg3)"><span style="width: 36px; height: 36px; border-radius: 12px; background: var(--card); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2.5 2.5"/></svg></span><span style="flex: 1">按下态</span><svg class="i" style="width: 16px; height: 16px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: stretch; height: 64px">
+        <div class="wh" style="flex: 1; display: flex; align-items: center; padding: 0 16px; font-weight: 700">左滑露出操作</div>
+        <span style="width: 56px; border-radius: 20px; background: var(--card); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></span>
+        <span style="width: 56px; border-radius: 20px; background: var(--err); color: #FFF; display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></span>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">06</span><h2 class="ct">状态</h2>
+      <div class="wh" style="padding: 16px; display: flex; flex-wrap: wrap; gap: 8px">
+        <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 8px; border-radius: 14px; background: var(--okBg); color: var(--ok); font-size: 13px; font-weight: 500"><svg class="i" style="width: 15px; height: 15px; stroke-width: 2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>可用</span>
+        <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 8px; border-radius: 14px; background: var(--warnBg); color: var(--warn); font-size: 13px; font-weight: 500"><svg class="i" style="width: 15px; height: 15px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></svg>还没测试</span>
+        <span style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 8px; border-radius: 14px; background: var(--errBg); color: var(--err); font-size: 13px; font-weight: 500"><svg class="i" style="width: 15px; height: 15px; stroke-width: 2.2" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>Key 无效</span>
+        <span style="display: flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 14px; background: var(--ink); color: #FFF; font-size: 12px">导演</span>
+        <span class="mono" style="display: flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 14px; background: var(--bg2); font-size: 12px">128K</span>
+      </div>
+      <div class="wh" style="padding: 8px 16px">
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 44px"><span style="width: 26px; height: 26px; border-radius: 13px; background: var(--ok); color: #FFF; display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span style="flex: 1">通过</span></div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 44px"><span style="width: 26px; height: 26px; border-radius: 13px; background: var(--err); color: #FFF; display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></span><span style="flex: 1">失败</span></div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 44px"><span style="width: 26px; height: 26px; border-radius: 13px; background: var(--bg3); color: var(--mut); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></span><span style="flex: 1; color: var(--mut)">跳过</span></div>
+      </div>
+    </section>
+
+    <section class="c" style="grid-column: span 2">
+      <span class="k">07</span><h2 class="ct">阅读页小件</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 14px">
+          <div class="k">“我的行动”卡片</div>
+          <div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 20px; background: var(--card); font-size: 15px; line-height: 24px; font-weight: 500"><span style="width: 26px; height: 26px; border-radius: 13px; background: var(--accBg); color: var(--acc); display: flex; align-items: center; justify-content: center; flex: none"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.4" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v7h12M14 8l4 4-4 4"/></svg></span>我在她对面坐下，问她这道疤是怎么来的。</div>
+          <p class="cap" style="margin: 0">一张缩进的圆角卡片，左边蓝色小圆里放转折箭头。卡片的灰底在叙述的白纸上就是回合之间的分隔。它不是聊天气泡：两边都对齐页边距，也没有尖角。</p>
+          <div class="k">状态行 · 光标</div>
+          <span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 14px; background: var(--card); font-size: 12.5px; color: var(--mut)"><span style="display: flex; gap: 3px"><i style="width: 5px; height: 5px; border-radius: 3px; background: var(--acc)"></i><i style="width: 5px; height: 5px; border-radius: 3px; background: var(--acc); opacity: .5"></i><i style="width: 5px; height: 5px; border-radius: 3px; background: var(--acc); opacity: .2"></i></span>正在构思…</span>
+          <p style="margin: 0; font-family: 'Noto Serif SC', serif; font-size: 17.5px; line-height: 31px; color: var(--narr)">窗外忽然传来船桨拍水的声音<span style="display: inline-block; width: 3px; height: 20px; border-radius: 2px; margin-left: 3px; vertical-align: -4px; background: var(--acc)"></span></p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px">
+          <div class="k">选项卡片 · 默认 / 按下</div>
+          <div style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 14px; border-radius: 20px; background: var(--card)"><span class="mono" style="width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; background: var(--bg2); font-size: 13px; font-weight: 500">A</span><span style="flex: 1">起身走到窗边，看清河上是什么船</span></div>
+          <div style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 0 14px; border-radius: 20px; background: var(--accBg); box-shadow: inset 0 0 0 2px var(--acc); transform: scale(.98)"><span class="mono" style="width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; background: var(--acc); color: #FFF; font-size: 13px; font-weight: 500">B</span><span style="flex: 1">按住她续茶的手</span></div>
+          <div class="k">回到最新 · 生成指示</div>
+          <div style="display: flex; gap: 16px; align-items: center">
+            <span style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px 0 14px; border-radius: 22px; background: var(--ink); color: #FFF; font-size: 14px; box-shadow: var(--sh)"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>回到最新<i style="width: 6px; height: 6px; border-radius: 3px; background: #8597FF"></i></span>
+            <span style="width: 48px; height: 6px; border-radius: 3px; background: var(--bg3); position: relative; overflow: hidden"><i style="position: absolute; left: 10px; width: 20px; height: 6px; border-radius: 3px; background: var(--acc)"></i></span>
+            <span class="cap">把手形状的进度条</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">08</span><h2 class="ct">对话框 · 面板</h2>
+      <div style="background: rgba(20,20,20,.38); border-radius: 24px; padding: 20px 14px; display: flex; flex-direction: column; gap: 14px">
+        <div role="alertdialog" aria-label="删除确认" style="background: var(--card); border-radius: 28px; padding: 22px 18px 18px; display: flex; flex-direction: column; gap: 14px; text-align: center">
+          <span style="align-self: center; width: 48px; height: 48px; border-radius: 24px; background: var(--errBg); color: var(--err); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></span>
+          <div style="display: flex; flex-direction: column; gap: 4px"><b style="font-size: 17px">删除“雨夜渡口”？</b><span style="font-size: 13.5px; line-height: 21px; color: var(--ink2)">删除后故事和世界状态都无法恢复。</span></div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px"><button class="btn bs" type="button" style="background: var(--bg2); height: 48px">取消</button><button class="btn" type="button" style="background: var(--err); color: #FFF; height: 48px">删除</button></div>
+        </div>
+        <div style="background: var(--card); border-radius: 28px 28px 0 0; padding: 10px 18px 18px; display: flex; flex-direction: column; gap: 6px"><span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--line2)"></span><b style="font-size: 17px; margin-top: 6px">底部面板</b><span class="cap">顶部圆角 32，有拖拽条；下拉或点遮罩关闭。</span></div>
+      </div>
+    </section>
+
+    <section class="c">
+      <span class="k">09</span><h2 class="ct">加载 · 空 · 错</h2>
+      <div class="wh" style="padding: 16px; display: flex; gap: 12px; align-items: center"><span style="width: 52px; height: 52px; border-radius: 16px; background: var(--bg2)"></span><div style="flex: 1; display: flex; flex-direction: column; gap: 8px"><span style="height: 12px; width: 50%; border-radius: 6px; background: var(--bg3)"></span><span style="height: 10px; width: 85%; border-radius: 5px; background: var(--bg2)"></span></div></div>
+      <span style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--mut)"><span style="display: flex; gap: 4px"><i style="width: 8px; height: 8px; border-radius: 4px; background: var(--ink)"></i><i style="width: 8px; height: 8px; border-radius: 4px; background: var(--ink); opacity: .35"></i><i style="width: 8px; height: 8px; border-radius: 4px; background: var(--ink); opacity: .12"></i></span>三点 · 通用加载</span>
+      <div class="wh" style="padding: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center"><span style="width: 52px; height: 52px; border-radius: 26px; background: var(--errBg); color: var(--err); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9a14 14 0 0120 0M5.5 12.5a9 9 0 0113 0M9 16a4 4 0 016 0M3 3l18 18"/></svg></span><b>故事列表没加载出来</b><button class="btn bs" type="button" style="background: var(--bg2); width: 100%">重新加载</button></div>
+    </section>
+
+    <section class="c">
+      <span class="k">10</span><h2 class="ct">导航</h2>
+      <div class="wh" style="display: flex; align-items: center; height: 56px; padding: 0 6px">
+        <span style="width: 40px; height: 40px; border-radius: 20px; background: var(--bg2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span style="width: 48px"></span><b style="flex: 1; text-align: center; font-size: 15px; font-weight: 600">雨夜渡口</b>
+        <span style="width: 40px; height: 40px; border-radius: 20px; background: var(--bg2); display: flex; align-items: center; justify-content: center; position: relative; margin-right: 6px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><i style="position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 5px; background: var(--acc); box-shadow: 0 0 0 2px var(--card)"></i></span>
+        <span style="width: 40px; height: 40px; border-radius: 20px; background: var(--bg2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg></span>
+      </div>
+      <p class="cap" style="margin: 0">导航按钮是 40 的灰色圆底（热区 44）。一级页大标题下面不画线，标题右侧放一个圆形主操作按钮。</p>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2240}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

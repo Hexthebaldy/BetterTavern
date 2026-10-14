@@ -16,7 +16,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import Svg, { Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, describeError } from "../../src/api/client.ts";
@@ -30,13 +29,14 @@ import {
   IconButton,
   Loading,
   Notice,
+  Pill,
   useOverlay,
   type IconName,
 } from "../../src/components/ui.tsx";
 import { StartForm, type StartValues } from "../../src/features/scenario/StartForm.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { font, space, usePalette } from "../../src/theme/index.ts";
+import { font, radius, size, space, type, usePalette } from "../../src/theme/index.ts";
 
 /** 角色卡里可能被截断的字段 */
 const FIELD_NAMES: Record<string, string> = {
@@ -55,18 +55,16 @@ function Stat({
   value,
   label,
   warn,
-  last,
 }: {
   icon: IconName;
   value: number;
   label: string;
   warn?: boolean;
-  last?: boolean;
 }) {
   const palette = usePalette();
   const color = warn ? palette.warn : palette.ink;
   return (
-    <View style={[styles.stat, last ? null : { borderRightWidth: 1, borderRightColor: palette.line }]}>
+    <View style={[styles.stat, { backgroundColor: warn ? palette.warnBg : palette.bg2 }]}>
       <Icon name={icon} color={color} />
       <Text style={[styles.statValue, { color }]}>{value}</Text>
       <Text style={{ fontSize: 13, lineHeight: 19, color: warn ? palette.warn : palette.mut }}>{label}</Text>
@@ -82,7 +80,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
   return (
     <>
       <View style={styles.titleBlock}>
-        <Text style={[styles.meta, { color: palette.mut }]}>
+        <Text style={[styles.caption, { color: palette.mut }]}>
           角色卡{scenario.creator ? ` · 作者 ${scenario.creator}` : ""}
         </Text>
         <Text accessibilityRole="header" style={[styles.hero, { color: palette.ink }]}>
@@ -91,76 +89,66 @@ function Overview({ scenario }: { scenario: Scenario }) {
         {scenario.tags.length > 0 ? (
           <View style={styles.tags}>
             {scenario.tags.slice(0, 8).map((tag) => (
-              <View key={tag} style={[styles.tag, { borderColor: palette.line2 }]}>
-                <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.ink }}>{tag}</Text>
-              </View>
+              <Pill key={tag} label={tag} height={30} />
             ))}
           </View>
         ) : null}
       </View>
-      <View style={[styles.stats, { borderColor: palette.line }]}>
+      <View style={styles.stats}>
         <Stat icon="world" value={scenario.book_entries} label="世界书条目" />
-        <Stat
-          icon="greeting"
-          value={1 + scenario.alternate_greetings}
-          label="开场白"
-          last={truncated.length === 0}
-        />
+        <Stat icon="greeting" value={1 + scenario.alternate_greetings} label="开场白" />
         {truncated.length > 0 ? (
-          <Stat icon="truncated" value={truncated.length} label="字段被截断" warn last />
+          <Stat icon="truncated" value={truncated.length} label="字段被截断" warn />
         ) : null}
       </View>
-      <View style={styles.description}>
-        {scenario.description_preview ? (
-          <>
-            <Text
-              numberOfLines={expanded ? undefined : 4}
-              onTextLayout={(e) => {
-                if (!expanded) setClamped(e.nativeEvent.lines.length >= 4);
-              }}
-              selectable
-              style={{ fontSize: 15, lineHeight: 26, color: palette.ink2 }}
-            >
-              {scenario.description_preview}
-            </Text>
-            {clamped || expanded ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ expanded }}
-                onPress={() => setExpanded((v) => !v)}
-                style={styles.expand}
+      {scenario.description_preview || truncated.length > 0 ? (
+        <View style={[styles.card, styles.description, { backgroundColor: palette.bg2 }]}>
+          {scenario.description_preview ? (
+            <>
+              <Text
+                numberOfLines={expanded ? undefined : 4}
+                onTextLayout={(e) => {
+                  if (!expanded) setClamped(e.nativeEvent.lines.length >= 4);
+                }}
+                selectable
+                style={{ fontSize: 15, lineHeight: 26, color: palette.ink2 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "500", color: palette.ink }}>
-                  {expanded ? "收起" : "展开全文"}
-                </Text>
-                <Icon name={expanded ? "chevronUp" : "chevronDown"} size={16} />
-              </Pressable>
-            ) : null}
-          </>
-        ) : null}
-        {truncated.length > 0 ? (
-          <View style={styles.warn}>
-            <Icon name="alert" size={16} color={palette.warn} />
-            <Text style={{ flex: 1, fontSize: 13, lineHeight: 19, color: palette.warn }}>
-              {truncated.map((f) => `“${FIELD_NAMES[f] ?? f}”`).join("、")}字段太长，只保留了前面的部分。
-            </Text>
-          </View>
-        ) : null}
-      </View>
+                {scenario.description_preview}
+              </Text>
+              {clamped || expanded ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  onPress={() => setExpanded((v) => !v)}
+                  style={styles.expand}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
+                    {expanded ? "收起" : "展开全文"}
+                  </Text>
+                  <Icon name={expanded ? "chevronUp" : "chevronDown"} size={16} color={palette.acc} />
+                </Pressable>
+              ) : null}
+            </>
+          ) : null}
+          {truncated.length > 0 ? (
+            <View style={[styles.warn, { backgroundColor: palette.card }]}>
+              <Icon name="alert" size={16} color={palette.warn} />
+              <Text style={{ flex: 1, fontSize: 13, lineHeight: 19, color: palette.warn }}>
+                {truncated.map((f) => `“${FIELD_NAMES[f] ?? f}”`).join("、")}字段太长，只保留了前面的部分。
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       {scenario.first_mes_preview ? (
-        <View style={[styles.greeting, { backgroundColor: palette.bg2 }]}>
-          <Svg width={22} height={18} viewBox="0 0 22 18">
-            <Path d="M0 0h9v9H4v9H0zM13 0h9v9h-5v9h-4z" fill={palette.line2} />
-          </Svg>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text style={[styles.meta, { color: palette.mut }]}>原卡的开场白</Text>
-            <Text
-              numberOfLines={3}
-              style={{ fontFamily: font.serif, fontSize: 14.5, lineHeight: 25, color: palette.mut }}
-            >
-              {scenario.first_mes_preview}
-            </Text>
-          </View>
+        <View style={[styles.card, styles.greeting, { backgroundColor: palette.bg2 }]}>
+          <Text style={[styles.caption, { color: palette.mut }]}>原卡的开场白</Text>
+          <Text
+            numberOfLines={3}
+            style={{ fontFamily: font.serif, fontSize: 14.5, lineHeight: 25, color: palette.mut }}
+          >
+            {scenario.first_mes_preview}
+          </Text>
         </View>
       ) : null}
     </>
@@ -183,7 +171,7 @@ export default function ScenarioScreen() {
     setData,
   } = useAsync(() => api.scenarios.get(id), [api, id]);
   const [values, setValues] = useState<StartValues | null>(null);
-  const [line, setLine] = useState("");
+  const [summary, setSummary] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<Error | null>(null);
 
@@ -260,47 +248,59 @@ export default function ScenarioScreen() {
   };
 
   const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
-  const coverHeight = Math.round(width * 0.62) + insets.top;
+  const coverWidth = width - space.list * 2;
+  const coverHeight = Math.round(coverWidth * 0.82);
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1, backgroundColor: palette.bg }}
     >
-      <ScrollView contentContainerStyle={{ paddingBottom: 56 }} keyboardShouldPersistTaps="handled">
-        <View style={{ borderBottomWidth: 1, borderBottomColor: palette.ink }}>
-          <Cover seed={scenario.id} blobId={scenario.avatar_blob_id} width={width} height={coverHeight} />
-          <View style={[styles.coverBar, { top: insets.top + space.s }]}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.cover}>
+          <Cover
+            seed={scenario.id}
+            blobId={scenario.avatar_blob_id}
+            width={coverWidth}
+            height={coverHeight}
+            rounded={34}
+          />
+          {/* 封面伸到状态栏下面，两个按钮避开刘海和灵动岛 */}
+          <View style={[styles.coverBar, { top: Math.max(insets.top - space.list, 0) + space.s }]}>
             <IconButton
               icon="back"
               label="返回"
-              size={24}
+              tone="card"
+              diameter={size.touch}
               onPress={() => router.back()}
-              style={{ backgroundColor: palette.bg }}
             />
             <IconButton
               icon="more"
               label="更多：重命名、删除"
+              tone="card"
+              diameter={size.touch}
               onPress={() => void more()}
-              style={{ backgroundColor: palette.bg }}
             />
           </View>
         </View>
         <Overview scenario={scenario} />
 
-        <View style={[styles.startHead, { borderTopColor: palette.ink, borderBottomColor: palette.line }]}>
+        <View style={styles.startHead}>
           <Text accessibilityRole="header" style={[styles.startTitle, { color: palette.ink }]}>
             开始新的故事
           </Text>
-          <Text style={[styles.meta, { color: palette.mut }]}>5 步 · 只有第 1 步必填</Text>
+          <Text style={[styles.caption, { color: palette.mut }]}>只有第 1 步必填</Text>
         </View>
         <StartForm
           cardName={scenario.name}
-          onChange={(next, summaryText) => {
+          onChange={(next, parts) => {
             setValues(next);
-            setLine(summaryText);
+            setSummary(parts);
           }}
         />
-        <View style={styles.submit}>
+        <View style={[styles.submit, { backgroundColor: palette.card, boxShadow: palette.shadowFloat }]}>
           {startError ? (
             <Notice
               message={routeMissing ? "没有可用模型" : describeError(startError)}
@@ -308,7 +308,11 @@ export default function ScenarioScreen() {
               onAction={routeMissing ? () => router.push("/settings/routes") : undefined}
             />
           ) : null}
-          <Text style={[styles.meta, { color: palette.mut }]}>{line}</Text>
+          <View style={styles.summary} accessible accessibilityLabel={`将要开始：${summary.join("，")}`}>
+            {summary.map((part) => (
+              <Pill key={part} label={part} />
+            ))}
+          </View>
           <Button
             label="开始故事"
             trailingIcon="arrowRight"
@@ -316,13 +320,19 @@ export default function ScenarioScreen() {
             onPress={() => void start()}
             busy={starting}
             disabled={!values?.name}
-            style={{ minHeight: 56 }}
+            style={styles.startButton}
           />
         </View>
 
-        <View style={[styles.danger, { borderTopColor: palette.line }]}>
-          <Button label="删除剧本" variant="danger" icon="trash" onPress={() => void remove()} />
-          <Text style={{ fontSize: 13, lineHeight: 19, color: palette.mut }}>已经开始的故事不受影响。</Text>
+        <View style={styles.danger}>
+          <Button
+            label="删除剧本"
+            variant="danger"
+            icon="trash"
+            onPress={() => void remove()}
+            style={{ alignSelf: "stretch" }}
+          />
+          <Text style={[styles.caption, { color: palette.mut }]}>已经开始的故事不受影响。</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -330,6 +340,7 @@ export default function ScenarioScreen() {
 }
 
 const styles = StyleSheet.create({
+  cover: { marginTop: space.list, marginHorizontal: space.list },
   coverBar: {
     position: "absolute",
     left: space.m,
@@ -337,31 +348,50 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  titleBlock: { paddingTop: space.read, paddingHorizontal: space.page, paddingBottom: space.page, gap: 14 },
-  meta: { fontFamily: font.mono, fontSize: 11.5, lineHeight: 16, letterSpacing: 0.9 },
-  hero: { fontSize: 40, lineHeight: 46, fontWeight: "900", letterSpacing: -1.2 },
+  titleBlock: { paddingTop: 22, paddingHorizontal: space.page, paddingBottom: space.l, gap: space.m },
+  caption: { fontSize: 13, lineHeight: 19 },
+  hero: { ...type.hero },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  tag: { height: 28, paddingHorizontal: 10, justifyContent: "center", borderWidth: 1 },
-  stats: { flexDirection: "row", borderTopWidth: 1, borderBottomWidth: 1 },
-  stat: { flex: 1, paddingVertical: 14, paddingLeft: space.page, paddingRight: space.l, gap: 6 },
+  stats: { flexDirection: "row", gap: space.s, paddingHorizontal: space.list },
+  stat: { flex: 1, padding: 14, borderRadius: 22, gap: 6 },
   statValue: { fontFamily: font.monoMedium, fontSize: 22, lineHeight: 26 },
-  description: { padding: space.page, gap: space.s },
+  card: {
+    marginTop: space.s,
+    marginHorizontal: space.list,
+    borderRadius: radius.group,
+    paddingHorizontal: space.l,
+  },
+  description: { paddingTop: 18, paddingBottom: space.s },
   expand: { flexDirection: "row", alignItems: "center", gap: 4, height: 44, alignSelf: "flex-start" },
-  warn: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
-  greeting: { flexDirection: "row", gap: space.m, marginHorizontal: space.page, padding: space.l },
+  warn: {
+    flexDirection: "row",
+    gap: space.s,
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: space.m,
+    marginHorizontal: -4,
+    marginBottom: space.s,
+    borderRadius: radius.input,
+  },
+  greeting: { paddingVertical: 18, gap: 6 },
   startHead: {
-    marginTop: 40,
-    paddingTop: 18,
-    paddingBottom: 14,
+    paddingTop: 40,
+    paddingBottom: space.l,
     paddingHorizontal: space.page,
-    borderTopWidth: 2,
-    borderBottomWidth: 1,
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "space-between",
     gap: space.s,
   },
   startTitle: { fontSize: 26, lineHeight: 32, fontWeight: "700", letterSpacing: -0.5 },
-  submit: { padding: space.page, gap: space.m },
-  danger: { marginTop: 48, marginHorizontal: space.page, paddingTop: space.page, borderTopWidth: 1, gap: 10 },
+  submit: {
+    marginTop: space.l,
+    marginHorizontal: space.list,
+    padding: space.m,
+    borderRadius: radius.sheet,
+    gap: 10,
+  },
+  summary: { flexDirection: "row", flexWrap: "wrap", gap: 4, paddingHorizontal: 4 },
+  startButton: { height: 56, borderRadius: 28, paddingLeft: space.page, paddingRight: space.s },
+  danger: { marginTop: 40, marginHorizontal: space.list, gap: space.s, alignItems: "center" },
 });

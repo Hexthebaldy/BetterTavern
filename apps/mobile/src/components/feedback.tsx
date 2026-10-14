@@ -1,14 +1,14 @@
 /**
- * 反馈：提示条、状态（可用 / 还没测试 / Key 无效）、等宽小标签、加载失败。页面经 ui.tsx 引用。
- * 红 / 绿 / 琥珀只表示状态，并且一定配图标（三角、对勾、虚线方框、叉），不能只靠颜色区分。
+ * 反馈：提示条、胶囊标签（状态、“我”、“导演”、上下文长度）、加载失败。页面经 ui.tsx 引用。
+ * 红 / 绿 / 琥珀只表示状态，并且一定配图标（三角、对勾、虚线圆、叉），不能只靠颜色区分。
  */
 
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { font, onColor, size, space, type, usePalette, type Palette } from "../theme/index.ts";
+import { font, onColor, radius, space, usePalette, type Palette } from "../theme/index.ts";
 import { Icon, type IconName } from "./icons.tsx";
-import { Button, IconButton, Mono } from "./primitives.tsx";
+import { Button, IconButton } from "./primitives.tsx";
 
 // ---- 提示条 ------------------------------------------------------------------------------
 
@@ -21,27 +21,29 @@ export function toneColors(tone: Tone, palette: Palette) {
 }
 
 /**
- * 提示条：三角 = 错误 / 警告，方框 = 信息。banner 是贴着页面顶边的通栏样式（只有底线）。
- * 带操作的不自动消失。
+ * 提示条：圆角 20 的色卡，三角 = 错误 / 警告，圆圈 i = 信息。
+ * 带操作时右边是一个同色的胶囊按钮；带操作的不自动消失。floating 时带投影（浮在页面顶上）。
  */
 export function Notice({
   tone = "error",
   message,
   title,
+  icon,
   actionLabel,
   onAction,
   onClose,
-  banner,
+  floating,
   style,
 }: {
   tone?: Tone;
-  message: string;
+  message: ReactNode;
   /** 加粗的第一行，message 变成说明 */
   title?: string;
+  icon?: IconName;
   actionLabel?: string;
   onAction?: () => void;
   onClose?: () => void;
-  banner?: boolean;
+  floating?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
@@ -54,93 +56,118 @@ export function Notice({
       style={[
         styles.notice,
         { backgroundColor: c.bg },
-        banner
-          ? { borderBottomWidth: 1, borderColor: c.fg, paddingHorizontal: space.page, paddingVertical: 14 }
-          : { borderWidth: 1, borderColor: c.fg },
-        action && !banner ? { paddingVertical: 4, paddingRight: 4 } : null,
+        action ? styles.noticeWithAction : null,
+        title ? { alignItems: "flex-start" } : null,
+        floating ? { boxShadow: palette.shadowFloat } : null,
         style,
       ]}
     >
       <View style={title ? { marginTop: 1 } : null}>
-        <Icon name={c.icon} size={banner ? 20 : 18} color={c.fg} />
+        <Icon name={icon ?? c.icon} size={20} color={c.fg} />
       </View>
       <View style={{ flex: 1 }}>
-        {title ? (
-          <Text style={[styles.noticeText, { color: palette.ink, fontWeight: "500" }]}>{title}</Text>
-        ) : null}
-        <Text style={[styles.noticeText, { color: title ? palette.ink2 : palette.ink }]}>{message}</Text>
+        {title ? <Text style={[styles.text, { color: palette.ink, fontWeight: "500" }]}>{title}</Text> : null}
+        {typeof message === "string" ? (
+          <Text style={[styles.text, { color: title ? palette.ink2 : palette.ink }]}>{message}</Text>
+        ) : (
+          message
+        )}
       </View>
       {action ? (
-        <Pressable accessibilityRole="button" onPress={onAction} style={styles.noticeAction}>
-          <Text style={[styles.noticeText, { color: palette.ink, fontWeight: "700" }]}>{actionLabel}</Text>
-          <Icon name="arrowRight" size={14} color={palette.ink} />
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAction}
+          style={({ pressed }) => [
+            styles.action,
+            { backgroundColor: c.fg, transform: [{ scale: pressed ? 0.97 : 1 }] },
+          ]}
+        >
+          <Text style={{ fontSize: 13.5, fontWeight: "500", color: onColor }}>{actionLabel}</Text>
         </Pressable>
       ) : null}
       {onClose ? (
         <IconButton
           icon="close"
           label="关闭"
-          size={18}
+          size={16}
+          diameter={36}
+          tone="plain"
           onPress={onClose}
-          style={{ margin: -12, marginLeft: 0 }}
+          style={{ backgroundColor: "rgba(255,255,255,0.6)", marginVertical: -6 }}
         />
       ) : null}
     </View>
   );
 }
 
-// ---- 状态 -------------------------------------------------------------------------------
+// ---- 胶囊标签 ----------------------------------------------------------------------------
 
-export type StatusKind = "ok" | "untested" | "invalid";
+export type PillTone = "acc" | "accSolid" | "ink" | "ok" | "warn" | "err" | "grey" | "card";
 
-/** 可用 / 还没测试 / Key 无效：颜色一定配图标（对勾、虚线方框、叉） */
-export function Status({
-  kind,
-  label,
-  size: textSize = 12.5,
-}: {
-  kind: StatusKind;
-  label: string;
-  size?: number;
-}) {
-  const palette = usePalette();
-  const color = kind === "ok" ? palette.ok : kind === "untested" ? palette.warn : palette.err;
-  const icon: IconName = kind === "ok" ? "check" : kind === "untested" ? "untested" : "cross";
-  return (
-    <View style={styles.status}>
-      <Icon name={icon} size={14} color={color} strokeWidth={kind === "untested" ? 1.5 : 2} />
-      <Text style={{ color, fontSize: textSize, lineHeight: 18, fontWeight: "500" }}>{label}</Text>
-    </View>
-  );
+function pillColors(tone: PillTone, palette: Palette): { bg: string; fg: string } {
+  switch (tone) {
+    case "acc":
+      return { bg: palette.accBg, fg: palette.acc };
+    case "accSolid":
+      return { bg: palette.acc, fg: onColor };
+    case "ink":
+      return { bg: palette.ink, fg: palette.bg };
+    case "ok":
+      return { bg: palette.okBg, fg: palette.ok };
+    case "warn":
+      return { bg: palette.warnBg, fg: palette.warn };
+    case "err":
+      return { bg: palette.errBg, fg: palette.err };
+    case "grey":
+      return { bg: palette.bg2, fg: palette.ink };
+    case "card":
+      return { bg: palette.card, fg: palette.ink };
+  }
 }
 
-/** 等宽小标签：solid = 蓝底白字（导演、我），outline = 蓝框（新），plain = 灰框（128K） */
-export function Tag({
+/** 胶囊标签：状态、“我”、“导演”、上下文长度。dot 是前面的小圆点（“正在写下一段”） */
+export function Pill({
   label,
-  variant = "plain",
+  tone = "grey",
+  icon,
+  dot,
+  mono,
+  height = 24,
+  style,
 }: {
-  label: string;
-  variant?: "solid" | "outline" | "plain";
+  label: ReactNode;
+  tone?: PillTone;
+  icon?: IconName;
+  dot?: boolean;
+  mono?: boolean;
+  height?: number;
+  style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
-  const solid = variant === "solid";
+  const c = pillColors(tone, palette);
+  const fontSize = height <= 20 ? 11 : height >= 28 ? 13 : 12;
   return (
     <View
       style={[
-        styles.tag,
-        solid
-          ? { backgroundColor: palette.acc }
-          : { borderWidth: 1, borderColor: variant === "outline" ? palette.acc : palette.line2 },
+        styles.pill,
+        {
+          height,
+          borderRadius: height / 2,
+          backgroundColor: c.bg,
+          paddingLeft: icon || dot ? 8 : 10,
+          paddingRight: 10,
+        },
+        style,
       ]}
     >
+      {dot ? <View style={[styles.dot, { backgroundColor: c.fg }]} /> : null}
+      {icon ? <Icon name={icon} size={height <= 24 ? 13 : 15} color={c.fg} strokeWidth={2.2} /> : null}
       <Text
-        style={{
-          fontFamily: font.mono,
-          fontSize: 10.5,
-          lineHeight: 14,
-          letterSpacing: 0.6,
-          color: solid ? onColor : variant === "outline" ? palette.acc : palette.ink2,
-        }}
+        numberOfLines={1}
+        style={[
+          { fontSize, color: c.fg, fontWeight: tone === "grey" || tone === "card" ? "400" : "500" },
+          mono ? { fontFamily: font.mono, fontWeight: "400" } : null,
+        ]}
       >
         {label}
       </Text>
@@ -148,39 +175,71 @@ export function Tag({
   );
 }
 
-/** 加载失败：等宽红字标签、标题、说明，加一个“重新加载” */
+export type StatusKind = "ok" | "untested" | "invalid";
+
+/** 可用 / 还没测试 / Key 无效：颜色一定配图标（对勾、虚线圆、叉） */
+export function Status({ kind, label, height }: { kind: StatusKind; label: string; height?: number }) {
+  const tone: PillTone = kind === "ok" ? "ok" : kind === "untested" ? "warn" : "err";
+  const icon: IconName = kind === "ok" ? "check" : kind === "untested" ? "untested" : "cross";
+  return <Pill label={label} tone={tone} icon={icon} height={height} />;
+}
+
+/** 小标签：solid = 蓝底白字（“我”），soft = 浅蓝（“导演”“新”），ink = 黑底，plain = 灰底（128K） */
+export function Tag({
+  label,
+  variant = "plain",
+}: {
+  label: string;
+  variant?: "solid" | "soft" | "ink" | "plain";
+}) {
+  const tone: PillTone =
+    variant === "solid" ? "accSolid" : variant === "soft" ? "acc" : variant === "ink" ? "ink" : "grey";
+  return <Pill label={label} tone={tone} height={22} mono={variant === "plain"} />;
+}
+
+/** 加载失败：一张灰卡，红色圆形图标、标题、说明、“重新加载” */
 export function ErrorState({
-  label = "连接失败",
   icon = "offline",
   title,
   message,
   onRetry,
+  primary,
   style,
 }: {
-  label?: string;
   icon?: IconName;
   title: string;
   message: ReactNode;
   onRetry?: () => void;
+  /** 重新加载用主按钮（整页只有这一件事可做时） */
+  primary?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
   return (
-    <View accessibilityRole="alert" style={[styles.errorState, { borderTopColor: palette.ink }, style]}>
-      <View style={styles.status}>
-        <Icon name={icon} size={22} color={palette.err} />
-        <Mono style={{ color: palette.err, fontSize: 12, letterSpacing: 1 }}>{label}</Mono>
+    <View accessibilityRole="alert" style={[styles.errorState, { backgroundColor: palette.bg2 }, style]}>
+      <View style={[styles.errorIcon, { backgroundColor: palette.errBg }]}>
+        <Icon name={icon} size={26} color={palette.err} />
       </View>
-      <Text style={[type.section, { fontSize: 20, lineHeight: 28, color: palette.ink }]}>{title}</Text>
-      <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut }}>{message}</Text>
+      <Text
+        style={{ fontSize: 20, lineHeight: 28, fontWeight: "700", color: palette.ink, textAlign: "center" }}
+      >
+        {title}
+      </Text>
+      {typeof message === "string" ? (
+        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut, textAlign: "center" }}>
+          {message}
+        </Text>
+      ) : (
+        message
+      )}
       {onRetry ? (
         <Button
           label="重新加载"
-          variant="secondary"
-          trailingIcon="retry"
-          between
+          variant={primary ? "primary" : "secondary"}
+          onGrey
+          icon="retry"
           onPress={onRetry}
-          style={{ marginTop: space.xs }}
+          style={{ alignSelf: "stretch", marginTop: space.s }}
         />
       ) : null}
     </View>
@@ -192,18 +251,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    paddingHorizontal: space.l,
+    paddingVertical: 14,
+    borderRadius: radius.card,
+  },
+  noticeWithAction: { paddingVertical: 6, paddingRight: 6 },
+  text: { fontSize: 14, lineHeight: 21 },
+  action: {
+    height: 40,
     paddingHorizontal: 14,
-    paddingVertical: space.m,
-  },
-  noticeText: { fontSize: 14, lineHeight: 21 },
-  noticeAction: {
-    flexDirection: "row",
+    borderRadius: 20,
     alignItems: "center",
-    gap: space.xs,
-    minHeight: size.touch,
-    paddingHorizontal: space.m,
+    justifyContent: "center",
   },
-  status: { flexDirection: "row", alignItems: "center", gap: 6 },
-  tag: { paddingHorizontal: 6, paddingVertical: 2 },
-  errorState: { borderTopWidth: 1, paddingTop: space.read, paddingHorizontal: space.read, gap: 14 },
+  pill: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  errorState: {
+    marginHorizontal: space.l,
+    paddingTop: space.xl,
+    paddingHorizontal: space.page - 4,
+    paddingBottom: space.page - 4,
+    borderRadius: radius.sheet,
+    alignItems: "center",
+    gap: space.m,
+  },
+  errorIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
 });

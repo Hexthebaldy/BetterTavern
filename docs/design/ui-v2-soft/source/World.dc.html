@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>世界状态 · 柔和圆角</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--narr:#222222;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF;--scrim:rgba(20,20,20,.38)}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;height:28px;padding:0 12px;border-radius:14px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12px;color:#6E6D68}
+.ph{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;border-radius:44px;box-shadow:0 0 0 1px #EEEEEA}
+.ph *{box-sizing:border-box}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.under p{font-family:"Noto Serif SC",serif;font-size:17.5px;line-height:31px;margin:120px 24px 0;color:var(--narr)}
+.scrim{position:absolute;inset:0;background:var(--scrim)}
+.sheet{position:absolute;left:8px;right:8px;top:92px;bottom:8px;background:var(--card);border-radius:36px;display:flex;flex-direction:column;overflow:hidden}
+.sh{display:flex;align-items:center;padding:10px 12px 0 20px}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;margin:14px 12px 0;border-radius:24px;background:var(--bg2)}
+.sg{display:flex;align-items:center;justify-content:center;gap:5px;height:40px;border:0;border-radius:20px;background:transparent;font-family:inherit;font-size:13.5px;color:var(--ink2)}
+.sgon{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(20,20,20,.12)}
+.n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--mut);font-weight:400}
+.ent{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;padding:12px;border-radius:24px;background:var(--bg2)}
+.eic{width:44px;height:44px;border-radius:22px;background:var(--card);display:flex;align-items:center;justify-content:center}
+.en{font-size:16px;line-height:22px;font-weight:700}
+.kd{font-size:12px;color:var(--mut)}
+.es{font-size:13.5px;line-height:21px;color:var(--ink2)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:0;border-radius:17px;background:var(--bg2);font-family:inherit;font-size:13px;color:var(--ink)}
+.on{background:var(--ink);color:#FFFFFF}
+.fact{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:22px;background:var(--bg2);font-size:14px;line-height:22px}
+.fd{width:8px;height:8px;border-radius:4px;background:var(--ink);margin-top:7px;flex:none}
+</style>
+</helmet>
+<div class="bd0 L" style="width: 1250px; height: 884px">
+
+  <div class="cell">
+    <div class="tag">01 · 人物与地点</div>
+    <section class="ph" aria-label="世界：人物与地点">
+      <div class="under" aria-hidden="true"><p>沈知微终于抬起眼。那是一双很静的眼睛，静得让我想起深夜无人的河面。</p></div>
+      <div class="scrim"></div>
+      <section class="sheet" role="dialog" aria-label="世界状态">
+        <span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--line2); margin-top: 10px"></span>
+        <div class="sh"><div style="flex: 1; display: flex; flex-direction: column"><h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">世界</h2><span class="kd">导演记下的一切，随故事更新</span></div><button type="button" aria-label="关闭" style="width: 40px; height: 40px; border: 0; border-radius: 20px; background: var(--bg2); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <div class="seg" role="tablist"><button class="sg sgon" type="button" role="tab" aria-selected="true">人物与地点<span class="n">9</span></button><button class="sg" type="button" role="tab" aria-selected="false">关系<span class="n">6</span></button><button class="sg" type="button" role="tab" aria-selected="false">事实<span class="n">14</span></button></div>
+        <div style="display: flex; gap: 6px; padding: 12px 12px 4px">
+          <button class="chip on" type="button">全部</button>
+          <button class="chip" type="button"><svg class="i" style="width: 15px; height: 15px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 20c1.3-3.5 3.8-5 7-5s5.7 1.5 7 5"/></svg>人物</button>
+          <button class="chip" type="button"><svg class="i" style="width: 15px; height: 15px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V10l6-5 6 5v10M10 20v-5h4v5"/></svg>地点</button>
+          <button class="chip" type="button"><svg class="i" style="width: 15px; height: 15px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M9 8V6a3 3 0 016 0v2"/></svg>物品</button>
+        </div>
+        <div style="flex: 1; overflow: hidden; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px">
+          <div class="ent" style="background: var(--accBg)"><span class="eic" style="background: var(--acc); color: #FFF"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 20c1.3-3.5 3.8-5 7-5s5.7 1.5 7 5"/></svg></span><div style="display: flex; flex-direction: column; gap: 2px"><div style="display: flex; align-items: center; gap: 8px"><span class="en">林川</span><span style="height: 20px; padding: 0 8px; border-radius: 10px; background: var(--acc); color: #FFF; font-size: 11px; display: flex; align-items: center">我</span></div><div class="es">落第书生，怀里揣着一封要交给“渡口沈掌柜”的信。</div></div></div>
+          <div class="ent" style="grid-template-columns: 44px minmax(0, 1fr)">
+            <span class="eic"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 20c1.3-3.5 3.8-5 7-5s5.7 1.5 7 5"/></svg></span>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div style="display: flex; align-items: center; gap: 8px"><span class="en" style="flex: 1">沈知微</span><span class="kd">人物</span></div>
+              <div class="es">渡口茶馆的掌柜，话少，记性好，左手指节有旧疤。</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px"><span style="height: 28px; padding: 0 10px; border-radius: 14px; background: var(--card); font-size: 12.5px; display: flex; align-items: center; gap: 4px"><span class="kd">掌管</span>渡口茶馆</span><span style="height: 28px; padding: 0 10px; border-radius: 14px; background: var(--card); font-size: 12.5px; display: flex; align-items: center; gap: 4px"><span class="kd">提防</span>林川</span></div>
+              <button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 6px 0 12px; border: 0; border-radius: 22px; background: var(--warnBg); color: var(--warn); font-family: inherit; font-size: 13px; text-align: left"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg><span style="flex: 1">1 条秘密</span><span style="height: 32px; padding: 0 12px; border-radius: 16px; background: var(--card); display: flex; align-items: center; font-weight: 600">揭示</span></button>
+            </div>
+          </div>
+          <div class="ent"><span class="eic"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V10l6-5 6 5v10M10 20v-5h4v5"/></svg></span><div style="display: flex; flex-direction: column; gap: 2px"><div style="display: flex; align-items: center"><span class="en" style="flex: 1">渡口茶馆</span><span class="kd">地点</span></div><div class="es">河湾边的两层木楼，檐下挂着铜铃。</div></div></div>
+          <div class="ent"><span class="eic"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M9 8V6a3 3 0 016 0v2"/></svg></span><div style="display: flex; flex-direction: column; gap: 2px"><div style="display: flex; align-items: center; gap: 6px"><span class="en" style="flex: 1">雾里的乌篷船</span><span style="height: 20px; padding: 0 8px; border-radius: 10px; background: var(--accBg); color: var(--acc); font-size: 11px; display: flex; align-items: center">新</span><span class="kd">物品</span></div><div class="es">最后一班船走后出现在河面上，船头挂着一盏灯。</div></div></div>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">02 · 关系图</div>
+    <section class="ph" aria-label="世界：关系">
+      <div class="under" aria-hidden="true"><p>沈知微终于抬起眼。那是一双很静的眼睛，静得让我想起深夜无人的河面。</p></div>
+      <div class="scrim"></div>
+      <section class="sheet" role="dialog" aria-label="世界状态">
+        <span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--line2); margin-top: 10px"></span>
+        <div class="sh"><div style="flex: 1; display: flex; flex-direction: column"><h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">世界</h2><span class="kd">导演记下的一切，随故事更新</span></div><button type="button" aria-label="关闭" style="width: 40px; height: 40px; border: 0; border-radius: 20px; background: var(--bg2); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <div class="seg" role="tablist"><button class="sg" type="button" role="tab" aria-selected="false">人物与地点<span class="n">9</span></button><button class="sg sgon" type="button" role="tab" aria-selected="true">关系<span class="n">6</span></button><button class="sg" type="button" role="tab" aria-selected="false">事实<span class="n">14</span></button></div>
+        <div style="margin: 12px 12px 0; border-radius: 28px; background: var(--bg2); overflow: hidden">
+          <svg width="350" height="300" viewBox="0 0 350 300" role="img" aria-label="关系图：林川、沈知微、渡口茶馆、乌篷船和那封信之间的关系">
+            <g style="fill: none; stroke: var(--line2); stroke-width: 1.6; stroke-linecap: round">
+              <path d="M100 86C150 90 170 130 200 150"/>
+              <path d="M200 150C230 120 250 90 270 66"/>
+              <path d="M200 150C230 180 250 210 270 238"/>
+              <path d="M100 86C80 140 80 180 86 222"/>
+              <path d="M200 150C160 180 120 200 86 222"/>
+            </g>
+            <path d="M270 238C200 260 140 250 86 222" style="fill: none; stroke: var(--line2); stroke-width: 1.6; stroke-dasharray: 2 6; stroke-linecap: round"/>
+            <rect x="60" y="70" width="80" height="32" rx="16" style="fill: var(--acc)"/><text x="100" y="91" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">林川</text>
+            <rect x="156" y="134" width="88" height="32" rx="16" style="fill: var(--ink)"/><text x="200" y="155" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">沈知微</text>
+            <rect x="226" y="50" width="92" height="32" rx="16" style="fill: var(--card)"/><text x="272" y="71" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" style="fill: var(--ink)">渡口茶馆</text>
+            <rect x="218" y="222" width="108" height="32" rx="16" style="fill: var(--card)"/><text x="272" y="243" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" style="fill: var(--ink)">雾里的乌篷船</text>
+            <rect x="44" y="206" width="84" height="32" rx="16" style="fill: var(--card)"/><text x="86" y="227" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" style="fill: var(--ink)">那封信</text>
+            <g font-family="Noto Sans SC, sans-serif" font-size="11" style="fill: var(--mut)"><text x="148" y="106">提防</text><text x="246" y="118">掌管</text><text x="244" y="200">等候</text><text x="58" y="160">携带</text><text x="136" y="196">收信人</text></g>
+          </svg>
+        </div>
+        <div style="padding: 8px 12px; display: flex; flex-direction: column; gap: 6px">
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; padding: 12px 16px; border-radius: 20px; background: var(--bg2); font-size: 14px"><span>沈知微</span><span style="height: 24px; padding: 0 10px; border-radius: 12px; background: var(--card); font-size: 12px; color: var(--mut); display: flex; align-items: center">提防 →</span><span style="text-align: right">林川</span></div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; padding: 12px 16px; border-radius: 20px; background: var(--bg2); font-size: 14px"><span>林川</span><span style="height: 24px; padding: 0 10px; border-radius: 12px; background: var(--card); font-size: 12px; color: var(--mut); display: flex; align-items: center">携带 →</span><span style="text-align: right">那封信</span></div>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">03 · 事实 · 揭示秘密前确认</div>
+    <section class="ph" aria-label="世界：事实">
+      <div class="under" aria-hidden="true"><p>沈知微终于抬起眼。</p></div>
+      <div class="scrim"></div>
+      <section class="sheet" role="dialog" aria-label="世界状态">
+        <span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--line2); margin-top: 10px"></span>
+        <div class="sh"><div style="flex: 1; display: flex; flex-direction: column"><h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">世界</h2><span class="kd">导演记下的一切，随故事更新</span></div><button type="button" aria-label="关闭" style="width: 40px; height: 40px; border: 0; border-radius: 20px; background: var(--bg2); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <div class="seg" role="tablist"><button class="sg" type="button" role="tab" aria-selected="false">人物与地点<span class="n">9</span></button><button class="sg" type="button" role="tab" aria-selected="false">关系<span class="n">6</span></button><button class="sg sgon" type="button" role="tab" aria-selected="true">事实<span class="n">14</span></button></div>
+        <div style="padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <div class="fact"><span class="fd"></span><div>最后一班船已经开走，渡口今夜不会再有船。<div class="kd">渡口茶馆</div></div></div>
+          <div class="fact"><span class="fd"></span><div>林川怀里的信，信封上只写着“渡口沈掌柜”。<div class="kd">林川 · 沈知微</div></div></div>
+          <div class="fact" style="background: var(--warnBg)"><svg class="i" style="width: 16px; height: 16px; color: var(--warn); margin-top: 3px" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 017.5-2"/></svg><div>十年前沉船那夜，掌舵的是沈知微的未婚夫。<div class="kd" style="color: var(--warn)">秘密 · 已揭示</div></div></div>
+          <div class="fact" style="align-items: center"><svg class="i" style="width: 16px; height: 16px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg><div style="display: flex; gap: 6px" aria-label="2 条未揭示的秘密"><span style="width: 120px; height: 10px; border-radius: 5px; background: var(--bg3)"></span><span style="width: 70px; height: 10px; border-radius: 5px; background: var(--bg3)"></span></div></div>
+        </div>
+      </section>
+      <div style="position: absolute; inset: 0; background: var(--scrim)"></div>
+      <div role="alertdialog" aria-label="揭示秘密" style="position: absolute; left: 24px; right: 24px; top: 290px; background: var(--card); border-radius: 32px; padding: 26px 18px 18px; display: flex; flex-direction: column; gap: 14px; text-align: center">
+        <span style="align-self: center; width: 56px; height: 56px; border-radius: 28px; background: var(--warnBg); color: var(--warn); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 26px; height: 26px" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></span>
+        <div style="font-size: 20px; line-height: 28px; font-weight: 700">揭示一条秘密？</div>
+        <div style="font-size: 14px; line-height: 22px; color: var(--ink2)">这是导演知道、而“我”还不知道的事，看了会剧透接下来的故事。</div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 4px">
+          <button type="button" style="height: 52px; border: 0; border-radius: 26px; background: var(--bg2); font-family: inherit; font-size: 16px; color: var(--ink)">取消</button>
+          <button type="button" style="height: 52px; border: 0; border-radius: 26px; background: var(--ink); font-family: inherit; font-size: 16px; font-weight: 500; color: #FFFFFF">揭示</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1250,"height":884}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

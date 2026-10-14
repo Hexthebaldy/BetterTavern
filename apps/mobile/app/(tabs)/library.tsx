@@ -2,7 +2,7 @@
  * 剧本库：导入角色卡（PNG 或 JSON，原样上传，服务端解析），网格或列表显示已导入的剧本。
  *
  * 导入成功直接进入剧本详情；之前导入过的弹出墨色浮条“打开”；失败时页面顶上出红色提示条说明原因。
- * 网格里长按、列表里左滑或长按可以重命名、删除。
+ * 网格里长按、列表里左滑或长按可以重命名、删除。剧本是浅灰圆角卡片，列表底部留出浮动标签栏的位置。
  */
 
 import * as DocumentPicker from "expo-document-picker";
@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
+  Easing,
   FlatList,
   Pressable,
   RefreshControl,
@@ -19,7 +20,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import Svg, { Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { describeError } from "../../src/api/client.ts";
 import type { Scenario } from "../../src/api/types.ts";
@@ -33,12 +34,13 @@ import {
   Loading,
   Notice,
   useOverlay,
+  useTabBarSpace,
   type IconName,
 } from "../../src/components/ui.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs, type LibraryView } from "../../src/state/PrefsProvider.tsx";
-import { font, size, space, usePalette } from "../../src/theme/index.ts";
+import { font, liftShadow, radius, size, space, usePalette } from "../../src/theme/index.ts";
 import { formatBytes } from "../../src/utils/format.ts";
 
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -72,9 +74,9 @@ function HeaderControls({
         accessibilityLabel={label}
         accessibilityState={{ selected: on }}
         onPress={() => onView(value)}
-        style={[styles.square, { backgroundColor: on ? palette.ink : "transparent" }]}
+        style={[styles.segButton, on ? { backgroundColor: palette.card, boxShadow: liftShadow } : null]}
       >
-        <Icon name={icon} size={18} color={on ? palette.bg : palette.mut} />
+        <Icon name={icon} size={18} color={on ? palette.ink : palette.mut} />
       </Pressable>
     );
   };
@@ -83,7 +85,7 @@ function HeaderControls({
       <View
         accessibilityRole="radiogroup"
         accessibilityLabel="视图"
-        style={[styles.seg, { borderColor: palette.line2 }]}
+        style={[styles.seg, { backgroundColor: palette.bg2 }]}
       >
         {option("grid", "grid", "网格")}
         {option("list", "list", "列表")}
@@ -94,7 +96,13 @@ function HeaderControls({
         accessibilityState={{ disabled: importing, busy: importing }}
         disabled={importing}
         onPress={onImport}
-        style={[styles.square, { backgroundColor: importing ? palette.bg3 : palette.ink }]}
+        style={({ pressed }) => [
+          styles.add,
+          {
+            backgroundColor: importing ? palette.bg3 : palette.ink,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          },
+        ]}
       >
         <Icon name="plus" color={importing ? palette.mut : palette.bg} />
       </Pressable>
@@ -104,20 +112,21 @@ function HeaderControls({
 
 // ---- 网格和列表 -----------------------------------------------------------------------------
 
+const TILE_PAD = 8;
+
 function Tile({
   scenario,
   width,
   onPress,
   onLongPress,
-  right,
 }: {
   scenario: Scenario;
   width: number;
   onPress: () => void;
   onLongPress: () => void;
-  right: boolean;
 }) {
   const palette = usePalette();
+  const coverWidth = width - TILE_PAD * 2;
   return (
     <Pressable
       accessibilityRole="button"
@@ -126,15 +135,20 @@ function Tile({
       onLongPress={onLongPress}
       style={({ pressed }) => [
         styles.tile,
-        { width, borderColor: palette.line, backgroundColor: pressed ? palette.bg2 : palette.bg },
-        right ? { borderRightWidth: 0 } : null,
+        {
+          width,
+          backgroundColor: pressed ? palette.bg3 : palette.bg2,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
       ]}
     >
       <Cover
         seed={scenario.id}
         blobId={scenario.avatar_blob_id}
-        width={width - 1}
-        height={((width - 1) * 80) / 96}
+        width={coverWidth}
+        height={(coverWidth * 76) / 96}
+        surface="card"
+        rounded={18}
       />
       <View style={styles.tileMeta}>
         <Text numberOfLines={1} style={[styles.name, { color: palette.ink }]}>
@@ -148,61 +162,46 @@ function Tile({
   );
 }
 
-/** 网格里“正在导入”的那一格：底边一段蓝线来回扫，表示在传，不代表进度 */
-function ImportingTile({ file, width }: { file: Importing; width: number }) {
+/** 一直在转的圆弧：表示在传，不代表进度 */
+function Spinner({ size: d = 56 }: { size?: number }) {
   const palette = usePalette();
-  const sweep = useRef(new Animated.Value(0)).current;
+  const spin = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(sweep, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(sweep, { toValue: 0, duration: 900, useNativeDriver: true }),
-      ]),
+      Animated.timing(spin, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }),
     );
     loop.start();
     return () => loop.stop();
-  }, [sweep]);
-  const coverHeight = ((width - 1) * 80) / 96;
+  }, [spin]);
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  return (
+    <Animated.View style={{ transform: [{ rotate }] }}>
+      <Svg width={d} height={d} viewBox="0 0 56 56">
+        <Circle cx={28} cy={28} r={22} fill="none" stroke={palette.bg3} strokeWidth={5} />
+        <Path
+          d="M28 6a22 22 0 0119.8 31.6"
+          fill="none"
+          stroke={palette.acc}
+          strokeWidth={5}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+/** 网格里“正在导入”的那一格 */
+function ImportingTile({ file, width }: { file: Importing; width: number }) {
+  const palette = usePalette();
+  const coverWidth = width - TILE_PAD * 2;
   return (
     <View
       accessibilityRole="progressbar"
       accessibilityLabel={`正在导入 ${file.name}`}
-      style={[styles.tile, { width, borderColor: palette.line }]}
+      style={[styles.tile, { width, backgroundColor: palette.bg2 }]}
     >
-      <View
-        style={{
-          height: coverHeight,
-          backgroundColor: palette.bg2,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Svg width={60} height={60} viewBox="0 0 60 60">
-          <Rect
-            x={0.75}
-            y={0.75}
-            width={58.5}
-            height={58.5}
-            fill="none"
-            stroke={palette.line2}
-            strokeWidth={1.5}
-          />
-          <Path d="M0.75 0.75h58.5v26" fill="none" stroke={palette.ink} strokeWidth={1.5} />
-        </Svg>
-        <View style={[styles.track, { backgroundColor: palette.line }]}>
-          <Animated.View
-            style={[
-              styles.sweep,
-              {
-                width: width * 0.4,
-                backgroundColor: palette.acc,
-                transform: [
-                  { translateX: sweep.interpolate({ inputRange: [0, 1], outputRange: [0, width * 0.6] }) },
-                ],
-              },
-            ]}
-          />
-        </View>
+      <View style={[styles.importCover, { height: (coverWidth * 76) / 96, backgroundColor: palette.card }]}>
+        <Spinner />
       </View>
       <View style={styles.tileMeta}>
         <Text style={[styles.name, { color: palette.mut }]}>正在导入</Text>
@@ -235,10 +234,16 @@ function Row({
       onLongPress={onLongPress}
       style={({ pressed }) => [
         styles.row,
-        { borderBottomColor: palette.line, backgroundColor: pressed ? palette.bg2 : palette.bg },
+        { backgroundColor: pressed ? palette.bg3 : palette.bg2, transform: [{ scale: pressed ? 0.98 : 1 }] },
       ]}
     >
-      <Cover seed={scenario.id} blobId={scenario.avatar_blob_id} width={size.cover} height={size.cover} />
+      <Cover
+        seed={scenario.id}
+        blobId={scenario.avatar_blob_id}
+        width={size.cover}
+        height={size.cover}
+        surface="card"
+      />
       <View style={{ flex: 1, minWidth: 0, gap: space.xs }}>
         <Text numberOfLines={1} style={[styles.rowTitle, { color: palette.ink }]}>
           {scenario.name}
@@ -256,58 +261,57 @@ function Row({
 function Empty({ onImport, importing }: { onImport: () => void; importing: boolean }) {
   const palette = usePalette();
   const doc = (inner: ReactNode) => (
-    <Svg width={52} height={64} viewBox="0 0 52 64">
-      <Path d="M1 1h36l14 14v48H1z" fill={palette.bg} stroke={palette.ink} strokeWidth={1.5} />
-      <Path d="M37 1v14h14" fill="none" stroke={palette.ink} strokeWidth={1.5} />
+    <Svg width={44} height={52} viewBox="0 0 44 52">
+      <Path
+        d="M8 2h20l14 14v28a6 6 0 01-6 6H8a6 6 0 01-6-6V8a6 6 0 016-6z"
+        fill={palette.card}
+        stroke={palette.ink}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+      <Path d="M28 2v10a4 4 0 004 4h10" fill="none" stroke={palette.ink} strokeWidth={1.8} />
       {inner}
     </Svg>
   );
   return (
-    <View>
-      <View style={[styles.kinds, { borderBottomColor: palette.line }]}>
-        <View style={[styles.kind, { borderRightWidth: 1, borderRightColor: palette.line }]}>
+    <View style={styles.emptyWrap}>
+      <View style={styles.kinds}>
+        <View style={[styles.kind, { backgroundColor: palette.bg2 }]}>
           {doc(
             <>
-              <Rect x={9} y={26} width={24} height={20} fill={palette.bg2} stroke={palette.line2} />
-              <Rect x={24} y={30} width={5} height={5} fill={palette.acc} />
+              <Rect x={10} y={24} width={20} height={16} rx={4} fill={palette.bg2} />
+              <Circle cx={24} cy={29} r={3} fill={palette.acc} />
             </>,
           )}
           <View>
             <Text style={{ fontWeight: "700", color: palette.ink }}>PNG</Text>
-            <Text style={[styles.summary, { color: palette.mut }]}>卡面图片里带数据</Text>
+            <Text style={[styles.summary, { color: palette.mut, minHeight: 0 }]}>卡面图片里带数据</Text>
           </View>
         </View>
-        <View style={styles.kind}>
+        <View style={[styles.kind, { backgroundColor: palette.bg2 }]}>
           {doc(
             <Path
-              d="M14 28l-5 6 5 6M38 28l5 6-5 6M24 44l4-20"
+              d="M14 26l-5 6 5 6M30 26l5 6-5 6M20 40l4-16"
               fill="none"
               stroke={palette.ink}
-              strokeWidth={1.5}
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />,
           )}
           <View>
             <Text style={{ fontWeight: "700", color: palette.ink }}>JSON</Text>
-            <Text style={[styles.summary, { color: palette.mut }]}>纯文本角色卡</Text>
+            <Text style={[styles.summary, { color: palette.mut, minHeight: 0 }]}>纯文本角色卡</Text>
           </View>
         </View>
       </View>
-      <View style={styles.emptyBody}>
+      <View style={[styles.emptyBody, { backgroundColor: palette.bg2 }]}>
         <Text style={[styles.emptyTitle, { color: palette.ink }]}>导入第一张角色卡</Text>
-        <View style={{ flexDirection: "row" }} accessibilityLabel="支持 SillyTavern V1、V2、V3">
+        <View style={styles.specs} accessibilityLabel="支持 SillyTavern V1、V2、V3">
           {["SillyTavern", "V1", "V2", "V3"].map((label, i) => (
             <View
               key={label}
-              style={[
-                styles.spec,
-                i === 0
-                  ? { borderWidth: 1, borderColor: palette.line2 }
-                  : {
-                      backgroundColor: palette.ink,
-                      borderLeftWidth: i > 1 ? 1 : 0,
-                      borderLeftColor: palette.bg,
-                    },
-              ]}
+              style={[styles.spec, { backgroundColor: i === 0 ? palette.card : palette.ink }]}
             >
               <Text
                 style={{ fontFamily: font.mono, fontSize: 12, color: i === 0 ? palette.ink : palette.bg }}
@@ -318,20 +322,15 @@ function Empty({ onImport, importing }: { onImport: () => void; importing: boole
           ))}
         </View>
         <View style={styles.note}>
-          <Icon name="world" size={20} color={palette.ink2} />
-          <Text style={{ flex: 1, fontSize: 14, lineHeight: 22, color: palette.ink2 }}>
+          <View style={[styles.noteIcon, { backgroundColor: palette.card }]}>
+            <Icon name="world" size={18} color={palette.ink2} />
+          </View>
+          <Text style={{ flex: 1, paddingTop: 5, fontSize: 14, lineHeight: 22, color: palette.ink2 }}>
             卡里附带的世界书，会转成故事的世界状态。
           </Text>
         </View>
-        <Button
-          label="导入角色卡"
-          trailingIcon="import"
-          between
-          busy={importing}
-          onPress={onImport}
-          style={{ marginTop: 6 }}
-        />
-        <Text style={{ fontFamily: font.mono, fontSize: 11.5, letterSpacing: 0.5, color: palette.mut }}>
+        <Button label="导入角色卡" trailingIcon="import" between busy={importing} onPress={onImport} />
+        <Text style={{ fontFamily: font.mono, fontSize: 11.5, color: palette.mut, textAlign: "center" }}>
           .PNG / .JSON · ≤ 16 MB
         </Text>
       </View>
@@ -352,6 +351,7 @@ export default function LibraryScreen() {
     () => api.scenarios.list(),
     [api],
   );
+  const bottomSpace = useTabBarSpace();
   const [importing, setImporting] = useState<Importing | null>(null);
   const [importError, setImportError] = useState<ImportError | null>(null);
 
@@ -455,10 +455,10 @@ export default function LibraryScreen() {
   );
   const banner = importError ? (
     <Notice
-      banner
       title={importError.title}
       message={importError.message}
       onClose={() => setImportError(null)}
+      style={styles.banner}
     />
   ) : null;
 
@@ -469,7 +469,12 @@ export default function LibraryScreen() {
         {loading ? (
           <Loading />
         ) : (
-          <ErrorState title="剧本库没加载出来" message={describeError(error)} onRetry={() => void reload()} />
+          <ErrorState
+            title="剧本库没加载出来"
+            message={describeError(error)}
+            onRetry={() => void reload()}
+            style={{ marginTop: space.l }}
+          />
         )}
       </View>
     );
@@ -485,7 +490,7 @@ export default function LibraryScreen() {
   }
 
   const grid = libraryView === "grid";
-  const tileWidth = width / 2;
+  const tileWidth = (width - space.list * 2 - space.s) / 2;
   type Item = { kind: "importing"; file: Importing } | { kind: "scenario"; scenario: Scenario };
   const items: Item[] = [
     ...(importing ? [{ kind: "importing" as const, file: importing }] : []),
@@ -496,23 +501,35 @@ export default function LibraryScreen() {
       {header}
       {banner}
       {error ? (
-        <Notice banner message={describeError(error)} actionLabel="重试" onAction={() => void reload()} />
+        <Notice
+          icon="offline"
+          message={describeError(error)}
+          actionLabel="重试"
+          onAction={() => void reload()}
+          style={styles.banner}
+        />
       ) : null}
       <FlatList
         key={libraryView}
         data={items}
         numColumns={grid ? 2 : 1}
+        contentContainerStyle={[styles.list, { paddingBottom: bottomSpace }]}
+        columnWrapperStyle={grid ? { gap: space.s } : undefined}
+        ItemSeparatorComponent={() => <View style={{ height: space.s }} />}
         keyExtractor={(item) => (item.kind === "importing" ? "importing" : item.scenario.id)}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={palette.mut} />
         }
-        renderItem={({ item, index }) => {
+        renderItem={({ item }) => {
           if (item.kind === "importing") {
             return grid ? (
               <ImportingTile file={item.file} width={tileWidth} />
             ) : (
-              <View style={[styles.row, { borderBottomColor: palette.line }]}>
-                <Text style={{ color: palette.mut }}>正在导入 {item.file.name}</Text>
+              <View style={[styles.row, { backgroundColor: palette.bg2, alignItems: "center" }]}>
+                <Spinner size={32} />
+                <Text style={{ flex: 1, color: palette.mut }} numberOfLines={1}>
+                  正在导入 {item.file.name}
+                </Text>
               </View>
             );
           }
@@ -522,7 +539,6 @@ export default function LibraryScreen() {
               <Tile
                 scenario={s}
                 width={tileWidth}
-                right={index % 2 === 1}
                 onPress={() => open(s.id)}
                 onLongPress={() => void menu(s)}
               />
@@ -546,28 +562,26 @@ export default function LibraryScreen() {
 
 const styles = StyleSheet.create({
   controls: { flexDirection: "row", alignItems: "center", gap: space.s },
-  seg: { flexDirection: "row", borderWidth: 1 },
-  square: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  tile: { borderRightWidth: 1, borderBottomWidth: 1 },
-  tileMeta: { paddingTop: space.m, paddingHorizontal: 14, paddingBottom: space.l, gap: space.xs },
+  seg: { flexDirection: "row", gap: 2, padding: 3, borderRadius: 22 },
+  segButton: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  add: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  list: { paddingHorizontal: space.list, paddingTop: space.s },
+  banner: { marginHorizontal: space.list, marginBottom: space.s, borderRadius: radius.option },
+  tile: { padding: TILE_PAD, borderRadius: 26 },
+  importCover: { borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  tileMeta: { paddingTop: 10, paddingHorizontal: space.s, paddingBottom: space.s, gap: 3 },
   name: { fontSize: 16, lineHeight: 22, fontWeight: "700" },
   summary: { fontSize: 12.5, lineHeight: 18, minHeight: 36 },
-  track: { position: "absolute", left: 0, right: 0, bottom: 0, height: 3, overflow: "hidden" },
-  sweep: { height: 3 },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingVertical: space.l,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
-  },
+  row: { flexDirection: "row", gap: 14, padding: 14, borderRadius: radius.option },
   rowTitle: { fontSize: 17, lineHeight: 24, fontWeight: "700" },
   rowSummary: { fontSize: 14, lineHeight: 21 },
-  kinds: { flexDirection: "row", borderBottomWidth: 1 },
-  kind: { flex: 1, paddingVertical: space.read, paddingHorizontal: space.page, gap: 14 },
-  emptyBody: { paddingHorizontal: space.page, paddingTop: 40, gap: 18 },
-  emptyTitle: { fontSize: 24, lineHeight: 32, fontWeight: "700", letterSpacing: -0.2 },
-  spec: { height: 32, paddingHorizontal: space.m, justifyContent: "center" },
+  emptyWrap: { paddingHorizontal: space.l, paddingTop: space.s, gap: 10 },
+  kinds: { flexDirection: "row", gap: space.s },
+  kind: { flex: 1, padding: 20, borderRadius: 26, gap: 14 },
+  emptyBody: { paddingVertical: space.page, paddingHorizontal: 20, borderRadius: 26, gap: space.l },
+  emptyTitle: { fontSize: 22, lineHeight: 30, fontWeight: "700" },
+  specs: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  spec: { height: 30, paddingHorizontal: space.m, borderRadius: 15, justifyContent: "center" },
   note: { flexDirection: "row", gap: space.m, alignItems: "flex-start" },
+  noteIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
 });

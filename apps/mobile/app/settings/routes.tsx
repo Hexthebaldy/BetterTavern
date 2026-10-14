@@ -37,13 +37,15 @@ import { font, space, usePalette } from "../../src/theme/index.ts";
 import { formatTokens } from "../../src/utils/format.ts";
 
 const COLUMNS = 16;
-const GAP = 3;
+const GAP = 4;
 
+/** “能记住多少”：一张灰卡，里面一块白色面板，每个圆点是一格（默认 4K） */
 function MemoryBlocks({ route, choice }: { route: ModelRoute; choice: WindowChoice }) {
   const palette = usePalette();
   const { width } = useWindowDimensions();
-  // 按屏幕宽度算出格子边长（百分比宽度加 aspectRatio 在换行容器里会让布局反复计算）
-  const cell = Math.floor((width - space.page * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
+  // 按屏幕宽度算出圆点直径（百分比宽度加 aspectRatio 在换行容器里会让布局反复计算）
+  const inner = width - space.list * 2 - space.l * 2 - 14 * 2;
+  const cell = Math.floor((inner - GAP * (COLUMNS - 1)) / COLUMNS);
   const w = windowBlocks(route.window.model_window, choiceTokens(choice), route.window.max_tokens);
   const k = formatTokens;
   const legend = (swatch: object, label: string) => (
@@ -53,36 +55,42 @@ function MemoryBlocks({ route, choice }: { route: ModelRoute; choice: WindowChoi
     </View>
   );
   return (
-    <View style={{ padding: space.page, gap: space.l }}>
+    <View style={[styles.memory, { backgroundColor: palette.bg2 }]}>
+      <View style={styles.memoryTitle}>
+        <Text accessibilityRole="header" style={{ fontSize: 17, fontWeight: "700", color: palette.ink }}>
+          能记住多少
+        </Text>
+        <Text style={{ fontFamily: font.mono, fontSize: 12.5, color: palette.mut }}>
+          上下文 {k(route.window.model_window)}
+        </Text>
+      </View>
       <View
-        style={styles.blocks}
+        style={[styles.blocks, { backgroundColor: palette.card }]}
         accessibilityRole="image"
         accessibilityLabel={`上下文 ${k(route.window.model_window)}，故事 ${k(w.story)}，每轮输出 ${k(route.window.max_tokens)}，不使用 ${k(w.free)}`}
       >
         {w.blocks.map((b, i) => (
-          <View key={i} style={{ width: cell, height: cell }}>
-            <View
-              style={[
-                styles.block,
-                b === "story"
-                  ? { backgroundColor: palette.ink }
-                  : b === "output"
-                    ? { backgroundColor: palette.acc }
-                    : { borderWidth: 1, borderColor: palette.line2 },
-              ]}
-            />
-            {i === w.mark ? <View style={[styles.markRing, { borderColor: palette.warn }]} /> : null}
-          </View>
+          <View
+            key={i}
+            style={{
+              width: cell,
+              height: cell,
+              borderRadius: cell / 2,
+              backgroundColor: b === "story" ? palette.ink : b === "output" ? palette.acc : palette.bg3,
+              boxShadow:
+                i === w.mark ? `0 0 0 2.5px ${palette.card}, 0 0 0 4.5px ${palette.warn}` : undefined,
+            }}
+          />
         ))}
       </View>
       <View style={styles.legends}>
         {legend({ backgroundColor: palette.ink }, `故事 ${k(w.story)}`)}
         {legend({ backgroundColor: palette.acc }, `每轮输出 ${k(route.window.max_tokens)}`)}
-        {legend({ borderWidth: 1, borderColor: palette.line2 }, `不使用 ${k(w.free)}`)}
-        {legend({ borderWidth: 2, borderColor: palette.warn }, "到这里开始压缩")}
+        {legend({ backgroundColor: palette.bg3 }, `不使用 ${k(w.free)}`)}
+        {legend({ boxShadow: `inset 0 0 0 2.5px ${palette.warn}` }, "开始压缩")}
       </View>
       <Text style={{ fontSize: 14, lineHeight: 23, color: palette.ink2 }}>
-        每一格是 {k(w.unit)}。模型最多能读 {k(route.window.model_window)}，你给导演 {k(w.used)}：每轮最多写{" "}
+        每个圆点是 {k(w.unit)}。模型最多能读 {k(route.window.model_window)}，你给导演 {k(w.used)}：每轮最多写{" "}
         {k(route.window.max_tokens)}，剩下约 {k(w.story)} 用来记前情和世界状态。
       </Text>
     </View>
@@ -170,7 +178,7 @@ export default function RoutesScreen() {
   if (!director) {
     return (
       <Page header={<BackBar />} refreshing={refreshing} onRefresh={() => void refresh()}>
-        <View style={[styles.head, { borderBottomColor: palette.ink }]}>
+        <View style={styles.head}>
           <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
             导演模型
           </Text>
@@ -185,27 +193,29 @@ export default function RoutesScreen() {
             onPress={() => router.push({ pathname: "/settings/credential/[id]", params: { id: c.id } })}
             style={({ pressed }) => [
               styles.keyRow,
-              { borderBottomColor: palette.line, backgroundColor: pressed ? palette.bg2 : palette.bg },
+              {
+                backgroundColor: pressed ? palette.bg3 : palette.bg2,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              },
             ]}
           >
-            <ProviderMark mark={providerMark(c.provider)} filled />
+            <ProviderMark mark={providerMark(c.provider)} tone="ink" />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: "500", color: palette.ink }}>
                 {credentialTitle(c, providers)}
               </Text>
-              <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.mut }}>
-                •••• {c.key_last4} · {CREDENTIAL_STATUS[c.status]}
+              <Text style={{ fontSize: 13, color: palette.mut }}>
+                尾号 {c.key_last4} · {CREDENTIAL_STATUS[c.status]}
               </Text>
             </View>
-            <Icon name="chevronRight" size={18} />
+            <Icon name="chevronRight" size={18} color={palette.mut} />
           </Pressable>
         ))}
-        <View style={{ padding: space.page }}>
+        <View style={{ padding: space.list }}>
           <Button
             label="添加密钥"
             variant={credentials.length > 0 ? "secondary" : "primary"}
-            trailingIcon="plus"
-            between
+            icon="plus"
             onPress={() => router.push("/settings/credentials")}
           />
         </View>
@@ -220,8 +230,8 @@ export default function RoutesScreen() {
   const clamped = choiceTokens(choice) > director.window.model_window;
   return (
     <Page header={<BackBar />} refreshing={refreshing} onRefresh={() => void refresh()}>
-      <View style={[styles.head, { borderBottomColor: palette.ink, gap: 10 }]}>
-        <Text style={[styles.meta, { color: palette.mut }]}>导演模型</Text>
+      <View style={[styles.head, { gap: 10 }]}>
+        <Text style={{ fontSize: 13, color: palette.mut }}>导演模型</Text>
         <Text accessibilityRole="header" style={[styles.model, { color: palette.ink }]}>
           {director.model}
         </Text>
@@ -230,30 +240,30 @@ export default function RoutesScreen() {
           onPress={() =>
             router.push({ pathname: "/settings/credential/[id]", params: { id: director.credential_id } })
           }
-          style={styles.credential}
+          style={({ pressed }) => [
+            styles.credential,
+            { backgroundColor: pressed ? palette.bg3 : palette.bg2 },
+          ]}
         >
-          <ProviderMark mark={providerMark(director.provider)} size={24} filled />
-          <Text style={{ fontSize: 14, color: palette.ink2 }}>
+          <ProviderMark mark={providerMark(director.provider)} size={28} tone="ink" />
+          <Text style={{ fontSize: 13.5, color: palette.ink2 }}>
             {director.credential_label || director.provider}
-            {credential ? (
-              <Text style={{ fontFamily: font.mono }}> · •••• {credential.key_last4}</Text>
-            ) : null}
+            {credential ? <Text style={{ fontFamily: font.mono }}> · {credential.key_last4}</Text> : null}
           </Text>
         </Pressable>
       </View>
 
-      <SectionHeader title="能记住多少" meta={`上下文 ${formatTokens(director.window.model_window)}`} />
       <MemoryBlocks route={director} choice={choice} />
-      <View style={{ paddingHorizontal: space.page, gap: 10 }}>
+      <SectionHeader title="工作窗口上限" />
+      <View style={{ paddingHorizontal: space.list, gap: 10 }}>
         <Segmented
-          label="工作窗口上限"
           value={choice}
           options={WINDOW_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
           onChange={setChoice}
           mono
           height={52}
         />
-        <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut }}>
+        <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut, paddingHorizontal: space.m }}>
           窗口越大，导演记得越多，但每轮更慢、更贵。用到 80% 时，早期剧情会被压缩成摘要。
         </Text>
         {clamped ? (
@@ -270,9 +280,11 @@ export default function RoutesScreen() {
         accessibilityState={{ checked: thinking }}
         accessibilityLabel="深度思考"
         onPress={() => setThinking((t) => !t)}
-        style={[styles.switchRow, { borderBottomColor: palette.line }]}
+        style={[styles.switchRow, { backgroundColor: palette.bg2 }]}
       >
-        <Icon name="bulb" />
+        <View style={[styles.switchIcon, { backgroundColor: palette.card }]}>
+          <Icon name="bulb" size={20} />
+        </View>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={{ fontSize: 16, color: palette.ink }}>深度思考</Text>
           <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut }}>模型支持时先思考再写，更慢</Text>
@@ -291,17 +303,16 @@ export default function RoutesScreen() {
         <Button
           label="换一个模型"
           variant="secondary"
-          trailingIcon="swap"
-          between
+          icon="swap"
           onPress={() => router.push("/settings/credentials")}
         />
         <Button
           label="取消导演模型"
           variant="text"
           onPress={() => void cancel()}
-          style={{ marginTop: space.s }}
+          style={{ marginTop: space.xs }}
         >
-          <Text style={{ fontSize: 15, color: palette.err }}>取消导演模型</Text>
+          <Text style={{ fontSize: 15, fontWeight: "500", color: palette.err }}>取消导演模型</Text>
         </Button>
         <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut, textAlign: "center" }}>
           取消后，新的回合会因为没有模型而无法生成。
@@ -312,41 +323,51 @@ export default function RoutesScreen() {
 }
 
 const styles = StyleSheet.create({
-  head: {
-    paddingHorizontal: space.page,
-    paddingTop: space.m,
-    paddingBottom: space.page,
-    gap: space.s,
-    borderBottomWidth: 1,
-  },
-  big: { fontSize: 34, lineHeight: 40, fontWeight: "700", letterSpacing: -0.7 },
-  meta: { fontFamily: font.mono, fontSize: 11.5, letterSpacing: 0.9 },
+  head: { paddingHorizontal: space.page, paddingTop: space.l, paddingBottom: 18, gap: space.s },
+  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
   model: { fontFamily: font.monoMedium, fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
-  credential: { flexDirection: "row", alignItems: "center", gap: space.s },
-  blocks: { flexDirection: "row", flexWrap: "wrap", gap: GAP },
-  block: { flex: 1 },
-  markRing: { position: "absolute", top: -2, left: -2, right: -2, bottom: -2, borderWidth: 2 },
-  legends: { flexDirection: "row", flexWrap: "wrap", columnGap: space.l, rowGap: space.s },
+  credential: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.s,
+    height: 36,
+    paddingLeft: space.xs,
+    paddingRight: 14,
+    borderRadius: 18,
+  },
+  memory: {
+    marginHorizontal: space.list,
+    paddingVertical: 18,
+    paddingHorizontal: space.l,
+    borderRadius: 30,
+    gap: 14,
+  },
+  memoryTitle: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  blocks: { flexDirection: "row", flexWrap: "wrap", gap: GAP, padding: 14, borderRadius: 22 },
+  legends: { flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: space.s },
   legend: { flexDirection: "row", alignItems: "center", gap: space.s },
-  swatch: { width: 12, height: 12 },
+  swatch: { width: 12, height: 12, borderRadius: 6 },
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    minHeight: 72,
+    minHeight: 76,
+    marginHorizontal: space.list,
     paddingVertical: space.m,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
+    paddingHorizontal: space.l,
+    borderRadius: 26,
   },
-  bottom: { paddingHorizontal: space.page, paddingTop: 32, gap: 10 },
+  switchIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  bottom: { paddingHorizontal: space.list, paddingTop: space.xl, gap: space.s },
   keyRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: space.m,
     minHeight: 72,
-    paddingVertical: space.m,
-    paddingLeft: space.page,
-    paddingRight: space.l,
-    borderBottomWidth: 1,
+    marginHorizontal: space.list,
+    marginBottom: space.s,
+    padding: 14,
+    borderRadius: 26,
   },
 });

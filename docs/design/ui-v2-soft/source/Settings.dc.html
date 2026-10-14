@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设置 · 账户 · 柔和圆角</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--ok:#13875A;--okBg:#E9F6EF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF;--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10)}
+.D{--bg:#111113;--bg2:#1C1C1F;--bg3:#27272B;--ink:#F2F2F0;--ink2:#D3D3CF;--mut:#9C9C97;--line:#2A2A2F;--line2:#3A3A40;--acc:#8597FF;--accBg:#1F2546;--ok:#43C98C;--okBg:#11281D;--warn:#F0B257;--warnBg:#2C2213;--err:#FF7466;--errBg:#2F1715;--pri:#F2F2F0;--onPri:#111113;--card:#2A2A2F;--sh:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.5)}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;height:28px;padding:0 12px;border-radius:14px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12px;color:#6E6D68}
+.ph{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;border-radius:44px;box-shadow:0 0 0 1px #EEEEEA}
+.ph *{box-sizing:border-box}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 22px;border:0;border-radius:26px;font-family:inherit;font-size:16px;font-weight:500;text-decoration:none;width:100%}
+.bp{background:var(--pri);color:var(--onPri)}
+.bs{background:var(--bg2);color:var(--ink)}
+.hd{position:absolute;top:0;left:0;right:0;padding:64px 20px 12px 24px}
+.big{font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.grp{background:var(--bg2);border-radius:26px;overflow:hidden}
+.row{display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 14px;color:inherit;text-decoration:none}
+.ic{width:40px;height:40px;border-radius:20px;background:var(--card);display:flex;align-items:center;justify-content:center;flex:none}
+.t{font-size:16px;line-height:22px}
+.s{font-size:12.5px;line-height:18px;color:var(--mut)}
+.sep{height:1.5px;background:var(--bg);margin:0 14px 0 68px}
+.gh{font-size:13px;color:var(--mut);padding:18px 12px 8px}
+.chev{color:var(--mut)}
+.tabs{position:absolute;z-index:5;left:20px;right:20px;bottom:28px;height:64px;padding:0 8px;border-radius:32px;background:var(--card);box-shadow:var(--sh);display:flex;align-items:center;justify-content:space-between}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;width:84px;font-size:11px;line-height:14px;color:var(--mut);text-decoration:none}
+.ton{flex-direction:row;gap:8px;width:auto;height:48px;padding:0 18px 0 14px;border-radius:24px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:500}
+.inp{display:block;width:100%;height:52px;border-radius:16px;background:var(--card);border:0;padding:0 16px;font-family:inherit;font-size:16px;color:var(--ink);outline:none}
+.inp::placeholder{color:var(--mut)}
+</style>
+</helmet>
+<div class="bd0" style="width: 1250px; height: 884px">
+
+  <div class="cell">
+    <div class="tag">01 · 设置首页</div>
+    <section class="ph L" aria-label="设置">
+      <header class="hd"><h1 class="big">设置</h1></header>
+      <div style="position: absolute; top: 120px; left: 12px; right: 12px">
+        <a href="#" style="display: block; padding: 18px; border-radius: 30px; background: var(--ink); color: #FFFFFF; text-decoration: none">
+          <div style="display: flex; align-items: center; justify-content: space-between">
+            <span style="font-size: 13px; color: rgba(255,255,255,.65)">导演模型</span>
+            <span style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: rgba(255,255,255,.12); font-size: 12px"><i style="width: 6px; height: 6px; border-radius: 3px; background: #43C98C"></i>可用</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-top: 12px">
+            <span style="width: 48px; height: 48px; border-radius: 24px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; flex: none"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="3"/><path d="M3.5 9l2-5h14l-1.5 5M10 4L8.5 9M15.5 4L14 9"/></svg></span>
+            <div style="flex: 1; min-width: 0"><div class="mono" style="font-size: 17px; line-height: 24px; font-weight: 500">deepseek-chat</div><div style="font-size: 12.5px; color: rgba(255,255,255,.65)">我的 DeepSeek · 尾号 3f9a</div></div>
+            <svg class="i" style="width: 18px; height: 18px; opacity: .6" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+          </div>
+          <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 6px">
+            <div style="display: flex; height: 8px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden" aria-hidden="true"><span style="width: 44%; border-radius: 4px; background: #FFFFFF"></span><span style="width: 6%; margin-left: 2px; border-radius: 4px; background: #8597FF"></span></div>
+            <div class="mono" style="display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.65)"><span>工作窗口 64K</span><span>上下文 128K</span></div>
+          </div>
+        </a>
+        <div class="gh">配置</div>
+        <div class="grp">
+          <a class="row" href="#"><span class="ic"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2.5 2.5M14 9l2 2"/></svg></span><span class="t" style="flex: 1">密钥与端点</span><span class="mono" style="height: 26px; min-width: 26px; padding: 0 8px; border-radius: 13px; background: var(--card); font-size: 12px; display: flex; align-items: center; justify-content: center">2</span><svg class="i chev" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+          <div class="sep"></div>
+          <a class="row" href="#"><span class="ic" style="background: var(--accBg); color: var(--acc); font-weight: 700">林</span><div style="flex: 1; min-width: 0"><div class="t">林川</div><div class="s">linchuan@example.com</div></div><svg class="i chev" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        </div>
+        <div class="gh">其他</div>
+        <div class="grp">
+          <a class="row" href="#"><span class="ic"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span><div style="flex: 1; min-width: 0"><div class="t">连接测试</div><div class="s">检查流式输出、断线续传和延迟</div></div><svg class="i chev" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        </div>
+        <div class="mono" style="padding: 16px 12px; font-size: 11px; line-height: 17px; color: var(--mut)">v0.1.0 · 192.168.1.10:8000</div>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">02 · 深色 · 还没设置模型</div>
+    <section class="ph D" aria-label="设置，未设置模型" style="box-shadow: 0 0 0 1px #2A2A2F">
+      <header class="hd"><h1 class="big">设置</h1></header>
+      <div style="position: absolute; top: 120px; left: 12px; right: 12px">
+        <div style="padding: 18px; border-radius: 30px; background: var(--warnBg); display: flex; flex-direction: column; gap: 14px">
+          <span style="align-self: flex-start; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 8px; border-radius: 14px; background: rgba(240,178,87,.14); color: var(--warn); font-size: 12.5px; font-weight: 500"><svg class="i" style="width: 15px; height: 15px" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 4.3L2.6 18a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/><path d="M12 10v4M12 17h.01"/></svg>还不能开始故事</span>
+          <div style="font-size: 20px; line-height: 28px; font-weight: 700">设置导演模型</div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div style="display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 12px; border-radius: 18px; background: var(--card)"><span class="mono" style="width: 26px; height: 26px; border-radius: 13px; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 12px">1</span>添加一个密钥</div>
+            <div style="display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 12px; border-radius: 18px; color: var(--mut)"><span class="mono" style="width: 26px; height: 26px; border-radius: 13px; box-shadow: inset 0 0 0 1.5px var(--line2); display: flex; align-items: center; justify-content: center; font-size: 12px">2</span>从里面挑一个模型</div>
+          </div>
+          <a class="btn bp" href="#" style="justify-content: space-between; padding: 0 8px 0 24px">添加密钥<span style="width: 36px; height: 36px; border-radius: 18px; background: rgba(0,0,0,.08); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+        </div>
+        <div class="gh">配置</div>
+        <div class="grp">
+          <a class="row" href="#"><span class="ic"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="3"/><path d="M3.5 9l2-5h14l-1.5 5M10 4L8.5 9M15.5 4L14 9"/></svg></span><div style="flex: 1; min-width: 0"><div class="t">导演模型</div><div class="s" style="color: var(--warn)">还没有设置</div></div><svg class="i chev" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+          <div class="sep"></div>
+          <a class="row" href="#"><span class="ic"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2.5 2.5M14 9l2 2"/></svg></span><span class="t" style="flex: 1">密钥与端点</span><span class="s">还没有添加</span><svg class="i chev" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+          <div class="sep"></div>
+          <a class="row" href="#"><span class="ic" style="background: var(--accBg); color: var(--acc); font-weight: 700">林</span><div style="flex: 1; min-width: 0"><div class="t">林川</div><div class="s">linchuan@example.com</div></div><svg class="i chev" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">03 · 账户 · 删除区展开</div>
+    <section class="ph L" aria-label="账户">
+      <a href="#" aria-label="返回设置" style="position: absolute; top: 56px; left: 16px; width: 44px; height: 44px; border-radius: 22px; background: var(--bg2); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+      <div style="position: absolute; top: 116px; left: 12px; right: 12px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0 14px">
+          <span style="width: 80px; height: 80px; border-radius: 40px; background: var(--acc); color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 700">林</span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px"><h1 class="big" style="font-size: 26px; line-height: 32px">林川</h1><span class="s">注册于 2026 年 9 月 3 日</span></div>
+        </div>
+        <div class="grp">
+          <div class="row" style="min-height: 56px"><span class="s" style="width: 44px; font-size: 13px">邮箱</span><span>linchuan@example.com</span></div>
+          <div class="sep" style="margin-left: 14px"></div>
+          <div class="row" style="min-height: 56px"><span class="s" style="width: 44px; font-size: 13px">昵称</span><span style="flex: 1">林川</span><svg class="i" style="width: 18px; height: 18px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></div>
+        </div>
+        <button class="btn bs" type="button"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4M10 16l-4-4 4-4M6 12h10"/></svg>退出登录</button>
+        <div style="margin-top: 20px; padding: 18px 14px 14px; border-radius: 28px; background: var(--errBg); display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; align-items: center; gap: 8px; color: var(--err); font-weight: 700; font-size: 16px; padding: 0 4px"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 4.3L2.6 18a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/><path d="M12 10v4M12 17h.01"/></svg>删除账户</div>
+          <div style="display: flex; gap: 6px">
+            <span style="flex: 1; height: 56px; border-radius: 18px; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center"><b class="mono" style="font-size: 17px; font-weight: 500">5</b><span class="s">故事</span></span>
+            <span style="flex: 1; height: 56px; border-radius: 18px; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center"><b class="mono" style="font-size: 17px; font-weight: 500">5</b><span class="s">剧本</span></span>
+            <span style="flex: 1; height: 56px; border-radius: 18px; background: var(--card); display: flex; flex-direction: column; align-items: center; justify-content: center"><b class="mono" style="font-size: 17px; font-weight: 500">2</b><span class="s">密钥</span></span>
+          </div>
+          <div style="font-size: 14px; line-height: 22px; color: var(--ink2); padding: 0 4px">所有故事、剧本和密钥都会被永久删除，无法恢复。</div>
+          <label for="dp" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">输入密码确认</label>
+          <input id="dp" class="inp" type="password" placeholder="输入密码确认">
+          <button class="btn" type="button" aria-disabled="true" style="background: var(--err); color: #FFFFFF; opacity: .35">删除账户</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1250,"height":884}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

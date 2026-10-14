@@ -1,25 +1,18 @@
 /**
- * 阅读主屏：导航栏（返回、世界状态、更多）、故事流、底部行动栏。
+ * 阅读主屏：导航栏（返回、世界状态、更多）、故事流、浮在底部的行动面板。
  * 顶部只放低频入口，所有回合操作都在屏幕下三分之一；离开页面只断开连接，服务端的生成继续，回来时会接上。
+ * 行动面板盖在故事流上面：量出它的高度，故事流的底部留白和“回到最新”都跟着它走。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import {
-  AccessibilityInfo,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
-import Svg, { Path, Rect } from "react-native-svg";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError } from "../../../src/api/client.ts";
 import type { Scenario } from "../../../src/api/types.ts";
 import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
-import { ActionBar } from "../../../src/features/play/ActionBar.tsx";
+import { ActionBar, PANEL_GAP } from "../../../src/features/play/ActionBar.tsx";
 import { MoreSheet } from "../../../src/features/play/MoreSheet.tsx";
 import { BookHeader, StoryFeed } from "../../../src/features/play/StoryFeed.tsx";
 import { headTurn } from "../../../src/features/play/turnMachine.ts";
@@ -27,10 +20,11 @@ import { usePlaySession } from "../../../src/features/play/usePlaySession.ts";
 import { WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
 import { useApp } from "../../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../../src/state/PrefsProvider.tsx";
-import { font, space, usePalette } from "../../../src/theme/index.ts";
+import { radius, space, usePalette } from "../../../src/theme/index.ts";
 
 function OpeningSkeleton() {
   const palette = usePalette();
+  const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1 }}>
       <View
@@ -42,24 +36,22 @@ function OpeningSkeleton() {
         <SkeletonLine />
         <SkeletonLine />
         <SkeletonLine width="58%" />
-        <View style={{ height: 16 }} />
+        <View style={[styles.skeletonCard, { backgroundColor: palette.bg2 }]} />
         <SkeletonLine />
         <SkeletonLine />
         <SkeletonLine width="74%" />
-        <View
-          style={{
-            height: 52,
-            backgroundColor: palette.bg2,
-            marginHorizontal: -space.read,
-            marginVertical: space.l,
-          }}
-        />
+        <View style={{ height: space.m }} />
+        <SkeletonLine />
         <SkeletonLine />
         <SkeletonLine width="40%" />
       </View>
-      <View style={styles.opening} accessibilityRole="progressbar" accessibilityLabel="正在打开故事">
+      <View
+        style={[styles.opening, { bottom: insets.bottom + 30, backgroundColor: palette.bg2 }]}
+        accessibilityRole="progressbar"
+        accessibilityLabel="正在打开故事"
+      >
         <Dots />
-        <Text style={[styles.mono, { color: palette.mut }]}>正在打开故事</Text>
+        <Text style={{ fontSize: 13, color: palette.mut }}>正在打开故事</Text>
       </View>
     </View>
   );
@@ -68,31 +60,17 @@ function OpeningSkeleton() {
 function LoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
   const palette = usePalette();
   return (
-    <View style={styles.failed} accessibilityRole="alert">
-      <Svg width={56} height={56} viewBox="0 0 56 56">
-        <Rect
-          x={0.75}
-          y={0.75}
-          width={54.5}
-          height={54.5}
-          fill="none"
-          stroke={palette.err}
-          strokeWidth={1.5}
-        />
-        <Path d="M18 18l20 20M38 18L18 38" stroke={palette.err} strokeWidth={1.5} />
-      </Svg>
-      <Text style={{ fontSize: 24, lineHeight: 32, fontWeight: "700", color: palette.ink }}>
+    <View style={[styles.failed, { backgroundColor: palette.bg2 }]} accessibilityRole="alert">
+      <View style={[styles.failedIcon, { backgroundColor: palette.errBg }]}>
+        <Icon name="alertCircle" size={28} color={palette.err} />
+      </View>
+      <Text
+        style={{ fontSize: 22, lineHeight: 30, fontWeight: "700", color: palette.ink, textAlign: "center" }}
+      >
         故事没能打开
       </Text>
-      <Text style={{ fontSize: 15, lineHeight: 24, color: palette.mut }}>{message}</Text>
-      <Button
-        label="重新加载"
-        variant="secondary"
-        trailingIcon="retry"
-        between
-        onPress={onRetry}
-        style={{ marginTop: space.s }}
-      />
+      <Text style={{ fontSize: 15, lineHeight: 24, color: palette.mut, textAlign: "center" }}>{message}</Text>
+      <Button label="重新加载" icon="retry" onPress={onRetry} style={styles.failedButton} />
     </View>
   );
 }
@@ -111,6 +89,9 @@ export default function PlayScreen() {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [worldOpen, setWorldOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // 行动面板的高度加上离底的 8：故事流在它上方结束
+  const [panel, setPanel] = useState(120);
+  const onPanelHeight = useCallback((h: number) => setPanel((old) => (Math.abs(old - h) < 1 ? old : h)), []);
 
   // 剧本名和封面图片（剧本删掉了也不影响阅读）
   useEffect(() => {
@@ -213,36 +194,41 @@ export default function PlayScreen() {
   }
   const syncing = state.phase === "syncing";
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
-    >
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
       {nav}
-      {syncing ? (
-        <View
-          accessibilityRole="alert"
-          style={[styles.syncing, { backgroundColor: palette.accBg, borderBottomColor: palette.acc }]}
-        >
-          <Icon name="sync" size={18} color={palette.acc} />
-          <Text style={{ fontSize: 13, fontWeight: "500", color: palette.acc }}>故事有更新，正在同步…</Text>
-        </View>
-      ) : null}
-      <StoryFeed
-        state={state}
-        reading={reading}
-        dimmed={syncing}
-        header={
-          <BookHeader
-            seed={state.scenarioId ?? id}
-            blobId={scenario?.avatar_blob_id ?? null}
-            title={shownTitle}
-            card={scenario?.name ?? null}
-            protagonist={state.protagonist}
-            width={width}
-          />
-        }
-      />
-      <ActionBar state={state} controls={controls} onOpenSettings={() => router.push("/settings/routes")} />
+      {/* 行动面板自己跟着键盘浮起（见 ActionBar），故事流的底部留白跟着面板走 */}
+      <View style={{ flex: 1 }}>
+        <StoryFeed
+          state={state}
+          reading={reading}
+          dimmed={syncing}
+          bottomInset={panel + PANEL_GAP}
+          header={
+            <BookHeader
+              seed={state.scenarioId ?? id}
+              blobId={scenario?.avatar_blob_id ?? null}
+              title={shownTitle}
+              card={scenario?.name ?? null}
+              protagonist={state.protagonist}
+              width={width}
+            />
+          }
+        />
+        {syncing ? (
+          <View accessibilityRole="alert" style={[styles.syncing, { backgroundColor: palette.accBg }]}>
+            <Icon name="retry" size={16} color={palette.acc} />
+            <Text style={{ fontSize: 13.5, fontWeight: "500", color: palette.acc }}>
+              故事有更新，正在同步…
+            </Text>
+          </View>
+        ) : null}
+        <ActionBar
+          state={state}
+          controls={controls}
+          onOpenSettings={() => router.push("/settings/routes")}
+          onHeight={onPanelHeight}
+        />
+      </View>
       <WorldSheet visible={worldOpen} onClose={() => setWorldOpen(false)} playthroughId={id} />
       <MoreSheet
         visible={moreOpen}
@@ -254,28 +240,50 @@ export default function PlayScreen() {
         }}
         onDelete={() => void remove()}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  skeleton: { paddingHorizontal: space.read, paddingTop: 32, gap: 19 },
+  skeleton: { paddingHorizontal: space.read, paddingTop: space.xl, gap: 19 },
+  skeletonCard: {
+    height: 56,
+    borderRadius: radius.card,
+    marginHorizontal: -space.s,
+    marginVertical: space.m,
+  },
   opening: {
     position: "absolute",
-    left: space.read,
-    bottom: 120,
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     gap: space.s,
+    height: 36,
+    paddingHorizontal: space.l,
+    borderRadius: 18,
   },
-  mono: { fontFamily: font.mono, fontSize: 11.5, letterSpacing: 0.7 },
-  failed: { paddingHorizontal: space.read, paddingTop: 180, gap: space.l },
+  failed: {
+    marginTop: 146,
+    marginHorizontal: space.l,
+    paddingTop: space.xl,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderRadius: radius.sheet,
+    alignItems: "center",
+    gap: space.m,
+  },
+  failedIcon: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center" },
+  failedButton: { alignSelf: "stretch", marginTop: space.s },
   syncing: {
+    position: "absolute",
+    top: space.s,
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    height: 44,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
+    gap: space.s,
+    height: 40,
+    paddingLeft: space.m,
+    paddingRight: space.l,
+    borderRadius: 20,
   },
 });

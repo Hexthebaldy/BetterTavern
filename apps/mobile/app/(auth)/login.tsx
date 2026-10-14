@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiError, describeError } from "../../src/api/client.ts";
 import { Logo } from "../../src/components/Logo.tsx";
 import { ServerRow, ServerSheet } from "../../src/components/ServerSetting.tsx";
-import { Button, Field, Icon, IconButton, Notice } from "../../src/components/ui.tsx";
+import { Button, Field, IconButton, Notice } from "../../src/components/ui.tsx";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
 import { space, usePalette } from "../../src/theme/index.ts";
@@ -53,14 +53,14 @@ export default function LoginScreen() {
     >
       {error ? (
         <Notice
-          banner
+          floating
           message={error}
-          style={{ paddingTop: insets.top + 14 }}
           onClose={() => setError(null)}
+          style={[styles.error, { top: insets.top + space.s }]}
         />
       ) : null}
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: (error ? 0 : insets.top) + 28 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.l }]}
         keyboardShouldPersistTaps="handled"
       >
         <Logo />
@@ -94,6 +94,8 @@ export default function LoginScreen() {
               <IconButton
                 icon={reveal ? "eyeOff" : "eye"}
                 label={reveal ? "隐藏密码" : "显示密码"}
+                tone="plain"
+                diameter={44}
                 color={palette.mut}
                 onPress={() => setReveal((r) => !r)}
               />
@@ -108,21 +110,18 @@ export default function LoginScreen() {
             disabled={!email.trim() || !password}
             style={{ marginTop: space.s }}
           />
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel="还没有账户？注册"
-            onPress={() => router.replace("/register")}
-            style={({ pressed }) => [
-              styles.switch,
-              { borderColor: palette.line2, backgroundColor: pressed ? palette.bg2 : palette.bg },
-            ]}
-          >
-            <Text style={{ fontSize: 15, color: palette.ink }}>还没有账户？</Text>
-            <View style={styles.switchAction}>
-              <Text style={{ fontSize: 15, fontWeight: "500", color: palette.ink }}>注册</Text>
-              <Icon name="arrowRight" size={18} />
-            </View>
-          </Pressable>
+          <View style={styles.switch}>
+            <Text style={{ fontSize: 14, color: palette.mut }}>还没有账户？</Text>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="注册"
+              onPress={() => router.replace("/register")}
+              hitSlop={8}
+              style={styles.switchAction}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>注册</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
       <ServerRow onChange={() => setServerOpen(true)} />
@@ -132,17 +131,11 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: space.read, paddingBottom: space.xxl, gap: space.xxl },
-  big: { fontSize: 34, lineHeight: 42, fontWeight: "700", letterSpacing: -0.7 },
+  error: { position: "absolute", zIndex: 4, left: space.l, right: space.l },
+  content: { paddingHorizontal: space.page, paddingTop: space.xl, paddingBottom: space.xxl, gap: 32 },
+  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
   lead: { fontSize: 15, lineHeight: 24 },
-  form: { gap: 18 },
-  switch: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    height: 52,
-    paddingHorizontal: space.page,
-    borderWidth: 1,
-  },
-  switchAction: { flexDirection: "row", alignItems: "center", gap: 6 },
+  form: { gap: space.l },
+  switch: { flexDirection: "row", justifyContent: "center", alignItems: "center" },
+  switchAction: { height: 44, justifyContent: "center", paddingHorizontal: 6 },
 });

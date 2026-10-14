@@ -6,9 +6,9 @@
 import { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 
-import { MenuItem, Sheet } from "../../components/ui.tsx";
+import { MenuGroup, MenuItem, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
-import { font, space, usePalette } from "../../theme/index.ts";
+import { font, liftShadow, onColor, space, usePalette } from "../../theme/index.ts";
 import {
   lineHeightFor,
   READING_SIZES,
@@ -18,23 +18,23 @@ import {
   type ReadingFont,
 } from "./reading.ts";
 
+/** 字号轨道两头的留白 */
+const TRACK_PADDING = 14;
+
 function FontChoice() {
   const palette = usePalette();
+  const surfaces = useSheetSurfaces();
   const { reading, setReading } = usePrefs();
-  const option = (value: ReadingFont, glyph: string, label: string, last?: boolean) => {
+  const option = (value: ReadingFont, glyph: string, label: string) => {
     const on = reading.font === value;
-    const fg = on ? palette.bg : palette.ink;
+    const fg = on ? palette.ink : palette.mut;
     return (
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ selected: on }}
         accessibilityLabel={label}
         onPress={() => setReading({ ...reading, font: value })}
-        style={[
-          styles.fontOption,
-          { backgroundColor: on ? palette.ink : "transparent" },
-          last ? null : { borderRightWidth: 1, borderRightColor: palette.line2 },
-        ]}
+        style={[styles.fontOption, on ? { backgroundColor: surfaces.raised, boxShadow: liftShadow } : null]}
       >
         <Text
           style={{
@@ -46,7 +46,7 @@ function FontChoice() {
         >
           {glyph}
         </Text>
-        <Text style={{ fontSize: 15, color: fg }}>{label}</Text>
+        <Text style={{ fontSize: 15, fontWeight: on ? "600" : "400", color: fg }}>{label}</Text>
       </Pressable>
     );
   };
@@ -54,19 +54,20 @@ function FontChoice() {
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel="正文字体"
-      style={[styles.fonts, { borderColor: palette.line2 }]}
+      style={[styles.fonts, { backgroundColor: surfaces.inset }]}
     >
       {option("serif", "宋", "宋体")}
-      {option("sans", "黑", "黑体", true)}
+      {option("sans", "黑", "黑体")}
     </View>
   );
 }
 
-const TRACK_PADDING = space.l;
+const KNOB = 24;
 
-/** 字号：两头是减小、增大，中间的轨道可以点或拖到某一档 */
+/** 字号：两头是减小、增大的圆按钮，中间的轨道可以点或拖到某一档 */
 function SizeControl() {
   const palette = usePalette();
+  const surfaces = useSheetSurfaces();
   const { reading, setReading } = usePrefs();
   const [trackWidth, setTrackWidth] = useState(0);
   const lastIndex = useRef(-1);
@@ -84,17 +85,24 @@ function SizeControl() {
     setReading({ ...reading, size: READING_SIZES[next] ?? size });
   };
 
+  const stepButton = (label: string, glyphSize: number, delta: 1 | -1) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => setReading({ ...reading, size: stepSize(reading, delta) })}
+      style={({ pressed }) => [
+        styles.sizeButton,
+        { backgroundColor: surfaces.raised, transform: [{ scale: pressed ? 0.97 : 1 }] },
+      ]}
+    >
+      <Text style={{ fontSize: glyphSize, color: palette.ink }}>A</Text>
+    </Pressable>
+  );
+
   return (
     <View style={{ gap: space.s }}>
-      <View style={[styles.size, { borderColor: palette.line2 }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="字号减小"
-          onPress={() => setReading({ ...reading, size: stepSize(reading, -1) })}
-          style={[styles.sizeButton, { borderRightWidth: 1, borderRightColor: palette.line2 }]}
-        >
-          <Text style={{ fontSize: 14, color: palette.ink }}>A</Text>
-        </Pressable>
+      <View style={[styles.size, { backgroundColor: surfaces.inset }]}>
+        {stepButton("字号减小", 14, -1)}
         <View
           accessible
           accessibilityRole="adjustable"
@@ -119,23 +127,16 @@ function SizeControl() {
           <View
             pointerEvents="none"
             onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
-            style={[styles.track, { backgroundColor: palette.line2 }]}
+            style={[styles.track, { backgroundColor: palette.bg3 }]}
           >
-            <View style={{ width: `${ratio * 100}%`, height: 2, backgroundColor: palette.ink }} />
-            <View style={[styles.knob, { left: ratio * trackWidth - 8, backgroundColor: palette.ink }]} />
+            <View style={[styles.fill, { width: `${ratio * 100}%`, backgroundColor: palette.acc }]} />
+            <View style={[styles.knob, { left: ratio * trackWidth - KNOB / 2 }]} />
           </View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="字号增大"
-          onPress={() => setReading({ ...reading, size: stepSize(reading, 1) })}
-          style={[styles.sizeButton, { borderLeftWidth: 1, borderLeftColor: palette.line2 }]}
-        >
-          <Text style={{ fontSize: 22, color: palette.ink }}>A</Text>
-        </Pressable>
+        {stepButton("字号增大", 22, 1)}
       </View>
       <View style={styles.sizeNote}>
-        <Text style={[styles.mono, { color: palette.mut }]}>
+        <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.mut }}>
           {size} / {lineHeightFor(size)} · {reading.size === null ? "跟随系统字体大小" : "固定字号"}
         </Text>
         {reading.size !== null ? (
@@ -144,11 +145,7 @@ function SizeControl() {
             onPress={() => setReading({ ...reading, size: null })}
             hitSlop={10}
           >
-            <Text
-              style={{ fontSize: 12, fontWeight: "500", color: palette.ink, textDecorationLine: "underline" }}
-            >
-              跟随系统
-            </Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: palette.acc }}>跟随系统</Text>
           </Pressable>
         ) : null}
       </View>
@@ -172,36 +169,63 @@ export function MoreSheet({
   const palette = usePalette();
   return (
     <Sheet visible={visible} onClose={onClose}>
-      <View style={styles.reading}>
-        <Text style={[styles.mono, { color: palette.mut, letterSpacing: 0.9 }]}>阅读设置</Text>
+      <View style={styles.body}>
+        <Text style={[styles.label, { color: palette.mut }]}>阅读设置</Text>
         <FontChoice />
         <SizeControl />
-      </View>
-      <View style={{ marginTop: space.m, borderTopWidth: 1, borderTopColor: palette.line }}>
-        <MenuItem icon="write" label="重命名故事" onPress={onRename} />
-        <MenuItem icon="world" label="世界状态" onPress={onWorld} />
-        <MenuItem icon="trash" label="删除故事" danger last onPress={onDelete} />
+        <MenuGroup style={{ marginTop: space.xs }}>
+          <MenuItem icon="write" label="重命名故事" onPress={onRename} />
+          <MenuItem icon="world" label="世界状态" onPress={onWorld} />
+          <MenuItem icon="trash" label="删除故事" danger onPress={onDelete} />
+        </MenuGroup>
       </View>
     </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  reading: { paddingTop: space.m, paddingHorizontal: space.page, gap: 14 },
-  mono: { fontFamily: font.mono, fontSize: 11.5 },
-  fonts: { flexDirection: "row", borderWidth: 1 },
+  body: { paddingHorizontal: space.s, gap: space.s },
+  label: {
+    fontSize: 13,
+    lineHeight: 18,
+    paddingTop: space.s,
+    paddingHorizontal: space.s,
+    paddingBottom: space.xs,
+  },
+  fonts: { flexDirection: "row", padding: 4, gap: 4, borderRadius: 26 },
   fontOption: {
     flex: 1,
-    height: 56,
+    height: 52,
+    borderRadius: 22,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: space.s,
   },
-  size: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 1 },
-  sizeButton: { width: 48, height: 46, alignItems: "center", justifyContent: "center" },
-  trackArea: { flex: 1, height: 46, justifyContent: "center", paddingHorizontal: TRACK_PADDING },
-  track: { height: 2 },
-  knob: { position: "absolute", top: -7, width: 16, height: 16 },
-  sizeNote: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  size: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 60,
+    paddingHorizontal: space.s,
+    borderRadius: 26,
+  },
+  sizeButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  trackArea: { flex: 1, height: 52, justifyContent: "center", paddingHorizontal: TRACK_PADDING },
+  track: { height: 6, borderRadius: 3 },
+  fill: { height: 6, borderRadius: 3 },
+  knob: {
+    position: "absolute",
+    top: -(KNOB - 6) / 2,
+    width: KNOB,
+    height: KNOB,
+    borderRadius: KNOB / 2,
+    backgroundColor: onColor,
+    boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+  },
+  sizeNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: space.s,
+  },
 });

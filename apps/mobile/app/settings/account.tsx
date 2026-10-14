@@ -6,9 +6,19 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "../../src/api/client.ts";
-import { BackBar, Button, Field, Icon, Notice, useOverlay, type IconName } from "../../src/components/ui.tsx";
+import {
+  BackBar,
+  Button,
+  Field,
+  Group,
+  Icon,
+  Notice,
+  useOverlay,
+  type IconName,
+} from "../../src/components/ui.tsx";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { font, onColor, space, usePalette } from "../../src/theme/index.ts";
+import { font, onColor, radius, space, usePalette } from "../../src/theme/index.ts";
+import { formatDate } from "../../src/utils/format.ts";
 
 type Counts = { stories: number; scenarios: number; keys: number };
 
@@ -23,7 +33,7 @@ export default function AccountScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const name = user?.display_name || user?.email || "";
-  const joined = user?.created_at ? user.created_at.slice(0, 10) : "";
+  const joined = user?.created_at ? formatDate(user.created_at) : "";
 
   const toggle = (): void => {
     const next = !expanded;
@@ -56,11 +66,16 @@ export default function AccountScreen() {
     }
   };
 
-  const stat = (icon: IconName, value: number | undefined, label: string, last?: boolean) => (
-    <View style={[styles.stat, last ? null : { borderRightWidth: 1, borderRightColor: palette.line }]}>
-      <Icon name={icon} size={18} />
-      <Text style={{ fontFamily: font.monoMedium, fontSize: 18, color: palette.ink }}>{value ?? "–"}</Text>
-      <Text style={{ fontSize: 12.5, color: palette.mut }}>{label}</Text>
+  const stat = (icon: IconName, value: number | undefined, label: string) => (
+    <View
+      style={[styles.stat, { backgroundColor: palette.card }]}
+      accessibilityLabel={`${label} ${value ?? ""}`}
+    >
+      <Text style={{ fontFamily: font.monoMedium, fontSize: 17, color: palette.ink }}>{value ?? "–"}</Text>
+      <View style={styles.statLabel}>
+        <Icon name={icon} size={13} color={palette.mut} />
+        <Text style={{ fontSize: 12.5, color: palette.mut }}>{label}</Text>
+      </View>
     </View>
   );
 
@@ -70,64 +85,62 @@ export default function AccountScreen() {
       style={{ flex: 1, backgroundColor: palette.bg }}
     >
       <BackBar />
-      <ScrollView contentContainerStyle={{ paddingBottom: 56 }} keyboardShouldPersistTaps="handled">
-        <View style={[styles.head, { borderBottomColor: palette.ink }]}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.head}>
           <View style={[styles.avatar, { backgroundColor: palette.acc }]}>
-            <Text style={{ fontSize: 32, fontWeight: "900", color: onColor }}>{[...name][0] ?? "?"}</Text>
+            <Text style={{ fontSize: 34, fontWeight: "700", color: onColor }}>{[...name][0] ?? "?"}</Text>
           </View>
-          <View style={{ flex: 1, gap: 2 }}>
+          <View style={{ alignItems: "center", gap: 2 }}>
             <Text accessibilityRole="header" numberOfLines={1} style={[styles.name, { color: palette.ink }]}>
               {name}
             </Text>
-            {joined ? <Text style={[styles.mono, { color: palette.mut }]}>注册于 {joined}</Text> : null}
+            {joined ? <Text style={{ fontSize: 12.5, color: palette.mut }}>注册于 {joined}</Text> : null}
           </View>
         </View>
-        <View style={[styles.kv, { borderBottomColor: palette.line }]}>
-          <Text style={[styles.key, { color: palette.mut }]}>邮箱</Text>
-          <Text style={{ flex: 1, fontSize: 15, color: palette.ink }} selectable>
-            {user?.email}
-          </Text>
-        </View>
-        <View style={[styles.kv, { borderBottomColor: palette.line }]}>
-          <Text style={[styles.key, { color: palette.mut }]}>昵称</Text>
-          <Text style={{ flex: 1, fontSize: 15, color: user?.display_name ? palette.ink : palette.mut }}>
-            {user?.display_name || "没有设置"}
-          </Text>
-        </View>
-        <View style={{ padding: space.page }}>
-          <Button
-            label="退出登录"
-            variant="secondary"
-            trailingIcon="logout"
-            between
-            onPress={() => void signOut()}
-          />
-        </View>
+        <Group inset={14}>
+          <View style={styles.kv}>
+            <Text style={[styles.key, { color: palette.mut }]}>邮箱</Text>
+            <Text style={{ flex: 1, fontSize: 15, color: palette.ink }} selectable>
+              {user?.email}
+            </Text>
+          </View>
+          <View style={styles.kv}>
+            <Text style={[styles.key, { color: palette.mut }]}>昵称</Text>
+            <Text style={{ flex: 1, fontSize: 15, color: user?.display_name ? palette.ink : palette.mut }}>
+              {user?.display_name || "没有设置"}
+            </Text>
+          </View>
+        </Group>
+        <Button label="退出登录" variant="secondary" icon="logout" onPress={() => void signOut()} />
 
-        <View style={[styles.danger, { borderTopColor: palette.err }]}>
+        <View style={[styles.danger, { backgroundColor: palette.errBg }]}>
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ expanded }}
             onPress={toggle}
             style={styles.dangerHead}
           >
-            <Text style={{ flex: 1, fontSize: 17, fontWeight: "700", color: palette.err }}>删除账户</Text>
+            <Icon name="alert" size={20} color={palette.err} />
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: palette.err }}>删除账户</Text>
             <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} color={palette.err} />
           </Pressable>
           {expanded ? (
-            <View style={{ gap: 14 }}>
-              <View style={[styles.stats, { borderColor: palette.line }]}>
+            <View style={{ gap: space.m }}>
+              <View style={styles.stats}>
                 {stat("story", counts?.stories, "故事")}
                 {stat("library", counts?.scenarios, "剧本")}
-                {stat("key", counts?.keys, "密钥", true)}
+                {stat("key", counts?.keys, "密钥")}
               </View>
-              <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink2 }}>
+              <Text
+                style={{ fontSize: 14, lineHeight: 22, color: palette.ink2, paddingHorizontal: space.xs }}
+              >
                 所有故事、剧本和密钥都会被永久删除，无法恢复。
               </Text>
               {error ? <Notice message={error} /> : null}
               <Field
                 label="输入密码确认"
                 hideLabel
+                onGrey
                 placeholder="输入密码确认"
                 value={password}
                 onChangeText={setPassword}
@@ -137,7 +150,7 @@ export default function AccountScreen() {
               />
               <Button
                 label="删除账户"
-                variant="danger"
+                variant="dangerSolid"
                 onPress={() => void confirmDelete()}
                 busy={deleting}
                 disabled={!password}
@@ -151,29 +164,27 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  head: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: space.l,
-    paddingHorizontal: space.page,
+  content: { paddingHorizontal: space.list, paddingBottom: 56, gap: space.s },
+  head: { alignItems: "center", gap: 10, paddingTop: space.page, paddingBottom: 14 },
+  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
+  name: { fontSize: 26, lineHeight: 32, fontWeight: "700" },
+  kv: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 56, paddingHorizontal: 14 },
+  key: { width: 44, fontSize: 13 },
+  danger: {
+    marginTop: 20,
     paddingTop: space.s,
-    paddingBottom: space.page,
-    borderBottomWidth: 1,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    borderRadius: radius.group,
   },
-  avatar: { width: 72, height: 72, alignItems: "center", justifyContent: "center" },
-  name: { fontSize: 30, lineHeight: 36, fontWeight: "700", letterSpacing: -0.6 },
-  mono: { fontFamily: font.mono, fontSize: 11.5, letterSpacing: 0.5 },
-  kv: {
+  dangerHead: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space.m,
-    minHeight: 52,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
+    gap: space.s,
+    minHeight: 48,
+    paddingHorizontal: space.xs,
   },
-  key: { width: 72, fontFamily: font.mono, fontSize: 11.5, letterSpacing: 0.7 },
-  danger: { marginTop: space.xxl, marginHorizontal: space.page, borderTopWidth: 2, paddingTop: space.xs },
-  dangerHead: { flexDirection: "row", alignItems: "center", minHeight: 48 },
-  stats: { flexDirection: "row", borderWidth: 1 },
-  stat: { flex: 1, padding: space.m, gap: 6 },
+  stats: { flexDirection: "row", gap: 6 },
+  stat: { flex: 1, height: 60, borderRadius: 18, alignItems: "center", justifyContent: "center", gap: 2 },
+  statLabel: { flexDirection: "row", alignItems: "center", gap: 4 },
 });

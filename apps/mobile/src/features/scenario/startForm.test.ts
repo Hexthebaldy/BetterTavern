@@ -10,7 +10,7 @@ import {
   randomName,
   STYLE_MAX,
   suggestNames,
-  summaryLine,
+  summaryParts,
 } from "./startForm.ts";
 
 describe("开始新故事的表单", () => {
@@ -41,20 +41,20 @@ describe("开始新故事的表单", () => {
     assert.ok(composeBoundaries(long).length <= BOUNDARIES_MAX);
   });
 
-  it("摘要行", () => {
-    assert.equal(
-      summaryLine({
+  it("底部摘要分段", () => {
+    assert.deepEqual(
+      summaryParts({
         name: "林川",
         identity: "过路的旅人",
         length: "medium",
         styles: ["克制", "白描"],
         boundaries: 2,
       }),
-      "林川 · 过路的旅人 · 适中 · 克制 / 白描 · 避开 2 项",
+      ["林川", "过路的旅人", "适中", "克制 · 白描", "避开 2 项"],
     );
-    assert.equal(
-      summaryLine({ name: " ", identity: null, length: "short", styles: [], boundaries: 0 }),
-      "还没起名 · 短",
+    assert.deepEqual(
+      summaryParts({ name: " ", identity: null, length: "short", styles: [], boundaries: 0 }),
+      ["还没起名", "短"],
     );
   });
 });

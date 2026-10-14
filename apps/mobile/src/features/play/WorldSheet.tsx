@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import Svg, { G, Line, Path, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
 import { describeError } from "../../api/client.ts";
 import type { WorldEntity, WorldView } from "../../api/types.ts";
@@ -15,13 +15,15 @@ import {
   ErrorState,
   Icon,
   IconButton,
+  Pill,
+  Segmented,
   Sheet,
-  Tag,
   useOverlay,
+  useSheetSurfaces,
   type IconName,
 } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
-import { font, onColor, space, usePalette } from "../../theme/index.ts";
+import { onColor, radius, space, useIsDark, usePalette } from "../../theme/index.ts";
 import { layoutGraph, NODE_HEIGHT, relLabel } from "./worldGraph.ts";
 
 type Tab = "entities" | "links" | "facts";
@@ -55,6 +57,7 @@ function EntityRow({
   onToggle: () => void;
 }) {
   const palette = usePalette();
+  const surfaces = useSheetSurfaces();
   const kind = KIND[entity.kind] ?? { label: entity.kind, icon: "item" as const };
   const outgoing = view.links.filter((l) => l.src_id === entity.id && names.has(l.dst_id));
   const incoming = view.links.filter((l) => l.dst_id === entity.id && names.has(l.src_id));
@@ -65,26 +68,34 @@ function EntityRow({
   // 简介太长时收起只显示 3 行，点开看全文
   const expandable = outgoing.length + incoming.length + details.length > 0 || entity.summary.length > 60;
   const me = entity.is_protagonist;
+  const chip = (key: string, label: string, name: string | undefined, incoming?: boolean) => (
+    <View key={key} style={[styles.relChip, { backgroundColor: palette.sheet }]}>
+      <Text style={[styles.kind, { color: palette.mut }]}>{label}</Text>
+      {incoming ? <Icon name="arrowLeft" size={12} color={palette.mut} /> : null}
+      <Text style={{ fontSize: 12.5, color: palette.ink }}>{name}</Text>
+    </View>
+  );
   return (
     <Pressable
       accessibilityRole={expandable ? "button" : undefined}
       accessibilityState={expandable ? { expanded: open } : undefined}
       disabled={!expandable}
       onPress={onToggle}
-      style={[
+      style={({ pressed }) => [
         styles.entity,
-        { borderBottomColor: palette.line, backgroundColor: open ? palette.bg2 : palette.bg },
+        {
+          backgroundColor: me ? palette.accBg : surfaces.fill,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
       ]}
     >
-      <View
-        style={[styles.entityIcon, { backgroundColor: me ? palette.acc : open ? palette.bg : palette.bg2 }]}
-      >
+      <View style={[styles.entityIcon, { backgroundColor: me ? palette.acc : palette.sheet }]}>
         <Icon name={kind.icon} size={20} color={me ? onColor : palette.ink} />
       </View>
       <View style={{ flex: 1, gap: open ? space.s : 2 }}>
         <View style={styles.entityTop}>
           <Text style={[styles.entityName, { color: palette.ink, flex: me ? 0 : 1 }]}>{entity.name}</Text>
-          {me ? <Tag label="我" variant="solid" /> : null}
+          {me ? <Pill label="我" tone="accSolid" height={20} /> : null}
           {me ? <View style={{ flex: 1 }} /> : null}
           {me ? null : <Text style={[styles.kind, { color: palette.mut }]}>{kind.label}</Text>}
           {expandable ? (
@@ -99,34 +110,20 @@ function EntityRow({
             {entity.summary}
           </Text>
         ) : null}
-        {open ? (
-          <View style={{ borderTopWidth: 1, borderTopColor: palette.line2 }}>
+        {open && details.length > 0 ? (
+          <View style={{ gap: 4 }}>
             {details.map(([key, value]) => (
-              <View key={key} style={[styles.linkRow, { borderBottomColor: palette.line }]}>
-                <Text style={[styles.kind, styles.linkKey, { color: palette.mut }]}>{DATA_LABELS[key]}</Text>
-                <Text style={{ flex: 1, fontSize: 13, color: palette.ink }}>{value}</Text>
-              </View>
+              <Text key={key} style={{ fontSize: 13, lineHeight: 20, color: palette.ink }}>
+                <Text style={{ color: palette.mut }}>{DATA_LABELS[key]} </Text>
+                {value}
+              </Text>
             ))}
-            {outgoing.map((l) => (
-              <View
-                key={`o${l.rel}${l.dst_id}`}
-                style={[styles.linkRow, { borderBottomColor: palette.line }]}
-              >
-                <Text style={[styles.kind, styles.linkKey, { color: palette.mut }]}>{relLabel(l.rel)}</Text>
-                <Icon name="arrowRight" size={14} color={palette.mut} />
-                <Text style={{ fontSize: 13, color: palette.ink }}>{names.get(l.dst_id)}</Text>
-              </View>
-            ))}
-            {incoming.map((l) => (
-              <View
-                key={`i${l.rel}${l.src_id}`}
-                style={[styles.linkRow, { borderBottomColor: palette.line }]}
-              >
-                <Text style={[styles.kind, styles.linkKey, { color: palette.mut }]}>{relLabel(l.rel)}</Text>
-                <Icon name="arrowLeft" size={14} color={palette.mut} />
-                <Text style={{ fontSize: 13, color: palette.ink }}>{names.get(l.src_id)}</Text>
-              </View>
-            ))}
+          </View>
+        ) : null}
+        {open && outgoing.length + incoming.length > 0 ? (
+          <View style={styles.relChips}>
+            {outgoing.map((l) => chip(`o${l.rel}${l.dst_id}`, relLabel(l.rel), names.get(l.dst_id)))}
+            {incoming.map((l) => chip(`i${l.rel}${l.src_id}`, relLabel(l.rel), names.get(l.src_id), true))}
           </View>
         ) : null}
       </View>
@@ -136,6 +133,8 @@ function EntityRow({
 
 function Entities({ view, names }: { view: WorldView; names: Map<string, string> }) {
   const palette = usePalette();
+  // 深色下面板比页面亮，未选中的标签改用更亮的 card 底
+  const dark = useIsDark();
   const [filter, setFilter] = useState<Filter>("all");
   const [open, setOpen] = useState<string | null>(null);
   const entities = view.entities
@@ -147,12 +146,13 @@ function Entities({ view, names }: { view: WorldView; names: Map<string, string>
   const shown = filter === "all" ? entities : entities.filter((e) => e.kind === filter);
   return (
     <View>
-      <View style={[styles.filters, { borderBottomColor: palette.line }]}>
-        <Chip small label="全部" selected={filter === "all"} onPress={() => setFilter("all")} />
+      <View style={styles.filters}>
+        <Chip small onGrey={dark} label="全部" selected={filter === "all"} onPress={() => setFilter("all")} />
         {kinds.map((k) => (
           <Chip
             key={k}
             small
+            onGrey={dark}
             label={KIND[k]?.label ?? k}
             icon={KIND[k]?.icon}
             selected={filter === k}
@@ -160,16 +160,18 @@ function Entities({ view, names }: { view: WorldView; names: Map<string, string>
           />
         ))}
       </View>
-      {shown.map((e) => (
-        <EntityRow
-          key={e.id}
-          entity={e}
-          names={names}
-          view={view}
-          open={open === e.id}
-          onToggle={() => setOpen((current) => (current === e.id ? null : e.id))}
-        />
-      ))}
+      <View style={styles.list}>
+        {shown.map((e) => (
+          <EntityRow
+            key={e.id}
+            entity={e}
+            names={names}
+            view={view}
+            open={open === e.id}
+            onToggle={() => setOpen((current) => (current === e.id ? null : e.id))}
+          />
+        ))}
+      </View>
       {shown.length === 0 ? (
         <Text style={[styles.empty, { color: palette.mut }]}>还没有记下什么。</Text>
       ) : null}
@@ -179,24 +181,23 @@ function Entities({ view, names }: { view: WorldView; names: Map<string, string>
 
 function Links({ view, names }: { view: WorldView; names: Map<string, string> }) {
   const palette = usePalette();
-  const { width } = useWindowDimensions();
+  const surfaces = useSheetSurfaces();
+  const { width: screen } = useWindowDimensions();
+  // 面板左右各离屏幕 8，图卡片左右再各缩进 12
+  const width = screen - space.s * 2 - space.list * 2;
   const height = 300;
   const graph = useMemo(() => layoutGraph(view.entities, view.links, width, height), [view, width]);
   const links = view.links.filter((l) => names.has(l.src_id) && names.has(l.dst_id));
   if (links.length === 0)
     return <Text style={[styles.empty, { color: palette.mut }]}>还没有记下人物和地点之间的关系。</Text>;
-  const grid: string[] = [];
-  for (let y = 60; y < height; y += 60) grid.push(`M0 ${y}H${width}`);
-  for (let x = 65; x < width; x += 65) grid.push(`M${x} 0V${height}`);
   return (
     <View>
-      <View style={{ backgroundColor: palette.bg2, borderBottomWidth: 1, borderBottomColor: palette.line }}>
+      <View style={[styles.graph, { backgroundColor: surfaces.fill }]}>
         <Svg
           width={width}
           height={height}
           accessibilityLabel={`关系图：${graph.nodes.map((n) => n.label).join("、")}`}
         >
-          <Path d={grid.join("")} stroke={palette.line} strokeWidth={1} />
           {graph.edges.map((e, i) => (
             <Line
               key={i}
@@ -204,8 +205,9 @@ function Links({ view, names }: { view: WorldView; names: Map<string, string> })
               y1={e.from.y}
               x2={e.to.x}
               y2={e.to.y}
-              stroke={palette.ink}
-              strokeWidth={1.2}
+              stroke={palette.line2}
+              strokeWidth={1.6}
+              strokeLinecap="round"
             />
           ))}
           {graph.edges.map((e, i) => (
@@ -213,15 +215,14 @@ function Links({ view, names }: { view: WorldView; names: Map<string, string> })
               key={`t${i}`}
               x={(e.from.x + e.to.x) / 2 + 4}
               y={(e.from.y + e.to.y) / 2 - 4}
-              fontSize={10.5}
-              fontFamily={font.mono}
+              fontSize={11}
               fill={palette.mut}
             >
               {e.label}
             </SvgText>
           ))}
           {graph.nodes.map((n) => {
-            const fill = n.role === "me" ? palette.acc : n.role === "hub" ? palette.ink : palette.bg;
+            const fill = n.role === "me" ? palette.acc : n.role === "hub" ? palette.ink : palette.sheet;
             const text = n.role === "me" ? onColor : n.role === "hub" ? palette.bg : palette.ink;
             return (
               <G key={n.id}>
@@ -230,8 +231,8 @@ function Links({ view, names }: { view: WorldView; names: Map<string, string> })
                   y={n.y - NODE_HEIGHT / 2}
                   width={n.width}
                   height={NODE_HEIGHT}
+                  rx={NODE_HEIGHT / 2}
                   fill={fill}
-                  stroke={n.role === "other" ? palette.ink : "none"}
                 />
                 <SvgText
                   x={n.x}
@@ -248,20 +249,24 @@ function Links({ view, names }: { view: WorldView; names: Map<string, string> })
           })}
         </Svg>
       </View>
-      {links.map((l) => (
-        <View
-          key={`${l.src_id}${l.rel}${l.dst_id}`}
-          style={[styles.linkLine, { borderBottomColor: palette.line }]}
-        >
-          <Text numberOfLines={1} style={[styles.linkName, { color: palette.ink }]}>
-            {names.get(l.src_id)}
-          </Text>
-          <Text style={[styles.kind, styles.linkMid, { color: palette.mut }]}>{relLabel(l.rel)} →</Text>
-          <Text numberOfLines={1} style={[styles.linkName, { color: palette.ink }]}>
-            {names.get(l.dst_id)}
-          </Text>
-        </View>
-      ))}
+      <View style={styles.list}>
+        {links.map((l) => (
+          <View
+            key={`${l.src_id}${l.rel}${l.dst_id}`}
+            style={[styles.linkLine, { backgroundColor: surfaces.fill }]}
+          >
+            <Text numberOfLines={1} style={[styles.linkName, { color: palette.ink }]}>
+              {names.get(l.src_id)}
+            </Text>
+            <View style={[styles.linkMid, { backgroundColor: palette.sheet }]}>
+              <Text style={{ fontSize: 12, color: palette.mut }}>{relLabel(l.rel)} →</Text>
+            </View>
+            <Text numberOfLines={1} style={[styles.linkName, { color: palette.ink, textAlign: "right" }]}>
+              {names.get(l.dst_id)}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -276,21 +281,21 @@ function Facts({
   onReveal: () => void;
 }) {
   const palette = usePalette();
+  const surfaces = useSheetSurfaces();
   const facts = [...view.facts].sort(
     (a, b) => Number(a.secret) - Number(b.secret) || b.importance - a.importance,
   );
   return (
-    <View>
+    <View style={styles.list}>
       {facts.map((f) => (
         <View
           key={f.id}
-          style={[
-            styles.fact,
-            { borderBottomColor: palette.line, backgroundColor: f.secret ? palette.warnBg : palette.bg },
-          ]}
+          style={[styles.fact, { backgroundColor: f.secret ? palette.warnBg : surfaces.fill }]}
         >
           {f.secret ? (
-            <Icon name="unlock" size={16} color={palette.warn} />
+            <View style={{ marginTop: 3 }}>
+              <Icon name="unlock" size={16} color={palette.warn} />
+            </View>
           ) : (
             <View style={[styles.factDot, { backgroundColor: palette.ink }]} />
           )}
@@ -316,20 +321,15 @@ function Facts({
           onPress={onReveal}
           style={({ pressed }) => [
             styles.fact,
-            {
-              alignItems: "center",
-              borderBottomColor: palette.line,
-              backgroundColor: pressed ? palette.bg2 : palette.bg,
-            },
+            styles.hidden,
+            { backgroundColor: palette.warnBg, transform: [{ scale: pressed ? 0.98 : 1 }] },
           ]}
         >
-          <Icon name="lock" size={16} color={palette.mut} />
-          <View style={{ flex: 1, flexDirection: "row", gap: 4 }}>
-            <View style={[styles.bar, { width: 120, backgroundColor: palette.bg3 }]} />
-            <View style={[styles.bar, { width: 70, backgroundColor: palette.bg3 }]} />
+          <Icon name="lock" size={16} color={palette.warn} />
+          <Text style={{ flex: 1, fontSize: 13, color: palette.warn }}>{view.hidden_facts} 条秘密</Text>
+          <View style={[styles.revealPill, { backgroundColor: palette.sheet }]}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: palette.warn }}>揭示</Text>
           </View>
-          <Text style={{ fontSize: 13, color: palette.mut }}>{view.hidden_facts} 条秘密</Text>
-          <Text style={{ fontSize: 13, fontWeight: "700", color: palette.warn }}>揭示</Text>
         </Pressable>
       ) : null}
       {facts.length === 0 && view.hidden_facts === 0 ? (
@@ -350,6 +350,7 @@ export function WorldSheet({
 }) {
   const { api } = useApp();
   const palette = usePalette();
+  const surfaces = useSheetSurfaces();
   const overlay = useOverlay();
   const [tab, setTab] = useState<Tab>("entities");
   const [view, setView] = useState<WorldView | null>(null);
@@ -395,10 +396,10 @@ export function WorldSheet({
         facts: view.facts.length + view.hidden_facts,
       }
     : null;
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "entities", label: "人物与地点" },
-    { key: "links", label: "关系" },
-    { key: "facts", label: "事实" },
+  const tabs: { value: Tab; label: string; count?: number }[] = [
+    { value: "entities", label: "人物与地点", count: counts?.entities },
+    { value: "links", label: "关系", count: counts?.links },
+    { value: "facts", label: "事实", count: counts?.facts },
   ];
   return (
     <Sheet
@@ -408,44 +409,29 @@ export function WorldSheet({
       header={
         <View>
           <View style={styles.head}>
-            <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flex: 1 }}>
               <Text accessibilityRole="header" style={[styles.title, { color: palette.ink }]}>
                 世界
               </Text>
-              <Text style={[styles.kind, { fontSize: 11.5, color: palette.mut }]}>
+              <Text style={{ fontSize: 12, lineHeight: 17, color: palette.mut }}>
                 导演记下的一切 · 开局时整理
               </Text>
             </View>
-            <IconButton icon="close" label="关闭" onPress={onClose} />
+            <IconButton
+              icon="close"
+              label="关闭"
+              onPress={onClose}
+              style={{ backgroundColor: surfaces.fill }}
+            />
           </View>
-          <View style={[styles.tabs, { borderBottomColor: palette.line }]} accessibilityRole="tablist">
-            {tabs.map((t) => {
-              const on = tab === t.key;
-              return (
-                <Pressable
-                  key={t.key}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
-                  onPress={() => setTab(t.key)}
-                  style={styles.tab}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: on ? "700" : "400",
-                      color: on ? palette.ink : palette.mut,
-                    }}
-                  >
-                    {t.label}
-                  </Text>
-                  {counts ? (
-                    <Text style={[styles.count, { color: palette.mut }]}>{counts[t.key]}</Text>
-                  ) : null}
-                  {on ? <View style={[styles.tabMark, { backgroundColor: palette.ink }]} /> : null}
-                </Pressable>
-              );
-            })}
-          </View>
+          <Segmented
+            value={tab}
+            options={tabs}
+            onChange={setTab}
+            trackColor={surfaces.inset}
+            selectedColor={surfaces.raised}
+            style={styles.tabs}
+          />
         </View>
       }
     >
@@ -477,57 +463,50 @@ export function WorldSheet({
 const styles = StyleSheet.create({
   head: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    paddingTop: space.l,
-    paddingLeft: space.page,
-    paddingRight: space.s,
+    alignItems: "center",
+    paddingTop: 10,
+    paddingLeft: 20,
+    paddingRight: space.m,
   },
-  title: { fontSize: 26, lineHeight: 32, fontWeight: "900", letterSpacing: -0.5 },
-  tabs: { flexDirection: "row", paddingHorizontal: space.page, marginTop: 14, borderBottomWidth: 1, gap: 22 },
-  tab: { flexDirection: "row", alignItems: "center", gap: 6, height: 44 },
-  tabMark: { position: "absolute", left: 0, right: 0, bottom: -1, height: 2 },
-  count: { fontFamily: font.mono, fontSize: 11 },
+  title: { fontSize: 24, lineHeight: 32, fontWeight: "700" },
+  tabs: { marginTop: 14, marginHorizontal: space.list },
   filters: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
-    paddingVertical: space.m,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
+    paddingTop: space.m,
+    paddingHorizontal: space.list,
   },
-  entity: {
-    flexDirection: "row",
-    gap: space.m,
-    paddingVertical: 14,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
-  },
-  entityIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  list: { paddingVertical: space.s, paddingHorizontal: space.list, gap: 6 },
+  entity: { flexDirection: "row", gap: space.m, padding: space.m, borderRadius: radius.option },
+  entityIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   entityTop: { flexDirection: "row", alignItems: "center", gap: space.s },
   entityName: { fontSize: 16, lineHeight: 22, fontWeight: "700" },
-  kind: { fontFamily: font.mono, fontSize: 11, letterSpacing: 0.7 },
-  linkRow: { flexDirection: "row", alignItems: "center", gap: space.s, minHeight: 34, borderBottomWidth: 1 },
-  linkKey: { width: 52 },
+  kind: { fontSize: 12, lineHeight: 17 },
+  relChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  relChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+  },
+  graph: { marginTop: space.m, marginHorizontal: space.list, borderRadius: radius.group, overflow: "hidden" },
   linkLine: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.s,
     paddingVertical: space.m,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
+    paddingHorizontal: space.l,
+    borderRadius: radius.card,
   },
   linkName: { flex: 1, fontSize: 14 },
-  linkMid: { width: 64, textAlign: "center" },
-  fact: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    paddingVertical: space.m,
-    paddingHorizontal: space.page,
-    borderBottomWidth: 1,
-  },
-  factDot: { width: 6, height: 6, marginTop: 8, marginHorizontal: 5 },
-  bar: { height: 10 },
+  linkMid: { height: 24, paddingHorizontal: 10, borderRadius: 12, justifyContent: "center" },
+  fact: { flexDirection: "row", alignItems: "flex-start", gap: space.m, padding: 14, borderRadius: 22 },
+  hidden: { alignItems: "center", paddingVertical: 6, paddingRight: 6 },
+  revealPill: { height: 32, paddingHorizontal: space.m, borderRadius: 16, justifyContent: "center" },
+  factDot: { width: 8, height: 8, borderRadius: 4, marginTop: 7 },
   empty: { padding: space.page, fontSize: 14, lineHeight: 22 },
   loading: { padding: space.xxl, alignItems: "center" },
 });

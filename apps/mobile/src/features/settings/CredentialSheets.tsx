@@ -10,7 +10,7 @@ import type { Credential, Provider } from "../../api/types.ts";
 import { KeyField } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, Sheet } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
-import { space, usePalette } from "../../theme/index.ts";
+import { radius, space, usePalette } from "../../theme/index.ts";
 
 export function EditSheet({
   visible,
@@ -76,13 +76,15 @@ export function EditSheet({
           placeholder={provider?.display_name}
         />
         <View style={{ gap: space.s }}>
-          <Text style={{ fontSize: 13, fontWeight: "500", color: palette.ink2 }}>端点地址</Text>
+          <Text style={{ fontSize: 13, fontWeight: "500", color: palette.ink2, paddingLeft: space.xs }}>
+            端点地址
+          </Text>
           {needsUrl ? null : (
             <Pressable
               accessibilityRole="checkbox"
               accessibilityState={{ checked: official }}
               onPress={() => setOfficial((v) => !v)}
-              style={[styles.official, { backgroundColor: palette.bg2, borderColor: palette.line }]}
+              style={[styles.official, { backgroundColor: palette.bg2 }]}
             >
               <CheckMark checked={official} />
               <Text style={{ fontSize: 15, color: palette.ink }}>使用官方地址</Text>
@@ -175,8 +177,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: space.m,
     height: 52,
-    paddingHorizontal: 14,
-    borderWidth: 1,
+    paddingHorizontal: space.l,
+    borderRadius: radius.input,
   },
-  sheetBody: { paddingHorizontal: space.page, paddingBottom: space.page, gap: space.l },
+  sheetBody: { paddingHorizontal: space.l, paddingBottom: space.s, gap: space.l },
 });

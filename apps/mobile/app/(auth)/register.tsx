@@ -1,4 +1,4 @@
-/** 注册：邮箱、密码（至少 8 位，下面一条 8 格的长度条）、可选的昵称 */
+/** 注册：邮箱、密码（至少 8 位，下面一条长度进度条）、可选的昵称 */
 
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -16,19 +16,19 @@ const NAME_MAX = 40;
 
 function LengthBar({ length }: { length: number }) {
   const palette = usePalette();
-  const enough = length >= MIN_PASSWORD;
+  const ratio = Math.min(length / MIN_PASSWORD, 1);
   return (
-    <View style={{ gap: space.s }} accessibilityLabel={`已输入 ${length} 位，至少 ${MIN_PASSWORD} 位`}>
-      <View style={styles.bar}>
-        {Array.from({ length: MIN_PASSWORD }, (_, i) => (
-          <View
-            key={i}
-            style={[styles.cell, { backgroundColor: i < length ? palette.ink : palette.line2 }]}
-          />
-        ))}
+    <View style={styles.lengthRow} accessibilityLabel={`已输入 ${length} 位，至少 ${MIN_PASSWORD} 位`}>
+      <View style={[styles.track, { backgroundColor: palette.bg3 }]}>
+        <View
+          style={[
+            styles.fill,
+            { width: `${ratio * 100}%`, backgroundColor: ratio >= 1 ? palette.ok : palette.ink },
+          ]}
+        />
       </View>
       <Text style={[styles.meta, { color: palette.mut }]}>
-        {enough ? `${length} 位 · 长度够了` : `${length} / ${MIN_PASSWORD} · 至少 ${MIN_PASSWORD} 位`}
+        {length >= MIN_PASSWORD ? `${length} 位` : `${length} / ${MIN_PASSWORD}`}
       </Text>
     </View>
   );
@@ -110,6 +110,8 @@ export default function RegisterScreen() {
               <IconButton
                 icon={reveal ? "eyeOff" : "eye"}
                 label={reveal ? "隐藏密码" : "显示密码"}
+                tone="plain"
+                diameter={44}
                 color={palette.mut}
                 onPress={() => setReveal((r) => !r)}
               />
@@ -143,10 +145,11 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: space.read, paddingTop: space.s, paddingBottom: space.xxl, gap: space.xl },
-  big: { fontSize: 34, lineHeight: 42, fontWeight: "700", letterSpacing: -0.7 },
-  form: { gap: space.page },
-  bar: { flexDirection: "row", gap: 3 },
-  cell: { flex: 1, height: 3 },
+  content: { paddingHorizontal: space.page, paddingTop: space.l, paddingBottom: space.xxl, gap: space.xl },
+  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
+  form: { gap: 18 },
+  lengthRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingLeft: space.xs },
+  track: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
+  fill: { height: 6, borderRadius: 3 },
   meta: { fontFamily: font.mono, fontSize: 12, lineHeight: 16 },
 });

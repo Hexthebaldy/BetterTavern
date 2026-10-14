@@ -16,12 +16,13 @@ import {
   CheckMark,
   ErrorState,
   Field,
+  Group,
   Icon,
   Loading,
   Notice,
+  Pill,
   SectionHeader,
   Status,
-  Tag,
 } from "../../src/components/ui.tsx";
 import {
   CREDENTIAL_STATUS,
@@ -49,17 +50,10 @@ function KeyRow({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        { borderBottomColor: palette.line, backgroundColor: pressed ? palette.bg2 : palette.bg },
-      ]}
+      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? palette.bg3 : "transparent" }]}
     >
-      <ProviderMark
-        mark={providerMark(credential.provider)}
-        filled={director}
-        dashed={credential.provider === "custom_openai"}
-      />
-      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+      <ProviderMark mark={providerMark(credential.provider)} tone={director ? "ink" : "card"} />
+      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <Text
           numberOfLines={1}
           style={{ fontSize: 16, lineHeight: 22, fontWeight: "500", color: palette.ink }}
@@ -67,16 +61,16 @@ function KeyRow({
           {credentialTitle(credential, providers)}
         </Text>
         <View style={styles.meta}>
-          <Text style={{ fontFamily: font.mono, fontSize: 12.5, color: palette.mut }}>
+          <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.mut }}>
             •••• {credential.key_last4}
           </Text>
           <Status kind={statusKind(credential.status)} label={CREDENTIAL_STATUS[credential.status]} />
         </View>
       </View>
       {director ? (
-        <Tag label="导演" variant="solid" />
+        <Pill label="导演" tone="acc" height={26} />
       ) : (
-        <Icon name="chevronRight" size={18} color={palette.line2} />
+        <Icon name="chevronRight" size={18} color={palette.mut} />
       )}
     </Pressable>
   );
@@ -92,30 +86,24 @@ function ProviderTile({
   onPress: () => void;
 }) {
   const palette = usePalette();
-  const fg = selected ? palette.bg : palette.ink;
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       accessibilityLabel={provider.display_name}
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.tile,
-        selected ? { backgroundColor: palette.ink } : { borderWidth: 1, borderColor: palette.line2 },
+        selected
+          ? { backgroundColor: palette.accBg, boxShadow: `inset 0 0 0 2px ${palette.acc}` }
+          : { backgroundColor: palette.card },
+        { transform: [{ scale: pressed ? 0.97 : 1 }] },
       ]}
     >
-      <ProviderMark
-        mark={providerMark(provider.id)}
-        size={28}
-        inverse={selected}
-        dashed={provider.requires_base_url}
-      />
-      <View style={styles.tileLabel}>
-        <Text style={{ flex: 1, fontSize: 13.5, lineHeight: 18, color: fg }}>
-          {provider.requires_base_url ? "自定义兼容端点" : provider.display_name}
-        </Text>
-        {selected ? <Icon name="check" size={16} color={fg} strokeWidth={2} /> : null}
-      </View>
+      <ProviderMark mark={providerMark(provider.id)} size={36} tone={selected ? "acc" : "grey"} />
+      <Text style={{ fontSize: 13.5, lineHeight: 18, color: palette.ink }}>
+        {provider.requires_base_url ? "自定义兼容端点" : provider.display_name}
+      </Text>
     </Pressable>
   );
 }
@@ -160,9 +148,9 @@ function AddCredential({ providers, onAdded }: { providers: Provider[]; onAdded:
   };
 
   return (
-    <View style={styles.form}>
+    <View style={[styles.form, { backgroundColor: palette.bg2 }]}>
       {error ? <Notice message={error} /> : null}
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: space.s }}>
         <Text style={[styles.label, { color: palette.ink2 }]}>服务商</Text>
         <View style={styles.tiles} accessibilityRole="radiogroup" accessibilityLabel="服务商">
           {providers.map((p) => (
@@ -177,6 +165,7 @@ function AddCredential({ providers, onAdded }: { providers: Provider[]; onAdded:
       </View>
       <KeyField
         label="API Key"
+        onGrey
         value={key}
         onChangeText={setKey}
         placeholder="sk-…"
@@ -190,7 +179,7 @@ function AddCredential({ providers, onAdded }: { providers: Provider[]; onAdded:
             accessibilityRole="checkbox"
             accessibilityState={{ checked: official }}
             onPress={() => setOfficial((v) => !v)}
-            style={[styles.official, { backgroundColor: palette.bg2, borderColor: palette.line }]}
+            style={[styles.official, { backgroundColor: palette.card }]}
           >
             <CheckMark checked={official} />
             <Text style={{ fontSize: 15, color: palette.ink }}>使用官方地址</Text>
@@ -200,6 +189,7 @@ function AddCredential({ providers, onAdded }: { providers: Provider[]; onAdded:
           <Field
             label="端点地址"
             hideLabel
+            onGrey
             value={baseUrl}
             onChangeText={setBaseUrl}
             mono
@@ -218,6 +208,7 @@ function AddCredential({ providers, onAdded }: { providers: Provider[]; onAdded:
       <Field
         label="备注名"
         optional
+        onGrey
         value={label}
         onChangeText={setLabel}
         maxLength={60}
@@ -265,7 +256,7 @@ export default function CredentialsScreen() {
     >
       <BackBar />
       <ScrollView contentContainerStyle={{ paddingBottom: 56 }} keyboardShouldPersistTaps="handled">
-        <View style={[styles.head, { borderBottomColor: palette.ink }]}>
+        <View style={styles.head}>
           <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
             密钥与端点
           </Text>
@@ -274,17 +265,27 @@ export default function CredentialsScreen() {
           </Text>
         </View>
         {error ? (
-          <Notice banner message={describeError(error)} actionLabel="重试" onAction={() => void reload()} />
-        ) : null}
-        {credentials.map((c) => (
-          <KeyRow
-            key={c.id}
-            credential={c}
-            providers={providers}
-            director={director?.credential_id === c.id}
-            onPress={() => router.push({ pathname: "/settings/credential/[id]", params: { id: c.id } })}
+          <Notice
+            icon="offline"
+            message={describeError(error)}
+            actionLabel="重试"
+            onAction={() => void reload()}
+            style={styles.inset}
           />
-        ))}
+        ) : null}
+        {credentials.length > 0 ? (
+          <Group inset={70} style={styles.inset}>
+            {credentials.map((c) => (
+              <KeyRow
+                key={c.id}
+                credential={c}
+                providers={providers}
+                director={director?.credential_id === c.id}
+                onPress={() => router.push({ pathname: "/settings/credential/[id]", params: { id: c.id } })}
+              />
+            ))}
+          </Group>
+        ) : null}
         <SectionHeader title="添加密钥" />
         {providers.length > 0 ? (
           <AddCredential
@@ -301,37 +302,35 @@ export default function CredentialsScreen() {
 }
 
 const styles = StyleSheet.create({
-  head: {
-    paddingHorizontal: space.page,
-    paddingTop: space.m,
-    paddingBottom: space.page,
-    gap: space.s,
-    borderBottomWidth: 1,
-  },
-  big: { fontSize: 34, lineHeight: 40, fontWeight: "700", letterSpacing: -0.7 },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    minHeight: 72,
-    paddingVertical: space.m,
-    paddingLeft: space.page,
-    paddingRight: space.l,
-    borderBottomWidth: 1,
-  },
+  head: { paddingHorizontal: space.page, paddingTop: space.l, paddingBottom: 18, gap: space.s },
+  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
+  inset: { marginHorizontal: space.list },
+  row: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 72, padding: 14 },
   meta: { flexDirection: "row", alignItems: "center", gap: 6 },
-  form: { padding: space.page, gap: space.read },
-  label: { fontSize: 13, lineHeight: 18, fontWeight: "500" },
-  tiles: { flexDirection: "row", gap: space.s },
-  tile: { flex: 1, minHeight: 112, padding: 14, justifyContent: "space-between", gap: space.l },
-  tileLabel: { flexDirection: "row", alignItems: "flex-end", gap: 4 },
+  form: {
+    marginHorizontal: space.list,
+    paddingVertical: space.l,
+    paddingHorizontal: space.m,
+    borderRadius: 30,
+    gap: 22,
+  },
+  label: { fontSize: 13, lineHeight: 18, fontWeight: "500", paddingLeft: space.xs },
+  tiles: { flexDirection: "row", gap: 6 },
+  tile: {
+    flex: 1,
+    minHeight: 112,
+    padding: 14,
+    borderRadius: 22,
+    justifyContent: "space-between",
+    gap: space.l,
+  },
   official: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.m,
     height: 52,
-    paddingHorizontal: 14,
-    borderWidth: 1,
+    paddingHorizontal: space.l,
+    borderRadius: 16,
   },
-  note: { fontSize: 12.5, lineHeight: 18 },
+  note: { fontSize: 12.5, lineHeight: 18, paddingLeft: space.xs },
 });

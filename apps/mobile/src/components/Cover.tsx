@@ -2,12 +2,13 @@
  * 封面：角色卡有图片就显示图片（要带访问令牌才能取），没有图片时画一张几何封面。
  *
  * 几何封面按种子（剧本 ID）从 5 种线条母题里确定性地选一种：波浪、钟面、网格、拱桥、山峰，
- * 黑白线条加一个蓝色焦点。母题按实际宽高计算坐标，方形缩略图和通栏横幅都能用。
+ * 圆头的黑色线条加一个蓝色圆点。母题按实际宽高计算坐标，方形缩略图和通栏横幅都能用。
+ * 封面是圆角方块（圆角 16 起，越大越圆）；放在灰卡里时用白色 card 底（surface="card"）。
  */
 
 import { useEffect, useState } from "react";
 import { Image, View, type StyleProp, type ViewStyle } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import { useApp } from "../state/AppProvider.tsx";
 import { usePalette, type Palette } from "../theme/index.ts";
@@ -35,9 +36,21 @@ function wave(y: number, width: number, period: number, amp: number): string {
 function Shapes({ motif, w, h, p }: { motif: Motif; w: number; h: number; p: Palette }) {
   const k = h / 96; // 位置和焦点按高度缩放
   const ks = Math.min(k, 2); // 重复的纹样（波长、间距）放大得慢一些
-  const sw = h > 200 ? 1.5 : Math.min(Math.max(1.5 * k, 1.2), 2.5);
-  const line = { stroke: p.ink, strokeWidth: sw, fill: "none", strokeLinecap: "square" as const };
-  const soft = { stroke: p.line2, strokeWidth: Math.max(sw * 0.8, 1), fill: "none" };
+  const sw = h > 200 ? 1.8 : Math.min(Math.max(1.8 * k, 1.4), 3);
+  const line = {
+    stroke: p.ink,
+    strokeWidth: sw,
+    fill: "none",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  const soft = {
+    stroke: p.line2,
+    strokeWidth: Math.max(sw * 0.8, 1),
+    fill: "none",
+    strokeLinecap: "round" as const,
+  };
+  const focus = (cx: number, cy: number, d: number) => <Circle cx={cx} cy={cy} r={d / 2} fill={p.acc} />;
   switch (motif) {
     case "wave": {
       const count = h >= 200 ? 4 : 3;
@@ -47,7 +60,7 @@ function Shapes({ motif, w, h, p }: { motif: Motif; w: number; h: number; p: Pal
       return (
         <>
           <Path d={ys.map((y) => wave(y, w, 24 * ks, 6 * ks)).join("")} {...line} />
-          <Rect x={w * 0.65} y={h * 0.21} width={dot} height={dot} fill={p.acc} />
+          {focus(w * 0.65 + dot / 2, h * 0.21 + dot / 2, dot * 1.3)}
         </>
       );
     }
@@ -63,7 +76,7 @@ function Shapes({ motif, w, h, p }: { motif: Motif; w: number; h: number; p: Pal
             d={`M${cx} ${cy}V${cy - r * 0.69}M${cx} ${cy}l${r * 0.46} ${r * 0.31}M${cx - r * 1.54} ${h}V${h * 0.83}M${cx + r * 1.54} ${h}V${h * 0.83}`}
             {...line}
           />
-          <Rect x={cx - dot / 2} y={cy - dot / 2} width={dot} height={dot} fill={p.acc} />
+          {focus(cx, cy, dot * 1.2)}
         </>
       );
     }
@@ -76,16 +89,9 @@ function Shapes({ motif, w, h, p }: { motif: Motif; w: number; h: number; p: Pal
       const dot = 8 * k;
       return (
         <>
-          <Rect x={inset} y={inset} width={w - inset * 2} height={size} {...soft} />
           <Path d={grid} {...soft} />
           <Path d={`M${inset} ${h - inset}A${size} ${size} 0 0 1 ${inset + size} ${inset}`} {...line} />
-          <Rect
-            x={inset + size * 0.667 - dot / 2}
-            y={inset + size * 0.333 - dot / 2}
-            width={dot}
-            height={dot}
-            fill={p.acc}
-          />
+          {focus(inset + size * 0.667, inset + size * 0.333, dot * 1.3)}
         </>
       );
     }
@@ -101,7 +107,7 @@ function Shapes({ motif, w, h, p }: { motif: Motif; w: number; h: number; p: Pal
             d={`M${8 * k} ${base}H${w - 8 * k}M${cx - r} ${base}A${r} ${r} 0 0 1 ${cx + r} ${base}`}
             {...line}
           />
-          <Rect x={w * 0.73} y={h * 0.375} width={dot} height={dot} fill={p.acc} />
+          {focus(w * 0.73 + dot / 2, h * 0.375 + dot / 2, dot * 1.3)}
         </>
       );
     }
@@ -114,27 +120,49 @@ function Shapes({ motif, w, h, p }: { motif: Motif; w: number; h: number; p: Pal
         <>
           <Path d={tri(14, 28, 42, 32) + tri(40, 56, 72, 44) + tri(66, 76, 86, 24)} {...line} />
           <Path d={`M0 ${base}H${w}`} {...line} />
-          <Rect x={x0 + 52 * k} y={base - 20 * k} width={8 * k} height={10 * k} fill={p.acc} />
+          {focus(x0 + 56 * k, base - 14 * k, 9 * k)}
         </>
       );
     }
   }
 }
 
+/** 封面的圆角：16 起，越大越圆，最大 34 */
+export function coverRadius(width: number, height: number): number {
+  return Math.round(Math.min(Math.max(Math.min(width, height) * 0.28, 16), 34));
+}
+
 export function GeometricCover({
   seed,
   width,
   height,
+  surface = "grey",
+  rounded,
   style,
 }: {
   seed: string;
   width: number;
   height: number;
+  /** 底色：grey 用于白底页面上，card 用于灰卡里 */
+  surface?: "grey" | "card";
+  /** 指定圆角（嵌在卡片里时按“外层圆角 − 内边距”算） */
+  rounded?: number;
   style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
   return (
-    <View style={[{ width, height, backgroundColor: palette.bg2, overflow: "hidden" }, style]}>
+    <View
+      style={[
+        {
+          width,
+          height,
+          borderRadius: rounded ?? coverRadius(width, height),
+          backgroundColor: surface === "card" ? palette.card : palette.bg2,
+          overflow: "hidden",
+        },
+        style,
+      ]}
+    >
       <Svg width={width} height={height} accessible={false}>
         <Shapes motif={motifFor(seed)} w={width} h={height} p={palette} />
       </Svg>
@@ -148,12 +176,16 @@ export function Cover({
   blobId,
   width,
   height,
+  surface,
+  rounded,
   style,
 }: {
   seed: string;
   blobId: string | null | undefined;
   width: number;
   height: number;
+  surface?: "grey" | "card";
+  rounded?: number;
   style?: StyleProp<ViewStyle>;
 }) {
   const { api, authHeaders, serverUrl } = useApp();
@@ -176,12 +208,31 @@ export function Cover({
     };
   }, [blobId, authHeaders]);
 
-  if (!blobId || failed) return <GeometricCover seed={seed} width={width} height={height} style={style} />;
+  const r = rounded ?? coverRadius(width, height);
+  if (!blobId || failed) {
+    return (
+      <GeometricCover
+        seed={seed}
+        width={width}
+        height={height}
+        surface={surface}
+        rounded={rounded}
+        style={style}
+      />
+    );
+  }
   if (!headers) {
     return (
       <View
         style={[
-          { width, height, backgroundColor: palette.bg3, alignItems: "center", justifyContent: "center" },
+          {
+            width,
+            height,
+            borderRadius: r,
+            backgroundColor: palette.bg3,
+            alignItems: "center",
+            justifyContent: "center",
+          },
           style,
         ]}
       >
@@ -190,7 +241,9 @@ export function Cover({
     );
   }
   return (
-    <View style={[{ width, height, backgroundColor: palette.bg3 }, style]}>
+    <View
+      style={[{ width, height, borderRadius: r, overflow: "hidden", backgroundColor: palette.bg3 }, style]}
+    >
       <Image
         accessibilityIgnoresInvertColors
         source={{ uri: `${serverUrl}${api.scenarios.blobPath(blobId)}`, headers }}
