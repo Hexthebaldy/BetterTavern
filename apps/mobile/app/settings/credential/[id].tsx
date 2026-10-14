@@ -1,76 +1,48 @@
 /**
- * 一个密钥的详情：选模型（可从服务商拉取列表）、测试模型、设为导演模型、更换 Key、删除。
+ * 一个密钥的详情：进入页面时自动拉取模型列表，单选一个模型（搜索框兼做手动输入，见 ModelPicker），
+ * 测试这个模型、设为导演模型；标题旁的铅笔改备注名和端点；更换 Key、删除（面板见 CredentialSheets）。
  */
 
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "../../../src/api/client.ts";
-import type { ModelInfo, ProbeReport } from "../../../src/api/types.ts";
+import type { Credential, ModelInfo, ModelRoute, ProbeReport } from "../../../src/api/types.ts";
 import {
-  Body,
+  BackBar,
   Button,
-  Caption,
-  Centered,
-  Field,
-  GroupLabel,
-  ListRow,
+  ErrorState,
+  IconButton,
   Loading,
   Notice,
-  Page,
+  Status,
+  useOverlay,
 } from "../../../src/components/ui.tsx";
+import { EditSheet, ReplaceKeySheet } from "../../../src/features/settings/CredentialSheets.tsx";
 import {
-  CHECK_NAMES,
   CREDENTIAL_STATUS,
   credentialTitle,
   describeWindow,
   providerName,
+  statusKind,
 } from "../../../src/features/settings/labels.ts";
+import { ModelPicker } from "../../../src/features/settings/ModelPicker.tsx";
+import { ProbedModels, ProbeResults } from "../../../src/features/settings/ProbeResults.tsx";
 import { useAsync } from "../../../src/hooks/useAsync.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
-import { space, type, usePalette } from "../../../src/theme/index.ts";
-import { formatTokens } from "../../../src/utils/format.ts";
+import { font, space, usePalette } from "../../../src/theme/index.ts";
 
-const MAX_LISTED = 40;
+type Message = { tone: "error" | "info"; text: string };
 
-function ProbeResult({ report }: { report: ProbeReport }) {
-  const palette = usePalette();
-  return (
-    <View style={styles.probe}>
-      {report.fatal_error ? <Notice message={report.fatal_error} /> : null}
-      {report.checks.map((check) => (
-        <View key={check.name} style={styles.check}>
-          <Text
-            style={[
-              type.body,
-              styles.mark,
-              {
-                color:
-                  check.ok === true ? palette.accent : check.ok === false ? palette.danger : palette.muted,
-              },
-            ]}
-          >
-            {check.ok === true ? "✓" : check.ok === false ? "✗" : "–"}
-          </Text>
-          <View style={{ flex: 1 }}>
-            <Body>{CHECK_NAMES[check.name] ?? check.name}</Body>
-            <Caption>
-              {check.detail}
-              {check.latency_ms !== null ? `（${check.latency_ms} 毫秒）` : ""}
-            </Caption>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
+// ---- 页面 -------------------------------------------------------------------------------
 
 export default function CredentialScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { api } = useApp();
   const router = useRouter();
   const palette = usePalette();
+  const overlay = useOverlay();
   const { data, error, loading, reload, setData } = useAsync(async () => {
     const [credential, providers, routes] = await Promise.all([
       api.credentials.get(id),
@@ -80,47 +52,62 @@ export default function CredentialScreen() {
     return { credential, providers, director: routes.find((r) => r.task === "director") ?? null };
   }, [api, id]);
 
-  const [model, setModel] = useState("");
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[] | null>(null);
   const [listing, setListing] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
   const [probing, setProbing] = useState(false);
   const [report, setReport] = useState<ProbeReport | null>(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
-  const [newKey, setNewKey] = useState("");
-  const [updatingKey, setUpdatingKey] = useState(false);
+  const [message, setMessage] = useState<Message | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [replacing, setReplacing] = useState(false);
 
-  const filtered = useMemo(() => {
-    if (!models) return [];
-    const q = model.trim().toLowerCase();
-    return (q ? models.filter((m) => m.id.toLowerCase().includes(q)) : models).slice(0, MAX_LISTED);
-  }, [models, model]);
-
-  if (loading && !data) return <Loading />;
-  if (!data) {
-    return (
-      <Centered>
-        <Body style={{ marginBottom: space.l, textAlign: "center" }}>{describeError(error)}</Body>
-        <Button label="重新加载" onPress={() => void reload()} />
-      </Centered>
-    );
-  }
-  const { credential, providers, director } = data;
-  const chosen = model.trim();
-
-  const listModels = async (): Promise<void> => {
+  const listModels = useCallback(async (): Promise<void> => {
     setListing(true);
-    setMessage(null);
+    setListError(null);
     try {
-      const list = await api.credentials.models(credential.id);
+      const list = await api.credentials.models(id);
       setModels(list);
-      if (list.length === 0) setMessage({ tone: "info", text: "服务商没有返回模型列表，可以直接填写模型名" });
+      if (list.length === 0) setListError("服务商没有返回模型列表");
     } catch (e) {
-      setMessage({ tone: "error", text: describeError(e) });
+      setListError(describeError(e));
     } finally {
       setListing(false);
     }
+  }, [api, id]);
+
+  useEffect(() => {
+    void listModels();
+  }, [listModels]);
+
+  const credential = data?.credential;
+  const director = data?.director ?? null;
+  const isDirector = !!credential && director?.credential_id === credential.id;
+  // 没手动选过时，默认选中正在用作导演的模型
+  const chosen = picked ?? (query.trim() || (isDirector ? (director?.model ?? "") : ""));
+
+  if (loading && !data) return <Loading />;
+  if (!data || !credential) {
+    return (
+      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+        <BackBar />
+        <ErrorState title="密钥没加载出来" message={describeError(error)} onRetry={() => void reload()} />
+      </View>
+    );
+  }
+  const { providers } = data;
+  const provider = providers.find((p) => p.id === credential.provider);
+
+  const onQuery = (text: string): void => {
+    setQuery(text);
+    const exact = models?.find((m) => m.id === text.trim());
+    setPicked(exact ? exact.id : null);
   };
+
+  const updateCredential = (fresh: Credential): void =>
+    setData((current) => (current ? { ...current, credential: fresh } : current));
 
   const probe = async (): Promise<void> => {
     setProbing(true);
@@ -128,8 +115,7 @@ export default function CredentialScreen() {
     setReport(null);
     try {
       setReport(await api.credentials.probe(credential.id, chosen));
-      const fresh = await api.credentials.get(credential.id);
-      setData((current) => (current ? { ...current, credential: fresh } : current));
+      updateCredential(await api.credentials.get(credential.id));
     } catch (e) {
       setMessage({ tone: "error", text: describeError(e) });
     } finally {
@@ -141,16 +127,14 @@ export default function CredentialScreen() {
     setSaving(true);
     setMessage(null);
     try {
-      const route = await api.routes.put("director", {
+      const route: ModelRoute = await api.routes.put("director", {
         credential_id: credential.id,
         model: chosen,
         params: director?.params ?? {},
       });
       setData((current) => (current ? { ...current, director: route } : current));
-      setMessage({
-        tone: "info",
-        text: `导演模型已设为 ${route.model}。${describeWindow(route.window).join("；")}`,
-      });
+      const [first] = describeWindow(route.window);
+      setMessage({ tone: "info", text: `已设为导演模型。${first ?? ""}，工作窗口可以在“导演模型”里调。` });
     } catch (e) {
       setMessage({ tone: "error", text: describeError(e) });
     } finally {
@@ -158,138 +142,186 @@ export default function CredentialScreen() {
     }
   };
 
-  const replaceKey = async (): Promise<void> => {
-    setUpdatingKey(true);
-    setMessage(null);
+  const remove = async (): Promise<void> => {
+    const ok = await overlay.confirm({
+      title: "删除这个密钥？",
+      message: "用到它的模型分配会失效，需要重新选择。",
+      confirmLabel: "删除",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
-      const updated = await api.credentials.update(credential.id, { api_key: newKey.trim() });
-      setNewKey("");
-      setData((current) => (current ? { ...current, credential: updated } : current));
-      setMessage({ tone: "info", text: `Key 已更换，尾号 ${updated.key_last4}` });
+      await api.credentials.remove(credential.id);
+      overlay.toast(`已删除“${credentialTitle(credential, providers)}”`);
+      router.back();
     } catch (e) {
       setMessage({ tone: "error", text: describeError(e) });
-    } finally {
-      setUpdatingKey(false);
     }
   };
 
-  const remove = (): void => {
-    Alert.alert("删除这个密钥？", "用到它的模型分配会失效，需要重新选择。", [
-      { text: "取消", style: "cancel" },
-      {
-        text: "删除",
-        style: "destructive",
-        onPress: () => {
-          api.credentials
-            .remove(credential.id)
-            .then(() => router.back())
-            .catch((e: unknown) => Alert.alert("删除失败", describeError(e)));
-        },
-      },
-    ]);
-  };
-
-  const isDirector = director?.credential_id === credential.id;
+  const kind = statusKind(credential.status);
+  const statusColor = kind === "ok" ? palette.ok : kind === "invalid" ? palette.err : palette.warn;
   return (
-    <Page>
-      <Stack.Screen options={{ title: credentialTitle(credential, providers) }} />
-      <Body>
-        {providerName(credential.provider, providers)}，尾号 {credential.key_last4}，
-        {CREDENTIAL_STATUS[credential.status]}
-      </Body>
-      {credential.base_url ? <Caption style={{ marginTop: space.xs }}>{credential.base_url}</Caption> : null}
-      {isDirector && director ? (
-        <Caption style={{ marginTop: space.xs, color: palette.accent }}>
-          正在用作导演模型：{director.model}
-        </Caption>
-      ) : null}
-
-      <GroupLabel>选择模型</GroupLabel>
-      {message ? <Notice tone={message.tone} message={message.text} /> : null}
-      <Field
-        label="模型"
-        value={model}
-        onChangeText={setModel}
-        autoCapitalize="none"
-        autoCorrect={false}
-        placeholder={credential.provider === "deepseek" ? "例如 deepseek-chat" : "填写模型名，或从列表里选"}
-      />
-      {models === null ? (
-        <Button label="获取模型列表" variant="secondary" onPress={() => void listModels()} busy={listing} />
-      ) : (
-        <View>
-          {filtered.map((m) => (
-            <ListRow
-              key={m.id}
-              title={m.id}
-              detail={m.context_window ? formatTokens(m.context_window) : undefined}
-              onPress={() => setModel(m.id)}
-            />
-          ))}
-          {models.length > filtered.length ? (
-            <Caption style={{ marginTop: space.s }}>共 {models.length} 个模型，输入名称筛选</Caption>
-          ) : null}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1, backgroundColor: palette.bg }}
+    >
+      <BackBar />
+      <ScrollView contentContainerStyle={{ paddingBottom: 56 }} keyboardShouldPersistTaps="handled">
+        <View style={[styles.head, { borderBottomColor: palette.ink }]}>
+          <View style={{ flex: 1, gap: space.s }}>
+            <Text accessibilityRole="header" style={[styles.title, { color: palette.ink }]}>
+              {credentialTitle(credential, providers)}
+            </Text>
+            <View style={styles.statusLine}>
+              <Status kind={kind} label={CREDENTIAL_STATUS[credential.status]} size={13} />
+              {isDirector && director ? (
+                <>
+                  <Text style={{ color: palette.line2 }}>/</Text>
+                  <Text style={{ fontSize: 13, color: palette.ink, flexShrink: 1 }} numberOfLines={1}>
+                    导演：<Text style={{ fontFamily: font.mono }}>{director.model}</Text>
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          </View>
+          <IconButton icon="write" label="编辑备注名和端点" onPress={() => setEditing(true)} />
         </View>
-      )}
-      <View style={styles.actions}>
-        <Button
-          label="测试这个模型"
-          variant="secondary"
-          onPress={() => void probe()}
-          busy={probing}
-          disabled={!chosen}
-          style={{ flex: 1 }}
-        />
-        <Button
-          label="设为导演模型"
-          onPress={() => void useForDirector()}
-          busy={saving}
-          disabled={!chosen}
-          style={{ flex: 1 }}
-        />
-      </View>
-      {probing ? <Caption style={{ marginTop: space.s }}>会真的调用几次模型，大约需要半分钟</Caption> : null}
-      {report ? <ProbeResult report={report} /> : null}
-
-      {credential.probed_models.length > 0 ? (
-        <>
-          <GroupLabel>测试过的模型</GroupLabel>
-          {credential.probed_models.map((m) => (
-            <ListRow
-              key={m.model}
-              title={m.model}
-              subtitle={m.ok ? "测试通过" : (m.fatal_error ?? "部分功能不可用")}
-              onPress={() => setModel(m.model)}
-            />
+        <View style={styles.grid}>
+          {[
+            ["服务商", providerName(credential.provider, providers), false],
+            ["KEY", `•••• ${credential.key_last4}`, true],
+            ["状态", CREDENTIAL_STATUS[credential.status], false],
+            ["端点", credential.base_url ?? "官方地址", !!credential.base_url],
+          ].map(([key, value, mono], i) => (
+            <View
+              key={String(key)}
+              style={[
+                styles.cell,
+                { borderBottomColor: palette.line },
+                i % 2 === 0 ? { borderRightWidth: 1, borderRightColor: palette.line } : null,
+              ]}
+            >
+              <Text style={[styles.cellKey, { color: palette.mut }]}>{key}</Text>
+              <Text
+                numberOfLines={1}
+                style={[
+                  { fontSize: 15, color: key === "状态" ? statusColor : palette.ink },
+                  mono ? { fontFamily: font.mono, fontSize: 14 } : null,
+                ]}
+              >
+                {value}
+              </Text>
+            </View>
           ))}
-        </>
-      ) : null}
+        </View>
 
-      <GroupLabel>更换 Key</GroupLabel>
-      <Field
-        label="新的 API Key"
-        value={newKey}
-        onChangeText={setNewKey}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      <Button
-        label="更换"
-        variant="secondary"
-        onPress={() => void replaceKey()}
-        busy={updatingKey}
-        disabled={!newKey.trim()}
-      />
+        <ModelPicker
+          models={models}
+          listing={listing}
+          listError={listError}
+          query={query}
+          onQuery={onQuery}
+          chosen={chosen}
+          onPick={setPicked}
+          onRefresh={() => void listModels()}
+        />
+        <View style={styles.actions}>
+          <Button
+            label="测试这个模型"
+            variant="secondary"
+            onPress={() => void probe()}
+            busy={probing}
+            disabled={!chosen}
+            style={styles.action}
+          >
+            <View style={{ alignItems: "center" }}>
+              <Text style={{ fontSize: 16, fontWeight: "500", color: chosen ? palette.ink : palette.mut }}>
+                测试这个模型
+              </Text>
+              <Text style={{ fontFamily: font.mono, fontSize: 10.5, color: palette.mut }}>约 30 秒</Text>
+            </View>
+          </Button>
+          <Button
+            label="设为导演模型"
+            onPress={() => void useForDirector()}
+            busy={saving}
+            disabled={!chosen}
+            style={styles.action}
+          />
+        </View>
+        {message ? (
+          <Notice tone={message.tone} message={message.text} style={{ marginHorizontal: space.page }} />
+        ) : null}
+        {report ? <ProbeResults report={report} /> : null}
+        {credential.probed_models.length > 0 ? (
+          <ProbedModels models={credential.probed_models} onPick={(m) => onQuery(m)} />
+        ) : null}
 
-      <Button label="删除密钥" variant="danger" onPress={remove} style={{ marginTop: space.xxl }} />
-    </Page>
+        <View style={styles.bottom}>
+          <Button
+            label="更换 Key"
+            variant="secondary"
+            trailingIcon="key"
+            between
+            onPress={() => setReplacing(true)}
+          />
+          <View
+            style={{ height: 1, backgroundColor: palette.line, marginTop: space.page, marginBottom: space.s }}
+          />
+          <Button
+            label="删除密钥"
+            variant="danger"
+            trailingIcon="trash"
+            between
+            onPress={() => void remove()}
+          />
+          <Text style={{ fontSize: 12.5, color: palette.mut }}>用到它的模型分配会失效。</Text>
+        </View>
+      </ScrollView>
+      <EditSheet
+        visible={editing}
+        onClose={() => setEditing(false)}
+        credential={credential}
+        provider={provider}
+        onSaved={updateCredential}
+      />
+      <ReplaceKeySheet
+        visible={replacing}
+        onClose={() => setReplacing(false)}
+        credential={credential}
+        onSaved={(fresh) => {
+          updateCredential(fresh);
+          setMessage({ tone: "info", text: `Key 已更换，尾号 ${fresh.key_last4}` });
+        }}
+      />
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  actions: { flexDirection: "row", gap: space.m, marginTop: space.l },
-  probe: { marginTop: space.l },
-  check: { flexDirection: "row", gap: space.m, marginBottom: space.m },
-  mark: { width: 18, textAlign: "center" },
+  action: { flex: 1, minHeight: 60, paddingHorizontal: space.s },
+  actions: { flexDirection: "row", gap: space.s, padding: space.page, paddingTop: space.l },
+  bottom: { paddingHorizontal: space.page, paddingTop: 32, gap: space.m },
+  cell: {
+    width: "50%",
+    paddingVertical: 14,
+    paddingHorizontal: space.page,
+    gap: space.xs,
+    borderBottomWidth: 1,
+  },
+  cellKey: { fontFamily: font.mono, fontSize: 11, letterSpacing: 0.9 },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  head: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: space.s,
+    paddingLeft: space.page,
+    paddingRight: space.s,
+    paddingTop: space.m,
+    paddingBottom: space.page,
+    borderBottomWidth: 1,
+  },
+  statusLine: { flexDirection: "row", alignItems: "center", gap: space.s },
+  title: { fontSize: 30, lineHeight: 36, fontWeight: "700", letterSpacing: -0.6 },
 });

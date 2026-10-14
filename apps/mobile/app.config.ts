@@ -14,7 +14,7 @@ const config: ExpoConfig = {
   android: {
     package: "dev.bettertavern.app",
   },
-  plugins: ["expo-router", "expo-status-bar"],
+  plugins: ["expo-router", "expo-status-bar", "expo-font"],
   experiments: {
     typedRoutes: true,
   },

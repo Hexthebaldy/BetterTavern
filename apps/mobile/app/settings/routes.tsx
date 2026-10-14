@@ -1,51 +1,100 @@
 /**
- * 导演模型：写故事用的模型、工作窗口上限（服务端按模型的上下文长度校验）和思考开关。
- * 换模型在“密钥与端点”里选。
+ * 导演模型：写故事用的模型，“能记住多少”的格子图，工作窗口上限（服务端按模型的上下文长度校验）和思考开关。
+ * 换模型在“密钥与端点”里选；最底下可以取消导演模型。
  */
 
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Switch, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { describeError } from "../../src/api/client.ts";
 import type { ModelRoute } from "../../src/api/types.ts";
+import { ProviderMark } from "../../src/components/KeyParts.tsx";
 import {
-  Body,
+  BackBar,
   Button,
-  Caption,
-  GroupLabel,
-  Heading,
-  ListRow,
+  ErrorState,
+  Icon,
   Loading,
   Notice,
   Page,
+  SectionHeader,
   Segmented,
+  Toggle,
+  useOverlay,
 } from "../../src/components/ui.tsx";
-import { credentialTitle, describeWindow } from "../../src/features/settings/labels.ts";
+import { CREDENTIAL_STATUS, credentialTitle, providerMark } from "../../src/features/settings/labels.ts";
+import {
+  choiceTokens,
+  WINDOW_CHOICES,
+  windowBlocks,
+  windowChoice,
+  type WindowChoice,
+} from "../../src/features/settings/window.ts";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { space, usePalette } from "../../src/theme/index.ts";
+import { font, space, usePalette } from "../../src/theme/index.ts";
+import { formatTokens } from "../../src/utils/format.ts";
 
-type WindowChoice = "32000" | "64000" | "default" | "256000";
+const COLUMNS = 16;
+const GAP = 3;
 
-const WINDOWS: { value: WindowChoice; label: string }[] = [
-  { value: "32000", label: "32K" },
-  { value: "64000", label: "64K" },
-  { value: "default", label: "128K" },
-  { value: "256000", label: "256K" },
-];
-
-function windowChoice(route: ModelRoute): WindowChoice {
-  const w = route.params.working_window;
-  if (w === 32000 || w === 64000 || w === 256000) return String(w) as WindowChoice;
-  return "default";
+function MemoryBlocks({ route, choice }: { route: ModelRoute; choice: WindowChoice }) {
+  const palette = usePalette();
+  const { width } = useWindowDimensions();
+  // 按屏幕宽度算出格子边长（百分比宽度加 aspectRatio 在换行容器里会让布局反复计算）
+  const cell = Math.floor((width - space.page * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
+  const w = windowBlocks(route.window.model_window, choiceTokens(choice), route.window.max_tokens);
+  const k = formatTokens;
+  const legend = (swatch: object, label: string) => (
+    <View style={styles.legend}>
+      <View style={[styles.swatch, swatch]} />
+      <Text style={{ fontSize: 12.5, lineHeight: 18, color: palette.ink2 }}>{label}</Text>
+    </View>
+  );
+  return (
+    <View style={{ padding: space.page, gap: space.l }}>
+      <View
+        style={styles.blocks}
+        accessibilityRole="image"
+        accessibilityLabel={`上下文 ${k(route.window.model_window)}，故事 ${k(w.story)}，每轮输出 ${k(route.window.max_tokens)}，不使用 ${k(w.free)}`}
+      >
+        {w.blocks.map((b, i) => (
+          <View key={i} style={{ width: cell, height: cell }}>
+            <View
+              style={[
+                styles.block,
+                b === "story"
+                  ? { backgroundColor: palette.ink }
+                  : b === "output"
+                    ? { backgroundColor: palette.acc }
+                    : { borderWidth: 1, borderColor: palette.line2 },
+              ]}
+            />
+            {i === w.mark ? <View style={[styles.markRing, { borderColor: palette.warn }]} /> : null}
+          </View>
+        ))}
+      </View>
+      <View style={styles.legends}>
+        {legend({ backgroundColor: palette.ink }, `故事 ${k(w.story)}`)}
+        {legend({ backgroundColor: palette.acc }, `每轮输出 ${k(route.window.max_tokens)}`)}
+        {legend({ borderWidth: 1, borderColor: palette.line2 }, `不使用 ${k(w.free)}`)}
+        {legend({ borderWidth: 2, borderColor: palette.warn }, "到这里开始压缩")}
+      </View>
+      <Text style={{ fontSize: 14, lineHeight: 23, color: palette.ink2 }}>
+        每一格是 {k(w.unit)}。模型最多能读 {k(route.window.model_window)}，你给导演 {k(w.used)}：每轮最多写{" "}
+        {k(route.window.max_tokens)}，剩下约 {k(w.story)} 用来记前情和世界状态。
+      </Text>
+    </View>
+  );
 }
 
 export default function RoutesScreen() {
   const { api } = useApp();
   const router = useRouter();
   const palette = usePalette();
-  const { data, error, loading, refreshing, reload, setData } = useAsync(async () => {
+  const overlay = useOverlay();
+  const { data, error, loading, refreshing, reload, refresh, setData } = useAsync(async () => {
     const [routes, credentials, providers] = await Promise.all([
       api.routes.list(),
       api.credentials.list(),
@@ -53,7 +102,7 @@ export default function RoutesScreen() {
     ]);
     return { director: routes.find((r) => r.task === "director") ?? null, credentials, providers };
   }, [api]);
-  const [windowValue, setWindowValue] = useState<WindowChoice>("default");
+  const [choice, setChoice] = useState<WindowChoice>("default");
   const [thinking, setThinking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
@@ -61,11 +110,19 @@ export default function RoutesScreen() {
   const director = data?.director ?? null;
   useEffect(() => {
     if (!director) return;
-    setWindowValue(windowChoice(director));
+    setChoice(windowChoice(director.params.working_window));
     setThinking(director.params.thinking === true);
   }, [director]);
 
   if (loading && !data) return <Loading />;
+  if (!data) {
+    return (
+      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+        <BackBar />
+        <ErrorState title="导演模型没加载出来" message={describeError(error)} onRetry={() => void reload()} />
+      </View>
+    );
+  }
 
   const save = async (): Promise<void> => {
     if (!director) return;
@@ -73,8 +130,8 @@ export default function RoutesScreen() {
     setMessage(null);
     try {
       const params = { ...director.params, thinking } as ModelRoute["params"];
-      if (windowValue === "default") delete params.working_window;
-      else params.working_window = Number(windowValue);
+      if (choice === "default") delete params.working_window;
+      else params.working_window = Number(choice);
       const route = await api.routes.put("director", {
         credential_id: director.credential_id,
         model: director.model,
@@ -83,7 +140,7 @@ export default function RoutesScreen() {
         fallback_route_id: director.fallback_route_id,
       });
       setData((current) => (current ? { ...current, director: route } : current));
-      setMessage({ tone: "info", text: "已保存" });
+      overlay.toast("已保存");
     } catch (e) {
       setMessage({ tone: "error", text: describeError(e) });
     } finally {
@@ -91,88 +148,205 @@ export default function RoutesScreen() {
     }
   };
 
-  const credentials = data?.credentials ?? [];
-  const dirty =
-    director !== null &&
-    (windowChoice(director) !== windowValue || (director.params.thinking === true) !== thinking);
+  const cancel = async (): Promise<void> => {
+    const ok = await overlay.confirm({
+      title: "取消导演模型？",
+      message: "取消后，新的回合会因为没有模型而无法生成，直到再选一个。",
+      confirmLabel: "取消导演模型",
+      cancelLabel: "保留",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await api.routes.remove("director");
+      setData((current) => (current ? { ...current, director: null } : current));
+      overlay.toast("已取消导演模型");
+    } catch (e) {
+      setMessage({ tone: "error", text: describeError(e) });
+    }
+  };
 
-  return (
-    <Page refreshing={refreshing} onRefresh={() => void reload()}>
-      {error ? (
-        <Notice message={describeError(error)} actionLabel="重试" onAction={() => void reload()} />
-      ) : null}
-      {director ? (
-        <>
-          <Heading>{director.model}</Heading>
-          <Caption style={{ marginTop: space.xs }}>{director.credential_label || director.provider}</Caption>
-          <View style={styles.window}>
-            {describeWindow(director.window).map((line) => (
-              <Body key={line} style={{ color: palette.muted }}>
-                {line}
-              </Body>
-            ))}
-          </View>
-
-          <GroupLabel>设置</GroupLabel>
-          {message ? <Notice tone={message.tone} message={message.text} /> : null}
-          <Segmented label="工作窗口上限" value={windowValue} options={WINDOWS} onChange={setWindowValue} />
-          <Caption style={{ marginTop: -space.s, marginBottom: space.l }}>
-            每轮发给模型的上下文不超过这个长度，超过 80%
-            时压缩较早的剧情。超过模型的上下文长度时按模型的上限算。
-          </Caption>
-          <View style={styles.switchRow}>
+  const { credentials, providers } = data;
+  if (!director) {
+    return (
+      <Page header={<BackBar />} refreshing={refreshing} onRefresh={() => void refresh()}>
+        <View style={[styles.head, { borderBottomColor: palette.ink }]}>
+          <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
+            导演模型
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut }}>
+            导演负责写每一段故事和两个选项。先选一个密钥，再从里面挑一个模型。
+          </Text>
+        </View>
+        {credentials.map((c) => (
+          <Pressable
+            key={c.id}
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: "/settings/credential/[id]", params: { id: c.id } })}
+            style={({ pressed }) => [
+              styles.keyRow,
+              { borderBottomColor: palette.line, backgroundColor: pressed ? palette.bg2 : palette.bg },
+            ]}
+          >
+            <ProviderMark mark={providerMark(c.provider)} filled />
             <View style={{ flex: 1 }}>
-              <Body>深度思考</Body>
-              <Caption>模型支持时先思考再写，更慢</Caption>
+              <Text style={{ fontSize: 15, fontWeight: "500", color: palette.ink }}>
+                {credentialTitle(c, providers)}
+              </Text>
+              <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.mut }}>
+                •••• {c.key_last4} · {CREDENTIAL_STATUS[c.status]}
+              </Text>
             </View>
-            <Switch
-              value={thinking}
-              onValueChange={setThinking}
-              trackColor={{ true: palette.accent, false: palette.rule }}
-              accessibilityLabel="深度思考"
-            />
-          </View>
+            <Icon name="chevronRight" size={18} />
+          </Pressable>
+        ))}
+        <View style={{ padding: space.page }}>
           <Button
-            label="保存"
-            onPress={() => void save()}
-            busy={saving}
-            disabled={!dirty}
-            style={{ marginTop: space.l }}
-          />
-          <Button
-            label="换一个模型"
-            variant="secondary"
+            label="添加密钥"
+            variant={credentials.length > 0 ? "secondary" : "primary"}
+            trailingIcon="plus"
+            between
             onPress={() => router.push("/settings/credentials")}
-            style={{ marginTop: space.m }}
           />
-        </>
-      ) : data ? (
-        <>
-          <Body style={{ marginBottom: space.l }}>
-            还没有设置导演模型。导演负责写每一段叙述和两个选项，选一个你有 Key 的模型。
-          </Body>
-          {credentials.length > 0 ? (
-            <>
-              <GroupLabel>从这些密钥里选</GroupLabel>
-              {credentials.map((c) => (
-                <ListRow
-                  key={c.id}
-                  title={credentialTitle(c, data.providers)}
-                  subtitle={`尾号 ${c.key_last4}`}
-                  onPress={() => router.push({ pathname: "/settings/credential/[id]", params: { id: c.id } })}
-                />
-              ))}
-            </>
-          ) : (
-            <Button label="添加密钥" onPress={() => router.push("/settings/credentials")} />
-          )}
-        </>
-      ) : null}
+        </View>
+      </Page>
+    );
+  }
+
+  const credential = credentials.find((c) => c.id === director.credential_id);
+  const dirty =
+    windowChoice(director.params.working_window) !== choice ||
+    (director.params.thinking === true) !== thinking;
+  const clamped = choiceTokens(choice) > director.window.model_window;
+  return (
+    <Page header={<BackBar />} refreshing={refreshing} onRefresh={() => void refresh()}>
+      <View style={[styles.head, { borderBottomColor: palette.ink, gap: 10 }]}>
+        <Text style={[styles.meta, { color: palette.mut }]}>导演模型</Text>
+        <Text accessibilityRole="header" style={[styles.model, { color: palette.ink }]}>
+          {director.model}
+        </Text>
+        <Pressable
+          accessibilityRole="link"
+          onPress={() =>
+            router.push({ pathname: "/settings/credential/[id]", params: { id: director.credential_id } })
+          }
+          style={styles.credential}
+        >
+          <ProviderMark mark={providerMark(director.provider)} size={24} filled />
+          <Text style={{ fontSize: 14, color: palette.ink2 }}>
+            {director.credential_label || director.provider}
+            {credential ? (
+              <Text style={{ fontFamily: font.mono }}> · •••• {credential.key_last4}</Text>
+            ) : null}
+          </Text>
+        </Pressable>
+      </View>
+
+      <SectionHeader title="能记住多少" meta={`上下文 ${formatTokens(director.window.model_window)}`} />
+      <MemoryBlocks route={director} choice={choice} />
+      <View style={{ paddingHorizontal: space.page, gap: 10 }}>
+        <Segmented
+          label="工作窗口上限"
+          value={choice}
+          options={WINDOW_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
+          onChange={setChoice}
+          mono
+          height={52}
+        />
+        <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut }}>
+          窗口越大，导演记得越多，但每轮更慢、更贵。用到 80% 时，早期剧情会被压缩成摘要。
+        </Text>
+        {clamped ? (
+          <Notice
+            tone="warn"
+            message={`这个模型只有 ${formatTokens(director.window.model_window)} 上下文，工作窗口会按 ${formatTokens(director.window.model_window)} 算。`}
+          />
+        ) : null}
+      </View>
+
+      <SectionHeader title="写法" />
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: thinking }}
+        accessibilityLabel="深度思考"
+        onPress={() => setThinking((t) => !t)}
+        style={[styles.switchRow, { borderBottomColor: palette.line }]}
+      >
+        <Icon name="bulb" />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontSize: 16, color: palette.ink }}>深度思考</Text>
+          <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut }}>模型支持时先思考再写，更慢</Text>
+        </View>
+        <Toggle value={thinking} onChange={setThinking} label="深度思考" />
+      </Pressable>
+
+      <View style={styles.bottom}>
+        {message ? <Notice tone={message.tone} message={message.text} /> : null}
+        <Button
+          label={dirty ? "保存" : "保存 · 没有改动"}
+          onPress={() => void save()}
+          busy={saving}
+          disabled={!dirty}
+        />
+        <Button
+          label="换一个模型"
+          variant="secondary"
+          trailingIcon="swap"
+          between
+          onPress={() => router.push("/settings/credentials")}
+        />
+        <Button
+          label="取消导演模型"
+          variant="text"
+          onPress={() => void cancel()}
+          style={{ marginTop: space.s }}
+        >
+          <Text style={{ fontSize: 15, color: palette.err }}>取消导演模型</Text>
+        </Button>
+        <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut, textAlign: "center" }}>
+          取消后，新的回合会因为没有模型而无法生成。
+        </Text>
+      </View>
     </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  window: { marginTop: space.m, gap: 2 },
-  switchRow: { flexDirection: "row", alignItems: "center", gap: space.m },
+  head: {
+    paddingHorizontal: space.page,
+    paddingTop: space.m,
+    paddingBottom: space.page,
+    gap: space.s,
+    borderBottomWidth: 1,
+  },
+  big: { fontSize: 34, lineHeight: 40, fontWeight: "700", letterSpacing: -0.7 },
+  meta: { fontFamily: font.mono, fontSize: 11.5, letterSpacing: 0.9 },
+  model: { fontFamily: font.monoMedium, fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
+  credential: { flexDirection: "row", alignItems: "center", gap: space.s },
+  blocks: { flexDirection: "row", flexWrap: "wrap", gap: GAP },
+  block: { flex: 1 },
+  markRing: { position: "absolute", top: -2, left: -2, right: -2, bottom: -2, borderWidth: 2 },
+  legends: { flexDirection: "row", flexWrap: "wrap", columnGap: space.l, rowGap: space.s },
+  legend: { flexDirection: "row", alignItems: "center", gap: space.s },
+  swatch: { width: 12, height: 12 },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    minHeight: 72,
+    paddingVertical: space.m,
+    paddingHorizontal: space.page,
+    borderBottomWidth: 1,
+  },
+  bottom: { paddingHorizontal: space.page, paddingTop: 32, gap: 10 },
+  keyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    minHeight: 72,
+    paddingVertical: space.m,
+    paddingLeft: space.page,
+    paddingRight: space.l,
+    borderBottomWidth: 1,
+  },
 });

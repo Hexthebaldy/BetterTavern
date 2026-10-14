@@ -1,6 +1,6 @@
 /** 设置页共用的文字 */
 
-import type { Credential, Provider, RouteWindow } from "../../api/types.ts";
+import type { Credential, ProbeCheck, Provider, RouteWindow } from "../../api/types.ts";
 import { formatTokens } from "../../utils/format.ts";
 
 export const CREDENTIAL_STATUS: Record<Credential["status"], string> = {
@@ -8,6 +8,18 @@ export const CREDENTIAL_STATUS: Record<Credential["status"], string> = {
   unverified: "还没测试",
   invalid: "Key 无效",
 };
+
+/** 状态图标：可用 = 对勾，还没测试 = 虚线方框，Key 无效 = 叉 */
+export function statusKind(status: Credential["status"]): "ok" | "untested" | "invalid" {
+  return status === "ok" ? "ok" : status === "invalid" ? "invalid" : "untested";
+}
+
+/** 服务商的两字母标记，自定义端点用 { } */
+export function providerMark(id: string): string {
+  if (id === "deepseek") return "DS";
+  if (id === "huggingface") return "HF";
+  return "{ }";
+}
 
 export function providerName(id: string, providers: Provider[] | undefined): string {
   return providers?.find((p) => p.id === id)?.display_name ?? id;
@@ -38,3 +50,12 @@ export const CHECK_NAMES: Record<string, string> = {
   tool_call: "工具调用",
   reasoning_toggle: "关闭思考",
 };
+
+/** 一次探测里通过、失败、跳过各几项 */
+export function checkCounts(checks: ProbeCheck[]): { passed: number; failed: number; skipped: number } {
+  return {
+    passed: checks.filter((c) => c.ok === true).length,
+    failed: checks.filter((c) => c.ok === false).length,
+    skipped: checks.filter((c) => c.ok === null).length,
+  };
+}

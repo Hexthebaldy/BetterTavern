@@ -1,5 +1,5 @@
 /**
- * 设备上的安全存储（iOS 钥匙串 / Android Keystore）：登录令牌和自定义的服务器地址。
+ * 设备上的安全存储（iOS 钥匙串 / Android Keystore）：登录令牌、自定义的服务器地址和界面偏好。
  * 模型的 API Key 不在设备上保存，只在服务端加密存放。
  */
 
@@ -33,4 +33,20 @@ export async function loadServerUrl(): Promise<string | null> {
 export async function saveServerUrl(url: string | null): Promise<void> {
   if (url) await SecureStore.setItemAsync(SERVER_KEY, url);
   else await SecureStore.deleteItemAsync(SERVER_KEY);
+}
+
+const PREFS_KEY = "bt.prefs";
+
+/** 界面偏好（最近用过的服务器、阅读设置、剧本库视图），读不到时返回 null */
+export async function loadPrefs(): Promise<unknown> {
+  try {
+    const raw = await SecureStore.getItemAsync(PREFS_KEY);
+    return raw ? (JSON.parse(raw) as unknown) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function savePrefs(prefs: unknown): Promise<void> {
+  await SecureStore.setItemAsync(PREFS_KEY, JSON.stringify(prefs));
 }

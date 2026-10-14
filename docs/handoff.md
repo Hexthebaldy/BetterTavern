@@ -192,7 +192,7 @@ make dev
 | `src/features/play/playSession.ts` | `PlaySession`：加载、提交（网络错误用同一个幂等键退避重试）、409 处理、接事件流、轮询降级、回到前台立即重连 |
 | `src/features/play/usePlaySession.ts`、`StoryFeed.tsx`、`ActionBar.tsx` | hook（每帧最多渲染一次）、故事流、底部选项与输入 |
 | `app/` | 路由：`(auth)/login`、`(auth)/register`、`(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings`、`scenario/[id]`、`play/[id]`、`settings/credentials`、`settings/credential/[id]`、`settings/routes`、`settings/account`、`dev/probe`；`_layout.tsx` 用 `Stack.Protected` 按登录状态切换 |
-| `src/theme/index.ts`、`src/components/ui.tsx` | 配色（偏冷的纸色、黛青、朱砂；深色模式）与基础部件。“我的行动”统一用左侧青色竖线标出 |
+| `src/theme/index.ts`、`src/components/ui.tsx` | UI v2「白 / 线 / 直角」的设计 token 与部件（设计稿 `docs/design/ui-v2/`）。`ui.tsx` 是门面，部件分在同目录的 primitives、feedback、controls、bars、overlay、dialog、icons 里；页头、标签栏、对话框、底部面板都是自己画的，原生导航栏不显示 |
 
 ## 7 不能破坏的约束
 

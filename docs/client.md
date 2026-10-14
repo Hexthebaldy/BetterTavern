@@ -144,14 +144,16 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 
 | 路由 | 页面 |
 | --- | --- |
-| `(auth)/login`、`(auth)/register` | 登录、注册；底部可以改服务器地址，旁边是连接测试 |
-| `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 故事列表（长按删除）、剧本库（导入角色卡）、设置首页 |
-| `scenario/[id]` | 剧本详情：预览、主角名字与简介、篇幅、文风、不想看到的内容，开始故事 |
-| `play/[id]` | 阅读主屏 |
-| `settings/credentials`、`settings/credential/[id]` | 密钥列表与添加；单个密钥：拉取模型列表、测试模型、设为导演模型、更换 Key、删除 |
-| `settings/routes` | 导演模型：窗口校验结果、工作窗口上限、深度思考 |
-| `settings/account` | 退出登录、删除账户 |
-| `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开 |
+| `(auth)/login`、`(auth)/register` | 登录、注册；底部的服务器行打开服务器面板（最近用过的地址单选、输入新地址、测试连接），连不上时自动打开 |
+| `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 故事列表（左滑或长按：重命名、删除）、剧本库（网格 / 列表，导入角色卡，长按或左滑：重命名、删除）、设置首页（导演模型卡片） |
+| `scenario/[id]` | 剧本详情：封面、概要、原卡开场白；“开始新的故事”五步表单（名字建议、身份底稿、篇幅、文风标签、不想看到的勾选清单），拼回原来的字段 |
+| `play/[id]` | 阅读主屏；导航栏右侧是世界状态面板（人物与地点、关系图、事实，揭示秘密前确认）和“更多”（阅读设置：宋体 / 黑体、字号；重命名、删除故事） |
+| `settings/credentials`、`settings/credential/[id]` | 密钥列表与添加（服务商图块、粘贴、使用官方地址）；单个密钥：进入时自动拉取模型列表、搜索兼手动输入、测试模型、设为导演模型、编辑备注名和端点、更换 Key、删除 |
+| `settings/routes` | 导演模型：“能记住多少”格子图、工作窗口上限、深度思考、取消导演模型 |
+| `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、密钥数，输入密码确认） |
+| `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
+
+界面按 [design/ui-v2/](design/ui-v2/README.md) 的设计稿实现（“白 / 线 / 直角”）。没做的：世界状态的“新”标记和导航栏上的变化提示（服务端还没有世界状态的变更记录）、导入进度条（上传没有进度事件，用来回扫动的线代替）、改昵称（没有接口）。
 
 还没有的页面：世界、时间线、大纲（M2、M3）。
 
@@ -164,16 +166,23 @@ apps/mobile/
     ├── api/      client.ts  endpoints.ts  types.ts  events.ts  turnStream.ts  sse/（SseParser、SseClient）
     ├── auth/     session.ts                # SessionManager：令牌、单飞刷新
     ├── state/    AppProvider.tsx           # 组装 ApiClient、会话、事件流连接；useApp()
-    ├── storage/  secure.ts                 # expo-secure-store
+    │             PrefsProvider.tsx         # 设备上的界面偏好：最近用过的服务器、阅读设置、剧本库视图
+    ├── storage/  secure.ts                 # expo-secure-store（令牌、服务器地址、界面偏好）
     ├── features/
     │   ├── play/     turnMachine.ts  playSession.ts  usePlaySession.ts  StoryFeed.tsx  ActionBar.tsx
-    │   ├── settings/ labels.ts
+    │   │             WorldSheet.tsx  worldGraph.ts  MoreSheet.tsx  reading.ts
+    │   ├── scenario/ StartForm.tsx  startForm.ts      # 开始新故事的表单与内置选项
+    │   ├── settings/ labels.ts  servers.ts  window.ts  ModelPicker.tsx  CredentialSheets.tsx  ProbeResults.tsx
     │   └── probe/    probeSession.ts
-    ├── components/ ui.tsx  Avatar.tsx  ServerSetting.tsx
+    ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  overlay  dialog  icons
+    │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx
     ├── hooks/      useAsync.ts
-    ├── theme/      index.ts                # 配色（浅色、深色）与字号
+    ├── theme/      index.ts                # 设计 token：浅色、深色、字号、间距、字体族
     └── utils/      format.ts  ids.ts
 ```
 
 `*.test.ts` 与被测文件放在一起，`npm test`（`node --test`）运行：SSE 解析与重连、回合状态机、`PlaySession`（加载、幂等重试、409 的处理、续传、轮询）、
-`SessionManager`、`ApiClient`。
+`SessionManager`、`ApiClient`，以及界面背后的纯逻辑（最近服务器、阅读字号、开始表单的拼接、窗口格子、关系图布局、数字格式）。
+
+**字体**：界面用系统黑体，不打包；等宽字用 `@expo-google-fonts/ibm-plex-mono`；叙述用思源宋体的 GB2312 子集（`assets/fonts/NotoSerifSC-Regular.ttf`，约 3.2 MB，OFL 许可）。
+子集的字符表由 `scripts/font-subset-chars.py` 生成，再用 fonttools 的 `pyftsubset` 从完整字体裁出；GB2312 以外的生僻字退回系统字体显示。

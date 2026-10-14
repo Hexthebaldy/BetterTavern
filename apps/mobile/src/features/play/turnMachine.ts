@@ -50,6 +50,9 @@ export type PlayState = {
   phase: Phase;
   /** 游玩记录的标题（加载后才有） */
   title: string;
+  /** 主角名和剧本 ID（阅读页顶上的书名页用；加载后才有） */
+  protagonist: string;
+  scenarioId: string | null;
   turns: StoryTurn[];
   pending: PendingTurn | null;
   error: TurnError | null;
@@ -57,7 +60,15 @@ export type PlayState = {
 };
 
 export type PlayEvent =
-  | { type: "loaded"; turns: Turn[]; active: Turn | null; lastFailed: Turn | null; title?: string }
+  | {
+      type: "loaded";
+      turns: Turn[];
+      active: Turn | null;
+      lastFailed: Turn | null;
+      title?: string;
+      protagonist?: string;
+      scenarioId?: string | null;
+    }
   | { type: "load_failed"; error: TurnError }
   | { type: "submit"; submission: Submission; display: TurnAction | null }
   | { type: "submitted"; turn: Turn }
@@ -71,6 +82,8 @@ export type PlayEvent =
 export const initialPlayState: PlayState = {
   phase: "loading",
   title: "",
+  protagonist: "",
+  scenarioId: null,
   turns: [],
   pending: null,
   error: null,
@@ -119,6 +132,8 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
       const base: PlayState = {
         ...state,
         title: event.title ?? state.title,
+        protagonist: event.protagonist ?? state.protagonist,
+        scenarioId: event.scenarioId !== undefined ? event.scenarioId : state.scenarioId,
         turns,
         error: null,
         submission: null,
