@@ -147,13 +147,13 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | `(auth)/login`、`(auth)/register` | 登录、注册；底部的服务器行打开服务器面板（最近用过的地址单选、输入新地址、测试连接），连不上时自动打开 |
 | `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 故事列表（左滑或长按：重命名、删除）、剧本库（网格 / 列表，导入角色卡，长按或左滑：重命名、删除）、设置首页（导演模型卡片） |
 | `scenario/[id]` | 剧本详情：封面、概要、原卡开场白；“开始新的故事”五步表单（名字建议、身份底稿、篇幅、文风标签、不想看到的勾选清单），拼回原来的字段 |
-| `play/[id]` | 阅读主屏；导航栏右侧是世界状态面板（人物与地点、关系图、事实，揭示秘密前确认）和“更多”（阅读设置：宋体 / 黑体、字号；重命名、删除故事） |
+| `play/[id]` | 阅读主屏；行动面板右下角（“自己写…”右边，生成中在“停止”左边）是世界状态面板（人物与地点、关系图、事实，揭示秘密前确认）和“更多”（阅读设置：宋体 / 黑体、字号；重命名、删除故事），导航栏只有返回和标题 |
 | `settings/credentials`、`settings/credential/[id]` | 密钥列表与添加（服务商图块、粘贴、使用官方地址）；单个密钥：进入时自动拉取模型列表、搜索兼手动输入、测试模型、设为导演模型、编辑备注名和端点、更换 Key、删除 |
 | `settings/routes` | 导演模型：“能记住多少”格子图、工作窗口上限、深度思考、取消导演模型 |
 | `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、密钥数，输入密码确认） |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
 
-界面按 [design/ui-v2-soft/](design/ui-v2-soft/README.md) 的设计稿实现（柔和圆角版“白 / 柔线 / 大圆角”；页面结构和交互规则沿用 [design/ui-v2/](design/ui-v2/README.md)）。标签栏是浮在内容上的胶囊，阅读页的行动面板离开屏幕边缘浮在故事上：两者都按安全区摆放，列表和故事流的底部按浮层高度留白（`useTabBarSpace()`、`ActionBar` 的 `onHeight`）。没做的：世界状态的“新”标记和导航栏上的变化提示（服务端还没有世界状态的变更记录）、导入进度条（上传没有进度事件，用来回扫动的线代替）、改昵称（没有接口）。
+界面按 [design/ui-v2-soft/](design/ui-v2-soft/README.md) 的设计稿实现（柔和圆角版“白 / 柔线 / 大圆角”；页面结构和交互规则沿用 [design/ui-v2/](design/ui-v2/README.md)）。标签栏是浮在内容上的胶囊，阅读页的行动面板离开屏幕边缘浮在故事上：两者都按安全区摆放，列表和故事流的底部按浮层高度留白（`useTabBarSpace()`、`ActionBar` 的 `onHeight`）。和设计稿不同：世界状态和“更多”两个按钮从导航栏右侧挪到了行动面板右下角，离拇指近。没做的：世界状态的“新”标记和按钮上的变化提示（服务端还没有世界状态的变更记录）、导入进度条（上传没有进度事件，用来回扫动的线代替）、改昵称（没有接口）。
 
 还没有的页面：世界、时间线、大纲（M2、M3）。
 
@@ -169,7 +169,7 @@ apps/mobile/
     │             PrefsProvider.tsx         # 设备上的界面偏好：最近用过的服务器、阅读设置、剧本库视图
     ├── storage/  secure.ts                 # expo-secure-store（令牌、服务器地址、界面偏好）
     ├── features/
-    │   ├── play/     turnMachine.ts  playSession.ts  usePlaySession.ts  StoryFeed.tsx  ActionBar.tsx
+    │   ├── play/     turnMachine.ts  playSession.ts  usePlaySession.ts  StoryFeed.tsx  ActionBar.tsx  ActionParts.tsx
     │   │             WorldSheet.tsx  worldGraph.ts  MoreSheet.tsx  reading.ts
     │   ├── scenario/ StartForm.tsx  startForm.ts      # 开始新故事的表单与内置选项
     │   ├── settings/ labels.ts  servers.ts  window.ts  ModelPicker.tsx  CredentialSheets.tsx  ProbeResults.tsx

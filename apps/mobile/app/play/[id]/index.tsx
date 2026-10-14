@@ -1,5 +1,5 @@
 /**
- * 阅读主屏：导航栏（返回、世界状态、更多）、故事流、浮在底部的行动面板。
+ * 阅读主屏：导航栏（返回、标题）、故事流、浮在底部的行动面板。世界状态和“更多”两个按钮在行动面板的右下角。
  * 顶部只放低频入口，所有回合操作都在屏幕下三分之一；离开页面只断开连接，服务端的生成继续，回来时会接上。
  * 行动面板盖在故事流上面：量出它的高度，故事流的底部留白和“回到最新”都跟着它走。
  */
@@ -161,20 +161,7 @@ export default function PlayScreen() {
     }
   };
 
-  const loaded = state.phase !== "loading" && state.phase !== "load_failed";
-  const nav = (
-    <NavBar
-      title={shownTitle}
-      actions={
-        loaded
-          ? [
-              { icon: "world", label: "世界状态", onPress: () => setWorldOpen(true) },
-              { icon: "more", label: "更多", onPress: () => setMoreOpen(true) },
-            ]
-          : []
-      }
-    />
-  );
+  const nav = <NavBar title={shownTitle} />;
 
   if (state.phase === "loading") {
     return (
@@ -226,6 +213,8 @@ export default function PlayScreen() {
           state={state}
           controls={controls}
           onOpenSettings={() => router.push("/settings/routes")}
+          onOpenWorld={() => setWorldOpen(true)}
+          onOpenMore={() => setMoreOpen(true)}
           onHeight={onPanelHeight}
         />
       </View>

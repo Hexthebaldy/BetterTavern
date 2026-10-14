@@ -193,7 +193,7 @@ make dev
 | `src/auth/session.ts` | `SessionManager`：令牌存取、提前一分钟单飞刷新、刷新被拒即退出 |
 | `src/features/play/turnMachine.ts` | 纯 reducer：`loading / load_failed / idle / submitting / streaming / reconnecting / polling / syncing / failed` |
 | `src/features/play/playSession.ts` | `PlaySession`：加载、提交（网络错误用同一个幂等键退避重试）、409 处理、接事件流、轮询降级、回到前台立即重连 |
-| `src/features/play/usePlaySession.ts`、`StoryFeed.tsx`、`ActionBar.tsx` | hook（每帧最多渲染一次）、故事流、底部选项与输入 |
+| `src/features/play/usePlaySession.ts`、`StoryFeed.tsx`、`ActionBar.tsx`、`ActionParts.tsx` | hook（每帧最多渲染一次）、故事流、底部行动面板（选项、输入、生成状态，右下角是世界状态和“更多”按钮） |
 | `app/` | 路由：`(auth)/login`、`(auth)/register`、`(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings`、`scenario/[id]`、`play/[id]`、`settings/credentials`、`settings/credential/[id]`、`settings/routes`、`settings/account`、`dev/probe`；`_layout.tsx` 用 `Stack.Protected` 按登录状态切换 |
 | `src/theme/index.ts`、`src/components/ui.tsx` | UI v2 柔和圆角版「白 / 柔线 / 大圆角」的设计 token 与部件（设计稿 `docs/design/ui-v2-soft/`，行为规则仍看 `docs/design/ui-v2/`）。`ui.tsx` 是门面，部件分在同目录的 primitives、feedback、controls、bars、overlay、dialog、icons 里；页头、标签栏、对话框、底部面板都是自己画的，原生导航栏不显示 |
 
