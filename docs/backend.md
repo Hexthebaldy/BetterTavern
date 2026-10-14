@@ -1095,3 +1095,55 @@ apps/server/
 ### 数据生命周期
 
 `GET /me/export` 导出全部数据（JSON，含剧本、回合、世界状态、摘要、大纲，不含密钥明文）；`DELETE /me` 异步硬删除账户和全部关联数据（包括 `blobs`）。`agent_runs.result` 等大字段默认保留 30 天，用于排错，到期清理；调试抓取（完整请求体）默认关闭，开启后 24 小时自动关闭。
+
+## 12 M1 的实现状态与偏差
+
+M1（热路径）已经实现：账户与令牌、凭据与探测、模型路由与窗口校验、角色卡导入、WorldBuilder（最小 Seed）、
+开场与每轮的流式生成、选项修复阶梯、幂等与租约、SSE 续传，以及租约过期清理。下面记录与前面各节不同、或者还没做的地方，
+后续里程碑按设计补齐。
+
+### 与设计不同的地方
+
+| 设计 | M1 的做法 | 原因与补齐时间 |
+| --- | --- | --- |
+| 热路径由 `turn_graph`（LangGraph）编排 | `runtime/runner.py` 的 `TurnRunner` 线性执行：开局构建 → 屏障 → 装配上下文 → 导演流式生成（同路由重试、fallback、超窗截断重试）→ 选项修复 → 带围栏提交 | 热路径上只有导演一个节点，图带不来收益。M2 接入后台管线时引入 LangGraph |
+| 回合提交为 `replied` 并在同一事务里入队 `post_turn` | 直接提交为 `committed`，不入队 | 还没有 StateKeeper。屏障的代码已经在，但上一轮总是已提交，不会等待。M2 改回 `replied` 加 `post_turn` |
+| 会话通道 `/playthroughs/{id}/events` 与 `playthrough.ready` | 没有实现；开局构建在开场回合自己的事件流里报告，新增 `world.building` 与 `world.ready`（data：`source`、`entities`）两个事件 | 单设备游玩用不到会话通道。M2 有了 `state.updated` 再加 |
+| 文件存储 `infra/storage/`（本地或 S3） | 角色卡头像存在 Postgres 的 `blobs` 表（bytea），通过 `GET /v1/blobs/{id}` 读取（要带令牌，有 ETag） | 头像最大 16 MB，量小。换对象存储只影响 `infra/db/repositories/library.py` |
+| `infra/db/models/` 的 ORM 模型 | `infra/db/repositories/` 直接写 SQL（SQLAlchemy Core）；涉及用户数据的查询都带 `user_id` 条件 | 查询都是手写的围栏条件，ORM 帮不上忙 |
+| 契约工具链（OpenAPI 生成客户端类型） | 客户端类型手写在 `apps/mobile/src/api/types.ts`，与 `api/schemas/` 一一对应 | M2 接入工具链后由生成的类型取代 |
+| 限流 | 进程内计数（`api/ratelimit.py`），每个 api 实例各算各的 | 单实例够用；多实例部署时换 Redis |
+| 租约清理在 worker 里 | api 进程每 15 秒执行一次（`services/maintenance.py`），顺带清理过期的幂等键和刷新令牌 | 回合本来就在 api 进程里跑，清理放在一起最简单 |
+| 删除账户是异步硬删除，另有导出 | `DELETE /v1/me` 需要密码，同步删除；导出还没做 | M4 |
+
+请求体大小在最外层的中间件里限制（`api/body_limit.py`）：一般接口 1 MB，角色卡上传 16 MB。FastAPI 在进入接口函数之前就会读完请求体，所以不能只在接口里检查。
+
+### 接口的增减
+
+| 方法与路径 | 说明 |
+| --- | --- |
+| `GET /v1/me` | 当前用户 |
+| `GET /v1/providers` | 可选的服务商：DeepSeek、Hugging Face、自定义 OpenAI 兼容端点（`requires_base_url`） |
+| `GET /v1/credentials/{id}` | 单个凭据，含测试过的模型 |
+| `PUT /v1/model-routes/{task}`、`DELETE /v1/model-routes/{task}` | 按 task 保存或删除用户级路由（设计里是整体 `PUT /model-routes`）。响应带窗口校验结果 `window`：`model_window`、`working_cap`、`max_tokens`、`effective_window`、`warnings`（`WINDOW_CLAMPED`） |
+| `GET /v1/blobs/{id}` | 头像 |
+| 还没有 | `GET /me/export`、单局路由覆盖、`/options/regenerate`、`/regenerate`、`/rollback`、`/summary`、`/outline`、会话通道、`/metrics` |
+
+### 新增的错误码
+
+| code | HTTP | 含义 |
+| --- | --- | --- |
+| `ROUTE_MISSING` | 409 | 还没有配置导演模型（创建游玩、提交行动时检查；生成时如果路由被删掉，也会以这个码结束回合） |
+| `OPENING_PENDING` | 409 | 开场还没有完成就提交了行动 |
+| `OPENING_EXISTS` | 422 | 已经有开场了，又请求生成开场 |
+| `OPTION_NOT_FOUND` | 422 | `option_id` 不在父回合的选项里 |
+| `TURN_NOT_LOCAL` | 409 | 要取消的回合不在当前实例上；租约到期后会自动结束 |
+| `EMAIL_TAKEN` | 409 | 邮箱已注册 |
+| `INVALID_CREDENTIALS` | 401 / 403 | 登录时邮箱或密码不对（401）；删除账户时密码不对（403） |
+| `REFRESH_INVALID`、`REFRESH_REUSED` | 401 | 刷新令牌无效或过期；用过的令牌超过 30 秒宽限期后又出现，整族吊销 |
+| `CREDENTIAL_UNREADABLE` | 409 | 凭据无法解密（主密钥换了却没保留旧的），需要重新填写 |
+| `CARD_INVALID` | 422 | 角色卡无法解析 |
+| `PAYLOAD_TOO_LARGE` | 413 | 请求体超过限制 |
+
+`turn.failed` 里新增的 code：`RUNNER_LOST`（租约过期被清理，或者提交时发现租约已被收回；可以重试）、`CANCELLED`（玩家停止或服务重启）、
+`NARRATIVE_MISSING`（模型没有写出叙述）、`INTERNAL_ERROR`。

@@ -113,3 +113,67 @@ apps/mobile/
 ```
 
 接口类型由后端导出的 OpenAPI 和 SSE 事件 schema 生成，生成流程见 [backend.md 第 9 节](backend.md)的“契约工具链”。
+
+## 3 M1 的实现状态与偏差
+
+M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读主屏和模型设置。为了先把主线跑通，技术栈做了简化，
+页面和数据流按第 1 节设计，后续补齐：
+
+| 设计 | M1 的做法 | 补齐时间 |
+| --- | --- | --- |
+| TanStack Query 管服务端数据 | `src/hooks/useAsync.ts`：进入或回到页面时取一次，可下拉刷新 | 页面变多、需要缓存与失效时（M2） |
+| Zustand 管登录态与回合状态 | 登录态在 `src/auth/session.ts`（`SessionManager`，经 `useSyncExternalStore` 接入 React）；回合状态由 `PlaySession` 持有，`usePlaySession` 订阅 | 需要跨页面共享的界面状态时 |
+| `openapi-fetch` 加生成的类型 | `src/api/client.ts` 的 `ApiClient`（带令牌、401 时刷新一次再重试、problem+json 转 `ApiError`、超时）加手写的 `types.ts` 与 `endpoints.ts` | 契约工具链接入时 |
+| FlashList | `FlatList`：已完成的回合用 `memo` 固定，只有生成中的那一段重渲染 | 故事很长、出现卡顿时 |
+| expo-sqlite 本地缓存 | 不缓存，打开故事时整条拉取（分页，每页 200 回合） | M2 |
+| i18n | 界面文字直接写在组件里（只有中文） | 加英文时 |
+| Jest、RNTL、Maestro | 纯逻辑用 `node --test`（见下）；界面还没有自动化测试，靠真机验收 | M2 |
+| 触觉反馈 | 没有（需要 expo-haptics） | 之后 |
+
+**回合状态机**在第 1 节的表格之外多了两点：加载失败是单独的 `load_failed` 状态（只能“重新加载”）；
+提交没送达（网络错误重试用完）时保留行动和幂等键，“重试”用同一个键重发，服务端最多建一个回合；生成失败后的“重试”则用新键重新生成。
+开局时的世界构建通过 `world.building` / `world.ready` 事件提示。事件流说结束了却没有可用的终止事件时，转轮询对齐结果，不会卡在“生成中”。
+
+**SseClient** 在第 1 节之外：请求头可以是函数，每次连接前取最新的访问令牌；收到 401 先刷新令牌再立即重连，刷新失败就结束（`unauthorized`）。
+流在事件中途结束时，按规范丢弃没写完的事件，`Last-Event-ID` 停在上一个完整事件。
+
+**令牌**：访问令牌 15 分钟，提前一分钟刷新，多个请求同时需要刷新时只发一次；刷新被服务端拒绝就退出登录（路由守卫 `Stack.Protected` 随即切回登录页）。
+令牌和自定义的服务器地址存在 expo-secure-store；模型的 API Key 不在设备上保存。
+
+### 页面（实际的路由）
+
+| 路由 | 页面 |
+| --- | --- |
+| `(auth)/login`、`(auth)/register` | 登录、注册；底部可以改服务器地址，旁边是连接测试 |
+| `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 故事列表（长按删除）、剧本库（导入角色卡）、设置首页 |
+| `scenario/[id]` | 剧本详情：预览、主角名字与简介、篇幅、文风、不想看到的内容，开始故事 |
+| `play/[id]` | 阅读主屏 |
+| `settings/credentials`、`settings/credential/[id]` | 密钥列表与添加；单个密钥：拉取模型列表、测试模型、设为导演模型、更换 Key、删除 |
+| `settings/routes` | 导演模型：窗口校验结果、工作窗口上限、深度思考 |
+| `settings/account` | 退出登录、删除账户 |
+| `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开 |
+
+还没有的页面：世界、时间线、大纲（M2、M3）。
+
+### 目录（实际）
+
+```
+apps/mobile/
+├── app/                       # 路由，见上表；_layout.tsx 里按登录状态切换可访问的页面
+└── src/
+    ├── api/      client.ts  endpoints.ts  types.ts  events.ts  turnStream.ts  sse/（SseParser、SseClient）
+    ├── auth/     session.ts                # SessionManager：令牌、单飞刷新
+    ├── state/    AppProvider.tsx           # 组装 ApiClient、会话、事件流连接；useApp()
+    ├── storage/  secure.ts                 # expo-secure-store
+    ├── features/
+    │   ├── play/     turnMachine.ts  playSession.ts  usePlaySession.ts  StoryFeed.tsx  ActionBar.tsx
+    │   ├── settings/ labels.ts
+    │   └── probe/    probeSession.ts
+    ├── components/ ui.tsx  Avatar.tsx  ServerSetting.tsx
+    ├── hooks/      useAsync.ts
+    ├── theme/      index.ts                # 配色（浅色、深色）与字号
+    └── utils/      format.ts  ids.ts
+```
+
+`*.test.ts` 与被测文件放在一起，`npm test`（`node --test`）运行：SSE 解析与重连、回合状态机、`PlaySession`（加载、幂等重试、409 的处理、续传、轮询）、
+`SessionManager`、`ApiClient`。

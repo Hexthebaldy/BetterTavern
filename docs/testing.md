@@ -67,3 +67,29 @@
 - M4：外部安全审查无高危；100 并发压测达标；自托管文档按步骤能跑通。
 
 完整里程碑见 [README.md 第 3 节](README.md)。
+
+## 3 M1 已有的测试
+
+后端（`apps/server/tests`）：
+
+| 文件 | 内容 |
+| --- | --- |
+| `unit/infra/test_crypto.py` | 主密钥（第一个加密、其余只解密）、信封加密绑定所在的行与字段、开发环境密钥只生成一次、生产环境必须显式配置、Argon2id 与重新哈希、访问令牌、刷新令牌只存哈希 |
+| `unit/importers/test_character_card.py` | PNG 的 tEXt 与压缩文本块、V3 优先于 V2、压缩炸弹、无效输入、V1 / V3 的 JSON、宏替换 |
+| `unit/domain/test_seed_and_plan.py` | Seed 规范化（名字与引用）、世界规划、最小 Seed、名字规范化、行动解析 |
+| `unit/runtime/test_context.py` | 状态块排版与秘密分区、预算降级、消息摆放、确定性、玩家文字跳不出围栏、紧急截断 |
+| `unit/runtime/test_structured.py` | 结构化输出阶梯：校验失败带错误重试一次、不支持的级别跳过并缓存、降两级后放弃、传输错误上抛 |
+| `unit/runtime/test_runner.py` | 事件顺序与提交、选项修复与默认选项、首 token 前出错切 fallback、半截失败保留叙述、鉴权错误不重试、没有叙述、没有路由、提交被围栏拒绝、屏障超时、租约丢失时取消生成、开局构建、关闭时取消 |
+| `unit/api/test_body_limit.py`、`unit/api/test_probe_api.py` | 请求体大小限制；探针接口读不到真实回合的事件流 |
+| `integration/test_accounts.py` | 注册登录、刷新令牌轮换、宽限期与盗用检测、退出吊销整族、删除账户 |
+| `integration/test_turns.py` | 同一个幂等键并发提交只建一个回合、生成中再提交得到 `TURN_IN_PROGRESS`、租约过期清理后迟到的结果作废、跨用户 404、过期父回合与选项校验 |
+| `e2e/test_m1_flow.py` | uvicorn 里的真实 api 加假模型服务：注册 → 凭据 → 路由 → 导入 → 开局 → 多回合（幂等重放、并发提交、过期父回合）→ 中途断开再续传，拼接结果等于最终叙述；鉴权与隔离；窗口校验 |
+
+`integration` 与 `e2e/test_m1_flow.py` 需要 `BT_TEST_DATABASE_URL`（`make test-integration`），没有设置时跳过。
+
+客户端（`apps/mobile`，`npm test`）：`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
+`TURN_IN_PROGRESS` / `STALE_PARENT`、续传、轮询、失效登录）、`turnStream`（半截终止事件后的恢复）、`session`（单飞刷新）、`client`（401 重试、problem+json）。
+界面还没有自动化测试。
+
+**M1 的出口验收**（需要真机和真实的 Key，自动化测试覆盖不了）：DeepSeek 与 Hugging Face 各完整玩 30 回合；
+游玩中途切到飞行模式再切回来，叙述接着出、不重复不缺字；生成中杀掉 App 再打开，能接上或看到可重试的失败。
