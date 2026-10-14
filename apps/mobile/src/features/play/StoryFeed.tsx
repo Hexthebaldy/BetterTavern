@@ -2,6 +2,8 @@
  * 故事流：已完成的回合（memo 固定，不随流式文字重渲染）加上正在生成的那一段。
  *
  * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，出现“回到最新”。
+ * 只有玩家亲手拖动或惯性滚动才会关掉跟随：内容变长时程序滚动产生的事件里，偏移量常常落后于新的内容高度，
+ * 不能当成玩家翻走了。
  */
 
 import { memo, useCallback, useMemo, useRef, useState, type ReactElement } from "react";
@@ -106,6 +108,7 @@ export function StoryFeed({ state, header }: { state: PlayState; header?: ReactE
   const palette = usePalette();
   const list = useRef<FlatList<Item>>(null);
   const following = useRef(true);
+  const byUser = useRef(false); // 玩家正在拖动，或者拖动之后的惯性滚动
   const [showLatest, setShowLatest] = useState(false);
 
   const items = useMemo(() => {
@@ -114,16 +117,33 @@ export function StoryFeed({ state, header }: { state: PlayState; header?: ReactE
     return result;
   }, [state.turns, state.pending]);
 
-  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const track = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distance = contentSize.height - (contentOffset.y + layoutMeasurement.height);
     const atBottom = distance < FOLLOW_THRESHOLD;
+    if (!atBottom && !byUser.current) return;
     following.current = atBottom;
     setShowLatest((shown) => (shown === !atBottom ? shown : !atBottom));
   }, []);
 
-  const onContentSizeChange = useCallback(() => {
-    if (following.current) list.current?.scrollToEnd({ animated: false });
+  const onDragStart = useCallback(() => {
+    byUser.current = true;
+  }, []);
+
+  const onUserScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      track(e);
+      byUser.current = false;
+    },
+    [track],
+  );
+
+  // 推到下一帧：首次布局时在 onContentSizeChange 里直接调用会被忽略（iOS 上实测），打开故事就停在开头
+  const stickToEnd = useCallback(() => {
+    if (!following.current) return;
+    requestAnimationFrame(() => {
+      if (following.current) list.current?.scrollToEnd({ animated: false });
+    });
   }, []);
 
   const jumpToLatest = useCallback(() => {
@@ -151,9 +171,14 @@ export function StoryFeed({ state, header }: { state: PlayState; header?: ReactE
         renderItem={renderItem}
         ListHeaderComponent={header}
         contentContainerStyle={styles.content}
-        onScroll={onScroll}
+        onScroll={track}
+        onScrollBeginDrag={onDragStart}
+        onScrollEndDrag={onUserScrollEnd}
+        onMomentumScrollBegin={onDragStart}
+        onMomentumScrollEnd={onUserScrollEnd}
         scrollEventThrottle={64}
-        onContentSizeChange={onContentSizeChange}
+        onContentSizeChange={stickToEnd}
+        onLayout={stickToEnd}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         initialNumToRender={12}
