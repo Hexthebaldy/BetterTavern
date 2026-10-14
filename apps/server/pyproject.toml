@@ -4,24 +4,24 @@ version = "0.1.0"
 description = "BetterTavern 服务端：生成式互动小说的 agent runtime"
 readme = "README.md"
 requires-python = ">=3.12"
-# 直接依赖先用下限约束；第一次 `uv lock` 之后按锁文件改成精确版本（见 README）
+# 直接依赖精确锁定，与 uv.lock 一致；升级时改这里，再执行 `uv lock`
 dependencies = [
-  "fastapi>=0.115",
-  "uvicorn[standard]>=0.32",
-  "pydantic>=2.10",
-  "pydantic-settings>=2.6",
-  "httpx>=0.28,<0.29",
-  "httpcore>=1.0.7,<2",
-  "sqlalchemy[asyncio]>=2.0.36",
-  "asyncpg>=0.30",
-  "alembic>=1.14",
-  "pyyaml>=6.0.2",
-  "jinja2>=3.1.4",
+  "fastapi==0.143.0",
+  "uvicorn[standard]==0.54.0",
+  "pydantic==2.14.1",
+  "pydantic-settings==2.15.0",
+  "httpx==0.28.1",
+  "httpcore==1.0.9",
+  "sqlalchemy[asyncio]==2.1.4",
+  "asyncpg==0.32.0",
+  "alembic==1.20.0",
+  "pyyaml==6.0.3",
+  "jinja2==3.1.6",
   # 密钥信封加密（AES-GCM）与密码哈希（Argon2id，46 起提供 PHC 编码）
-  "cryptography>=46",
-  "pyjwt>=2.10",
+  "cryptography==50.0.2",
+  "pyjwt==2.15.1",
   # 角色卡上传（multipart）
-  "python-multipart>=0.0.18",
+  "python-multipart==0.0.32",
 ]
 
 [project.scripts]
@@ -29,11 +29,11 @@ bettertavern = "bettertavern.entrypoints.cli:main"
 
 [dependency-groups]
 dev = [
-  "pytest>=8.3",
-  "anyio>=4.6",
-  "ruff>=0.8",
-  "pyright>=1.1.390",
-  "import-linter>=2.1",
+  "pytest==9.1.1",
+  "anyio==4.15.1",
+  "ruff==0.17.0",
+  "pyright==1.1.414",
+  "import-linter==2.15",
 ]
 
 [build-system]

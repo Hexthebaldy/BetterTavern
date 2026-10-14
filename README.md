@@ -43,8 +43,7 @@ make mobile-install # 装客户端依赖；之后在 apps/mobile 下 npm start
 
 然后在 App 里：注册 → 设置里添加一个模型 Key、选导演模型 → 剧本里导入角色卡 → 开始故事。
 
-第一次 `make install` 会生成 `apps/server/uv.lock`。请提交它，并按锁文件把 `pyproject.toml` 里的直接依赖改成精确版本
-（项目约定直接依赖精确锁定；初版 pyproject 只写了下限，因为生成它的环境访问不到 PyPI）。
+后端的直接依赖在 `apps/server/pyproject.toml` 里精确锁定，与 `uv.lock` 一致；升级依赖时先改 pyproject，再执行 `uv lock` 并提交锁文件。
 
 ## 测试
 
