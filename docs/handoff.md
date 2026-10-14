@@ -2,6 +2,7 @@
 
 > 写给接手的 Claude Code（以及之后的协作者）。记录到 2026-10-14 为止完成了什么、验证到什么程度、哪些没验证、下一步做什么。
 > 设计以 [README.md](README.md)、[backend.md](backend.md)、[client.md](client.md)、[testing.md](testing.md) 为准；
+> 已经实现的表结构和接口以 [data-model/](data-model/README.md)、[api/](api/README.md) 为准（按领域分文件，有测试检查它们与代码一致）；
 > 写代码前先读仓库根目录的 [AGENTS.md](../AGENTS.md)（分层、提示词、测试、中文的约定）。
 
 ## 1 一页概览
@@ -48,6 +49,14 @@ v1 支持 DeepSeek、Hugging Face 和自定义的 OpenAI 兼容端点。
 | `deploy/docker-compose.yml` | 修复：生产 compose 没有传 `MASTER_KEYS`、`AUTH_SECRET`，`ENV=prod` 下 api 起不来 | 提交（建议 `fix(deploy): ...`） |
 | `docs/handoff.md`、`CLAUDE.md` | 新增：本说明，以及让 Claude Code 自动读取 AGENTS.md 的入口 | 提交 |
 
+之后补写参考文档（2026-10-14）时新增或修改了下面这些文件，**还没有提交**，建议作为一个提交（`docs: 数据模型与接口参考`）：
+
+| 文件 | 内容 |
+| --- | --- |
+| `docs/data-model/`、`docs/api/` | 新增：实际的表结构与接口的参考文档，按领域分文件 |
+| `apps/server/tests/support/docs.py`、`apps/server/tests/unit/api/test_api_doc.py`、`apps/server/tests/integration/test_data_model_doc.py` | 新增：检查这两个目录与代码是否一致的测试 |
+| `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/README.md`、`docs/backend.md`、`docs/client.md`、`docs/testing.md`、`docs/handoff.md` | 指向两份参考文档；AGENTS.md 加了“改表、改接口时同步更新”的规则 |
+
 ## 3 本地运行
 
 需要 Python 3.12+ 和 uv、Docker（Postgres）、Node 22.18+。命令都在仓库根目录执行，见 README 的“本地开发”。
@@ -91,6 +100,9 @@ make dev
   改成 `allow_indirect_imports = true`，只禁止 api 直接 import providers。修复后 ruff、format、pyright、6 条分层规则全部通过。
 - `make mobile-test` 74 个通过，`npm run typecheck` 0 错误。
 
+之后补参考文档时新加了 4 个测试（`tests/unit/api/test_api_doc.py` 3 个，`tests/integration/test_data_model_doc.py` 1 个）。
+它们在我的环境里和其他测试一起通过（合计 361 个），还没有在用户的 Mac 上跑过；下次 `make test`、`make test-integration`、`make lint` 会覆盖到。
+
 下面一节是上一个环境的局限，以上复核已经覆盖。
 
 ### 验证环境的局限（已由上面的复核覆盖）
@@ -122,15 +134,17 @@ make dev
 7. 换成 Hugging Face 的 Key 和模型重复 1 到 5。
 8. 服务器换成蜂窝网络可达的 https 地址，跑一次“设置 → 连接测试”；结果是“轮询降级”说明代理在缓冲 SSE（Nginx 要 `proxy_buffering off`）。
 
-排查入口：服务端日志（不含故事文本）；`GET /v1/playthroughs/{id}` 看 `active_turn`、`last_failed`；`GET /v1/turns/{id}` 看回合状态与 `error.code`；
-`agent_runs` 表记录每次模型调用的结果与用量。
+排查入口：服务端日志（不含故事文本）；`GET /v1/playthroughs/{id}` 看 `active_turn`、`last_failed`；`GET /v1/turns/{id}` 看回合状态与 `error.code`
+（各个错误码的含义见 [api/README.md 的“错误码”](api/README.md#错误码)）；`agent_runs` 表记录每次模型调用的结果与用量（字段见 [data-model/infra.md](data-model/infra.md)）。
 
 真机上最可能出问题的地方（都没验证过）：
 
 - **键盘**：阅读页、登录页、剧本详情用 `KeyboardAvoidingView behavior="padding"`（两个平台都是），前提是 Android 处于 edge-to-edge（Expo SDK 54 起默认）。
   如果 Android 上输入框被挡或者留白翻倍，改阅读页（`app/play/[id]/index.tsx`）的 behavior。键盘弹起时底部还多留了一个安全区高度，属于外观问题。
 - **自动滚动**：`StoryFeed` 停在底部时 `onContentSizeChange` 里 `scrollToEnd`，上翻超过 80px 暂停并显示“回到最新”。长故事的首次定位依赖多次 `scrollToEnd` 收敛。
-- **导入**：`DocumentPicker.getDocumentAsync({ type: "*/*" })` 之后按扩展名过滤，multipart 用 RN 的 `FormData` `{ uri, name, type }`。iOS 上的上传可能没有 Content-Length，
+- **导入**：`DocumentPicker.getDocumentAsync({ type: "*/*" })` 之后按扩展名过滤，把 `new File(uri)`（expo-file-system）放进 `FormData` 上传。
+  不能用 RN 的 `{ uri, name, type }`：SDK 57 的全局 `fetch` 是 `expo/fetch`，遇到这种对象直接抛 `Unsupported FormDataPart implementation`，
+  请求根本发不出去，界面上显示成“连不上服务器”（2026-10-14 真机上遇到并修复）。iOS 上的上传可能没有 Content-Length，
   服务端的大小限制中间件（`api/body_limit.py`）对此是边收边数的。
 - **标签栏**：只用文字（`tabBarIcon: () => null` 加 `tabBarLabelPosition: "beside-icon"`），没有图标库；看一下实际效果。
 - **SecureStore**：会话以一个 JSON 存在 `bt.session`，远小于 2 KB。
@@ -177,7 +191,7 @@ make dev
 | `src/features/play/turnMachine.ts` | 纯 reducer：`loading / load_failed / idle / submitting / streaming / reconnecting / polling / syncing / failed` |
 | `src/features/play/playSession.ts` | `PlaySession`：加载、提交（网络错误用同一个幂等键退避重试）、409 处理、接事件流、轮询降级、回到前台立即重连 |
 | `src/features/play/usePlaySession.ts`、`StoryFeed.tsx`、`ActionBar.tsx` | hook（每帧最多渲染一次）、故事流、底部选项与输入 |
-| `app/` | 路由：`(auth)/login|register`、`(tabs)/playthroughs|library|settings`、`scenario/[id]`、`play/[id]`、`settings/credentials|credential/[id]|routes|account`、`dev/probe`；`_layout.tsx` 用 `Stack.Protected` 按登录状态切换 |
+| `app/` | 路由：`(auth)/login`、`(auth)/register`、`(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings`、`scenario/[id]`、`play/[id]`、`settings/credentials`、`settings/credential/[id]`、`settings/routes`、`settings/account`、`dev/probe`；`_layout.tsx` 用 `Stack.Protected` 按登录状态切换 |
 | `src/theme/index.ts`、`src/components/ui.tsx` | 配色（偏冷的纸色、黛青、朱砂；深色模式）与基础部件。“我的行动”统一用左侧青色竖线标出 |
 
 ## 7 不能破坏的约束
@@ -190,6 +204,7 @@ make dev
 - 日志不写故事文本和密钥。
 - 提示词是 `runtime/prompts/zh/*.j2` 数据文件，渲染必须确定性。
 - 客户端只在事件真正派发时推进 `Last-Event-ID`；叙述靠增量拼接，所以续传绝不能从头重放到已有文字上（正在生成的回合加载时叙述从空开始）。
+- 改表结构或接口时，在同一个改动里更新 [data-model/](data-model/README.md) 或 [api/](api/README.md) 里对应领域的文件；`test_data_model_doc.py`、`test_api_doc.py` 不通过就说明文档落后了。
 
 ## 8 审查发现并已修复的问题
 
@@ -210,9 +225,18 @@ make dev
 
 先处理（M1 收尾）：
 
-- 锁文件与 compose 的提交（第 2 节）；`pyproject.toml` 的直接依赖目前只有下限，按 uv.lock 改成精确版本（README 里早有这条约定）。
+- ~~锁文件与 compose 的提交（第 2 节）；`pyproject.toml` 的直接依赖按 uv.lock 改成精确版本~~：2026-10-14 已完成。
 - 真机验收与修复（第 5 节）；用真 asyncpg 跑集成测试。
 - 客户端没有界面测试（RNTL、Maestro 都还没接）。
+
+写参考文档时对照代码发现的小问题（都还没修，严重度低；[data-model/](data-model/README.md)、[api/](api/README.md) 按现状描述）：
+
+- `\u0000`：只有导入角色卡和给剧本改名时会去掉。玩家的自由输入、主角设定、标题、凭据字段、模型输出里含 `\u0000` 时，Postgres 拒绝写入，接口返回 500，或者回合以 `INTERNAL_ERROR` 失败。
+- 生成中途续租失败（租约已被清理任务收走）时，runner 通过取消令牌停止，推给客户端的 `turn.failed` 是 `CANCELLED`，库里是 `RUNNER_LOST`。
+  提交被围栏拒绝的情况已经统一成 `RUNNER_LOST`（第 8 节），这里也应该一样。
+- 同一个 `Idempotency-Key` 同时用在两局上：后插入的违反主键，返回 500，应该是 422 `IDEMPOTENCY_KEY_REUSED`。
+- 提交行动时把过期回合标为失败的那条路径没有发 `bt_turns` 通知（M1 没有订阅方，暂时没有影响）。
+- 还没有轮换主密钥后重新加密的工具；只改 Key 时 `extra_headers_enc` 不会用新的主密钥重新加密。
 
 与设计文档的偏差（详见 [backend.md 第 12 节](backend.md)、[client.md 第 3 节](client.md)），M2 起按设计补齐：
 

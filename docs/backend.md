@@ -1,6 +1,6 @@
 # BetterTavern 后端技术方案
 
-> 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md)
+> 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md) · [数据模型](data-model/README.md) · [接口](api/README.md)
 
 ## 1 总体架构与技术选型
 
@@ -61,6 +61,8 @@ flowchart LR
 ## 2 核心数据模型
 
 数据模型围绕一条线性时间线展开：`turns` 记录剧情，世界表记录“现在是什么样”，`state_patches` 记录“怎么变的”（撤销日志），大纲与摘要各带版本，所有写入都用版本号做乐观并发控制。
+
+> 本节是设计。已经建好的表（每一列的类型、约束、索引和 JSON 结构）以 [data-model/](data-model/README.md) 为准；`state_patches`、`outline_revisions`、`summaries` 还没有建。
 
 ### A 账户与配置
 
@@ -818,6 +820,8 @@ class ProviderAdapter(Protocol):
 
 接口全部在 `/v1` 下，JSON over HTTPS；除注册和登录外都带 `Authorization: Bearer <access token>`。流式事件用 SSE，生成与连接解耦：先 POST 创建回合，再订阅这个回合的事件流，所以手机切后台或断网不会丢掉一次已经花钱的生成。契约以 OpenAPI 为准，由 pydantic 模型生成；SSE 事件不在 OpenAPI 里，另有 `events.schema.json`。
 
+> 本节是完整的接口设计，包括还没实现的部分。已经实现的接口（请求、响应、状态码、错误码、SSE 事件）以 [api/](api/README.md) 为准。
+
 **REST 资源**（表中路径均省略 `/v1` 前缀）
 
 | 分组 | 方法与路径 | 说明 |
@@ -1100,7 +1104,7 @@ apps/server/
 
 M1（热路径）已经实现：账户与令牌、凭据与探测、模型路由与窗口校验、角色卡导入、WorldBuilder（最小 Seed）、
 开场与每轮的流式生成、选项修复阶梯、幂等与租约、SSE 续传，以及租约过期清理。下面记录与前面各节不同、或者还没做的地方，
-后续里程碑按设计补齐。
+后续里程碑按设计补齐。实际的表结构见 [data-model/](data-model/README.md)，实际的接口见 [api/](api/README.md)。
 
 ### 与设计不同的地方
 

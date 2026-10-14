@@ -5,6 +5,7 @@
 v1 适配 DeepSeek、Hugging Face 和自定义的 OpenAI 兼容端点。
 
 设计文档在 [docs/](docs/README.md)：[后端](docs/backend.md)、[客户端](docs/client.md)、[测试](docs/testing.md)。
+已经实现的表结构和接口见参考文档：[数据模型](docs/data-model/README.md)、[接口](docs/api/README.md)，两个目录里都按领域分文件。
 
 ## 当前进度：M1 热路径
 
@@ -72,7 +73,7 @@ HF_TOKEN=hf_... uv run python -m evals.director_compliance --provider huggingfac
 apps/server     后端：FastAPI、agent runtime、provider 层、队列、迁移、测试、评测
 apps/mobile     客户端：Expo + TypeScript
 deploy          docker compose 与镜像
-docs            设计文档
+docs            设计文档，以及数据模型和接口的参考文档
 ```
 
 ## 许可证

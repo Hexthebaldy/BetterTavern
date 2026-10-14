@@ -1,6 +1,6 @@
 # BetterTavern 客户端技术方案
 
-> 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md)
+> 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md) · [数据模型](data-model/README.md) · [接口](api/README.md)
 
 ## 1 React Native 客户端
 
@@ -123,7 +123,7 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | --- | --- | --- |
 | TanStack Query 管服务端数据 | `src/hooks/useAsync.ts`：进入或回到页面时取一次，可下拉刷新 | 页面变多、需要缓存与失效时（M2） |
 | Zustand 管登录态与回合状态 | 登录态在 `src/auth/session.ts`（`SessionManager`，经 `useSyncExternalStore` 接入 React）；回合状态由 `PlaySession` 持有，`usePlaySession` 订阅 | 需要跨页面共享的界面状态时 |
-| `openapi-fetch` 加生成的类型 | `src/api/client.ts` 的 `ApiClient`（带令牌、401 时刷新一次再重试、problem+json 转 `ApiError`、超时）加手写的 `types.ts` 与 `endpoints.ts` | 契约工具链接入时 |
+| `openapi-fetch` 加生成的类型 | `src/api/client.ts` 的 `ApiClient`（带令牌、401 时刷新一次再重试、problem+json 转 `ApiError`、超时）加手写的 `types.ts` 与 `endpoints.ts`。字段与 [api/](api/README.md) 里各领域的请求和响应模型一一对应，改接口时一起改 | 契约工具链接入时 |
 | FlashList | `FlatList`：已完成的回合用 `memo` 固定，只有生成中的那一段重渲染 | 故事很长、出现卡顿时 |
 | expo-sqlite 本地缓存 | 不缓存，打开故事时整条拉取（分页，每页 200 回合） | M2 |
 | i18n | 界面文字直接写在组件里（只有中文） | 加英文时 |

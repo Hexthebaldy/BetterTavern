@@ -1,14 +1,19 @@
 # BetterTavern 技术方案
 
-> 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md)
+> 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md) · [数据模型](data-model/README.md) · [接口](api/README.md)
 
-BetterTavern 是一个服务端生成式互动小说应用：Python 后端运行 agent runtime，React Native 客户端负责阅读和操作。本目录按读者拆成四份文档，本页是总览、仓库结构和里程碑。
+BetterTavern 是一个服务端生成式互动小说应用：Python 后端运行 agent runtime，React Native 客户端负责阅读和操作。
+本目录有四份按读者拆分的设计文档，以及数据模型、接口两个参考文档目录。设计文档写的是完整的方案，参考文档写的是代码里已经实现的样子。本页是总览、仓库结构和里程碑。
 
 | 文档 | 内容 |
 | --- | --- |
 | [backend.md](backend.md) | 架构与选型、数据模型、世界状态、上下文与压缩、每轮管线、agent、回退、provider 层、API、后端目录、安全 |
 | [client.md](client.md) | React Native 技术栈、SSE 客户端、回合状态机、页面、客户端目录 |
 | [testing.md](testing.md) | 可观测性、测试分层、回放评估 |
+| [data-model/](data-model/README.md) | 参考：数据库里实际存在的每张表（列、类型、约束、索引）、JSON 列的结构、状态机、并发控制、删除与清理。按领域分文件：账户、凭据与路由、剧本库、游玩与回合、世界状态、运行基础设施 |
+| [api/](api/README.md) | 参考：已实现的每个接口（请求、响应、状态码、错误码）、SSE 事件与续传、限流与请求体大小。按领域分文件：认证与账户、凭据与路由、剧本库、游玩与回合、事件流、运维 |
+
+改表结构或接口时，在同一个改动里更新这两个目录里对应领域的文件；有测试检查它们和代码是否一致（[testing.md 第 3 节](testing.md)）。
 
 ## 1 概述
 

@@ -1,6 +1,6 @@
 # BetterTavern 测试技术方案
 
-> 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md)
+> 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md) · [数据模型](data-model/README.md) · [接口](api/README.md)
 
 ## 1 可观测性、测试与评估
 
@@ -45,6 +45,7 @@
 | 性能 | k6 或 locust：100 个并发 playthrough 对假 LLM，观察队列延迟与数据库竞争 | M4 |
 
 测试原则借鉴 hermes-agent 的 `AGENTS.md`（其中有 “Don’t write change-detector tests”“Never read source code in tests” 两条）：测行为，不测实现文本；测试不读取源码文件内容。
+文档同步测试读的是 `docs/` 下的文档，对照的是运行时的 OpenAPI 和真实数据库里的表结构，不读源码。
 
 ### 评估（`evals/`）
 
@@ -81,6 +82,8 @@
 | `unit/runtime/test_structured.py` | 结构化输出阶梯：校验失败带错误重试一次、不支持的级别跳过并缓存、降两级后放弃、传输错误上抛 |
 | `unit/runtime/test_runner.py` | 事件顺序与提交、选项修复与默认选项、首 token 前出错切 fallback、半截失败保留叙述、鉴权错误不重试、没有叙述、没有路由、提交被围栏拒绝、屏障超时、租约丢失时取消生成、开局构建、关闭时取消 |
 | `unit/api/test_body_limit.py`、`unit/api/test_probe_api.py` | 请求体大小限制；探针接口读不到真实回合的事件流 |
+| `unit/api/test_api_doc.py` | [docs/api/](api/README.md) 与 OpenAPI 一致（目录里的文件合在一起检查，每个接口和模型只能写一次）：接口齐全、鉴权与成功状态码、查询参数与请求头、每个请求和响应模型的字段与必填项 |
+| `integration/test_data_model_doc.py` | [docs/data-model/](data-model/README.md) 与迁移建出的表一致（同上）：表、列名、类型、可空、索引名 |
 | `integration/test_accounts.py` | 注册登录、刷新令牌轮换、宽限期与盗用检测、退出吊销整族、删除账户 |
 | `integration/test_turns.py` | 同一个幂等键并发提交只建一个回合、生成中再提交得到 `TURN_IN_PROGRESS`、租约过期清理后迟到的结果作废、跨用户 404、过期父回合与选项校验 |
 | `e2e/test_m1_flow.py` | uvicorn 里的真实 api 加假模型服务：注册 → 凭据 → 路由 → 导入 → 开局 → 多回合（幂等重放、并发提交、过期父回合）→ 中途断开再续传，拼接结果等于最终叙述；鉴权与隔离；窗口校验 |

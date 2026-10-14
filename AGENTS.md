@@ -30,4 +30,8 @@
 ## 文档与中文
 
 - 面向用户和协作者的文字用中文；标识符、提交信息的类型前缀用英文。
-- 改了接口、事件或约定，同一个 PR 里更新 `docs/`。
+- 改了接口、事件或约定，同一个 PR 里更新 `docs/`。两个参考文档目录必须和代码保持一致：
+  - 改表结构（加迁移）时更新 `docs/data-model/` 里对应领域的文件：列、类型、可空、默认值、约束与索引、JSON 结构、状态机；跨领域的关系和删除规则在 `docs/data-model/README.md`；
+  - 改接口的路径或方法、请求或响应字段、状态码、参数时更新 `docs/api/` 里对应领域的文件，SSE 事件在 `docs/api/events.md`，错误码在 `docs/api/README.md`；
+  - 两个目录都按领域分文件，新领域新建文件，并登记在目录的 README.md 里；
+  - `tests/unit/api/test_api_doc.py`、`tests/integration/test_data_model_doc.py` 会对照 OpenAPI 和真实表结构检查这两个目录（它们读的是文档，不是源码），格式要求见两个目录的 README.md 最后一节。
