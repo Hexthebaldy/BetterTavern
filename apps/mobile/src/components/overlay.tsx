@@ -2,6 +2,7 @@
  * 浮层：底部面板、对话框、墨色浮条，以及给页面用的 useOverlay()（确认、输入、菜单、浮条）。
  *
  * 底部面板浮起，四周离屏幕边缘 8，圆角 32，顶部一根 40×5 的拖拽条；点遮罩、下拉或 Android 返回键关闭。
+ * 面板里有输入框时，键盘弹出后整个面板跟着浮到键盘上方（useKeyboardLift），输入框不会被盖住。
  * 对话框是居中的白色圆角卡片，上方一个圆形图标写清后果；删除用红色，揭示秘密之类的提醒用琥珀色。
  * 有底部面板开着时，对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）。
  * 墨色胶囊浮条贴着标签栏上方浮起，3 秒后自动消失（带操作的多留一会儿）。
@@ -19,10 +20,8 @@ import {
 } from "react";
 import {
   Animated,
-  KeyboardAvoidingView,
   Modal,
   PanResponder,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -33,6 +32,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useKeyboardLift } from "../hooks/useKeyboardLift.ts";
 import { radius, space, useIsDark, usePalette } from "../theme/index.ts";
 import { tabBarTop } from "./bars.tsx";
 import { Dialog, type DialogTone } from "./dialog.tsx";
@@ -71,6 +71,7 @@ export function Sheet({
   const progress = useRef(new Animated.Value(0)).current;
   const drag = useRef(new Animated.Value(0)).current;
   const shown = useRef(false);
+  const { height: keyboardHeight, lift } = useKeyboardLift();
 
   useEffect(() => {
     if (visible) {
@@ -116,9 +117,9 @@ export function Sheet({
           accessibilityRole="button"
         />
       </Animated.View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.sheetHost}
+      {/* 外层跟着键盘抬高（布局动画），里层负责进出场和下拉（原生动画），两种动画不放在同一个视图上 */}
+      <Animated.View
+        style={[styles.sheetHost, { paddingTop: insets.top + space.s, paddingBottom: lift }]}
         pointerEvents="box-none"
       >
         <Animated.View
@@ -126,12 +127,12 @@ export function Sheet({
           style={[
             styles.sheet,
             {
-              bottom: space.s,
               backgroundColor: palette.sheet,
-              paddingBottom: Math.max(insets.bottom - space.s, space.l),
+              // 键盘弹出时贴着键盘，不再给 Home 指示条留位置
+              paddingBottom: keyboardHeight > 0 ? space.l : Math.max(insets.bottom - space.s, space.l),
               transform: [{ translateY }],
             },
-            full ? { top: insets.top + space.xxl, paddingBottom: 0 } : null,
+            full ? styles.sheetFull : null,
             style,
           ]}
         >
@@ -151,7 +152,7 @@ export function Sheet({
           </View>
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </Animated.View>
       <OverlayOutlet active={visible} />
     </Modal>
   );
@@ -517,12 +518,13 @@ function Toast({ message, options, onDone }: { message: string; options: ToastOp
 const styles = StyleSheet.create({
   sheetHost: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, justifyContent: "flex-end" },
   sheet: {
-    position: "absolute",
-    left: space.s,
-    right: space.s,
+    marginHorizontal: space.s,
+    marginBottom: space.s,
     borderRadius: radius.sheet,
     overflow: "hidden",
   },
+  /** 从状态栏下方一直到底：离状态栏 36 */
+  sheetFull: { flex: 1, marginTop: space.xxl - space.s, paddingBottom: 0 },
   handle: { alignSelf: "center", width: 40, height: 5, borderRadius: 2.5, marginTop: 10 },
   sheetTitleRow: {
     flexDirection: "row",

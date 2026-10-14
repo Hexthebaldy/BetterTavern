@@ -13,21 +13,12 @@
  * 底部安全区（Home 指示条）算在面板的内边距里；键盘弹出时面板贴着键盘浮起，不再留安全区。
  */
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  Animated,
-  Easing,
-  Keyboard,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { useEffect, useState, type ReactNode } from "react";
+import { Animated, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Icon, useSheetSurfaces } from "../../components/ui.tsx";
+import { useKeyboardLift } from "../../hooks/useKeyboardLift.ts";
 import { radius, space, usePalette } from "../../theme/index.ts";
 import { FreeInput, Generating, OptionRow, PanelTools, WriteRow } from "./ActionParts.tsx";
 import { canAct, canRetry, headTurn, isLive, needsOpening, type PlayState } from "./turnMachine.ts";
@@ -35,41 +26,6 @@ import type { PlayControls } from "./usePlaySession.ts";
 
 /** 面板离屏幕左、右、下边缘的距离 */
 export const PANEL_GAP = space.s;
-
-/**
- * 键盘盖住的高度，以及让面板跟着键盘浮起的动画值（iOS）。
- * 不用 KeyboardAvoidingView：它收起键盘时走 LayoutAnimation，之后的第一次点按会丢。
- * Android 的窗口会随键盘缩小，这里不用再抬。
- */
-function useKeyboardLift(): { height: number; lift: Animated.Value } {
-  const lift = useRef(new Animated.Value(0)).current;
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    const ios = Platform.OS === "ios";
-    const move = (to: number, duration: number): void => {
-      setHeight(to);
-      if (!ios) return;
-      // 不用原生驱动：面板的位置要进布局，按钮的点按区域才跟得上
-      Animated.timing(lift, {
-        toValue: to,
-        duration: duration || 250,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
-    };
-    const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", (e) =>
-      move(e.endCoordinates.height, e.duration),
-    );
-    const hide = Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", (e) =>
-      move(0, e.duration),
-    );
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, [lift]);
-  return { height: Platform.OS === "ios" ? height : 0, lift };
-}
 
 export function ActionBar({
   state,
