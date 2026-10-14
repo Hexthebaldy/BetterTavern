@@ -4,7 +4,8 @@
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "types": ["node"]
   },
   "include": ["**/*.ts", "**/*.tsx", "**/*.mts", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }

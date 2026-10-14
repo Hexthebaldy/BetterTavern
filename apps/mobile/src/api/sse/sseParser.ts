@@ -25,24 +25,29 @@ export class SseParser {
   private firstLine = true;
   /** 收到的注释行数（服务端的 keepalive） */
   comments = 0;
-  /** 最近一次收到的事件 id，断线重连时作为 Last-Event-ID */
+  /** 最近一个已派发事件的 id，断线重连时作为 Last-Event-ID */
   lastEventId: string | undefined;
 
   feed(chunk: Uint8Array): SseMessage[] {
     return this.feedText(this.decoder.decode(chunk, { stream: true }));
   }
 
-  /** 流结束时调用：冲掉解码器里剩下的字节，派发未以空行结束的事件。 */
+  /**
+   * 流结束时调用：冲掉解码器里剩下的字节。没有以空行收尾的事件按规范丢弃——流在事件中途结束，
+   * 说明这个事件可能被截断了；丢弃后 Last-Event-ID 停在上一个完整事件，重连时服务端会补发它。
+   */
   end(): SseMessage[] {
     const messages = this.feedText(this.decoder.decode());
-    if (this.buffer.length > 0) {
-      const line = this.buffer.endsWith("\r") ? this.buffer.slice(0, -1) : this.buffer;
-      this.buffer = "";
-      const message = this.processLine(line);
-      if (message) messages.push(message);
+    if (this.buffer.endsWith("\r")) {
+      // 最后一个字符是 \r：它本身就是行尾（后面不会再有 \n 了）
+      this.buffer = this.buffer.slice(0, -1);
+      messages.push(...this.feedText("\n"));
     }
-    const last = this.dispatch();
-    if (last) messages.push(last);
+    this.buffer = "";
+    this.dataLines = [];
+    this.eventType = "";
+    this.eventId = undefined;
+    this.retry = undefined;
     return messages;
   }
 
@@ -94,10 +99,7 @@ export class SseParser {
         this.eventType = value;
         break;
       case "id":
-        if (!value.includes("\u0000")) {
-          this.eventId = value;
-          this.lastEventId = value;
-        }
+        if (!value.includes("\u0000")) this.eventId = value;
         break;
       case "retry":
         if (/^\d+$/.test(value)) this.retry = Number(value);
@@ -109,6 +111,8 @@ export class SseParser {
   }
 
   private dispatch(): SseMessage | undefined {
+    // 和规范一致：事件派发时才更新 lastEventId（被丢弃的半截事件不算）
+    if (this.eventId !== undefined) this.lastEventId = this.eventId;
     if (this.dataLines.length === 0) {
       this.eventType = "";
       this.eventId = undefined;

@@ -234,6 +234,82 @@ describe("SseClient", () => {
     assert.equal(calls[1]?.["Last-Event-ID"], "s:1");
   });
 
+  it("请求头可以是函数：每次连接前重新取，带上最新的令牌", async () => {
+    const { fetch, calls } = scriptedFetch([
+      { chunks: [event(1, "narrative.delta", { text: "a" }), new TypeError("lost")] },
+      { chunks: [event(2, "turn.completed", {})] },
+    ]);
+    let token = 0;
+    const client = new SseClient({
+      url: "http://x/events",
+      fetch,
+      headers: async () => ({ Authorization: `Bearer t${(token += 1)}` }),
+      onEvent: () => undefined,
+      sleep: noSleep,
+    });
+    assert.equal(await client.run(), "completed");
+    assert.deepEqual(
+      calls.map((h) => h.Authorization),
+      ["Bearer t1", "Bearer t2"],
+    );
+    assert.equal(calls[1]?.["Last-Event-ID"], "s:1");
+  });
+
+  it("401 先刷新令牌再立即重连，不计失败、不转轮询", async () => {
+    const { fetch, calls } = scriptedFetch([{ status: 401 }, { chunks: [event(1, "turn.completed", {})] }]);
+    let refreshed = 0;
+    const delays: number[] = [];
+    const client = new SseClient({
+      url: "http://x/events",
+      fetch,
+      headers: () => ({ Authorization: refreshed > 0 ? "Bearer new" : "Bearer old" }),
+      onUnauthorized: async () => {
+        refreshed += 1;
+        return true;
+      },
+      onEvent: () => undefined,
+      sleep: async (ms) => {
+        delays.push(ms);
+      },
+    });
+    assert.equal(await client.run(), "completed");
+    assert.equal(refreshed, 1);
+    assert.deepEqual(delays, []);
+    assert.deepEqual(
+      calls.map((h) => h.Authorization),
+      ["Bearer old", "Bearer new"],
+    );
+  });
+
+  it("刷新失败或一直 401 就结束，结果是 unauthorized", async () => {
+    const failing = scriptedFetch([{ status: 401 }]);
+    const refuse = new SseClient({
+      url: "http://x/events",
+      fetch: failing.fetch,
+      onUnauthorized: async () => false,
+      onEvent: () => undefined,
+      sleep: noSleep,
+    });
+    assert.equal(await refuse.run(), "unauthorized");
+    assert.equal(refuse.currentState, "closed");
+
+    const looping = scriptedFetch([{ status: 401 }, { status: 401 }, { status: 401 }, { status: 401 }]);
+    let asked = 0;
+    const stubborn = new SseClient({
+      url: "http://x/events",
+      fetch: looping.fetch,
+      onUnauthorized: async () => {
+        asked += 1;
+        return true;
+      },
+      onEvent: () => undefined,
+      sleep: noSleep,
+    });
+    assert.equal(await stubborn.run(), "unauthorized");
+    assert.equal(asked, 2);
+    assert.equal(looping.calls.length, 3);
+  });
+
   it("close 之后不再重连", async () => {
     const { fetch, calls } = scriptedFetch([
       { chunks: [event(1, "narrative.delta", { text: "a" })], hang: true },

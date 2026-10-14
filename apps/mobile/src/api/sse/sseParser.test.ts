@@ -67,8 +67,19 @@ describe("SseParser", () => {
     ]);
   });
 
-  it("结束时派发没有空行收尾的事件", () => {
-    assert.deepEqual(parseChunks([bytes("data: tail")]), [{ event: "message", data: "tail" }]);
+  it("结束时丢弃没有空行收尾的事件（可能被截断），也不更新 lastEventId", () => {
+    const parser = new SseParser();
+    const messages = [
+      ...parser.feed(bytes('id: s:1\ndata: {"a":1}\n\nid: s:2\nevent: turn.completed\ndata: {"tu')),
+      ...parser.end(),
+    ];
+    assert.deepEqual(messages, [{ id: "s:1", event: "message", data: '{"a":1}' }]);
+    assert.equal(parser.lastEventId, "s:1");
+    assert.deepEqual(parseChunks([bytes("data: tail")]), []);
+  });
+
+  it("最后一个字符是 \\r 时它算行尾", () => {
+    assert.deepEqual(parseChunks([bytes("data: x\r\r")]), [{ event: "message", data: "x" }]);
   });
 
   it("lastEventId 跨事件保留", () => {

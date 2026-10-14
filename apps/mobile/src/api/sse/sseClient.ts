@@ -6,7 +6,9 @@
  *   带 Last-Event-ID 续传。断网不会让客户端放弃 SSE；
  * - 连上了却拿不到数据（HTTP 错误、超过 idleTimeoutMs 没有任何字节、连上后一个事件都没有就结束）：
  *   说明这一跳可能在缓冲 SSE，连续 3 次就转为轮询，由调用方接手。
- * 服务端返回 404（缓冲已过期）时直接转轮询。收到任何事件都会把失败计数清零。
+ * 服务端返回 404（回合不存在或不在本服务）时直接转轮询。收到任何事件都会把失败计数清零。
+ * 401：先让调用方刷新访问令牌（onUnauthorized），刷新成功就立即重连；刷新失败或连续出现就结束，
+ * 结果为 "unauthorized"。请求头可以是函数，每次连接前取一次，保证带的是最新的令牌。
  * close() 只断开连接，不取消服务端的生成。
  */
 
@@ -25,16 +27,22 @@ export type FetchLike = (
 
 export type SseClientState = "idle" | "connecting" | "open" | "reconnecting" | "polling" | "closed";
 
-export type SseOutcome = "completed" | "polling" | "closed";
+export type SseOutcome = "completed" | "polling" | "closed" | "unauthorized";
+
+export type HeadersSource =
+  | Record<string, string>
+  | (() => Record<string, string> | Promise<Record<string, string>>);
 
 export type SseClientOptions = {
   url: string;
   fetch: FetchLike;
-  headers?: Record<string, string>;
+  headers?: HeadersSource;
   lastEventId?: string;
   onEvent: (message: SseMessage) => void;
   onStateChange?: (state: SseClientState) => void;
   onError?: (error: unknown, failures: number) => void;
+  /** 收到 401 时调用：返回 true 表示令牌已刷新，可以立即重连 */
+  onUnauthorized?: () => Promise<boolean>;
   /** 收到这些事件就认为流已结束，不再重连 */
   isTerminal?: (message: SseMessage) => boolean;
   backoffMs?: readonly number[];
@@ -63,6 +71,8 @@ export class StalledError extends Error {
     this.name = "StalledError";
   }
 }
+
+const MAX_AUTH_RETRIES = 2;
 
 const defaultTerminal = (message: SseMessage): boolean =>
   message.event === "turn.completed" || message.event === "turn.failed";
@@ -133,6 +143,7 @@ export class SseClient {
     const isTerminal = this.options.isTerminal ?? defaultTerminal;
     let failures = 0; // 连续失败次数，决定退避时长
     let stalls = 0; // 连续“连上却拿不到数据”的次数，决定是否转轮询
+    let authRetries = 0; // 连续因 401 刷新令牌的次数
     let attempt = 0;
     while (!this.lifetime.signal.aborted) {
       if (attempt > 0) this.reconnects += 1;
@@ -146,6 +157,7 @@ export class SseClient {
         const result = await this.readOnce(connection, isTerminal, () => {
           failures = 0;
           stalls = 0;
+          authRetries = 0;
         });
         if (result.outcome === "completed") {
           this.setState("closed");
@@ -159,6 +171,19 @@ export class SseClient {
         if (error instanceof HttpStatusError && error.status === 404) {
           this.setState("polling");
           return "polling";
+        }
+        if (error instanceof HttpStatusError && error.status === 401) {
+          authRetries += 1;
+          const refreshed =
+            authRetries <= MAX_AUTH_RETRIES && this.options.onUnauthorized
+              ? await this.options.onUnauthorized().catch(() => false)
+              : false;
+          if (this.lifetime.signal.aborted) break;
+          if (!refreshed) {
+            this.setState("closed");
+            return "unauthorized";
+          }
+          continue; // 令牌已刷新：立即重连，不计失败
         }
         const dropped = connection.signal.aborted && !(error instanceof StalledError);
         if (!dropped) {
@@ -190,10 +215,12 @@ export class SseClient {
     onEvent: () => void,
   ): Promise<ReadResult> {
     const { idleTimeoutMs = 45_000 } = this.options;
+    const source = this.options.headers;
+    const extra = typeof source === "function" ? await source() : source;
     const headers: Record<string, string> = {
       Accept: "text/event-stream",
       "Cache-Control": "no-cache",
-      ...this.options.headers,
+      ...extra,
     };
     if (this.lastId) headers["Last-Event-ID"] = this.lastId;
 
