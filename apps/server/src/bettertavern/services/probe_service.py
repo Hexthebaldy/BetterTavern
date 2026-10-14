@@ -175,6 +175,10 @@ class ProbeService:
         return self._records.get(stream_id)
 
     def stream(self, stream_id: str) -> EventStream | None:
+        # 事件缓冲与真实回合共用一个注册表：只交出探针自己建的流，
+        # 否则不需要登录的探针接口就能按回合 id 读到别人的故事
+        if not stream_id.startswith("probe_") or stream_id not in self._records:
+            return None
         return self._buffers.get(stream_id)
 
     async def aclose(self) -> None:

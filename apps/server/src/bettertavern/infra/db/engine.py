@@ -20,4 +20,6 @@ def create_engine(url: str, *, pool_size: int = 10, echo: bool = False) -> Async
         max_overflow=pool_size,
         pool_pre_ping=True,
         echo=echo,
+        # 出错时异常信息里不带 SQL 参数：参数里有玩家输入和叙述，日志不能写故事文本
+        hide_parameters=True,
     )

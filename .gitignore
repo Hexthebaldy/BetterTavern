@@ -28,6 +28,8 @@ android/
 !.env.example
 *.pem
 *.key
+# 开发环境自动生成的密钥（apps/server/.data/dev-secrets.json）
+.data/
 
 # 评测输出
 apps/server/evals/reports/

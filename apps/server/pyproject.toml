@@ -17,6 +17,11 @@ dependencies = [
   "alembic>=1.14",
   "pyyaml>=6.0.2",
   "jinja2>=3.1.4",
+  # 密钥信封加密（AES-GCM）与密码哈希（Argon2id，46 起提供 PHC 编码）
+  "cryptography>=46",
+  "pyjwt>=2.10",
+  # 角色卡上传（multipart）
+  "python-multipart>=0.0.18",
 ]
 
 [project.scripts]

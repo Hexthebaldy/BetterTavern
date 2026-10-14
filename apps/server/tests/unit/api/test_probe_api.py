@@ -141,3 +141,16 @@ def test_config_validation() -> None:
         ProbeConfig.from_mapping({"speed": 1})
     with pytest.raises(ProbeConfigError):
         ProbeConfig.from_mapping({"duration_s": "fast"})
+
+
+async def test_probe_route_cannot_read_turn_streams() -> None:
+    """探针接口不需要登录，绝不能按 id 读到真实回合的事件流"""
+    buffers = EventBufferRegistry()
+    turn_stream = buffers.create("3f0c8a52-1d7e-4c1b-9a3e-5d2f6b7c8e90", max_events=8)
+    await turn_stream.publish("narrative.delta", json.dumps({"text": "别人的故事"}))
+    app = create_probe_app(Service(buffers), keepalive=0.2)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://probe") as client:
+        response = await client.get(f"/streams/{turn_stream.stream_id}/events")
+        assert response.status_code == 404
+        assert "别人的故事" not in response.text

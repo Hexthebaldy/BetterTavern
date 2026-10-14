@@ -1,0 +1,156 @@
+"""开局构建（WorldBuilder）：把角色卡变成第一人称故事的起点 Seed。一次结构化调用，限时由调用方控制。
+
+角色卡文字按“数据”放进 <character-card> 围栏，不当指令；{{user}} 换成主角名，{{char}} 换成角色名。
+角色卡内嵌的 character_book 只做一次性提炼：最多 40 条，常驻条目优先。
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from bettertavern.domain.scenario.card import CharacterCard, LoreEntry, apply_macros
+from bettertavern.domain.world.seed import Seed, normalize_seed
+from bettertavern.providers import CancelToken, Message, NegativeCapabilityCache, ProviderAdapter
+from bettertavern.providers.capabilities import StructuredMode
+from bettertavern.runtime.context.fences import sanitize_for_fence
+from bettertavern.runtime.ports import AgentRunRecord, WorldBuildInput
+from bettertavern.runtime.prompts import PromptLibrary
+from bettertavern.runtime.protocol.structured import run_structured, schema_text
+from bettertavern.runtime.routing import ResolvedRoute
+
+AGENT = "world_builder"
+BOOK_ENTRIES = 40
+BOOK_ENTRY_CHARS = 800
+BOOK_TOTAL_CHARS = 12_000
+FIELD_LIMITS = {
+    "description": 6000,
+    "personality": 2000,
+    "scenario": 3000,
+    "first_mes": 3000,
+    "mes_example": 3000,
+}
+
+
+@dataclass(frozen=True)
+class WorldBuildResult:
+    seed: Seed
+    run: AgentRunRecord
+
+
+def select_book(entries: tuple[LoreEntry, ...]) -> list[LoreEntry]:
+    """常驻条目优先，其次按插入顺序；总字数有上限。"""
+    enabled = [e for e in entries if e.enabled and e.content.strip()]
+    enabled.sort(key=lambda e: (not e.constant, e.order))
+    picked: list[LoreEntry] = []
+    total = 0
+    for entry in enabled:
+        if len(picked) >= BOOK_ENTRIES:
+            break
+        content = entry.content.strip()[:BOOK_ENTRY_CHARS]
+        if total + len(content) > BOOK_TOTAL_CHARS:
+            break
+        total += len(content)
+        picked.append(entry.model_copy(update={"content": content}))
+    return picked
+
+
+def render_prompt_context(card: CharacterCard, inp: WorldBuildInput) -> dict[str, object]:
+    user, char = inp.protagonist_name, card.name
+
+    def field(name: str) -> str:
+        value = getattr(card, name)
+        text = apply_macros(value, user=user, char=char)[: FIELD_LIMITS[name]]
+        return sanitize_for_fence(text.strip())
+
+    return {
+        "card_name": sanitize_for_fence(char),
+        "protagonist_name": sanitize_for_fence(user),
+        "protagonist_summary": sanitize_for_fence(inp.protagonist_summary),
+        "description": field("description"),
+        "personality": field("personality"),
+        "scenario": field("scenario"),
+        "first_mes": field("first_mes"),
+        "mes_example": field("mes_example"),
+        "book": [
+            {
+                "name": sanitize_for_fence(apply_macros(e.name, user=user, char=char)),
+                "content": sanitize_for_fence(apply_macros(e.content, user=user, char=char)),
+            }
+            for e in select_book(card.book)
+        ],
+        "style": sanitize_for_fence(inp.preferences.style),
+        "boundaries": sanitize_for_fence(inp.preferences.boundaries),
+    }
+
+
+async def build_seed(
+    route: ResolvedRoute,
+    adapter: ProviderAdapter,
+    card: CharacterCard,
+    inp: WorldBuildInput,
+    *,
+    prompts: PromptLibrary,
+    negative_cache: NegativeCapabilityCache | None = None,
+    cancel: CancelToken | None = None,
+) -> WorldBuildResult:
+    context = render_prompt_context(card, inp)
+    rendered_hash: list[str] = []
+
+    def build_messages(mode: StructuredMode) -> list[Message]:
+        show_schema = mode in ("json_object", "prompt_json")
+        prompt = prompts.render(
+            "world_builder", schema=schema_text(Seed) if show_schema else "", **context
+        )
+        rendered_hash.append(prompt.hash)
+        return [Message(role="user", content=prompt.text)]
+
+    result = await run_structured(
+        adapter,
+        route.credential,
+        route.caps,
+        model=route.model,
+        output=Seed,
+        name="seed",
+        description="互动小说的开局设定",
+        build_messages=build_messages,
+        prompts=prompts,
+        max_tokens=route.max_tokens,
+        temperature=route.temperature,
+        reasoning=route.reasoning(),
+        negative_cache=negative_cache,
+        cancel=cancel,
+    )
+    seed = normalize_seed(result.value, protagonist_name=inp.protagonist_name, card_name=card.name)
+    run = AgentRunRecord(
+        agent=AGENT,
+        task=route.task.value,
+        status="ok",
+        provider=route.provider,
+        model=route.model,
+        prompt_hash=rendered_hash[-1] if rendered_hash else None,
+        usage=result.usage,
+        latency_ms=result.latency_ms,
+        result={
+            "mode": result.mode,
+            "attempts": result.attempts,
+            "characters": len(seed.characters),
+            "locations": len(seed.locations),
+            "facts": len(seed.facts),
+        },
+    )
+    return WorldBuildResult(seed=seed, run=run)
+
+
+def failure_run(
+    route: ResolvedRoute | None, error_class: str, detail: str, latency_ms: int
+) -> AgentRunRecord:
+    return AgentRunRecord(
+        agent=AGENT,
+        task="world_builder",
+        status="failed",
+        provider=route.provider if route else None,
+        model=route.model if route else None,
+        latency_ms=latency_ms,
+        error_class=error_class,
+        result={"detail": detail[:300]},
+    )

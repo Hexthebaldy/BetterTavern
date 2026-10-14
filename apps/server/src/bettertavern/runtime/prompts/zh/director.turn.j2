@@ -1,4 +1,8 @@
-{# version: 1 #}
+{# version: 2 #}
+{% if world_state is defined and world_state %}
+{{ world_state }}
+
+{% endif %}
 <player-action>
 {{ action }}
 </player-action>

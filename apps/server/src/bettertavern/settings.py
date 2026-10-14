@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +20,18 @@ class Settings(BaseSettings):
     log_story_text: bool = False
 
     database_url: str = "postgresql+asyncpg://bettertavern:bettertavern@localhost:5432/bettertavern"
+    # 本地数据目录：开发环境自动生成的密钥放在这里
+    data_dir: Path = Path(".data")
+
+    # 密钥。生产环境必须显式配置（`bettertavern keygen` 生成）；开发环境不配置时自动生成并保存在
+    # data_dir/dev-secrets.json，重启后不变
+    # MASTER_KEYS：加密模型密钥用的主密钥，格式 "kid:base64密钥,kid2:..."；
+    # 第一个用于加密，其余只用于解密（轮换）
+    master_keys: SecretStr | None = None
+    # AUTH_SECRET：签发访问令牌（HS256）
+    auth_secret: SecretStr | None = None
+    access_token_ttl_s: int = Field(default=900, ge=60)
+    refresh_token_ttl_s: int = Field(default=30 * 86400, ge=3600)
 
     # 只允许 https 和公网地址；自己部署、想接本机 Ollama 时可以打开。多人共用的公开服务不要开
     allow_private_endpoints: bool = False
@@ -29,6 +42,13 @@ class Settings(BaseSettings):
     enable_probe_endpoints: bool | None = None
     event_buffer_retention_s: float = Field(default=600.0, gt=0)
 
+    # 热路径：租约 120 秒，生成期间每 30 秒续租；屏障最多等 8 秒
+    turn_lease_s: float = Field(default=120.0, gt=0)
+    turn_lease_renew_s: float = Field(default=30.0, gt=0)
+    state_barrier_timeout_s: float = Field(default=8.0, ge=0)
+    world_builder_timeout_s: float = Field(default=30.0, gt=0)
+    options_repair_timeout_s: float = Field(default=5.0, gt=0)
+
     # 收到 SIGTERM 后等进行中的回合与任务的上限；容器的停止宽限期要比它长
     shutdown_grace_s: float = Field(default=60.0, ge=0)
     worker_shutdown_grace_s: float = Field(default=60.0, ge=0)
@@ -36,6 +56,14 @@ class Settings(BaseSettings):
     credential_concurrency: int = Field(default=4, ge=1)
     worker_concurrency: int = Field(default=4, ge=1)
     job_lock_timeout_s: float = Field(default=300.0, gt=0)
+
+    # 限流（每分钟次数）：登录与注册按 IP，提交行动与探测按用户
+    rate_limit_auth_per_min: int = Field(default=5, ge=1)
+    rate_limit_turns_per_min: int = Field(default=30, ge=1)
+    rate_limit_probe_per_min: int = Field(default=5, ge=1)
+
+    # 开发时允许的跨域来源（Expo Web 调试用），逗号分隔；生产环境一般不需要
+    cors_origins: str = ""
 
     @property
     def is_prod(self) -> bool:
@@ -46,3 +74,7 @@ class Settings(BaseSettings):
         if self.enable_probe_endpoints is None:
             return not self.is_prod
         return self.enable_probe_endpoints
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

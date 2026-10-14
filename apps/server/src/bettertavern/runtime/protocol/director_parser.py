@@ -44,9 +44,10 @@ _PATTERNS = {
         THINK_CLOSE,
     )
 }
-# 只认 1、2 号：多于 2 个只取前 2 个
-NUMBERED_OPTION = re.compile(r"^\s*[12１２]\s*[.、)）:：]\s*(.+?)\s*$")
-_ANY_LIST_MARK = re.compile(r"^\s*(?:[-*•·]|\d+\s*[.、)）:：])\s*")
+# 只认 1、2 号：多于 2 个只取前 2 个。模型输出不可信（自定义端点可以返回任意内容），
+# 正则必须是线性的：选项文字用 \S(?:.*\S)? 取首尾非空白之间的部分，不用 (.+?)\s*$
+NUMBERED_OPTION = re.compile(r"^\s*+[12１２]\s*+[.．、)）:：]\s*+(\S(?:.*\S)?)\s*$")
+_ANY_LIST_MARK = re.compile(r"^\s*+(?:[-*•·]|\d++\s*+[.．、)）:：])\s*+")
 
 
 class ParseStage(StrEnum):
@@ -121,6 +122,11 @@ class DirectorStreamParser:
         self._options_closed = False
         self._repairs: list[str] = []
         self._finished = False
+
+    @property
+    def narrative_closed(self) -> bool:
+        """叙述已经结束（闭合标签出现，或已经进入选项）：之后不会再有叙述片段。"""
+        return self._narrative_closed or (self._narrative_opened and self._options_opened)
 
     def feed(self, chunk: str) -> list[str]:
         """喂入一段模型输出，返回可以立即推给玩家的叙述片段。"""

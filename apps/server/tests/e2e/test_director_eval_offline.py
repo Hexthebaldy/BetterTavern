@@ -85,7 +85,8 @@ async def test_offline_eval_counts_each_stage(
     assert summary["compliance_with_repair"] == 1.0
     assert summary["verdict"].startswith("样本不足")
     assert summary["cache_hit_ratio"] == pytest.approx(800 / 900, abs=1e-4)
-    assert report["prompt_versions"]["director.system"] == "1"
+    # 报告里记下提示词版本，评测结果才能按版本对比
+    assert report["prompt_versions"]["director.system"].isdigit()
     # 历史只带最近 4 轮，且导演回合只保留叙述
     last_director = [r for r in fake_llm.app.chat_requests if r.body.get("stream")][-1]
     messages = last_director.body["messages"]

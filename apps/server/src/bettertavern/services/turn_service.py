@@ -1,0 +1,310 @@
+"""回合：提交行动（幂等、租约）、详情、历史、取消，以及回合事件流（实时缓冲或快照）。
+
+提交行动在一个事务里完成：锁 playthroughs 行 → 幂等键 → 租约 → 父回合校验 → 解析行动
+→ 插入回合并领租约。到这里就返回 201，生成交给后台的 TurnRunner，与客户端连接无关。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import json
+import time
+from collections.abc import AsyncIterator, Callable
+from dataclasses import dataclass
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.story.turn import (
+    ActionError,
+    TurnStatus,
+    options_from_json,
+    resolve_action,
+)
+from bettertavern.infra.db.repositories import story as repo
+from bettertavern.infra.db.sqlutil import is_uuid
+from bettertavern.runtime.events.buffer import EventBufferRegistry, StreamEvent
+from bettertavern.runtime.ports import TurnHeader
+from bettertavern.runtime.runner import TurnRunnerPool
+
+from .errors import AppError, Conflict, Invalid, NotFound
+from .route_service import RouteService
+from .views import TurnView
+
+MAX_IDEMPOTENCY_KEY = 128
+TERMINAL = {
+    TurnStatus.REPLIED.value,
+    TurnStatus.COMMITTED.value,
+    TurnStatus.FAILED.value,
+    TurnStatus.ARCHIVED.value,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ActionInput:
+    source: str
+    text: str | None = None
+    option_id: str | None = None
+
+
+def header_for(pt: repo.PlaythroughRow, turn: repo.TurnRow, user_id: str) -> TurnHeader:
+    return TurnHeader(
+        turn_id=turn.id,
+        playthrough_id=pt.id,
+        user_id=user_id,
+        seq=turn.seq,
+        attempt=turn.attempt,
+        epoch=turn.timeline_epoch,
+        status=turn.status,
+        world_ready=pt.status == "active",
+        language=pt.language,
+    )
+
+
+def request_hash(playthrough_id: str, parent_turn_id: str | None, action: ActionInput) -> str:
+    payload = json.dumps(
+        {
+            "playthrough_id": playthrough_id,
+            "parent_turn_id": parent_turn_id,
+            "action": {"source": action.source, "text": action.text, "option_id": action.option_id},
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+class TurnService:
+    def __init__(
+        self,
+        engine: AsyncEngine,
+        routes: RouteService,
+        runners: TurnRunnerPool,
+        buffers: EventBufferRegistry,
+        *,
+        lease_ttl_s: float,
+        instance_id: str,
+        poll_interval: float = 1.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._engine = engine
+        self._routes = routes
+        self._runners = runners
+        self._buffers = buffers
+        self._lease_ttl = lease_ttl_s
+        self._instance = instance_id
+        self._poll = poll_interval
+        self._clock = clock
+
+    # ---- 提交行动 ------------------------------------------------------------------------
+    async def create(
+        self,
+        user_id: str,
+        playthrough_id: str,
+        *,
+        parent_turn_id: str | None,
+        action: ActionInput,
+        idempotency_key: str | None,
+    ) -> tuple[TurnView, bool]:
+        """返回 (回合, 是否新建)。同一个幂等键且请求相同时返回已有回合。"""
+        if not is_uuid(playthrough_id):
+            raise NotFound("游玩记录不存在")
+        if parent_turn_id is not None and not is_uuid(parent_turn_id):
+            raise Invalid("parent_turn_id 格式不对", field="parent_turn_id")
+        if idempotency_key is not None and not (0 < len(idempotency_key) <= MAX_IDEMPOTENCY_KEY):
+            raise Invalid("Idempotency-Key 长度不对", field="Idempotency-Key")
+        digest = request_hash(playthrough_id, parent_turn_id, action)
+        # 先看是否重复提交，免得为一次重放去解密凭据
+        if idempotency_key is not None:
+            existing = await self._replay(user_id, idempotency_key, digest)
+            if existing is not None:
+                return existing, False
+        # 先确认归属再查路由：别人的游玩记录一律 404，不暴露“没配模型”之类的状态
+        async with self._engine.connect() as conn:
+            if await repo.get_playthrough(conn, user_id, playthrough_id) is None:
+                raise NotFound("游玩记录不存在")
+        if await self._routes.resolve(user_id, RouteTask.DIRECTOR, playthrough_id) is None:
+            raise AppError(
+                "还没有配置导演用的模型，请先在设置里添加密钥并选择模型",
+                code="ROUTE_MISSING",
+                status=409,
+            )
+        async with self._engine.begin() as conn:
+            pt = await repo.get_playthrough(conn, user_id, playthrough_id, lock=True)
+            if pt is None:
+                raise NotFound("游玩记录不存在")
+            if idempotency_key is not None:
+                found = await repo.get_idempotency_key(conn, user_id, idempotency_key)
+                if found is not None:  # 与另一个并发请求撞上了：它已经提交
+                    if found[0] != digest:
+                        raise Invalid(
+                            "同一个 Idempotency-Key 对应了不同的请求内容",
+                            code="IDEMPOTENCY_KEY_REUSED",
+                        )
+                    turn = await repo.get_turn(conn, found[1])
+                    if turn is not None:
+                        return TurnView.of(turn), False
+            if pt.active_turn_id is not None:
+                if await repo.lease_alive(conn, pt.id):
+                    raise Conflict(
+                        "上一轮还在生成中",
+                        code="TURN_IN_PROGRESS",
+                        active_turn_id=pt.active_turn_id,
+                    )
+                # 租约已过期：生成进程没了，先把那一轮标为失败
+                await repo.fail_turn(
+                    conn, pt.active_turn_id, narrative="", error=repo.RUNNER_LOST_ERROR
+                )
+                await repo.release_lease(conn, pt.id, pt.active_turn_id)
+            if pt.head_turn_id != parent_turn_id:
+                raise Conflict(
+                    "故事已经更新，请先刷新",
+                    code="STALE_PARENT",
+                    head_turn_id=pt.head_turn_id,
+                )
+            parent = await repo.get_turn(conn, parent_turn_id) if parent_turn_id else None
+            if action.source == "opening":
+                if parent is not None:
+                    raise Invalid("只有还没有开场时才能重新生成开场", code="OPENING_EXISTS")
+                seq = 0
+            else:
+                if parent is None:
+                    raise Conflict("开场还没有完成", code="OPENING_PENDING")
+                seq = parent.seq + 1
+            try:
+                resolved = resolve_action(
+                    action.source,
+                    text=action.text,
+                    option_id=action.option_id,
+                    parent_options=options_from_json(parent.options) if parent else [],
+                )
+            except ActionError as exc:
+                raise Invalid(exc.message, code=exc.code) from exc
+            attempt = await repo.next_attempt(conn, pt.id, seq)
+            turn = await repo.insert_turn(
+                conn,
+                playthrough_id=pt.id,
+                seq=seq,
+                parent_turn_id=parent_turn_id,
+                attempt=attempt,
+                epoch=pt.timeline_epoch,
+                user_action=resolved.to_json(),
+            )
+            await repo.take_lease(conn, pt.id, turn.id, ttl_s=self._lease_ttl, owner=self._instance)
+            if idempotency_key is not None:
+                await repo.insert_idempotency_key(conn, user_id, idempotency_key, digest, turn.id)
+        self._runners.start(header_for(pt, turn, user_id))
+        return TurnView.of(turn), True
+
+    async def _replay(self, user_id: str, key: str, digest: str) -> TurnView | None:
+        async with self._engine.connect() as conn:
+            found = await repo.get_idempotency_key(conn, user_id, key)
+            if found is None:
+                return None
+            if found[0] != digest:
+                raise Invalid(
+                    "同一个 Idempotency-Key 对应了不同的请求内容", code="IDEMPOTENCY_KEY_REUSED"
+                )
+            turn = await repo.get_turn(conn, found[1])
+        return TurnView.of(turn) if turn is not None else None
+
+    # ---- 读取 ---------------------------------------------------------------------------
+    async def get(self, user_id: str, turn_id: str) -> TurnView:
+        if not is_uuid(turn_id):
+            raise NotFound("回合不存在")
+        async with self._engine.connect() as conn:
+            turn = await repo.get_user_turn(conn, user_id, turn_id)
+        if turn is None:
+            raise NotFound("回合不存在")
+        return TurnView.of(turn)
+
+    async def history(
+        self, user_id: str, playthrough_id: str, *, after_seq: int, limit: int
+    ) -> list[TurnView]:
+        if not is_uuid(playthrough_id):
+            raise NotFound("游玩记录不存在")
+        async with self._engine.connect() as conn:
+            pt = await repo.get_playthrough(conn, user_id, playthrough_id)
+            if pt is None:
+                raise NotFound("游玩记录不存在")
+            rows = await repo.list_chain(conn, pt.id, after_seq=after_seq, limit=limit)
+        return [TurnView.of(r) for r in rows]
+
+    async def cancel(self, user_id: str, turn_id: str) -> TurnView:
+        turn = await self.get(user_id, turn_id)
+        if turn.status != TurnStatus.GENERATING.value:
+            return turn
+        if not self._runners.cancel(turn_id, "user"):
+            # 不在本进程（进程重启后）：租约到期后由清理任务标记失败
+            raise Conflict("这一轮不在当前服务实例上，稍后会自动结束", code="TURN_NOT_LOCAL")
+        return turn
+
+    # ---- 事件流 -------------------------------------------------------------------------
+    async def events(
+        self, user_id: str, turn_id: str, *, after_seq: int
+    ) -> AsyncIterator[StreamEvent]:
+        """先校验归属。缓冲还在就实时订阅；缓冲已过期（或不在本进程）就等回合结束后一次给全。"""
+        turn = await self.get(user_id, turn_id)
+        stream = self._buffers.get(turn_id)
+        if stream is not None:
+            return stream.subscribe(after_seq)
+        return self._snapshot_events(user_id, turn)
+
+    async def _snapshot_events(self, user_id: str, turn: TurnView) -> AsyncIterator[StreamEvent]:
+        deadline = self._clock() + self._lease_ttl + 15.0
+        while turn.status not in TERMINAL and self._clock() < deadline:
+            await asyncio.sleep(self._poll)
+            turn = await self.get(user_id, turn.id)
+        seq = 0
+
+        def event(name: str, data: dict[str, Any]) -> StreamEvent:
+            nonlocal seq
+            seq += 1
+            return StreamEvent(turn.id, seq, name, json.dumps(data, ensure_ascii=False))
+
+        if turn.status in (TurnStatus.REPLIED.value, TurnStatus.COMMITTED.value):
+            yield event(
+                "snapshot",
+                {
+                    "narrative": turn.narrative,
+                    "options": turn.options,
+                    "source": turn.options_source,
+                },
+            )
+            yield event(
+                "turn.completed",
+                {
+                    "turn": {
+                        "id": turn.id,
+                        "seq": turn.seq,
+                        "attempt": turn.attempt,
+                        "status": turn.status,
+                        "narrative": turn.narrative,
+                        "options": turn.options,
+                        "options_source": turn.options_source,
+                        "state_lag": turn.state_lag,
+                    },
+                    "usage": None,
+                },
+            )
+            return
+        error = turn.error or {
+            "code": "RUNNER_LOST",
+            "message": "生成进程意外中止，请重试",
+            "retryable": True,
+        }
+        if turn.status == TurnStatus.ARCHIVED.value:
+            error = {"code": "TURN_ARCHIVED", "message": "这一轮已被回退", "retryable": False}
+        if turn.narrative:
+            yield event("snapshot", {"narrative": turn.narrative, "options": [], "source": None})
+        yield event(
+            "turn.failed",
+            {
+                "code": error.get("code", "UNKNOWN"),
+                "message": error.get("message", ""),
+                "retryable": bool(error.get("retryable", True)),
+                "partial": bool(turn.narrative),
+            },
+        )

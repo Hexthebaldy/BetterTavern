@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import time
+
 import jinja2
 import pytest
 
-from bettertavern.runtime.agents.options_repair import extract_json_object
 from bettertavern.runtime.context.fences import sanitize_for_fence
 from bettertavern.runtime.prompts import PromptLibrary
-from bettertavern.runtime.protocol.director_parser import parse_director_text
+from bettertavern.runtime.protocol.director_parser import (
+    extract_numbered_options,
+    parse_director_text,
+)
+from bettertavern.runtime.protocol.json_extract import extract_json_object
 
 DIRECTOR_CONTEXT = {
     "protagonist": {"name": "林川", "description": "信使"},
@@ -23,7 +28,7 @@ def test_rendering_is_deterministic_and_versioned() -> None:
     second = PromptLibrary("zh").render("director.system", **DIRECTOR_CONTEXT)
     assert first.text == second.text
     assert first.hash == second.hash
-    assert first.version == "1"
+    assert first.version.isdigit()
     assert "恰好 2 项" in first.text
     assert "{#" not in first.text
 
@@ -89,3 +94,13 @@ def test_fence_sanitizer_keeps_ordinary_angle_brackets() -> None:
 )
 def test_extract_json_object(text: str, expected: object) -> None:
     assert extract_json_object(text) == expected
+
+
+def test_untrusted_text_is_processed_in_linear_time() -> None:
+    """角色卡、玩家输入和模型输出都不可信：构造的输入不能让正则或 JSON 提取跑上几秒"""
+    hostile = "<" + " " * 50_000 + "x" + "< " * 20_000
+    started = time.perf_counter()
+    sanitize_for_fence(hostile)
+    extract_json_object("{" * 50_000)
+    extract_numbered_options("1. x" + " " * 50_000 + "y")
+    assert time.perf_counter() - started < 0.5

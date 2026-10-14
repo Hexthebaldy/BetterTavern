@@ -1,4 +1,4 @@
-"""命令行入口：bettertavern serve / worker / migrate。"""
+"""命令行入口：bettertavern serve / worker / migrate / keygen。"""
 
 from __future__ import annotations
 
@@ -70,6 +70,14 @@ def _migrate(args: argparse.Namespace) -> None:
     alembic_main(argv=["-c", config, "upgrade", args.revision])
 
 
+def _keygen(args: argparse.Namespace) -> None:
+    from bettertavern.infra.crypto.keyring import new_auth_secret, new_master_key_entry
+
+    print("# 把下面两行加到 .env（或部署环境的密钥管理）里；主密钥丢了，已保存的模型密钥就解不开了")
+    print(f"MASTER_KEYS={new_master_key_entry(args.kid)}")
+    print(f"AUTH_SECRET={new_auth_secret()}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="bettertavern", description="BetterTavern 服务端")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -86,6 +94,10 @@ def main(argv: list[str] | None = None) -> None:
     migrate = sub.add_parser("migrate", help="执行数据库迁移")
     migrate.add_argument("revision", nargs="?", default="head")
     migrate.set_defaults(func=_migrate)
+
+    keygen = sub.add_parser("keygen", help="生成主密钥与令牌签名密钥")
+    keygen.add_argument("--kid", help="主密钥编号，默认随机生成")
+    keygen.set_defaults(func=_keygen)
 
     args = parser.parse_args(argv)
     args.func(args)

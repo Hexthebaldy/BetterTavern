@@ -4,19 +4,19 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Any
+from typing import Any, Literal
 
 import uvicorn
 
 
 class AsgiServer:
-    def __init__(self, app: Any) -> None:
+    def __init__(self, app: Any, *, lifespan: Literal["auto", "on", "off"] = "off") -> None:
         config = uvicorn.Config(
             app,
             host="127.0.0.1",
             port=0,
             log_level="critical",
-            lifespan="off",
+            lifespan=lifespan,
             loop="asyncio",
             http="h11",
         )

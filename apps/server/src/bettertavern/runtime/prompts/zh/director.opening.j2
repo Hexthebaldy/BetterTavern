@@ -1,0 +1,25 @@
+{# version: 1 #}
+{% if world_state %}
+{{ world_state }}
+
+{% endif %}
+<opening-brief>
+{% if location %}
+开场地点：{{ location }}
+{% endif %}
+{% if present %}
+在场人物：{{ present | join("、") }}
+{% endif %}
+{% if situation %}
+开场情境：{{ situation }}
+{% endif %}
+{% if hook %}
+故事钩子：{{ hook }}
+{% endif %}
+{% if reference_opening %}
+原作开场白（只参考情境和语气，不要照抄，也不要替主角说话）：
+{{ reference_opening }}
+{% endif %}
+</opening-brief>
+这是故事的开场，还没有任何剧情发生。请按上面的开场简报，用第一人称写出故事的第一段：交代主角此刻在哪里、看到了什么，把故事推到第一个需要玩家做选择的地方。
+（按 <narrative> 与 <options> 的格式回复，恰好给出 2 个选项。）
