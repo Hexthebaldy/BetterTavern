@@ -1,6 +1,7 @@
 /**
- * 根布局：全局服务、界面偏好、浮层、字体、主题，按登录状态切换可访问的页面。
- * 字体加载完之前保持系统启动画面；之后恢复登录状态期间显示闪屏（app/index.tsx）。
+ * 根布局：全局服务、界面偏好、主题、浮层、字体，按登录状态切换可访问的页面。
+ * 字体加载完、界面偏好读出来之前保持系统启动画面（主题跟着偏好走，避免先闪一帧别的颜色）；
+ * 之后恢复登录状态期间显示闪屏（app/index.tsx）。
  * 退出登录（包括令牌失效）时受保护的页面整体移出导航栈。
  * 所有页面自己画页头（components/bars.tsx），原生导航栏不显示；返回手势照常可用。
  */
@@ -9,12 +10,12 @@ import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from "@expo-google-font
 import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, type Theme } from "expo-router";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 
 import { OverlayProvider } from "../src/components/ui.tsx";
 import { AppProvider, useApp } from "../src/state/AppProvider.tsx";
-import { PrefsProvider } from "../src/state/PrefsProvider.tsx";
-import { font, useIsDark, usePalette } from "../src/theme/index.ts";
+import { PrefsProvider, usePrefs } from "../src/state/PrefsProvider.tsx";
+import { font, ThemeProvider as AppThemeProvider, useIsDark, usePalette } from "../src/theme/index.ts";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -26,20 +27,30 @@ export default function RootLayout() {
   });
   const ready = fontsLoaded || fontError !== null;
 
-  useEffect(() => {
-    if (ready) void SplashScreen.hideAsync();
-  }, [ready]);
-
   if (!ready) return null;
   return (
     <AppProvider>
       <PrefsProvider>
-        <OverlayProvider>
-          <RootNavigator />
-        </OverlayProvider>
+        <Themed>
+          <OverlayProvider>
+            <RootNavigator />
+          </OverlayProvider>
+        </Themed>
       </PrefsProvider>
     </AppProvider>
   );
+}
+
+/** 按外观设置套上主题；偏好读出来之前不画，系统启动画面一直挡着 */
+function Themed({ children }: { children: ReactNode }) {
+  const { theme, loaded } = usePrefs();
+
+  useEffect(() => {
+    if (loaded) void SplashScreen.hideAsync();
+  }, [loaded]);
+
+  if (!loaded) return null;
+  return <AppThemeProvider setting={theme}>{children}</AppThemeProvider>;
 }
 
 function RootNavigator() {

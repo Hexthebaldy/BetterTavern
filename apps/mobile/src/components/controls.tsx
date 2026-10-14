@@ -18,7 +18,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { font, liftShadow, onColor, radius, size, space, type, usePalette } from "../theme/index.ts";
+import { font, onColor, radius, size, space, type, usePalette } from "../theme/index.ts";
 import { Icon, type IconName } from "./icons.tsx";
 
 // ---- 输入框 ------------------------------------------------------------------------------
@@ -189,7 +189,9 @@ export function Segmented<T extends string>({
               style={[
                 styles.segment,
                 { height: inner, borderRadius: inner / 2 },
-                selected ? { backgroundColor: selectedColor ?? palette.card, boxShadow: liftShadow } : null,
+                selected
+                  ? { backgroundColor: selectedColor ?? palette.card, boxShadow: palette.shadowLift }
+                  : null,
               ]}
             >
               {option.icon ? <Icon name={option.icon} size={16} color={fg} /> : null}
@@ -365,7 +367,7 @@ export function Toggle({
       hitSlop={8}
       style={[styles.track, { backgroundColor: value ? palette.acc : palette.line2 }]}
     >
-      <View style={[styles.knob, { left: value ? 22 : 2 }]} />
+      <View style={[styles.knob, { left: value ? 22 : 2, boxShadow: palette.shadowKnob }]} />
     </Pressable>
   );
 }
@@ -407,6 +409,5 @@ const styles = StyleSheet.create({
     height: 27,
     borderRadius: 13.5,
     backgroundColor: onColor,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
   },
 });

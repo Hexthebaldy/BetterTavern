@@ -10,7 +10,7 @@ import Svg, { Path } from "react-native-svg";
 
 import type { Preferences } from "../../api/types.ts";
 import { Checkbox, Chip, Field, Icon, useOverlay } from "../../components/ui.tsx";
-import { font, liftShadow, onColor, radius, space, usePalette } from "../../theme/index.ts";
+import { font, onColor, radius, space, usePalette } from "../../theme/index.ts";
 import {
   BOUNDARY_ITEMS,
   composeBoundaries,
@@ -240,7 +240,10 @@ export function StartForm({
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={LENGTH_LABELS[value]}
                 onPress={() => setLength(value)}
-                style={[styles.length, on ? { backgroundColor: palette.card, boxShadow: liftShadow } : null]}
+                style={[
+                  styles.length,
+                  on ? { backgroundColor: palette.card, boxShadow: palette.shadowLift } : null,
+                ]}
               >
                 <Svg width={36} height={22} viewBox="0 0 36 22">
                   <Path

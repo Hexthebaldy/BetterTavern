@@ -37,7 +37,7 @@ export async function saveServerUrl(url: string | null): Promise<void> {
 
 const PREFS_KEY = "bt.prefs";
 
-/** 界面偏好（最近用过的服务器、阅读设置、剧本库视图），读不到时返回 null */
+/** 界面偏好（最近用过的服务器、阅读设置、剧本库视图、外观），读不到时返回 null */
 export async function loadPrefs(): Promise<unknown> {
   try {
     const raw = await SecureStore.getItemAsync(PREFS_KEY);

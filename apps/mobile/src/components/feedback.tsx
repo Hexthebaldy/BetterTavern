@@ -93,7 +93,7 @@ export function Notice({
           diameter={36}
           tone="plain"
           onPress={onClose}
-          style={{ backgroundColor: "rgba(255,255,255,0.6)", marginVertical: -6 }}
+          style={{ backgroundColor: palette.closeOnTint, marginVertical: -6 }}
         />
       ) : null}
     </View>

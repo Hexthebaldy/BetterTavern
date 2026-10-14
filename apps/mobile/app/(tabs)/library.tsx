@@ -40,7 +40,7 @@ import {
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs, type LibraryView } from "../../src/state/PrefsProvider.tsx";
-import { font, liftShadow, radius, size, space, usePalette } from "../../src/theme/index.ts";
+import { font, radius, size, space, usePalette } from "../../src/theme/index.ts";
 import { formatBytes } from "../../src/utils/format.ts";
 
 const MAX_BYTES = 16 * 1024 * 1024;
@@ -74,7 +74,10 @@ function HeaderControls({
         accessibilityLabel={label}
         accessibilityState={{ selected: on }}
         onPress={() => onView(value)}
-        style={[styles.segButton, on ? { backgroundColor: palette.card, boxShadow: liftShadow } : null]}
+        style={[
+          styles.segButton,
+          on ? { backgroundColor: palette.card, boxShadow: palette.shadowLift } : null,
+        ]}
       >
         <Icon name={icon} size={18} color={on ? palette.ink : palette.mut} />
       </Pressable>

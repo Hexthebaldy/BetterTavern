@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "r
 
 import { MenuGroup, MenuItem, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
-import { font, liftShadow, onColor, space, usePalette } from "../../theme/index.ts";
+import { font, onColor, space, usePalette } from "../../theme/index.ts";
 import {
   lineHeightFor,
   READING_SIZES,
@@ -34,7 +34,10 @@ function FontChoice() {
         accessibilityState={{ selected: on }}
         accessibilityLabel={label}
         onPress={() => setReading({ ...reading, font: value })}
-        style={[styles.fontOption, on ? { backgroundColor: surfaces.raised, boxShadow: liftShadow } : null]}
+        style={[
+          styles.fontOption,
+          on ? { backgroundColor: surfaces.raised, boxShadow: palette.shadowLift } : null,
+        ]}
       >
         <Text
           style={{
@@ -130,7 +133,9 @@ function SizeControl() {
             style={[styles.track, { backgroundColor: palette.bg3 }]}
           >
             <View style={[styles.fill, { width: `${ratio * 100}%`, backgroundColor: palette.acc }]} />
-            <View style={[styles.knob, { left: ratio * trackWidth - KNOB / 2 }]} />
+            <View
+              style={[styles.knob, { left: ratio * trackWidth - KNOB / 2, boxShadow: palette.shadowKnob }]}
+            />
           </View>
         </View>
         {stepButton("字号增大", 22, 1)}
@@ -220,7 +225,6 @@ const styles = StyleSheet.create({
     height: KNOB,
     borderRadius: KNOB / 2,
     backgroundColor: onColor,
-    boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
   },
   sizeNote: {
     flexDirection: "row",

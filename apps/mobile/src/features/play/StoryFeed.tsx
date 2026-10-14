@@ -430,6 +430,7 @@ export function StoryFeed({
             {
               bottom: bottomInset + space.l,
               backgroundColor: palette.ink,
+              boxShadow: palette.shadowStrong,
               transform: [{ scale: pressed ? 0.97 : 1 }],
             },
           ]}
@@ -529,7 +530,6 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 18,
     borderRadius: 22,
-    boxShadow: "0 6px 20px rgba(20,20,20,0.22)",
   },
   latestDot: { width: 7, height: 7, borderRadius: 3.5 },
 });

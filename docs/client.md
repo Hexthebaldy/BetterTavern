@@ -153,7 +153,7 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、密钥数，输入密码确认） |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
 
-界面按 [design/ui-v2-soft/](design/ui-v2-soft/README.md) 的设计稿实现（柔和圆角版“白 / 柔线 / 大圆角”；页面结构和交互规则沿用 [design/ui-v2/](design/ui-v2/README.md)）。标签栏是浮在内容上的胶囊，阅读页的行动面板离开屏幕边缘浮在故事上：两者都按安全区摆放，列表和故事流的底部按浮层高度留白（`useTabBarSpace()`、`ActionBar` 的 `onHeight`）。和设计稿不同：世界状态和“更多”两个按钮从导航栏右侧挪到了行动面板右下角，离拇指近。没做的：世界状态的“新”标记和按钮上的变化提示（服务端还没有世界状态的变更记录）、导入进度条（上传没有进度事件，用来回扫动的线代替）、改昵称（没有接口）。
+界面按 [design/ui-v2-soft/](design/ui-v2-soft/README.md) 的设计稿实现（柔和圆角版“白 / 柔线 / 大圆角”；页面结构和交互规则沿用 [design/ui-v2/](design/ui-v2/README.md)）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `src/theme/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，阅读页的行动面板离开屏幕边缘浮在故事上：两者都按安全区摆放，列表和故事流的底部按浮层高度留白（`useTabBarSpace()`、`ActionBar` 的 `onHeight`）。和设计稿不同：世界状态和“更多”两个按钮从导航栏右侧挪到了行动面板右下角，离拇指近。没做的：世界状态的“新”标记和按钮上的变化提示（服务端还没有世界状态的变更记录）、导入进度条（上传没有进度事件，用来回扫动的线代替）、改昵称（没有接口）。
 
 还没有的页面：世界、时间线、大纲（M2、M3）。
 
@@ -166,7 +166,7 @@ apps/mobile/
     ├── api/      client.ts  endpoints.ts  types.ts  events.ts  turnStream.ts  sse/（SseParser、SseClient）
     ├── auth/     session.ts                # SessionManager：令牌、单飞刷新
     ├── state/    AppProvider.tsx           # 组装 ApiClient、会话、事件流连接；useApp()
-    │             PrefsProvider.tsx         # 设备上的界面偏好：最近用过的服务器、阅读设置、剧本库视图
+    │             PrefsProvider.tsx         # 设备上的界面偏好：最近用过的服务器、阅读设置、剧本库视图、外观
     ├── storage/  secure.ts                 # expo-secure-store（令牌、服务器地址、界面偏好）
     ├── features/
     │   ├── play/     turnMachine.ts  playSession.ts  usePlaySession.ts  StoryFeed.tsx  ActionBar.tsx  ActionParts.tsx
@@ -177,7 +177,8 @@ apps/mobile/
     ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  overlay  dialog  icons
     │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx
     ├── hooks/      useAsync.ts
-    ├── theme/      index.ts                # 设计 token：浅色、深色、字号、间距、字体族
+    ├── theme/      index.ts                # 设计 token：圆角、字号、间距、字体族；色板和主题表的出口
+    │               palettes.ts  themes.ts  # 色板（浅色、深色）与主题表（浅色、夜间）；ThemeProvider.tsx 提供 usePalette()
     └── utils/      format.ts  ids.ts
 ```
 

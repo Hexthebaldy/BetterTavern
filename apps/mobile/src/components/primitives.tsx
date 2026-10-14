@@ -345,7 +345,7 @@ export function IconButton({
           opacity: disabled ? 0.3 : 1,
           transform: [{ scale: pressed ? 0.97 : 1 }],
         },
-        tone === "card" ? { boxShadow: "0 2px 8px rgba(20,20,20,0.08)" } : null,
+        tone === "card" ? { boxShadow: palette.shadowButton } : null,
         style,
       ]}
     >

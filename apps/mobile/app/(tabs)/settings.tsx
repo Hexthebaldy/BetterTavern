@@ -1,8 +1,10 @@
 /**
  * 设置首页：最上面是墨色的导演模型卡片（没设置时是一张琥珀色的引导卡），下面两组：配置、其他。
+ * “其他”里的“外观”打开主题面板（跟随系统 / 浅色 / 夜间），选了立刻生效。
  */
 
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "../../src/api/client.ts";
@@ -21,11 +23,13 @@ import {
   useTabBarSpace,
 } from "../../src/components/ui.tsx";
 import { CLIENT_VERSION } from "../../src/config.ts";
+import { AppearanceSheet } from "../../src/features/settings/AppearanceSheet.tsx";
 import { CREDENTIAL_STATUS } from "../../src/features/settings/labels.ts";
 import { displayServer } from "../../src/features/settings/servers.ts";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { font, space, usePalette } from "../../src/theme/index.ts";
+import { usePrefs } from "../../src/state/PrefsProvider.tsx";
+import { font, settingLabel, space, usePalette } from "../../src/theme/index.ts";
 import { formatTokens } from "../../src/utils/format.ts";
 
 function DirectorCard({
@@ -145,6 +149,8 @@ export default function SettingsScreen() {
   const { api, user, serverUrl } = useApp();
   const router = useRouter();
   const palette = usePalette();
+  const { theme } = usePrefs();
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const { data, error, refreshing, refresh, reload } = useAsync(async () => {
     const [routes, credentials] = await Promise.all([api.routes.list(), api.credentials.list()]);
     return { director: routes.find((r) => r.task === "director") ?? null, credentials };
@@ -232,6 +238,12 @@ export default function SettingsScreen() {
       <GroupLabel style={styles.label}>其他</GroupLabel>
       <Group>
         <ListRow
+          title="外观"
+          leading={<RowIcon name="moon" />}
+          trailing={<Text style={{ fontSize: 13, color: palette.mut }}>{settingLabel(theme)}</Text>}
+          onPress={() => setAppearanceOpen(true)}
+        />
+        <ListRow
           title="连接测试"
           subtitle="检查流式输出、断线续传和延迟"
           leading={<RowIcon name="probe" />}
@@ -241,6 +253,7 @@ export default function SettingsScreen() {
       <Text style={[styles.footer, { color: palette.mut }]}>
         v{CLIENT_VERSION} · {displayServer(serverUrl)}
       </Text>
+      <AppearanceSheet visible={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
     </Page>
   );
 }
