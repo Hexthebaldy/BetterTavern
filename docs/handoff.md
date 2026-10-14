@@ -54,6 +54,9 @@ v1 支持 DeepSeek、Hugging Face 和自定义的 OpenAI 兼容端点。
 
 用户的 Mac 上**没有 Docker**，但 Homebrew 的 `postgresql@16` 常驻在 `localhost:5432`，`bettertavern` 角色和同名数据库已经建好，
 `.env` 里默认的 `DATABASE_URL` 和 Makefile 的 `TEST_DB` 都能直接用，跳过 `make db-up` 即可。
+用户开着 ClashX Meta 的增强模式（fake-ip），所有域名在本机都解析到 `198.18.0.0/15`，SSRF 检查会报“解析到内网或保留地址”
+（配了 `OUTBOUND_PROXY` 也一样，代理模式下仍先在本地解析和检查）。所以用户本机的 `apps/server/.env` 打开了 `ALLOW_PRIVATE_ENDPOINTS=true`；
+不想放开时，把模型服务的域名加进 Clash 的 `fake-ip-filter`。
 
 ```bash
 cp apps/server/.env.example apps/server/.env
