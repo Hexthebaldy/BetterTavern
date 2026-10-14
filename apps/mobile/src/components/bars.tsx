@@ -9,8 +9,17 @@
 
 import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
-import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { useEffect, useRef, type ReactNode } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { font, size, space, type, usePalette } from "../theme/index.ts";
@@ -122,6 +131,69 @@ const TAB_ICONS: Record<string, IconName> = {
   settings: "settings",
 };
 
+/** 切换标签时淡入淡出的时长：标签栏的胶囊和页面（app/(tabs)/_layout.tsx）共用 */
+export const TAB_FADE_MS = 220;
+
+/**
+ * 标签栏的一格：未选中的样子（图标在上、文字在下）和选中的黑色胶囊叠在一起，
+ * 切换时一个淡出、一个淡入，胶囊同时从 92% 放大到原大
+ */
+function TabItem({
+  label,
+  icon,
+  focused,
+  onPress,
+}: {
+  label: string;
+  icon: IconName;
+  focused: boolean;
+  onPress: () => void;
+}) {
+  const palette = usePalette();
+  const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: focused ? 1 : 0,
+      duration: TAB_FADE_MS,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [focused, progress]);
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityState={{ selected: focused }}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={styles.tabSlot}
+    >
+      <Animated.View
+        style={[
+          styles.tabIdle,
+          { opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) },
+        ]}
+      >
+        <Icon name={icon} size={22} color={palette.mut} />
+        <Text style={[type.tab, { color: palette.mut }]}>{label}</Text>
+      </Animated.View>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.tabActive,
+          {
+            backgroundColor: palette.ink,
+            opacity: progress,
+            transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
+          },
+        ]}
+      >
+        <Icon name={icon} size={22} color={palette.bg} />
+        <Text style={{ fontSize: 14, fontWeight: "500", color: palette.bg }}>{label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 /** 浮动的胶囊标签栏：选中项展开成黑色小胶囊，图标和文字横排；未选中项图标在上、文字在下 */
 export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
   const palette = usePalette();
@@ -146,28 +218,7 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
           const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
           if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
         };
-        return (
-          <Pressable
-            key={route.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: focused }}
-            accessibilityLabel={label}
-            onPress={onPress}
-            style={styles.tabSlot}
-          >
-            {focused ? (
-              <View style={[styles.tabActive, { backgroundColor: palette.ink }]}>
-                <Icon name={icon} size={22} color={palette.bg} />
-                <Text style={{ fontSize: 14, fontWeight: "500", color: palette.bg }}>{label}</Text>
-              </View>
-            ) : (
-              <View style={styles.tabIdle}>
-                <Icon name={icon} size={22} color={palette.mut} />
-                <Text style={[type.tab, { color: palette.mut }]}>{label}</Text>
-              </View>
-            )}
-          </Pressable>
-        );
+        return <TabItem key={route.key} label={label} icon={icon} focused={focused} onPress={onPress} />;
       })}
     </View>
   );
@@ -207,13 +258,14 @@ const styles = StyleSheet.create({
   },
   tabSlot: { flex: 1, height: size.tabBar, alignItems: "center", justifyContent: "center" },
   tabActive: {
+    position: "absolute",
     flexDirection: "row",
     alignItems: "center",
     gap: space.s,
     height: size.tabActive,
-    paddingLeft: 14,
-    paddingRight: 18,
-    borderRadius: size.tabActive / 2,
+    paddingLeft: 24,
+    paddingRight: 24,
+    borderRadius: size.tabActive,
   },
   tabIdle: { alignItems: "center", gap: 2 },
 });
