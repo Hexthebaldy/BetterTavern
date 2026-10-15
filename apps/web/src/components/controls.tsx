@@ -243,23 +243,42 @@ export type Tone = "error" | "warn" | "info";
 export function Notice({
   tone = "error",
   message,
+  icon,
+  actionLabel,
+  onAction,
   onClose,
   floating,
   className,
 }: {
   tone?: Tone;
   message: ReactNode;
+  icon?: IconName;
+  /** 右边一个同色的胶囊按钮（重新加载之类） */
+  actionLabel?: string;
+  onAction?: () => void;
   onClose?: () => void;
   floating?: boolean;
   className?: string;
 }) {
+  const action = actionLabel && onAction;
   return (
     <div
       role={tone === "info" ? "status" : "alert"}
-      className={cx(styles.notice, styles[`tone-${tone}`], floating && styles.floating, className)}
+      className={cx(
+        styles.notice,
+        styles[`tone-${tone}`],
+        floating && styles.floating,
+        action && styles.withAction,
+        className,
+      )}
     >
-      <Icon name={tone === "info" ? "info" : "alert"} size={20} />
+      <Icon name={icon ?? (tone === "info" ? "info" : "alert")} size={20} />
       <div className={styles.noticeText}>{message}</div>
+      {action ? (
+        <button type="button" className={styles.noticeAction} onClick={onAction}>
+          {actionLabel}
+        </button>
+      ) : null}
       {onClose ? (
         <IconButton
           icon="close"

@@ -18,6 +18,8 @@ import {
 import { Outlet, useLocation } from "react-router";
 
 import { useWindowWidth } from "../hooks/useWindowSize.ts";
+import { ImportProvider } from "../import/ImportProvider.tsx";
+import { OverlayProvider } from "../overlay/OverlayProvider.tsx";
 import { usePrefs } from "../state/PrefsProvider.tsx";
 import { desktop, navMode, navWidth, sidebarOverlays, type NavMode } from "../theme/layout.ts";
 import { Rail } from "./Rail.tsx";
@@ -81,18 +83,22 @@ export function AppShell() {
   return (
     <ShellContext.Provider value={value}>
       <div className={styles.shell} data-nav={nav} style={frame}>
-        {nav === "sidebar" ? <Sidebar onCollapse={toggleSidebar} /> : null}
-        {nav === "rail" ? <Rail onExpand={toggleSidebar} /> : null}
-        {showOverlay ? (
-          <>
-            <div className={styles.scrim} onClick={() => setOverlay(false)} aria-hidden="true" />
-            <Sidebar overlay onCollapse={() => setOverlay(false)} />
-          </>
-        ) : null}
-        <main className={styles.main} id="main">
-          <Outlet />
-        </main>
-        {nav === "tabbar" ? <TabBar /> : null}
+        <OverlayProvider>
+          <ImportProvider>
+            {nav === "sidebar" ? <Sidebar onCollapse={toggleSidebar} /> : null}
+            {nav === "rail" ? <Rail onExpand={toggleSidebar} /> : null}
+            {showOverlay ? (
+              <>
+                <div className={styles.scrim} onClick={() => setOverlay(false)} aria-hidden="true" />
+                <Sidebar overlay onCollapse={() => setOverlay(false)} />
+              </>
+            ) : null}
+            <main className={styles.main} id="main">
+              <Outlet />
+            </main>
+            {nav === "tabbar" ? <TabBar /> : null}
+          </ImportProvider>
+        </OverlayProvider>
       </div>
     </ShellContext.Provider>
   );

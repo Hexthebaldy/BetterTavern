@@ -1,0 +1,202 @@
+/* 浮层：对话框、菜单、提示浮条。数值取自 docs/design/ui/web/source 的 .dlg、.menu、.mi、.toast，和 App 的 dialog.tsx */
+
+/* ---- 对话框 ---- */
+.dialog {
+  width: min(var(--dialog), calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sheet);
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+  overflow: auto;
+}
+.dialog::backdrop {
+  background: var(--scrim);
+}
+.dialog[open] {
+  animation: rise var(--dur) var(--ease);
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+.dialogInner {
+  padding: 26px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.dialogInner > form {
+  display: contents;
+}
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.dialogIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fill);
+  color: var(--ink);
+}
+.dialogIcon.danger {
+  background: var(--err-bg);
+  color: var(--err);
+}
+.dialogIcon.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.dialogTitle {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+.dialogMessage {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--ink2);
+}
+.dialogButtons {
+  display: flex;
+  gap: 8px;
+}
+.dialogButtons > * {
+  flex: 1;
+}
+.promptInput {
+  align-self: stretch;
+  height: 52px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: var(--r-input);
+  padding: 0 16px;
+  background: var(--fill);
+  font-size: 16px;
+  text-align: left;
+}
+
+/* ---- 菜单 ---- */
+.menuLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.menu {
+  position: fixed;
+  width: var(--context-menu);
+  padding: 6px;
+  border-radius: var(--r-option);
+  background: var(--sheet);
+  box-shadow: var(--shadow-float);
+  animation: pop var(--dur) var(--ease);
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  font-size: 15px;
+  color: var(--ink);
+  text-align: left;
+}
+.menuItem:focus-visible {
+  outline-offset: -2px;
+}
+.menuDanger {
+  color: var(--err);
+}
+.menuLabel {
+  flex: 1;
+}
+.menuRule {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 10px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .menuItem:hover {
+    background: var(--hover);
+  }
+}
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--line2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* ---- 提示浮条：内容区底部居中 ---- */
+.toast {
+  position: fixed;
+  z-index: 70;
+  left: calc(var(--nav-width, 0px) + (100vw - var(--nav-width, 0px)) / 2);
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(var(--toast, 480px), calc(100vw - var(--nav-width, 0px) - 32px));
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 18px;
+  border-radius: 26px;
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: var(--shadow-float);
+  font-size: 14px;
+  line-height: 20px;
+  animation: toastIn var(--dur) var(--ease);
+}
+:global([data-nav="tabbar"]) .toast {
+  bottom: 96px;
+}
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+.toastText {
+  flex: 1;
+  padding: 10px 12px 10px 0;
+}
+.toastAction {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--arrow-bg);
+  color: inherit;
+  font-size: 14px;
+  font-weight: 500;
+}

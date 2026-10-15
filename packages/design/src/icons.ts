@@ -105,6 +105,8 @@ export const ICONS = {
   traveler: [{ circle: [12, 5, 2] }, { d: "M12 8v6l-3 6M12 14l3 6M8 11l4-2 4 2" }],
   pair: [{ rect: [3, 5, 7, 14, 2] }, { rect: [14, 5, 7, 14, 2] }, { d: "M10 9h4" }],
   lens: [{ circle: [10.5, 10.5, 6] }, { d: "M15 15l5 5" }],
+  /** 在新标签页打开（网页的右键菜单） */
+  newTab: [{ d: "M14 4h6v6M20 4l-8 8" }, { d: "M18 14v3a3 3 0 01-3 3H7a3 3 0 01-3-3V9a3 3 0 013-3h3" }],
 } satisfies Record<string, Part[]>;
 
 export type IconName = keyof typeof ICONS;

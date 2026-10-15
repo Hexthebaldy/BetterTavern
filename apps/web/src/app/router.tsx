@@ -7,8 +7,10 @@ import { createBrowserRouter, Navigate } from "react-router";
 
 import { LoginPage } from "../pages/auth/LoginPage.tsx";
 import { RegisterPage } from "../pages/auth/RegisterPage.tsx";
+import { LibraryPage } from "../pages/library/LibraryPage.tsx";
 import { NotFound } from "../pages/NotFound.tsx";
 import { Pending } from "../pages/Pending.tsx";
+import { StoriesPage } from "../pages/stories/StoriesPage.tsx";
 import { GuestOnly, RequireAuth } from "./guards.tsx";
 
 export const router = createBrowserRouter([
@@ -23,8 +25,8 @@ export const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       { path: "/", element: <Navigate to="/playthroughs" replace /> },
-      { path: "/playthroughs", element: <Pending title="故事" /> },
-      { path: "/library", element: <Pending title="剧本" /> },
+      { path: "/playthroughs", element: <StoriesPage /> },
+      { path: "/library", element: <LibraryPage /> },
       { path: "/scenario/:id", element: <Pending title="剧本" /> },
       { path: "/play/:id", element: <Pending title="故事" /> },
       { path: "/settings", element: <Pending title="设置" /> },

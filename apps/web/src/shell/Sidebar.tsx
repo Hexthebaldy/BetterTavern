@@ -8,7 +8,9 @@ import { Link, useLocation } from "react-router";
 import { Icon } from "../components/Icon.tsx";
 import { Logo } from "../components/Logo.tsx";
 import { cx, IconButton } from "../components/controls.tsx";
+import { useAvatars } from "../data/scenarios.ts";
 import { useStories } from "../data/stories.ts";
+import { useStoryActions } from "../data/storyActions.ts";
 import { useApp } from "../state/AppProvider.tsx";
 import { Avatar } from "./Avatar.tsx";
 import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
@@ -20,6 +22,8 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
   const { pathname } = useLocation();
   const { user } = useApp();
   const stories = useStories();
+  const avatarOf = useAvatars();
+  const actions = useStoryActions();
   const current = openStoryId(pathname);
   const groups = recentGroups(stories.data ?? []);
   return (
@@ -64,7 +68,13 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
           <section key={group.label} aria-label={group.label}>
             <div className={styles.group}>{group.label}</div>
             {group.items.map((story) => (
-              <StoryRow key={story.id} story={story} current={story.id === current} />
+              <StoryRow
+                key={story.id}
+                story={story}
+                avatar={avatarOf(story.scenario_id)}
+                current={story.id === current}
+                onMenu={actions.menu}
+              />
             ))}
           </section>
         ))}

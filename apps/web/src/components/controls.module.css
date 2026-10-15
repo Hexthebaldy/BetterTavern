@@ -260,6 +260,28 @@
   flex: 1;
   min-width: 0;
 }
+.withAction {
+  padding: 6px 6px 6px 16px;
+}
+.noticeAction {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 20px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #ffffff;
+  background: var(--err);
+}
+.tone-warn .noticeAction {
+  background: var(--warn);
+}
+.tone-info .noticeAction {
+  background: var(--acc);
+}
+.noticeAction:active {
+  transform: scale(0.97);
+}
 .noticeClose {
   width: 36px;
   height: 36px;

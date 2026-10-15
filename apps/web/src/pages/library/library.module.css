@@ -1,0 +1,298 @@
+/* 剧本库（W04）：数值同 App 的 LibraryParts（卡片内边距 8、圆角 26，封面 96:76、圆角 18） */
+
+.banner {
+  margin-bottom: 16px;
+}
+.problemTitle {
+  display: block;
+  font-weight: 500;
+}
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ---- 页头控件 ---- */
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 22px;
+  background: var(--inset);
+}
+.segButton {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--mut);
+}
+.segOn {
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+}
+@media (hover: hover) and (pointer: fine) {
+  .segButton:not(.segOn):hover {
+    color: var(--ink);
+  }
+}
+.add {
+  width: 44px;
+  height: 44px;
+  background: var(--ink);
+  color: var(--bg);
+}
+.addPill {
+  padding-left: 14px;
+  padding-right: 18px;
+  gap: 6px;
+}
+
+/* ---- 网格与列表 ---- */
+.grid {
+  display: grid;
+  gap: 16px;
+}
+.list {
+  max-width: var(--readable);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cell {
+  position: relative;
+  min-width: 0;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: 26px;
+  background: var(--fill);
+  min-width: 0;
+  height: 100%;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.tileMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 8px 6px;
+}
+.name {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.summary {
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--mut);
+  min-height: 36px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.row {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--r-option);
+  background: var(--fill);
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  padding-right: 36px;
+}
+.rowTitle {
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rowSummary {
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--ink2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tile:active,
+.row:active {
+  transform: scale(var(--press));
+}
+@media (hover: hover) and (pointer: fine) {
+  a.tile:hover,
+  a.row:hover {
+    background: var(--hover);
+  }
+}
+.tileMore,
+.rowMore {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.rowMore {
+  top: 50%;
+  margin-top: -18px;
+}
+.cell:hover .tileMore,
+.cell:focus-within .tileMore,
+.cell:hover .rowMore,
+.cell:focus-within .rowMore {
+  opacity: 1;
+}
+@media (hover: none) {
+  .tileMore,
+  .rowMore {
+    opacity: 1;
+  }
+}
+.importCover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: var(--on-fill);
+}
+.importRow {
+  align-items: center;
+}
+.spinner {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+.muted {
+  color: var(--mut);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* ---- 空状态 ---- */
+.emptyWrap {
+  max-width: var(--readable);
+  margin: 8px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kinds {
+  display: flex;
+  gap: 8px;
+}
+.kind {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 26px;
+  background: var(--fill);
+}
+.kindName {
+  font-weight: 700;
+}
+.kindText {
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--mut);
+}
+.emptyBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px;
+  border-radius: 26px;
+  background: var(--fill);
+}
+.emptyTitle {
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 700;
+}
+.specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.spec {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.specFirst {
+  background: var(--card);
+  color: var(--ink);
+}
+.note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--ink2);
+}
+.note > span:last-child {
+  padding-top: 5px;
+}
+.noteIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  color: var(--ink2);
+  flex: none;
+}
+.limits {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--mut);
+  text-align: center;
+}

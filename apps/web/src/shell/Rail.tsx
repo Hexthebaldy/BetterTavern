@@ -6,12 +6,17 @@
 import { Link, useLocation } from "react-router";
 
 import { storyStatus } from "@bettertavern/core/play/storyStatus";
+import type { Playthrough } from "@bettertavern/core/api/types";
 
-import { GeometricCover } from "../components/Cover.tsx";
+import { Cover } from "../components/Cover.tsx";
 import { Icon } from "../components/Icon.tsx";
 import { Logo } from "../components/Logo.tsx";
 import { cx, IconButton } from "../components/controls.tsx";
+import { useAvatars } from "../data/scenarios.ts";
 import { useStories } from "../data/stories.ts";
+import { storyPath, useStoryActions } from "../data/storyActions.ts";
+import type { MenuPlace } from "../overlay/Menu.tsx";
+import { useContextMenu } from "../overlay/useContextMenu.ts";
 import { useApp } from "../state/AppProvider.tsx";
 import { Avatar } from "./Avatar.tsx";
 import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
@@ -22,6 +27,8 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
   const { pathname } = useLocation();
   const { user } = useApp();
   const stories = useStories();
+  const avatarOf = useAvatars();
+  const actions = useStoryActions();
   const current = openStoryId(pathname);
   const recent = byRecent(stories.data ?? []).slice(0, 4);
   return (
@@ -51,23 +58,13 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
       })}
       {recent.length > 0 ? <span className={styles.railRule} /> : null}
       {recent.map((story) => (
-        <Link
+        <RailCover
           key={story.id}
-          to={`/play/${encodeURIComponent(story.id)}`}
-          className={cx(styles.railCover, story.id === current && styles.railCoverOn)}
-          aria-label={story.title}
-          title={story.title}
-          aria-current={story.id === current ? "page" : undefined}
-        >
-          <GeometricCover
-            seed={story.scenario_id ?? story.id}
-            width={36}
-            height={36}
-            surface={story.id === current ? "onFill" : "fill"}
-            rounded={12}
-          />
-          {storyStatus(story)?.kind === "writing" ? <span className={styles.railLive} /> : null}
-        </Link>
+          story={story}
+          avatar={avatarOf(story.scenario_id)}
+          current={story.id === current}
+          onMenu={actions.menu}
+        />
       ))}
       {user ? (
         <Link to="/settings/account" className={styles.railAccount} aria-label="账户" title={user.email}>
@@ -75,5 +72,40 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
         </Link>
       ) : null}
     </nav>
+  );
+}
+
+/** 导航条上的一个封面：链接到阅读页；当前故事白底浮起，正在写的右上角有蓝点；右键打开故事菜单 */
+function RailCover({
+  story,
+  avatar,
+  current,
+  onMenu,
+}: {
+  story: Playthrough;
+  avatar: string | null;
+  current: boolean;
+  onMenu: (story: Playthrough, place: MenuPlace) => void;
+}) {
+  const context = useContextMenu((place) => onMenu(story, place));
+  return (
+    <Link
+      to={storyPath(story)}
+      className={cx(styles.railCover, current && styles.railCoverOn)}
+      aria-label={story.title}
+      title={story.title}
+      aria-current={current ? "page" : undefined}
+      {...context}
+    >
+      <Cover
+        seed={story.scenario_id ?? story.id}
+        blobId={avatar}
+        width={36}
+        height={36}
+        surface={current ? "onFill" : "fill"}
+        rounded={12}
+      />
+      {storyStatus(story)?.kind === "writing" ? <span className={styles.railLive} /> : null}
+    </Link>
   );
 }

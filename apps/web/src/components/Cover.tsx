@@ -1,9 +1,14 @@
 /**
- * 几何封面：图形在 @bettertavern/design 的 cover.ts（和 App 共用），这里按 CSS 变量上色。
- * 底色是当前表面上“灰块里再嵌的小块”（--on-fill）或灰块（--fill）。角色卡图片在剧本库那一步接上。
+ * 封面：角色卡有图片就显示图片（要带访问令牌才能取，见 data/blobs.ts），没有图片或取不到时画几何封面。
+ * 几何封面的图形在 @bettertavern/design 的 cover.ts（和 App 共用），这里按 CSS 变量上色。
+ * 底色是当前表面上的灰块（--fill）或灰块里再嵌的小块（--on-fill）。
  */
 
+import { useState } from "react";
+
 import { coverArt, coverRadius } from "@bettertavern/design/cover";
+
+import { useBlobUrl } from "../data/blobs.ts";
 
 export function GeometricCover({
   seed,
@@ -67,5 +72,66 @@ export function GeometricCover({
         );
       })}
     </svg>
+  );
+}
+
+/** 角色卡图片；没有图片、取不到或加载失败时退回几何封面 */
+export function Cover({
+  seed,
+  blobId,
+  width,
+  height,
+  surface,
+  rounded,
+  className,
+}: {
+  seed: string;
+  blobId: string | null | undefined;
+  width: number;
+  height: number;
+  surface?: "fill" | "onFill";
+  rounded?: number;
+  className?: string;
+}) {
+  const image = useBlobUrl(blobId);
+  const [broken, setBroken] = useState(false);
+  const radius = rounded ?? coverRadius(width, height);
+  if (!blobId || image.isError || broken) {
+    return (
+      <GeometricCover
+        seed={seed}
+        width={width}
+        height={height}
+        surface={surface}
+        rounded={rounded}
+        className={className}
+      />
+    );
+  }
+  return (
+    <span
+      className={className}
+      style={{
+        display: "block",
+        flex: "none",
+        width,
+        height,
+        borderRadius: radius,
+        overflow: "hidden",
+        background: "var(--bg3)",
+      }}
+    >
+      {image.data ? (
+        <img
+          src={image.data}
+          alt=""
+          width={width}
+          height={height}
+          draggable={false}
+          onError={() => setBroken(true)}
+          style={{ display: "block", width, height, objectFit: "cover" }}
+        />
+      ) : null}
+    </span>
   );
 }

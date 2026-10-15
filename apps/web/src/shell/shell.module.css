@@ -117,6 +117,29 @@
   color: var(--mut);
   letter-spacing: 0.04em;
 }
+.storyCell {
+  position: relative;
+}
+.storyMore {
+  position: absolute;
+  right: 8px;
+  top: 12px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.storyCell:hover .storyMore,
+.storyCell:focus-within .storyMore {
+  opacity: 1;
+}
+@media (hover: none) {
+  .storyMore {
+    display: none;
+  }
+}
+.storyCell:hover .storyText,
+.storyCell:focus-within .storyText {
+  padding-right: 34px;
+}
 .storyRow {
   position: relative;
   display: flex;
