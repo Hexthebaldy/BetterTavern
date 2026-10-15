@@ -19,6 +19,8 @@
 在线画布（可缩放；导演模型画板可以点，需要 BetterTavern 作者的账号访问）：
 https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 
+**标志：** 已换成“错版”，规格、矢量原稿和 App 图标见 `docs/design/logo/`。本目录截图和源码里的标志已同步更新。
+
 ## 目录
 
 | 路径 | 内容 |
