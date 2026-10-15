@@ -38,3 +38,7 @@ apps/server/evals/reports/
 .idea/
 .vscode/
 .DS_Store
+
+# Playwright
+test-results/
+playwright-report/

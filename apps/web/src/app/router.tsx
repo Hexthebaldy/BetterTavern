@@ -1,6 +1,6 @@
 /**
  * 路由：地址和 App 的 expo-router 一一对应，浏览器的前进、后退和 App 的导航一致。
- * 登录、注册之外的页面都在外壳（侧栏 / 导航条 / Tab 栏）里。
+ * 登录、注册之外的页面都在外壳（侧栏 / 导航条 / Tab 栏）里。阅读页、剧本详情、设置按需加载（首屏只带故事和剧本库）。
  */
 
 import { createBrowserRouter, Navigate } from "react-router";
@@ -9,15 +9,11 @@ import { LoginPage } from "../pages/auth/LoginPage.tsx";
 import { RegisterPage } from "../pages/auth/RegisterPage.tsx";
 import { LibraryPage } from "../pages/library/LibraryPage.tsx";
 import { NotFound } from "../pages/NotFound.tsx";
-import { PlayRoute } from "../pages/play/PlayPage.tsx";
-import { ScenarioPage } from "../pages/scenario/ScenarioPage.tsx";
-import { AccountBody } from "../pages/settings/AccountBody.tsx";
-import { ModelPage } from "../pages/settings/ModelBody.tsx";
-import { ModelsBody } from "../pages/settings/ModelsBody.tsx";
-import { ProbeBody } from "../pages/settings/ProbeBody.tsx";
-import { SettingsIndex, SettingsLayout } from "../pages/settings/SettingsLayout.tsx";
+import { Splash } from "../pages/Splash.tsx";
 import { StoriesPage } from "../pages/stories/StoriesPage.tsx";
 import { GuestOnly, RequireAuth } from "./guards.tsx";
+
+const settings = () => import("../pages/settings/SettingsLayout.tsx");
 
 export const router = createBrowserRouter([
   {
@@ -29,23 +25,51 @@ export const router = createBrowserRouter([
   },
   {
     element: <RequireAuth />,
+    // 直接打开按需加载的页面（阅读页、设置）时，加载完之前显示过渡画面
+    hydrateFallbackElement: <Splash />,
     children: [
       { path: "/", element: <Navigate to="/playthroughs" replace /> },
       { path: "/playthroughs", element: <StoriesPage /> },
       { path: "/library", element: <LibraryPage /> },
-      { path: "/scenario/:id", element: <ScenarioPage /> },
-      { path: "/play/:id", element: <PlayRoute /> },
+      {
+        path: "/scenario/:id",
+        lazy: async () => ({ Component: (await import("../pages/scenario/ScenarioPage.tsx")).ScenarioPage }),
+      },
+      {
+        path: "/play/:id",
+        lazy: async () => ({ Component: (await import("../pages/play/PlayPage.tsx")).PlayRoute }),
+      },
       {
         path: "/settings",
-        element: <SettingsLayout />,
+        lazy: async () => ({ Component: (await settings()).SettingsLayout }),
         children: [
-          { index: true, element: <SettingsIndex /> },
-          { path: "models", element: <ModelsBody /> },
-          { path: "model/:id", element: <ModelPage /> },
-          { path: "account", element: <AccountBody /> },
+          { index: true, lazy: async () => ({ Component: (await settings()).SettingsIndex }) },
+          {
+            path: "models",
+            lazy: async () => ({ Component: (await import("../pages/settings/ModelsBody.tsx")).ModelsBody }),
+          },
+          {
+            path: "model/:id",
+            lazy: async () => ({ Component: (await import("../pages/settings/ModelBody.tsx")).ModelPage }),
+          },
+          {
+            path: "account",
+            lazy: async () => ({
+              Component: (await import("../pages/settings/AccountBody.tsx")).AccountBody,
+            }),
+          },
         ],
       },
-      { path: "/dev", element: <SettingsLayout />, children: [{ path: "probe", element: <ProbeBody /> }] },
+      {
+        path: "/dev",
+        lazy: async () => ({ Component: (await settings()).SettingsLayout }),
+        children: [
+          {
+            path: "probe",
+            lazy: async () => ({ Component: (await import("../pages/settings/ProbeBody.tsx")).ProbeBody }),
+          },
+        ],
+      },
       { path: "*", element: <NotFound /> },
     ],
   },

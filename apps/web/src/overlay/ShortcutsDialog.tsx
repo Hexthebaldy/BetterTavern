@@ -1,0 +1,74 @@
+/**
+ * 键盘快捷键（W12）：按 ? 或从阅读页的“更多”打开，宽 600。顶上是单键快捷键的开关（用读屏或语音输入的人可以关掉，
+ * 存在浏览器里），下面分“阅读”“界面”两组，键帽都从 theme/layout.ts 的 SHORTCUTS 取。
+ */
+
+import { Fragment, useRef } from "react";
+
+import { IconButton } from "../components/controls.tsx";
+import { usePrefs } from "../state/PrefsProvider.tsx";
+import { shell, SHORTCUTS, type Shortcut } from "../theme/layout.ts";
+import { Dialog } from "./Dialog.tsx";
+import styles from "./overlay.module.css";
+
+/** 和设计稿一样分两组：前六项是读和写，其余是界面（世界状态、侧栏、这张表、关闭） */
+const GROUPS: { title: string; items: Shortcut[] }[] = [
+  { title: "阅读", items: SHORTCUTS.slice(0, 6) },
+  { title: "界面", items: SHORTCUTS.slice(6) },
+];
+
+function Keys({ keys, single }: { keys: string[]; single: boolean }) {
+  // 单键的几个字母（A B C D）各自一个键帽；组合键之间加“+”
+  return (
+    <span className={styles.keys}>
+      {keys.map((key, i) => (
+        <Fragment key={key}>
+          {i > 0 && !single ? <span className={styles.plus}>+</span> : null}
+          <kbd className={styles.kbdLarge}>{key}</kbd>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
+  const { singleKeys, setSingleKeys } = usePrefs();
+  const toggle = useRef<HTMLInputElement>(null);
+  return (
+    <Dialog label="键盘快捷键" onClose={onClose} width={shell.shortcutsDialog} initialFocus={toggle}>
+      <div className={styles.shortcutsHead}>
+        <h2 className={styles.shortcutsTitle}>键盘快捷键</h2>
+        <IconButton icon="close" label="关闭" diameter={36} iconSize={18} onClick={onClose} />
+      </div>
+      <label className={styles.singleRow}>
+        <span className={styles.singleText}>
+          <span className={styles.singleTitle}>单键快捷键</span>
+          <span className={styles.singleNote}>
+            字母、/、[ 和 ? 只在没有输入文字的时候生效；用读屏或语音输入时可以关掉
+          </span>
+        </span>
+        <input
+          ref={toggle}
+          type="checkbox"
+          role="switch"
+          className={styles.toggle}
+          checked={singleKeys}
+          onChange={(e) => setSingleKeys(e.target.checked)}
+        />
+      </label>
+      {GROUPS.map((group) => (
+        <section key={group.title} className={styles.shortcutGroup} aria-label={group.title}>
+          <div className={styles.groupTitle}>{group.title}</div>
+          <div className={styles.shortcutList}>
+            {group.items.map((item) => (
+              <div key={item.label} className={styles.shortcutRow}>
+                <span>{item.label}</span>
+                <Keys keys={item.keys} single={item.single} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </Dialog>
+  );
+}

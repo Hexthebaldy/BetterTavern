@@ -20,8 +20,17 @@ import { Outlet, useLocation } from "react-router";
 import { useWindowWidth } from "../hooks/useWindowSize.ts";
 import { ImportProvider } from "../import/ImportProvider.tsx";
 import { OverlayProvider } from "../overlay/OverlayProvider.tsx";
+import { ShortcutsDialog } from "../overlay/ShortcutsDialog.tsx";
+import { TooltipLayer } from "../overlay/Tooltip.tsx";
 import { usePrefs } from "../state/PrefsProvider.tsx";
-import { desktop, navMode, navWidth, sidebarOverlays, type NavMode } from "../theme/layout.ts";
+import {
+  acceptsSingleKey,
+  desktop,
+  navMode,
+  navWidth,
+  sidebarOverlays,
+  type NavMode,
+} from "../theme/layout.ts";
 import { Rail } from "./Rail.tsx";
 import styles from "./shell.module.css";
 import { Sidebar } from "./Sidebar.tsx";
@@ -48,7 +57,8 @@ export function useShell(): ShellValue {
 
 export function AppShell() {
   const width = useWindowWidth();
-  const { sidebarCollapsed, setSidebarCollapsed } = usePrefs();
+  const { sidebarCollapsed, setSidebarCollapsed, singleKeys } = usePrefs();
+  const [shortcuts, setShortcuts] = useState(false);
   const [override, setNavOverride] = useState<NavMode | null>(null);
   const [overlay, setOverlay] = useState(false);
   const { pathname } = useLocation();
@@ -81,6 +91,39 @@ export function AppShell() {
     else setSidebarCollapsed(false);
   }, [width, nav, override, setSidebarCollapsed]);
 
+  // 任何页面都有的快捷键：? 打开快捷键一览，[ 展开或收起侧栏（阅读页自己的 A–D、/、W、End 在 PlayPage）
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const typing =
+        !!target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+      const single = acceptsSingleKey({
+        enabled: singleKeys,
+        typing,
+        composing: event.isComposing,
+        meta: event.metaKey,
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+      });
+      if (!single) return;
+      if (event.key === "?") {
+        event.preventDefault();
+        setShortcuts(true);
+      } else if (event.key === "[") {
+        event.preventDefault();
+        toggleSidebar();
+      }
+    };
+    const open = (): void => setShortcuts(true);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("bt:shortcuts", open);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("bt:shortcuts", open);
+    };
+  }, [singleKeys, toggleSidebar]);
+
   const value = useMemo<ShellValue>(() => ({ nav, toggleSidebar, setNavOverride }), [nav, toggleSidebar]);
   const frame = { "--nav-width": `${navWidth(nav)}px` } as CSSProperties;
 
@@ -101,6 +144,8 @@ export function AppShell() {
               <Outlet />
             </main>
             {nav === "tabbar" && topLevel ? <TabBar /> : null}
+            {shortcuts ? <ShortcutsDialog onClose={() => setShortcuts(false)} /> : null}
+            <TooltipLayer />
           </ImportProvider>
         </OverlayProvider>
       </div>

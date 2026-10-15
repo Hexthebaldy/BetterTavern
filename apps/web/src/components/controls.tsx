@@ -110,10 +110,12 @@ type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">
   iconSize?: number;
   /** 右上角的蓝色小圆点 */
   badge?: boolean;
+  /** 悬停或键盘焦点时的提示；默认就是 label，传 false 不要提示 */
+  tip?: string | false;
   ref?: Ref<HTMLButtonElement>;
 };
 
-/** 圆形图标按钮：默认 40 的灰色圆；plain 透明底，card 白底加投影 */
+/** 圆形图标按钮：默认 40 的灰色圆；plain 透明底，card 白底加投影。悬停 500ms 出提示，有快捷键时带键帽 */
 export function IconButton({
   icon,
   label,
@@ -122,17 +124,21 @@ export function IconButton({
   diameter,
   iconSize = 22,
   badge,
+  tip,
   className,
   style,
   type = "button",
   ref,
   ...rest
 }: IconButtonProps) {
+  const kbd = rest["aria-keyshortcuts"];
   return (
     <button
       ref={ref}
       type={type}
       aria-label={label}
+      data-tip={tip === false ? undefined : (tip ?? label)}
+      data-kbd={kbd === "Escape" ? "Esc" : kbd}
       className={cx(styles.iconButton, tone !== "grey" && styles[tone], on && styles.on, className)}
       style={diameter ? { width: diameter, height: diameter, ...style } : style}
       {...rest}

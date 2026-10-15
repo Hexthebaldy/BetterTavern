@@ -37,6 +37,7 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
       <IconButton
         icon="sidebar"
         label="展开侧栏"
+        aria-keyshortcuts="["
         tone="plain"
         iconSize={20}
         className={styles.railExpand}
@@ -93,7 +94,7 @@ function RailCover({
       to={storyPath(story)}
       className={cx(styles.railCover, current && styles.railCoverOn)}
       aria-label={story.title}
-      title={story.title}
+      data-tip={story.title}
       aria-current={current ? "page" : undefined}
       {...context}
     >

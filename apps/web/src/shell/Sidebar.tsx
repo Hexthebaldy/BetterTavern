@@ -37,6 +37,7 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
         <IconButton
           icon="sidebar"
           label="收起侧栏"
+          aria-keyshortcuts="["
           tone="plain"
           diameter={36}
           iconSize={20}
