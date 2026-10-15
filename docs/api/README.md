@@ -47,7 +47,8 @@
 | `Last-Event-ID` | 回合事件流、探针事件流 | 断线续传，见 [events.md](events.md) |
 | `If-None-Match` | `GET /v1/blobs/{blob_id}` | 带上次拿到的 `ETag`，没有变化时返回 304 |
 | `User-Agent` | 注册、登录、刷新 | 记在刷新令牌上，排错用 |
-| `X-Client-Version` | 客户端的每个请求 | 客户端版本号。M1 的服务端不检查它（设计里的 `CLIENT_TOO_OLD` 还没做） |
+| `X-Client-Version` | 客户端的每个请求 | 客户端版本号。M1 的服务端不检查它（设计里的 `CLIENT_TOO_OLD` 还没做），只记在访问日志里 |
+| `X-Request-ID` | 任何请求（可选） | 请求单号，8 到 64 个字符，只能是字母、数字和 `. _ : -`。App 每个请求生成一个；没带或格式不对时服务端生成。服务端这次请求的所有日志都带着它，响应头 `X-Request-ID` 原样带回 |
 
 ### 错误
 
@@ -60,7 +61,8 @@
   "status": 409,
   "code": "TURN_IN_PROGRESS",
   "retryable": false,
-  "active_turn_id": "6b1d…"
+  "active_turn_id": "6b1d…",
+  "request_id": "9f2c4e1a7b3d4e5f…"
 }
 ```
 
@@ -72,6 +74,7 @@
   行动本身的校验错误（见提交行动的接口）两个字段都不带，原因在 `title` 里。
 - 访问别人的资源和资源不存在一样，都返回 404 `NOT_FOUND`，不暴露资源是否存在。注意参数格式之类的校验可能先于归属检查执行。
 - 服务端未处理的异常返回 500 `INTERNAL_ERROR`，`retryable` 为真。
+- 每个错误响应都带 `request_id`（请求单号，和响应头 `X-Request-ID` 相同），排错时拿它去服务端日志里查这次请求。
 
 ### 限流
 

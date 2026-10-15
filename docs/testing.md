@@ -8,8 +8,53 @@
 
 ### 日志与追踪
 
-- 日志用 structlog 输出 JSON，每条带 `request_id`、`user_id`（哈希）、`playthrough_id`、`turn_id`、`agent`、`route`、`error_class`；不含故事文本和密钥（[backend.md 第 11 节](backend.md)）。
-- 追踪用 OpenTelemetry。一个回合是一条 trace：根 span `turn`，子 span 有 `barrier_wait`、`assemble_context`、`provider.stream`（属性：model、ttft\_ms、各类 token 数、缓存命中比例）、`commit`。后台任务通过 `jobs.payload.traceparent` 接上同一条 trace，子 span 是 `state_keeper`、`gate.*`、`compactor`、`outline_reviser`。span 属性里不放文本。
+日志是服务端边干活边写的流水账：每一行是一条 JSON，写明什么时候、发生了什么、结果怎样。它和数据库里的 `agent_runs`（模型调用账本）分工：
+账本只记每次调用模型的最终结果，长期保存，用来统计；日志记过程中的每一步（重试、限流、断线……），只保留最近一段，用来排查单个问题。
+
+**写到哪里**
+
+- 终端：开发时是带颜色的单行，生产环境或者不是终端时是 JSON（`LOG_FORMAT` 可以固定成 `console` 或 `json`）。
+- 文件：开发环境默认另写一份 JSON 到 `apps/server/.data/logs/api.log`、`worker.log`（`LOG_TO_FILE` 控制），每个文件 10 MB 轮转、保留 5 份。
+  日志不进业务数据库：量大、要能在数据库出问题时照常写、满了自动删。生产环境由部署环境收集标准输出，送进专门的日志存储（如 Loki）。
+- 本项目的日志（structlog）和第三方库的日志（uvicorn、asyncpg 等的标准库 logging）走同一条处理链，格式一样。uvicorn 自带的访问日志关掉，由 api 的中间件记。
+
+**每条都有的字段**
+
+| 字段 | 含义 |
+| --- | --- |
+| `timestamp` | 本地时间，带时区，精确到毫秒 |
+| `level` | `debug` / `info` / `warning` / `error` |
+| `event` | 固定的英文事件名，例如 `turn.committed` |
+| `logger`、`process` | 来源模块；进程（`api` / `worker`） |
+| `request_id` | 请求单号（见下） |
+| `user_ref` | 用户代号：用户 id 做 SHA-256 取前 12 位，日志里不直接出现用户 id 和邮箱 |
+| `playthrough_id`、`turn_id`、`seq`、`turn_attempt` | 回合执行期间才有 |
+| `job_id`、`job_kind`、`ordering_key` | 后台任务执行期间才有 |
+
+这些编号用 `structlog.contextvars` 在请求或任务开始时绑定一次，之后打的每一条都自动带上，不用每次手动传。
+在请求里启动的后台任务（回合生成）会继承启动时的绑定，所以回合的日志也带着提交它的那次请求的单号。
+
+**请求单号**：一串随机编号，给“某一次请求”当身份证。App 每个请求生成一个，放在请求头 `X-Request-ID` 里；没带或格式不对时服务端生成。
+服务端处理这个请求期间写的每一条日志都带着它，响应头原样带回，错误响应体里也有 `request_id`（见 [api/README.md](api/README.md)）。
+App 报错时显示这个单号，拿它去日志里一搜：搜不到说明请求没到服务端（网络问题），搜得到就能看到服务端哪一步出了错。
+
+**写法约定**
+
+- `log = structlog.get_logger(__name__)`，`log.info("turn.committed", seq=3, duration_ms=812)`。
+- 事件名是固定的英文点分名字，具体数值放字段里，不把变量拼进事件名，这样才能按事件名检索和统计。
+- 一个步骤结束时记的事件带 `duration_ms`（这一步花的毫秒数），vis 据此把步骤画成时间条。
+- 故事文本只能放在 `narrative`、`text`、`content`、`messages`、`prompt`、`completion` 等约定的字段里（完整列表见 `infra/observability/redact.py`），这些字段默认整个丢掉。
+
+**脱敏**（`infra/observability/redact.py`，思路参考 kimi-code 的 `logging/formatter.ts` 与 hermes-agent 的 `redact.py`）：每条日志写出去之前经过三道关：
+
+1. 看字段名：名字像密钥的（`authorization`、`api_key`、`token`、`password`……）整个值换成 `[REDACTED]`；故事文本字段整个丢掉，只有开发环境打开 `LOG_STORY_TEXT` 才保留。
+2. 看内容：任何字符串里像密钥的片段（Bearer 令牌、`sk-…`、`hf_…`、JWT、`api_key=…`）抹掉，邮箱打码。异常信息、第三方库的日志也经过这一关。
+3. 看长度：事件名 300 字、字段值 2000 字、异常堆栈 8000 字，超出截断；列表最多 50 项。
+
+**访问日志与异常**：最外层的中间件（`api/request_context.py`）在每个请求结束时记一条 `http.request`（方法、路径、路由模板、状态码、耗时、客户端版本）；
+事件流这类长连接在连接结束时才记，耗时就是连接时长；健康检查成功时不记。未处理的异常记 `http.error`（带堆栈），返回 500 `INTERNAL_ERROR`。
+
+追踪（M4）用 OpenTelemetry。一个回合是一条 trace：根 span `turn`，子 span 有 `barrier_wait`、`assemble_context`、`provider.stream`（属性：model、ttft\_ms、各类 token 数、缓存命中比例）、`commit`。后台任务通过 `jobs.payload.traceparent` 接上同一条 trace，子 span 是 `state_keeper`、`gate.*`、`compactor`、`outline_reviser`。span 属性里不放文本。
 
 ### 指标
 

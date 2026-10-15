@@ -22,6 +22,8 @@ dependencies = [
   "pyjwt==2.15.1",
   # 角色卡上传（multipart）
   "python-multipart==0.0.32",
+  # 结构化日志（JSON 输出、上下文绑定、脱敏处理器）
+  "structlog==26.1.0",
 ]
 
 [project.scripts]

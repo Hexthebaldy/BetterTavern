@@ -952,7 +952,7 @@ apps/server/
 │   ├── api/                            # HTTP 层：只做解析、鉴权、序列化
 │   │   ├── deps.py                     # 依赖注入：db 会话、当前用户、服务容器
 │   │   ├── errors.py                   # 异常到 problem+json 的映射
-│   │   ├── middleware.py               # request id、日志上下文、限流
+│   │   ├── request_context.py          # 请求单号、访问日志、未处理的异常
 │   │   ├── sse.py                      # SSE 响应封装、Last-Event-ID 续传
 │   │   ├── schemas/                    # 对外契约（pydantic）
 │   │   │   ├── auth.py  credentials.py  routes.py  scenarios.py
@@ -1023,7 +1023,7 @@ apps/server/
 │       ├── eventbus/  base.py  inproc.py  pg_notify.py  redis_streams.py
 │       ├── crypto/  envelope.py  keyring.py
 │       ├── storage/  base.py  local.py  s3.py
-│       └── observability/  logging.py  tracing.py  metrics.py  redact.py
+│       └── observability/  logging.py  redact.py  context.py（M4 再加 tracing.py、metrics.py）
 │
 ├── tests/
 │   ├── unit/            # domain、context、protocol、providers 的 build_body 等纯逻辑

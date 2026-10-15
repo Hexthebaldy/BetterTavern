@@ -15,11 +15,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
+
+import structlog
 
 from bettertavern.domain.memory.thresholds import overflow_retry_budget
 from bettertavern.domain.routing import RouteTask
@@ -61,7 +62,7 @@ from .protocol.repair import NarrativeMissing, finalize_director_output
 from .protocol.structured import StructuredOutputError
 from .routing import ResolvedRoute
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 _STAGE_TO_SOURCE = {
     ParseStage.OK: OptionsSource.MODEL,
@@ -170,6 +171,14 @@ class TurnRunner:
 
     # ---- 入口 ---------------------------------------------------------------------------
     async def run(self, header: TurnHeader, stream: EventStream, cancel: CancelToken) -> None:
+        # 每个回合在自己的 asyncio task 里跑：这里绑定的编号只出现在这个回合的日志里。
+        # 请求单号和用户代号是从提交它的那次请求继承来的
+        structlog.contextvars.bind_contextvars(
+            playthrough_id=header.playthrough_id,
+            turn_id=header.turn_id,
+            seq=header.seq,
+            turn_attempt=header.attempt,
+        )
         renewer = asyncio.create_task(self._renew_lease(header, cancel))
         try:
             await self._publish(
@@ -225,7 +234,7 @@ class TurnRunner:
                 )
             raise
         except Exception:
-            log.exception("回合 %s 执行失败", header.turn_id)
+            log.exception("turn.crashed")
             await self._fail(
                 header,
                 stream,
@@ -245,7 +254,7 @@ class TurnRunner:
         try:
             await self._store.fail_turn(header, failure)
         except Exception:
-            log.exception("回合 %s 标记失败时出错", header.turn_id)
+            log.exception("turn.fail_mark_failed", code=failure.code)
         await self._publish(stream, "turn.failed", failure.to_json())
 
     async def _renew_lease(self, header: TurnHeader, cancel: CancelToken) -> None:
@@ -254,7 +263,7 @@ class TurnRunner:
             try:
                 ok = await self._store.renew_lease(header, self.config.lease_ttl_s)
             except Exception:
-                log.warning("回合 %s 续租失败，稍后重试", header.turn_id, exc_info=True)
+                log.warning("turn.lease_renew_failed", exc_info=True)
                 continue
             if not ok:
                 cancel.cancel("lease_lost")

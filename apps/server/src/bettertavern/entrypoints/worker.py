@@ -7,10 +7,11 @@ M0 只有队列原型和一个 noop 处理器（冒烟用）；state / summary /
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 import signal
 import socket
+
+import structlog
 
 from bettertavern.infra.db.engine import create_engine
 from bettertavern.infra.queue.base import Job
@@ -19,11 +20,11 @@ from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.infra.queue.worker import Handler, JobWorker
 from bettertavern.settings import Settings
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 async def noop(job: Job) -> None:
-    log.info("noop 任务 %s：%s", job.id, dict(job.payload))
+    log.info("job.noop", payload_keys=sorted(job.payload))
 
 
 def handlers() -> dict[str, Handler]:
@@ -50,10 +51,10 @@ async def run_worker(settings: Settings) -> None:
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop.set)
-    log.info("worker %s 已启动，处理：%s", worker_id, ", ".join(registered))
+    log.info("worker.started", worker_id=worker_id, kinds=list(registered))
     try:
         await worker.run(stop)
     finally:
         await listener.stop()
         await engine.dispose()
-        log.info("worker %s 已退出", worker_id)
+        log.info("worker.stopped", worker_id=worker_id)

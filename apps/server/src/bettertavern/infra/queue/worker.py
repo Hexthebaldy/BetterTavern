@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 import random
+import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
+
+import structlog
 
 from .base import Job, JobQueue
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 Handler = Callable[[Job], Awaitable[None]]
 
@@ -78,7 +80,7 @@ class JobWorker:
                     claim_errors = 0
                 except Exception:
                     claim_errors += 1
-                    log.exception("领取任务失败（第 %d 次），稍后重试", claim_errors)
+                    log.exception("job.claim_failed", consecutive=claim_errors)
                     await self._sleep_or_stop(stop, min(self._poll_interval * claim_errors, 60.0))
                     continue
                 if claimed:
@@ -138,7 +140,7 @@ class JobWorker:
         tasks = list(self._tasks)
         if not tasks:
             return
-        log.info("等待 %d 个进行中的任务，最多 %g 秒", len(tasks), self._shutdown_grace)
+        log.info("worker.draining", in_flight=len(tasks), grace_s=self._shutdown_grace)
         _, pending = await asyncio.wait(tasks, timeout=self._shutdown_grace)
         for task in pending:
             task.cancel()
@@ -146,32 +148,61 @@ class JobWorker:
             await asyncio.wait(pending)
 
     async def _execute(self, job: Job) -> None:
+        # 这个任务里打的日志都带上任务编号（任务在自己的 asyncio task 里跑，绑定不会串到别的任务）
+        with structlog.contextvars.bound_contextvars(
+            job_id=job.id, job_kind=job.kind, ordering_key=job.ordering_key
+        ):
+            await self._execute_bound(job)
+
+    async def _execute_bound(self, job: Job) -> None:
         handler = self._handlers.get(job.kind)
         if handler is None:
             # 只领取有处理器的 kind，正常不会走到这里；万一走到，还回去让别的 worker 处理
             await self._queue.release(job, self._worker_id, f"没有处理器：{job.kind}")
             return
         heartbeat = asyncio.create_task(self._heartbeat(job))
+        started = time.perf_counter()
+        log.info("job.started", attempt=job.attempts, max_attempts=job.max_attempts)
+
+        def elapsed() -> int:
+            return round((time.perf_counter() - started) * 1000)
+
         try:
             await handler(job)
         except asyncio.CancelledError:
             # 停机时被取消：还回队列，不消耗重试次数
+            log.info("job.released", reason="shutdown", duration_ms=elapsed())
             with contextlib.suppress(Exception):
                 await asyncio.shield(self._queue.release(job, self._worker_id, "worker 停止"))
             raise
         except PermanentJobError as exc:
+            log.warning(
+                "job.failed",
+                duration_ms=elapsed(),
+                error_class=type(exc).__name__,
+                will_retry=False,
+            )
             await self._queue.fail(
                 job, self._worker_id, f"{type(exc).__name__}: {exc}", retry_delay=None
             )
         except Exception as exc:
-            log.exception("任务 %s（%s）失败", job.id, job.kind)
             delay = None if job.exhausted else self._backoff(job.attempts)
+            log.exception(
+                "job.failed",
+                duration_ms=elapsed(),
+                error_class=type(exc).__name__,
+                will_retry=delay is not None,
+                retry_in_s=delay,
+            )
             await self._queue.fail(
                 job, self._worker_id, f"{type(exc).__name__}: {exc}", retry_delay=delay
             )
         else:
-            if not await self._queue.complete(job, self._worker_id):
-                log.warning("任务 %s 完成时已不归本 worker（锁超时被回收）", job.id)
+            if await self._queue.complete(job, self._worker_id):
+                log.info("job.done", duration_ms=elapsed())
+            else:
+                # 完成时已不归本 worker（锁超时被回收）
+                log.warning("job.lock_lost", duration_ms=elapsed())
         finally:
             heartbeat.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -184,15 +215,15 @@ class JobWorker:
                 if not await self._queue.touch(job, self._worker_id):
                     return
             except Exception:
-                log.exception("任务 %s 续锁失败", job.id)
+                log.exception("job.renew_failed")
 
     async def _reap_loop(self, stop: asyncio.Event) -> None:
         while not stop.is_set():
             try:
                 reaped = await self._queue.reap()
                 if reaped:
-                    log.warning("回收了 %d 个锁超时的任务：%s", len(reaped), reaped)
+                    log.warning("job.reaped", count=len(reaped), job_ids=list(reaped))
                     self._wakeup.set()
             except Exception:
-                log.exception("回收超时任务失败")
+                log.exception("job.reap_failed")
             await self._sleep_or_stop(stop, self._reap_interval)

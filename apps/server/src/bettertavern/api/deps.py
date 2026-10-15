@@ -7,6 +7,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header, Request
 
+from bettertavern.infra.observability.context import bind_user
 from bettertavern.services.container import Services
 from bettertavern.services.errors import RateLimited, Unauthenticated
 
@@ -32,7 +33,8 @@ ServicesDep = Annotated[Services, Depends(get_services)]
 LimitersDep = Annotated[Limiters, Depends(get_limiters)]
 
 
-def current_user(
+# async：同步的依赖会放到线程池里跑，那里绑定的日志上下文（用户代号）带不回请求本身
+async def current_user(
     services: ServicesDep,
     authorization: Annotated[str | None, Header()] = None,
 ) -> str:
@@ -41,7 +43,9 @@ def current_user(
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token.strip():
         raise Unauthenticated("Authorization 头格式不对")
-    return services.auth.authenticate(token.strip())
+    user_id = services.auth.authenticate(token.strip())
+    bind_user(user_id)
+    return user_id
 
 
 UserId = Annotated[str, Depends(current_user)]

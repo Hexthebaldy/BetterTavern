@@ -1,18 +1,20 @@
-"""错误响应统一用 RFC 9457 的 application/problem+json。"""
+"""错误响应统一用 RFC 9457 的 application/problem+json。每个错误响应都带 request_id（请求单号），
+方便对照日志。"""
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
+from bettertavern.infra.observability.context import current_request_id
 from bettertavern.services.errors import AppError
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 def problem(
@@ -30,6 +32,9 @@ def problem(
         "code": code,
     }
     body.update(extra)
+    request_id = current_request_id()
+    if request_id is not None:
+        body["request_id"] = request_id
     return JSONResponse(
         body, status_code=status, media_type="application/problem+json", headers=headers
     )
@@ -72,7 +77,9 @@ def install_error_handlers(app: FastAPI) -> None:
         title = exc.detail if isinstance(exc.detail, str) else code
         return problem(exc.status_code, code, title, retryable=False)
 
+    # 正常情况下未处理的异常由最外层的 RequestContext 接住；
+    # 这里是没有装它时（例如单独测某个中间件）的兜底
     @app.exception_handler(Exception)
     async def unexpected(request: Request, exc: Exception) -> JSONResponse:
-        log.exception("未处理的异常：%s %s", request.method, request.url.path)
+        log.error("http.error", method=request.method, path=request.url.path, exc_info=exc)
         return problem(500, "INTERNAL_ERROR", "服务端出错了", retryable=True)

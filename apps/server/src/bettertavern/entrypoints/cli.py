@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import logging
 import os
 import sys
 from pathlib import Path
@@ -12,32 +11,33 @@ from pathlib import Path
 SERVER_ROOT = Path(__file__).resolve().parents[3]
 
 
-def _configure_logging(level: str) -> None:
-    logging.basicConfig(
-        level=level.upper(),
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
-
-
 def _serve(args: argparse.Namespace) -> None:
     import uvicorn
 
+    from bettertavern.entrypoints.logging_setup import setup_logging
     from bettertavern.settings import Settings
 
     settings = Settings()
     host = args.host or settings.host
     port = args.port or settings.port
+    # 日志全部由我们自己配（log_config=None），访问日志由 api 的中间件记（access_log=False）
     if args.reload:
-        # 开发时自动重启：uvicorn 需要导入路径，不做优雅退出
+        # 开发时自动重启：uvicorn 需要导入路径，不做优雅退出。
+        # 这个进程只负责监视文件，日志只打到终端；重启出来的进程在 create_dev_app 里配日志并写文件
+        setup_logging(settings, "api", to_file=False)
         uvicorn.run(
-            "bettertavern.entrypoints.api:create_app",
+            "bettertavern.entrypoints.api:create_dev_app",
             factory=True,
             host=host,
             port=port,
             reload=True,
             log_level=settings.log_level.lower(),
+            log_config=None,
+            access_log=False,
         )
         return
+
+    setup_logging(settings, "api")
 
     from bettertavern.api.lifecycle import Shutdown
     from bettertavern.entrypoints.api import create_app
@@ -49,17 +49,20 @@ def _serve(args: argparse.Namespace) -> None:
         host=host,
         port=port,
         log_level=settings.log_level.lower(),
+        log_config=None,
+        access_log=False,
         timeout_graceful_shutdown=int(settings.shutdown_grace_s),
     )
     GracefulServer(config, shutdown).run()
 
 
 def _worker(args: argparse.Namespace) -> None:
+    from bettertavern.entrypoints.logging_setup import setup_logging
     from bettertavern.entrypoints.worker import run_worker
     from bettertavern.settings import Settings
 
     settings = Settings()
-    _configure_logging(settings.log_level)
+    setup_logging(settings, "worker")
     asyncio.run(run_worker(settings))
 
 

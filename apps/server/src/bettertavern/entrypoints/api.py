@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 import os
 import socket
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -21,6 +21,7 @@ from bettertavern.api.errors import install_error_handlers
 from bettertavern.api.lifecycle import Shutdown
 from bettertavern.api.probe_app import create_probe_app
 from bettertavern.api.ratelimit import RateLimiter
+from bettertavern.api.request_context import RequestContext
 from bettertavern.api.v1.auth import router as auth_router
 from bettertavern.api.v1.credentials import router as credentials_router
 from bettertavern.api.v1.health import router as health_router
@@ -37,7 +38,9 @@ from bettertavern.services.container import Services, build_services
 from bettertavern.services.probe_service import ProbeService
 from bettertavern.settings import Settings
 
-log = logging.getLogger(__name__)
+from .logging_setup import setup_logging
+
+log = structlog.get_logger(__name__)
 
 
 async def _every(interval: float, job: Callable[[], Awaitable[object]], name: str) -> None:
@@ -46,7 +49,7 @@ async def _every(interval: float, job: Callable[[], Awaitable[object]], name: st
         try:
             await job()
         except Exception:
-            log.warning("定时任务 %s 失败", name, exc_info=True)
+            log.warning("scheduler.task_failed", task=name, exc_info=True)
 
 
 def instance_id() -> str:
@@ -67,9 +70,8 @@ def build_app_services(
         data_dir=settings.data_dir,
     )
     if secrets.generated_dev_file is not None:
-        log.warning(
-            "开发环境：使用自动生成的密钥 %s（生产环境必须配置）", secrets.generated_dev_file
-        )
+        # 开发环境用自动生成的密钥；生产环境必须配置
+        log.warning("secrets.dev_generated", file=str(secrets.generated_dev_file))
     policy = EndpointPolicy(allow_private=settings.allow_private_endpoints)
     hub = hub or ProviderHub(
         policy=policy,
@@ -116,12 +118,14 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         shutdown.bind(asyncio.get_running_loop())
         background = [
-            asyncio.create_task(_every(60.0, _sweep(buffers), "清理事件缓冲")),
-            asyncio.create_task(_every(15.0, services.maintenance.tick, "清理租约")),
+            asyncio.create_task(_every(60.0, _sweep(buffers), "sweep_event_buffers")),
+            asyncio.create_task(_every(15.0, services.maintenance.tick, "sweep_leases")),
         ]
+        log.info("app.started", version=__version__, env=settings.env, instance=instance_id())
         try:
             yield
         finally:
+            log.info("app.stopping", grace_s=settings.shutdown_grace_s)
             shutdown.trigger()
             for task in background:
                 task.cancel()
@@ -159,8 +163,10 @@ def create_app(
             allow_origins=settings.cors_origin_list,
             allow_methods=["*"],
             allow_headers=["*"],
-            expose_headers=["Retry-After"],
+            expose_headers=["Retry-After", "X-Request-ID"],
         )
+    # 最后加的在最外层：请求单号、访问日志、未处理的异常要包住其他所有中间件
+    app.add_middleware(RequestContext)
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(credentials_router)
@@ -175,6 +181,13 @@ def _sweep(buffers: EventBufferRegistry) -> Callable[[], Awaitable[None]]:
     async def run() -> None:
         removed = buffers.sweep()
         if removed:
-            log.debug("清理了 %d 个过期的事件流", removed)
+            log.debug("events.swept", removed=removed)
 
     return run
+
+
+def create_dev_app() -> FastAPI:
+    """开发时自动重启用的工厂：重启出来的进程里没有经过命令行，日志要在这里配"""
+    settings = Settings()
+    setup_logging(settings, "api")
+    return create_app(settings)

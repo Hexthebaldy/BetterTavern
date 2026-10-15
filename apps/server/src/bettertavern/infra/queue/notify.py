@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 class PgNotifyListener:
@@ -37,7 +37,8 @@ class PgNotifyListener:
         try:
             await self._connect()
         except Exception:
-            log.warning("LISTEN %s 建立失败，先靠轮询，稍后重试", self._channel, exc_info=True)
+            # 先靠轮询，稍后重试
+            log.warning("queue.listen_failed", channel=self._channel, exc_info=True)
         self._supervisor = asyncio.create_task(self._supervise())
 
     async def stop(self) -> None:
@@ -89,6 +90,6 @@ class PgNotifyListener:
             await self._disconnect()
             try:
                 await self._connect()
-                log.info("LISTEN %s 已重新建立", self._channel)
+                log.info("queue.listen_restored", channel=self._channel)
             except Exception:
-                log.warning("LISTEN %s 重连失败，稍后再试", self._channel, exc_info=True)
+                log.warning("queue.listen_retry_failed", channel=self._channel, exc_info=True)

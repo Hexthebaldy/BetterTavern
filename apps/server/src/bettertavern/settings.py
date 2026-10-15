@@ -16,7 +16,12 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "INFO"
-    # 日志默认不含故事文本
+    # 终端里的日志格式：auto 在终端里是带颜色的单行、否则是 JSON；也可以固定成 console 或 json
+    log_format: Literal["auto", "console", "json"] = "auto"
+    # 是否把日志另写一份 JSON 到 data_dir/logs/<进程>.log（vis 读的就是它）。
+    # 不设置时：开发环境写，生产环境不写
+    log_to_file: bool | None = None
+    # 日志默认不含故事文本；打开后只在开发环境生效
     log_story_text: bool = False
 
     database_url: str = "postgresql+asyncpg://bettertavern:bettertavern@localhost:5432/bettertavern"
@@ -68,6 +73,12 @@ class Settings(BaseSettings):
     @property
     def is_prod(self) -> bool:
         return self.env == "prod"
+
+    @property
+    def log_file_enabled(self) -> bool:
+        if self.log_to_file is None:
+            return not self.is_prod
+        return self.log_to_file
 
     @property
     def probe_endpoints_enabled(self) -> bool:
