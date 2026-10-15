@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>平板 · 剧本库与剧本详情</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF;--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10)}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;height:28px;padding:0 12px;border-radius:14px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12px;color:#6E6D68}
+.fr{position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;border-radius:36px;box-shadow:0 0 0 1px #EEEEEA}
+.fr *{box-sizing:border-box}
+.tl{width:1194px;height:834px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.serif{font-family:"Noto Serif SC","Songti SC",serif}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.big{font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 22px;border:0;border-radius:26px;font-family:inherit;font-size:16px;font-weight:500;text-decoration:none}
+.bp{background:var(--pri);color:var(--onPri)}
+.rail{position:absolute;z-index:5;left:16px;top:32px;width:76px;padding:8px;border-radius:38px;background:var(--card);box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;gap:6px}
+.rt{width:60px;height:64px;border-radius:30px;color:var(--mut);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11.5px;line-height:14px;text-decoration:none}
+.rton{background:var(--ink);color:var(--bg);font-weight:500}
+.tile{display:flex;flex-direction:column;padding:8px;border-radius:26px;background:var(--bg2);color:inherit;text-decoration:none;min-width:0}
+.meta{padding:10px 8px 8px;display:flex;flex-direction:column;gap:3px}
+.nm{font-size:16px;line-height:22px;font-weight:700}
+.sm{font-size:12.5px;line-height:18px;color:var(--mut);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:36px}
+.cv{display:block;width:100%;height:auto}
+.cv path,.cv circle.o{fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cv .bgr{fill:var(--card)}
+.cv .dot{fill:var(--acc)}
+.cv .soft{stroke:var(--line2)}
+.seg{display:flex;gap:2px;padding:3px;border-radius:22px;background:var(--bg2)}
+.seg button{width:38px;height:38px;border:0;border-radius:19px;background:transparent;color:var(--mut);display:flex;align-items:center;justify-content:center}
+.seg .on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(20,20,20,.12)}
+.ib{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;border:0;background:var(--card);color:var(--ink);text-decoration:none;box-shadow:0 2px 8px rgba(20,20,20,.08)}
+.pill{height:30px;padding:0 12px;border-radius:15px;display:flex;align-items:center;font-size:13px;background:var(--bg2)}
+.step{padding:20px 18px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;gap:14px}
+.sh{display:flex;align-items:center;gap:10px;font-size:17px;line-height:24px;font-weight:700;margin:0}
+.sn{width:28px;height:28px;border-radius:14px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;flex:none}
+.opt{font-size:12.5px;font-weight:400;color:var(--mut)}
+.inp{display:block;width:100%;height:52px;border-radius:16px;background:var(--card);border:0;padding:0 16px;font-family:inherit;font-size:16px;color:var(--ink);outline:none}
+.chip{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border:0;border-radius:20px;background:var(--card);font-family:inherit;font-size:14px;color:var(--ink)}
+.on{background:var(--ink);color:#FFFFFF}
+.tt{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:14px;border:0;border-radius:20px;background:var(--card);font-family:inherit;font-size:14px;color:var(--ink);text-align:left;min-height:96px}
+.ton{background:var(--accBg);box-shadow:inset 0 0 0 2px var(--acc)}
+.ticon{width:36px;height:36px;border-radius:18px;background:var(--bg2);display:flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div class="bd0 L" style="width: 2428px; height: 874px">
+
+  <div class="cell">
+    <div class="tag">T11 · 宽 · 剧本网格 4 列 · 导入中 · 提示浮条</div>
+    <section class="fr tl" aria-label="平板剧本库">
+      <nav class="rail" aria-label="主导航">
+        <svg width="40" height="40" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true" style="margin: 6px 0 10px"><g fill="none" stroke="#1A1A1A" stroke-linejoin="miter" stroke-miterlimit="4"><path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" stroke-width="3.24"/><path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" stroke-width="3.24"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" stroke-width="3.51"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" fill="#2F55F4"/></svg>
+        <a class="rt" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="rt rton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="rt" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+      <header style="position: absolute; top: 40px; left: 124px; right: 40px; display: flex; align-items: center; justify-content: space-between">
+        <h1 class="big">剧本</h1>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <div class="seg" role="radiogroup" aria-label="视图">
+            <button class="on" type="button" role="radio" aria-checked="true" aria-label="网格"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></button>
+            <button type="button" role="radio" aria-checked="false" aria-label="列表"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+          </div>
+          <button type="button" aria-label="正在导入" aria-disabled="true" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px 0 14px; border: 0; border-radius: 22px; background: var(--bg3); color: var(--mut); font-family: inherit; font-size: 15px; font-weight: 500"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>导入角色卡</button>
+        </div>
+      </header>
+      <div style="position: absolute; top: 104px; left: 124px; right: 40px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path d="M8 46q10-6 20 0t20 0 20 0 20 0M8 58q10-6 20 0t20 0 20 0 20 0"/><circle class="dot" cx="68" cy="22" r="7"/></svg><div class="meta"><div class="nm">沈知微</div><div class="sm">江南渡口茶馆的掌柜，话很少，像是在等一个不会回来的人。</div></div></a>
+        <a class="tile" href="#"><div style="aspect-ratio: 96 / 76; border-radius: 18px; background: var(--bg3); display: flex; align-items: center; justify-content: center; color: var(--mut)" aria-label="角色卡图片"><svg class="i" style="width: 32px; height: 32px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="4"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5-5 4 4 3-3 5 5"/></svg></div><div class="meta"><div class="nm">维克多·霍兰</div><div class="sm">雾都钟楼下的钟表匠，替人修表，也替人保管不能寄出的信。</div></div></a>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path class="soft" d="M18 28h60M18 48h60M38 10v56M58 10v56"/><path d="M18 66A50 50 0 0168 14"/><circle class="dot" cx="58" cy="28" r="6"/></svg><div class="meta"><div class="nm">阿澄</div><div class="sm">第七号极地观测站的值守系统，已经独自运行了四百天。</div></div></a>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path class="soft" d="M12 22h72M12 32h40"/><path d="M12 60h72M24 60a24 24 0 0148 0"/><circle class="dot" cx="70" cy="27" r="6"/></svg><div class="meta"><div class="nm">白鹭镇</div><div class="sm">“雾起的时候，别过石桥。”</div></div></a>
+        <a class="tile" href="#"><svg class="cv" viewBox="0 0 96 76" aria-hidden="true"><rect class="bgr" width="96" height="76" rx="18"/><path d="M16 62l12-24 12 24zM38 62l14-32 14 32zM62 62l9-16 9 16z"/><circle class="dot" cx="52" cy="52" r="4.5"/></svg><div class="meta"><div class="nm">林间旅店</div><div class="sm">作者：松风</div></div></a>
+        <div class="tile" role="status" aria-label="正在导入 雪夜信使.png">
+          <div style="aspect-ratio: 96 / 76; border-radius: 18px; background: var(--card); display: flex; align-items: center; justify-content: center">
+            <svg width="64" height="64" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="22" style="fill: none; stroke: var(--bg3); stroke-width: 5"/><path d="M28 6a22 22 0 0119.8 31.6" style="fill: none; stroke: var(--acc); stroke-width: 5; stroke-linecap: round"/></svg>
+          </div>
+          <div class="meta"><div class="nm">正在导入</div><div class="sm mono" style="font-size: 12px">雪夜信使.png · 2.4 MB</div></div>
+        </div>
+      </div>
+      <div role="status" style="position: absolute; z-index: 6; left: 399px; width: 480px; bottom: 32px; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 6px 0 18px; border-radius: 26px; background: var(--ink); color: #FFFFFF; font-size: 14px; box-shadow: var(--sh)">
+        <svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <span style="flex: 1">“沈知微”之前已经导入过了</span>
+        <span style="height: 40px; padding: 0 14px; border-radius: 20px; background: rgba(255,255,255,.14); display: flex; align-items: center; font-weight: 500">打开</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">T12 · 宽 · 剧本详情 · 左右两栏各自滚动</div>
+    <section class="fr tl" aria-label="平板剧本详情">
+      <div style="position: absolute; top: 0; bottom: 0; left: 24px; width: 420px; overflow: hidden; padding-top: 24px; display: flex; flex-direction: column; gap: 18px">
+        <div style="position: relative; height: 236px; border-radius: 32px; overflow: hidden; background: var(--bg2); flex: none">
+          <svg width="420" height="236" viewBox="0 0 420 236" aria-hidden="true" style="position: absolute; inset: 0"><path d="M-10 150q25-12 50 0t50 0 50 0 50 0 50 0 50 0 50 0 50 0 50 0 50 0M-10 176q25-12 50 0t50 0 50 0 50 0 50 0 50 0 50 0 50 0 50 0 50 0M-10 202q25-12 50 0t50 0 50 0 50 0 50 0 50 0 50 0 50 0 50 0 50 0" style="fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round"/><circle cx="318" cy="84" r="20" style="fill: var(--acc)"/></svg>
+          <div style="position: absolute; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between">
+            <a class="ib" href="#" aria-label="返回剧本"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+            <button class="ib" type="button" aria-label="更多：重命名、删除"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg></button>
+          </div>
+        </div>
+        <div style="padding: 0 8px; display: flex; flex-direction: column; gap: 10px">
+          <span style="font-size: 13px; color: var(--mut)">角色卡 · 作者 江南雨</span>
+          <h1 class="big">沈知微</h1>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap"><span class="pill">古风</span><span class="pill">悬疑</span><span class="pill">慢热</span><span class="pill">江南</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <div style="padding: 14px 16px; border-radius: 20px; background: var(--bg2); display: flex; flex-direction: column"><span class="mono" style="font-size: 22px; line-height: 28px; font-weight: 500">12</span><span style="font-size: 12.5px; color: var(--mut)">世界书条目</span></div>
+          <div style="padding: 14px 16px; border-radius: 20px; background: var(--bg2); display: flex; flex-direction: column"><span class="mono" style="font-size: 22px; line-height: 28px; font-weight: 500">1</span><span style="font-size: 12.5px; color: var(--mut)">开场白</span></div>
+        </div>
+        <div style="padding: 16px; border-radius: 24px; background: var(--bg2); display: flex; flex-direction: column; gap: 10px">
+          <p style="margin: 0; font-size: 14.5px; line-height: 24px; color: var(--ink2)">沈知微是江南一处小渡口的茶馆掌柜，二十七八岁，穿素色布衣，左手指节上有一道旧疤。她话很少，记性却极好，来往的船客她都认得。每到雨夜，她会在窗边多点一盏灯……</p>
+          <span style="font-size: 13.5px; font-weight: 500; color: var(--acc)">展开全文</span>
+          <div style="display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 16px; background: var(--warnBg); color: var(--warn); font-size: 13px; line-height: 20px"><svg class="i" style="width: 16px; height: 16px; margin-top: 2px" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 4.3L2.6 18a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/><path d="M12 10v4M12 17h.01"/></svg>“性格”字段太长，只保留了前 4000 字。</div>
+        </div>
+        <div style="padding: 16px; border-radius: 24px; background: var(--bg2); display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 13px; color: var(--mut)">原卡的开场白</span>
+          <p class="serif" style="margin: 0; font-size: 15px; line-height: 26px; color: var(--ink2)">雨下了一整天。你推门进来时，檐下的铜铃响了两声，柜台后的女人没有抬头……</p>
+        </div>
+      </div>
+
+      <div style="position: absolute; top: 0; bottom: 0; left: 468px; right: 24px; overflow: hidden; padding-top: 32px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 6px 10px"><h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">开始新的故事</h2><span style="font-size: 13px; color: var(--mut)">只有第 1 步必填</span></div>
+        <div class="step">
+          <label class="sh" for="tnm"><span class="sn">1</span>你扮演谁</label>
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center">
+            <div style="position: relative"><input id="tnm" class="inp" value="林川" style="box-shadow: 0 0 0 2px var(--acc); padding-right: 56px"><button type="button" aria-label="随机一个名字" style="position: absolute; right: 6px; top: 6px; width: 40px; height: 40px; border: 0; border-radius: 20px; background: var(--bg2); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button></div>
+            <div style="display: flex; gap: 6px"><button class="chip on" type="button">林川</button><button class="chip" type="button">沈舟</button><button class="chip" type="button">顾长安</button><button class="chip" type="button">阿柏</button></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sh"><span class="sn">2</span>这个角色是谁<span class="opt">可选</span></div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px" role="radiogroup" aria-label="身份">
+            <button class="tt" type="button" role="radio" aria-checked="false"><span class="ticon"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 8v6l-3 6M12 14l3 6M8 11l4-2 4 2"/></svg></span>过路的旅人</button>
+            <button class="tt ton" type="button" role="radio" aria-checked="true"><span class="ticon" style="background: var(--acc); color: #FFF"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/></svg></span>落第书生</button>
+            <button class="tt" type="button" role="radio" aria-checked="false"><span class="ticon"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></span>查案的捕快</button>
+            <button class="tt" type="button" role="radio" aria-checked="false" style="color: var(--mut)"><span class="ticon"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></span>自己写</button>
+          </div>
+          <div style="position: relative">
+            <textarea aria-label="补充描述" rows="2" style="display: block; width: 100%; height: 76px; border: 0; border-radius: 18px; background: var(--card); padding: 14px 16px; font-family: inherit; font-size: 15px; line-height: 24px; color: var(--ink); resize: none; outline: none">落第的书生，带着一封要交给“渡口沈掌柜”的信，不知道寄信人是谁。</textarea>
+            <span class="mono" style="position: absolute; right: 12px; bottom: 10px; font-size: 11px; color: var(--mut)">33/400</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sh"><span class="sn">3</span>每段的长度</div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 26px; background: var(--bg3)" role="radiogroup" aria-label="每段的长度">
+            <button type="button" role="radio" aria-checked="false" style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 12px; border: 0; border-radius: 22px; background: transparent; font-family: inherit; font-size: 14px; color: var(--ink2)"><svg width="36" height="22" viewBox="0 0 36 22" aria-hidden="true"><path d="M2 4h32M2 11h20" style="stroke: currentColor; stroke-width: 2.4; stroke-linecap: round"/></svg>短</button>
+            <button type="button" role="radio" aria-checked="true" style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 12px; border: 0; border-radius: 22px; background: var(--card); font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink); box-shadow: 0 1px 3px rgba(20,20,20,.12)"><svg width="36" height="22" viewBox="0 0 36 22" aria-hidden="true"><path d="M2 4h32M2 11h32M2 18h22" style="stroke: var(--acc); stroke-width: 2.4; stroke-linecap: round"/></svg>适中</button>
+            <button type="button" role="radio" aria-checked="false" style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 12px; border: 0; border-radius: 22px; background: transparent; font-family: inherit; font-size: 14px; color: var(--ink2)"><svg width="36" height="22" viewBox="0 0 36 22" aria-hidden="true"><path d="M2 2h32M2 7h32M2 12h32M2 17h32M2 21h16" style="stroke: currentColor; stroke-width: 2; stroke-linecap: round"/></svg>长</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="position: absolute; z-index: 4; left: 468px; right: 24px; bottom: 20px; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 20px; border-radius: 34px; background: var(--card); box-shadow: var(--sh)">
+        <div style="flex: 1; min-width: 0; display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden">
+          <span class="pill" style="background: var(--accBg); color: var(--acc); font-weight: 500">林川</span><span class="pill">落第书生</span><span class="pill">适中</span><span class="pill">克制 · 白描</span><span class="pill">避开 2 项</span>
+        </div>
+        <button class="btn bp" type="button" style="justify-content: space-between; gap: 18px; padding: 0 8px 0 24px">开始故事<span style="width: 36px; height: 36px; border-radius: 18px; background: rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></button>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2428,"height":874}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

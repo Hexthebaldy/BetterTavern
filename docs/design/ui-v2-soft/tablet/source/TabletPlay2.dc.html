@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>平板 · 阅读页浮层</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--narr:#222222;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF;--fill:#F5F5F2;--scrim:rgba(20,20,20,.38);--sh:0 -2px 6px rgba(20,20,20,.03),0 -10px 32px rgba(20,20,20,.08),0 1px 2px rgba(20,20,20,.04);--pop:0 1px 2px rgba(20,20,20,.05),0 12px 40px rgba(20,20,20,.16);--fade:rgba(255,255,255,0);--frame:#EEEEEA}
+.D{--bg:#111113;--bg2:#1C1C1F;--bg3:#27272B;--ink:#F2F2F0;--ink2:#D3D3CF;--mut:#9C9C97;--line:#2A2A2F;--line2:#3A3A40;--acc:#8597FF;--accBg:#1F2546;--warn:#F0B257;--warnBg:#2C2213;--err:#FF7466;--errBg:#2F1715;--narr:#E2E2DE;--pri:#F2F2F0;--onPri:#111113;--card:#1F1F23;--fill:#27272B;--scrim:rgba(0,0,0,.6);--sh:0 -2px 6px rgba(0,0,0,.3),0 -10px 32px rgba(0,0,0,.5);--pop:0 1px 2px rgba(0,0,0,.4),0 14px 44px rgba(0,0,0,.6);--fade:rgba(17,17,19,0);--frame:#2A2A2F}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;height:28px;padding:0 12px;border-radius:14px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12px;color:#6E6D68}
+.fr{position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;border-radius:36px;box-shadow:0 0 0 1px var(--frame)}
+.fr *{box-sizing:border-box}
+.tl{width:1194px;height:834px}
+.tp{width:834px;height:1194px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.nav{position:absolute;z-index:3;top:0;left:0;right:0;height:88px;padding:32px 0 0 24px;display:flex;align-items:center;background:var(--bg)}
+.nb{width:40px;height:40px;border-radius:20px;border:0;background:var(--bg2);color:var(--ink);display:flex;align-items:center;justify-content:center;text-decoration:none;flex:none}
+.ttl{position:absolute;z-index:3;top:42px;margin:0;font-size:15px;line-height:20px;font-weight:600;text-align:center}
+.fadeT{position:absolute;z-index:2;top:88px;left:0;right:0;height:28px;background:linear-gradient(var(--bg),var(--fade))}
+.feed{position:absolute;top:88px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.narr{font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--narr);margin:0 0 16px;text-align:justify;letter-spacing:.01em}
+.act{display:flex;gap:12px;align-items:flex-start;margin:6px -8px 22px;padding:14px 16px;border-radius:20px;background:var(--bg2);font-size:15px;line-height:24px;font-weight:500}
+.ai{width:26px;height:26px;border-radius:13px;background:var(--accBg);color:var(--acc);display:flex;align-items:center;justify-content:center;flex:none}
+.panel{position:absolute;z-index:4;width:672px;bottom:20px;background:var(--card);border-radius:36px;box-shadow:var(--sh);padding:8px}
+.opt{display:flex;align-items:center;gap:12px;min-height:76px;padding:10px 14px 10px 12px;border-radius:24px;background:var(--fill);font-size:15px;line-height:22px;color:var(--ink);text-decoration:none}
+.key{width:32px;height:32px;border-radius:16px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;flex:none}
+.wr{display:flex;align-items:center;gap:6px;padding-right:6px}
+.write{flex:1;display:flex;align-items:center;gap:12px;min-height:52px;padding:0 12px;border-radius:24px;color:var(--mut);font-size:15px}
+.tool{width:44px;height:44px;border-radius:22px;border:0;background:var(--fill);color:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.mi{display:flex;align-items:center;gap:14px;width:100%;height:52px;padding:0 14px;border:0;border-radius:18px;background:transparent;font-family:inherit;font-size:16px;color:var(--ink);text-align:left}
+.kd{font-size:12px;color:var(--mut)}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;margin:14px 12px 0;border-radius:24px;background:var(--bg2)}
+.sg{display:flex;align-items:center;justify-content:center;gap:5px;height:40px;border:0;border-radius:20px;background:transparent;font-family:inherit;font-size:13.5px;color:var(--ink2)}
+.sgon{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(20,20,20,.12)}
+.n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--mut);font-weight:400}
+.fact{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:22px;background:var(--bg2);font-size:14px;line-height:22px}
+.fd{width:8px;height:8px;border-radius:4px;background:var(--ink);margin-top:7px;flex:none}
+</style>
+</helmet>
+<div class="bd0" style="width: 3302px; height: 1234px">
+
+  <div class="cell">
+    <div class="tag">T08 · 宽 · 深色 · “更多”贴按钮弹出</div>
+    <section class="fr tl D" aria-label="更多菜单弹出">
+      <nav class="nav"><a class="nb" href="#" aria-label="返回"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a></nav>
+      <h1 class="ttl" style="left: 277px; width: 640px">雨夜渡口</h1>
+      <div class="fadeT"></div>
+      <main class="feed" style="left: 277px; width: 640px; bottom: 188px">
+        <p class="narr">我推开茶馆的门，檐下的铜铃响了两声。柜台后的女人没有抬头，只把一只粗瓷杯推到桌沿。她的手指很白，指节上却有一道旧疤，像是被绳索勒过。</p>
+        <div class="act"><span class="ai"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.4" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v7h12M14 8l4 4-4 4"/></svg></span><span>我在她对面坐下，问她这道疤是怎么来的。</span></div>
+        <p class="narr">沈知微终于抬起眼。那是一双很静的眼睛，静得让我想起深夜无人的河面。</p>
+        <p class="narr">“客人问得太多了。”她往我杯里续了茶，水声很轻，“在这个渡口，问得多的人，往往走不了。”</p>
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+      </main>
+      <section class="panel" aria-label="下一步" style="left: 261px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+          <a class="opt" href="#"><span class="key">A</span><span style="flex: 1">起身走到窗边，看清河上是什么船</span></a>
+          <a class="opt" href="#"><span class="key">B</span><span style="flex: 1">按住她续茶的手，追问“走不了”是什么意思</span></a>
+        </div>
+        <div class="wr">
+          <span class="write"><span class="key" style="background: var(--fill)"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></span>自己写…</span>
+          <button class="tool" type="button" aria-label="世界状态"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></button>
+          <button class="tool" type="button" aria-label="更多" aria-expanded="true" style="background: var(--ink); color: var(--bg)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg></button>
+        </div>
+      </section>
+
+      <section role="dialog" aria-label="更多" style="position: absolute; z-index: 6; left: 579px; width: 340px; bottom: 182px; padding: 8px; border-radius: 28px; background: var(--card); box-shadow: var(--pop); display: flex; flex-direction: column; gap: 8px">
+        <div style="padding: 8px 10px 2px; font-size: 13px; color: var(--mut)">阅读设置</div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 24px; background: var(--bg)" role="radiogroup" aria-label="正文字体">
+          <button type="button" role="radio" aria-checked="true" style="height: 48px; border: 0; border-radius: 20px; background: var(--bg3); color: var(--ink); font-family: inherit; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px"><span style="font-family: 'Noto Serif SC', serif; font-size: 20px">宋</span>宋体</button>
+          <button type="button" role="radio" aria-checked="false" style="height: 48px; border: 0; border-radius: 20px; background: transparent; color: var(--mut); font-family: inherit; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px"><span style="font-size: 20px; font-weight: 700">黑</span>黑体</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 6px; border-radius: 24px; background: var(--bg)">
+          <button type="button" aria-label="字号减小" style="width: 44px; height: 44px; border: 0; border-radius: 22px; background: var(--bg3); color: var(--ink); font-family: inherit; font-size: 14px">A</button>
+          <div style="flex: 1; position: relative; height: 6px; border-radius: 3px; background: var(--bg3)" role="slider" aria-label="正文字号" aria-valuenow="17.5">
+            <div style="position: absolute; left: 0; width: 28%; height: 6px; border-radius: 3px; background: var(--acc)"></div>
+            <div style="position: absolute; left: 28%; top: -9px; width: 24px; height: 24px; margin-left: -12px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,.4)"></div>
+          </div>
+          <button type="button" aria-label="字号增大" style="width: 44px; height: 44px; border: 0; border-radius: 22px; background: var(--bg3); color: var(--ink); font-family: inherit; font-size: 22px">A</button>
+        </div>
+        <div class="mono" style="padding: 0 10px; font-size: 12px; color: var(--mut)">17.5 / 31 · 跟随系统字体大小</div>
+        <div style="padding: 4px; border-radius: 24px; background: var(--bg)">
+          <button class="mi" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg>重命名故事</button>
+          <button class="mi" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>世界状态</button>
+          <button class="mi" type="button" style="color: var(--err)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>删除故事</button>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">T09 · 宽 · 自己写 · 键盘弹起</div>
+    <section class="fr tl L" aria-label="自由输入，键盘弹起">
+      <nav class="nav"><a class="nb" href="#" aria-label="返回"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a></nav>
+      <h1 class="ttl" style="left: 277px; width: 640px">雨夜渡口</h1>
+      <div class="fadeT"></div>
+      <main class="feed" style="left: 277px; width: 640px; bottom: 650px">
+        <p class="narr">“客人问得太多了。”她往我杯里续了茶，水声很轻，“在这个渡口，问得多的人，往往走不了。”</p>
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+      </main>
+      <section class="panel" aria-label="我要做的事" style="left: 261px; bottom: 410px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 10px">
+        <div style="position: relative">
+          <textarea aria-label="我要做的事" style="display: block; width: 100%; height: 124px; border: 0; border-radius: 24px; background: var(--fill); padding: 14px 16px; font-family: inherit; font-size: 16px; line-height: 25px; color: var(--ink); resize: none; outline: none; box-shadow: inset 0 0 0 2px var(--acc)">我把怀里那封信取出来，压在茶杯下，推到她面前，看她认不认得信封上的字。</textarea>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px">
+          <button type="button" style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 22px; background: var(--fill); color: var(--ink); font-family: inherit; font-size: 15px"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>收起</button>
+          <span style="flex: 1"></span>
+          <span class="mono" style="font-size: 12px; color: var(--mut)">1965</span>
+          <button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px 0 8px; border: 0; border-radius: 22px; background: var(--pri); color: var(--onPri); font-family: inherit; font-size: 15px; font-weight: 500"><span style="width: 30px; height: 30px; border-radius: 15px; background: rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>发送</button>
+        </div>
+      </section>
+      <div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 398px; background: #D8D8D3; display: flex; align-items: center; justify-content: center; color: #8A8984; font-size: 14px; letter-spacing: .2em">系统键盘</div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">T10 · 中 · 世界状态从右侧滑出 · 揭示前确认</div>
+    <section class="fr tp L" aria-label="世界状态滑出面板">
+      <nav class="nav" style="padding-left: 32px; padding-top: 40px; height: 96px"><a class="nb" href="#" aria-label="返回"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a></nav>
+      <h1 class="ttl" style="top: 50px; left: 97px; width: 640px">雨夜渡口</h1>
+      <main class="feed" style="left: 97px; width: 640px; top: 96px; bottom: 272px">
+        <p class="narr">沈知微终于抬起眼。那是一双很静的眼睛，静得让我想起深夜无人的河面。</p>
+        <p class="narr">“客人问得太多了。”她往我杯里续了茶，水声很轻，“在这个渡口，问得多的人，往往走不了。”</p>
+        <p class="narr" style="margin-bottom: 0">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p>
+      </main>
+      <section class="panel" aria-label="下一步" style="left: 81px; bottom: 24px; display: flex; flex-direction: column; gap: 6px">
+        <a class="opt" href="#" style="min-height: 62px"><span class="key">A</span><span style="flex: 1">起身走到窗边，看清河上是什么船</span></a>
+        <a class="opt" href="#" style="min-height: 62px"><span class="key">B</span><span style="flex: 1">按住她续茶的手，追问“走不了”是什么意思</span></a>
+        <div class="wr">
+          <span class="write"><span class="key" style="background: var(--fill)"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></span>自己写…</span>
+          <button class="tool" type="button" aria-label="世界状态" aria-expanded="true" style="background: var(--ink); color: var(--bg)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></button>
+          <button class="tool" type="button" aria-label="更多"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg></button>
+        </div>
+      </section>
+      <div style="position: absolute; z-index: 5; inset: 0; background: var(--scrim)"></div>
+      <aside role="dialog" aria-label="世界状态" style="position: absolute; z-index: 6; top: 8px; right: 8px; bottom: 8px; width: 400px; border-radius: 32px; background: var(--card); display: flex; flex-direction: column; overflow: hidden">
+        <div style="display: flex; align-items: center; padding: 28px 12px 0 20px">
+          <div style="flex: 1; display: flex; flex-direction: column"><h2 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">世界</h2><span class="kd">导演记下的一切，随故事更新</span></div>
+          <button type="button" aria-label="关闭" style="width: 40px; height: 40px; border: 0; border-radius: 20px; background: var(--bg2); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div class="seg" role="tablist"><button class="sg" type="button" role="tab" aria-selected="false">人物与地点<span class="n">9</span></button><button class="sg" type="button" role="tab" aria-selected="false">关系<span class="n">6</span></button><button class="sg sgon" type="button" role="tab" aria-selected="true">事实<span class="n">14</span></button></div>
+        <div style="padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <div class="fact"><span class="fd"></span><div>最后一班船已经开走，渡口今夜不会再有船。<div class="kd">渡口茶馆</div></div></div>
+          <div class="fact"><span class="fd"></span><div>林川怀里的信，信封上只写着“渡口沈掌柜”。<div class="kd">林川 · 沈知微</div></div></div>
+          <div class="fact"><span class="fd"></span><div>沈知微每到雨夜会在窗边多点一盏灯。<div class="kd">沈知微 · 渡口茶馆</div></div></div>
+          <div class="fact" style="background: var(--warnBg)"><svg class="i" style="width: 16px; height: 16px; color: var(--warn); margin-top: 3px" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 017.5-2"/></svg><div>十年前沉船那夜，掌舵的是沈知微的未婚夫。<div class="kd" style="color: var(--warn)">秘密 · 已揭示</div></div></div>
+          <button type="button" aria-label="2 条未揭示的秘密，揭示" style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px 0 14px; border: 0; border-radius: 24px; background: var(--warnBg); color: var(--warn); font-family: inherit; font-size: 13px; text-align: left; box-shadow: inset 0 0 0 2px var(--warn)"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg><span style="flex: 1">2 条秘密</span><span style="height: 34px; padding: 0 14px; border-radius: 17px; background: var(--card); display: flex; align-items: center; font-weight: 600">揭示</span></button>
+        </div>
+      </aside>
+      <div style="position: absolute; z-index: 7; inset: 0; background: var(--scrim)"></div>
+      <div role="alertdialog" aria-label="揭示秘密" style="position: absolute; z-index: 8; left: 217px; width: 400px; top: 430px; background: var(--card); border-radius: 32px; padding: 28px 18px 18px; display: flex; flex-direction: column; gap: 14px; text-align: center">
+        <span style="align-self: center; width: 56px; height: 56px; border-radius: 28px; background: var(--warnBg); color: var(--warn); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 26px; height: 26px" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></span>
+        <div style="font-size: 20px; line-height: 28px; font-weight: 700">揭示 2 条秘密？</div>
+        <div style="font-size: 14px; line-height: 22px; color: var(--ink2)">这是导演知道、而“我”还不知道的事，看了会剧透接下来的故事。</div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 4px">
+          <button type="button" style="height: 52px; border: 0; border-radius: 26px; background: var(--bg2); font-family: inherit; font-size: 16px; color: var(--ink)">取消</button>
+          <button type="button" style="height: 52px; border: 0; border-radius: 26px; background: var(--ink); font-family: inherit; font-size: 16px; font-weight: 500; color: #FFFFFF">揭示</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":3302,"height":1234}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

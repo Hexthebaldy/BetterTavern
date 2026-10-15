@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>平板 · 设置</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--ok:#13875A;--okBg:#E9F6EF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--pri:#1A1A1A;--onPri:#FFFFFF;--card:#FFFFFF;--scrim:rgba(20,20,20,.38);--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10)}
+.bd0{display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;height:28px;padding:0 12px;border-radius:14px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12px;color:#6E6D68}
+.fr{position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased;border-radius:36px;box-shadow:0 0 0 1px #EEEEEA}
+.fr *{box-sizing:border-box}
+.tl{width:1194px;height:834px}
+.tp{width:834px;height:1194px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.big{font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.rail{position:absolute;z-index:5;left:16px;top:32px;width:76px;padding:8px;border-radius:38px;background:var(--card);box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;gap:6px}
+.rt{width:60px;height:64px;border-radius:30px;color:var(--mut);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11.5px;line-height:14px;text-decoration:none}
+.rton{background:var(--ink);color:var(--bg);font-weight:500}
+.tabs{position:absolute;z-index:5;left:221px;width:392px;bottom:28px;height:64px;padding:0 8px;border-radius:32px;background:var(--card);box-shadow:var(--sh);display:flex;align-items:center;justify-content:space-between}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;width:84px;font-size:11px;line-height:14px;color:var(--mut);text-decoration:none}
+.ton{flex-direction:row;gap:8px;width:auto;height:48px;padding:0 18px 0 14px;border-radius:24px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:500}
+.gl{padding:18px 12px 8px;font-size:13px;color:var(--mut)}
+.grp{border-radius:26px;background:var(--bg2);padding:4px}
+.row{display:flex;align-items:center;gap:14px;min-height:60px;padding:8px 12px;border-radius:22px;color:inherit;text-decoration:none}
+.ric{width:36px;height:36px;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;flex:none}
+.rtt{flex:1;min-width:0;display:flex;flex-direction:column;font-size:15.5px;line-height:22px}
+.rsub{font-size:12.5px;line-height:18px;color:var(--mut)}
+.chev{width:18px;height:18px;color:var(--line2)}
+.sel{background:var(--card);box-shadow:inset 0 0 0 2px var(--acc)}
+.dir{display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:28px;background:var(--bg2);color:inherit;text-decoration:none}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:14px;font-size:12.5px;background:var(--card)}
+.ok{background:var(--okBg);color:var(--ok)}
+.detail{position:absolute;top:16px;bottom:16px;left:488px;right:16px;border-radius:32px;background:var(--bg2);overflow:hidden;padding:24px}
+.card{border-radius:24px;background:var(--card);padding:16px;display:flex;flex-direction:column;gap:12px}
+.ct{font-size:16px;line-height:22px;font-weight:700}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 22px;border:0;border-radius:26px;font-family:inherit;font-size:16px;font-weight:500;text-decoration:none;width:100%}
+.bp{background:var(--pri);color:var(--onPri)}
+.bs{background:var(--bg2);color:var(--ink)}
+.mr{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:18px}
+.tr{display:flex;align-items:flex-start;gap:12px;padding:12px 4px;border-top:1px solid var(--line)}
+.tr:first-of-type{border-top:0}
+.st{width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;border-radius:26px;background:var(--bg2)}
+.sg{height:44px;border:0;border-radius:22px;background:transparent;font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink2)}
+.sgon{background:var(--card);color:var(--ink);font-weight:500;box-shadow:0 1px 3px rgba(20,20,20,.12)}
+.lg{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2)}
+.sw{width:10px;height:10px;border-radius:5px}
+</style>
+</helmet>
+<div class="bd0 L" style="width: 3302px; height: 1234px">
+
+  <div class="cell">
+    <div class="tag">T13 · 宽 · 设置两栏 · 密钥详情</div>
+    <section class="fr tl" aria-label="平板设置与密钥详情">
+      <nav class="rail" aria-label="主导航">
+        <svg width="40" height="40" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true" style="margin: 6px 0 10px"><g fill="none" stroke="#1A1A1A" stroke-linejoin="miter" stroke-miterlimit="4"><path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" stroke-width="3.24"/><path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" stroke-width="3.24"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" stroke-width="3.51"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" fill="#2F55F4"/></svg>
+        <a class="rt" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="rt" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="rt rton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+      <div style="position: absolute; top: 40px; left: 124px; width: 340px">
+        <h1 class="big" style="padding: 0 12px 16px">设置</h1>
+        <a class="dir" href="#">
+          <div style="display: flex; align-items: center; gap: 8px"><span class="rsub" style="flex: 1; font-size: 13px">导演模型</span><span class="pill ok"><svg class="i" style="width: 13px; height: 13px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>可用</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px"><span class="mono" style="font-size: 20px; line-height: 26px; font-weight: 500">deepseek-chat</span><span class="rsub">我的 DeepSeek · 尾号 3f9a</span></div>
+          <div style="display: flex; gap: 6px"><span class="pill mono" style="font-size: 12px">工作窗口 64K</span><span class="pill mono" style="font-size: 12px">上下文 128K</span></div>
+        </a>
+        <div class="gl">配置</div>
+        <div class="grp">
+          <a class="row sel" href="#" aria-current="page"><span class="ric" style="background: var(--accBg); color: var(--acc)"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/></svg></span><span class="rtt">密钥与端点</span><span class="mono" style="height: 26px; min-width: 26px; padding: 0 8px; border-radius: 13px; background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: 12px">2</span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+          <a class="row" href="#"><span class="ric" style="background: var(--accBg); color: var(--acc); font-weight: 700">林</span><span class="rtt">林川<span class="rsub">linchuan@example.com</span></span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="gl">其他</div>
+        <div class="grp">
+          <a class="row" href="#"><span class="ric"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg></span><span class="rtt">外观</span><span style="font-size: 13px; color: var(--mut)">跟随系统</span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+          <a class="row" href="#"><span class="ric"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span><span class="rtt">连接测试<span class="rsub">检查流式输出、断线续传和延迟</span></span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="mono" style="padding: 20px 12px; font-size: 12px; color: var(--mut)">v0.1.0 · 192.168.1.10:8000</div>
+      </div>
+      <div class="detail">
+        <a href="#" style="display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px 0 6px; border-radius: 20px; background: var(--card); color: var(--ink); font-size: 14px; text-decoration: none"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>密钥与端点</a>
+        <div style="display: flex; align-items: center; gap: 10px; margin: 18px 0 14px">
+          <h2 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 700; letter-spacing: -.01em">我的 DeepSeek</h2>
+          <button type="button" aria-label="编辑备注名和端点" style="width: 36px; height: 36px; border: 0; border-radius: 18px; background: var(--card); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 17px; height: 17px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></button>
+          <span style="flex: 1"></span>
+          <span class="pill" style="background: var(--accBg); color: var(--acc)">导演：<span class="mono">deepseek-chat</span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+          <div class="card" style="gap: 2px; padding: 12px 14px"><span class="rsub">服务商</span><span style="font-weight: 600">DeepSeek</span></div>
+          <div class="card" style="gap: 2px; padding: 12px 14px"><span class="rsub">Key</span><span class="mono" style="font-weight: 500">•••• 3f9a</span></div>
+          <div class="card" style="gap: 2px; padding: 12px 14px"><span class="rsub">状态</span><span style="font-weight: 600; color: var(--ok); display: flex; align-items: center; gap: 6px"><svg class="i" style="width: 16px; height: 16px; stroke-width: 2.4" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>可用</span></div>
+          <div class="card" style="gap: 2px; padding: 12px 14px"><span class="rsub">端点</span><span style="font-weight: 600">官方地址</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; align-items: start">
+          <div class="card">
+            <div style="display: flex; align-items: baseline; justify-content: space-between"><span class="ct">选择模型</span><span class="rsub">12 个可用</span></div>
+            <div style="display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px; border-radius: 16px; background: var(--bg2); color: var(--mut); font-size: 14.5px"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>搜索或输入模型名</div>
+            <div role="radiogroup" aria-label="模型" style="display: flex; flex-direction: column; gap: 4px">
+              <div class="mr" role="radio" aria-checked="true" style="background: var(--accBg); box-shadow: inset 0 0 0 2px var(--acc)"><span style="width: 20px; height: 20px; border-radius: 10px; box-shadow: inset 0 0 0 6px var(--acc)"></span><span class="mono" style="flex: 1; font-size: 14px">deepseek-chat</span><span class="mono rsub">128K</span></div>
+              <div class="mr" role="radio" aria-checked="false"><span style="width: 20px; height: 20px; border-radius: 10px; box-shadow: inset 0 0 0 1.75px var(--line2)"></span><span class="mono" style="flex: 1; font-size: 14px">deepseek-reasoner</span><span class="mono rsub">128K</span></div>
+              <div class="mr" role="radio" aria-checked="false"><span style="width: 20px; height: 20px; border-radius: 10px; box-shadow: inset 0 0 0 1.75px var(--line2)"></span><span class="mono" style="flex: 1; font-size: 14px">deepseek-coder</span><span class="mono rsub">64K</span></div>
+            </div>
+            <span class="rsub" style="padding-left: 4px">显示 3 / 12，最多 40 个</span>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <button class="btn bs" type="button" style="font-size: 15px"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>测试这个模型<span class="rsub" style="font-weight: 400">约 30 秒</span></button>
+              <button class="btn bp" type="button" style="font-size: 15px">设为导演模型</button>
+            </div>
+          </div>
+          <div class="card">
+            <div style="display: flex; align-items: baseline; justify-content: space-between"><span class="ct">测试结果</span><span class="rsub">3 通过 · 1 失败 · 1 跳过</span></div>
+            <div style="display: flex; flex-direction: column">
+              <div class="tr"><span class="st ok"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span style="flex: 1">流式输出</span><span class="mono rsub">412 ms</span></div>
+              <div class="tr"><span class="st ok"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span style="flex: 1">流式用量统计</span><span class="mono rsub">398 ms</span></div>
+              <div class="tr"><span class="st ok"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span style="flex: 1; display: flex; flex-direction: column">结构化输出<span class="rsub">JSON 可用 · JSON Schema 可用</span></span><span class="mono rsub">1,240 ms</span></div>
+              <div class="tr"><span class="st" style="background: var(--errBg); color: var(--err)"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></span><span style="flex: 1; display: flex; flex-direction: column">工具调用<span class="rsub" style="color: var(--err)">返回了普通文本，没有调用工具</span></span><span class="mono rsub">1,820 ms</span></div>
+              <div class="tr"><span class="st" style="background: var(--bg2); color: var(--mut)"><svg class="i" style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></span><span style="flex: 1; display: flex; flex-direction: column">关闭思考<span class="rsub">这个模型没有思考模式</span></span><span class="rsub">跳过</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">T14 · 宽 · 设置两栏 · 导演模型</div>
+    <section class="fr tl" aria-label="平板设置与导演模型">
+      <nav class="rail" aria-label="主导航">
+        <svg width="40" height="40" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true" style="margin: 6px 0 10px"><g fill="none" stroke="#1A1A1A" stroke-linejoin="miter" stroke-miterlimit="4"><path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" stroke-width="3.24"/><path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" stroke-width="3.24"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" stroke-width="3.51"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" fill="#2F55F4"/></svg>
+        <a class="rt" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="rt" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="rt rton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+      <div style="position: absolute; top: 40px; left: 124px; width: 340px">
+        <h1 class="big" style="padding: 0 12px 16px">设置</h1>
+        <a class="dir" href="#" style="box-shadow: inset 0 0 0 2px var(--acc); background: var(--card)">
+          <div style="display: flex; align-items: center; gap: 8px"><span class="rsub" style="flex: 1; font-size: 13px">导演模型</span><span class="pill ok"><svg class="i" style="width: 13px; height: 13px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>可用</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px"><span class="mono" style="font-size: 20px; line-height: 26px; font-weight: 500">deepseek-chat</span><span class="rsub">我的 DeepSeek · 尾号 3f9a</span></div>
+          <div style="display: flex; gap: 6px"><span class="pill mono" style="font-size: 12px; background: var(--bg2)">工作窗口 64K</span><span class="pill mono" style="font-size: 12px; background: var(--bg2)">上下文 128K</span></div>
+        </a>
+        <div class="gl">配置</div>
+        <div class="grp">
+          <a class="row" href="#"><span class="ric"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/></svg></span><span class="rtt">密钥与端点</span><span class="mono" style="height: 26px; min-width: 26px; padding: 0 8px; border-radius: 13px; background: var(--card); display: flex; align-items: center; justify-content: center; font-size: 12px">2</span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+          <a class="row" href="#"><span class="ric" style="background: var(--accBg); color: var(--acc); font-weight: 700">林</span><span class="rtt">林川<span class="rsub">linchuan@example.com</span></span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="gl">其他</div>
+        <div class="grp">
+          <a class="row" href="#"><span class="ric"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg></span><span class="rtt">外观</span><span style="font-size: 13px; color: var(--mut)">跟随系统</span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+          <a class="row" href="#"><span class="ric"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span><span class="rtt">连接测试<span class="rsub">检查流式输出、断线续传和延迟</span></span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="mono" style="padding: 20px 12px; font-size: 12px; color: var(--mut)">v0.1.0 · 192.168.1.10:8000</div>
+      </div>
+      <div class="detail" style="display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; align-items: flex-end; gap: 16px">
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+            <span class="rsub" style="font-size: 13px">导演模型</span>
+            <h2 class="mono" style="margin: 0; font-size: 30px; line-height: 36px; font-weight: 500; letter-spacing: -.02em">deepseek-chat</h2>
+          </div>
+          <a href="#" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 4px; border-radius: 18px; background: var(--card); font-size: 13.5px; color: var(--ink2); text-decoration: none"><span class="mono" style="width: 28px; height: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--bg); font-size: 10px">DS</span>我的 DeepSeek · <span class="mono">3f9a</span></a>
+        </div>
+        <div class="card" style="padding: 20px; gap: 14px">
+          <div style="display: flex; align-items: baseline; justify-content: space-between"><span class="ct">能记住多少</span><span class="mono rsub">上下文 128K</span></div>
+          <div style="display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 5px; padding: 14px; border-radius: 20px; background: var(--bg2)" role="img" aria-label="上下文 128K，工作窗口 64K：故事 56K，每轮输出 8K，不使用 64K">
+            <span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink); box-shadow: 0 0 0 2.5px var(--bg2), 0 0 0 4.5px var(--warn)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--ink)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--acc)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--acc)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span><span style="aspect-ratio: 1; border-radius: 999px; background: var(--bg3)"></span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px 18px">
+            <span class="lg"><span class="sw" style="background: var(--ink)"></span>故事 56K</span>
+            <span class="lg"><span class="sw" style="background: var(--acc)"></span>每轮输出 8K</span>
+            <span class="lg"><span class="sw" style="background: var(--bg3)"></span>不使用 64K</span>
+            <span class="lg"><span class="sw" style="box-shadow: inset 0 0 0 2.5px var(--warn)"></span>开始压缩</span>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start">
+          <div class="card" style="padding: 20px">
+            <span class="ct">工作窗口上限</span>
+            <div class="seg" role="radiogroup" aria-label="工作窗口上限"><button class="sg" type="button" role="radio" aria-checked="false">32K</button><button class="sg sgon" type="button" role="radio" aria-checked="true">64K</button><button class="sg" type="button" role="radio" aria-checked="false">128K</button><button class="sg" type="button" role="radio" aria-checked="false">256K</button></div>
+            <span class="rsub" style="font-size: 13px; line-height: 20px">窗口越大，导演记得越多，但每轮更慢、更贵。用到 80% 时，早期剧情会被压缩成摘要。</span>
+          </div>
+          <div class="card" style="padding: 20px">
+            <span class="ct">写法</span>
+            <button type="button" role="switch" aria-checked="true" style="display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 14px; border: 0; border-radius: 20px; background: var(--bg2); font-family: inherit; color: var(--ink); text-align: left">
+              <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 15.5px; font-weight: 500">深度思考</span><span class="rsub">模型支持时先思考再写，更慢</span></span>
+              <span style="position: relative; width: 52px; height: 32px; border-radius: 16px; background: var(--acc); flex: none"><span style="position: absolute; top: 2px; left: 22px; width: 28px; height: 28px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,.2)"></span></span>
+            </button>
+          </div>
+        </div>
+        <div style="flex: 1"></div>
+        <div style="display: flex; align-items: center; gap: 8px">
+          <button type="button" style="height: 48px; padding: 0 18px; border: 0; border-radius: 24px; background: transparent; color: var(--err); font-family: inherit; font-size: 15px">取消导演模型</button>
+          <span style="flex: 1"></span>
+          <button class="btn bs" type="button" style="width: auto; background: var(--card)">换一个模型</button>
+          <button class="btn bp" type="button" style="width: auto; opacity: .3" aria-disabled="true">保存 · 没有改动</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="cell">
+    <div class="tag">T15 · 中 · 设置单栏 · 外观（居中对话框）</div>
+    <section class="fr tp" aria-label="平板竖屏设置与外观对话框">
+      <div style="position: absolute; top: 56px; left: 97px; width: 640px">
+        <h1 class="big" style="padding: 0 12px 16px">设置</h1>
+        <a class="dir" href="#">
+          <div style="display: flex; align-items: center; gap: 8px"><span class="rsub" style="flex: 1; font-size: 13px">导演模型</span><span class="pill ok"><svg class="i" style="width: 13px; height: 13px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>可用</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px"><span class="mono" style="font-size: 20px; line-height: 26px; font-weight: 500">deepseek-chat</span><span class="rsub">我的 DeepSeek · 尾号 3f9a</span></div>
+          <div style="display: flex; gap: 6px"><span class="pill mono" style="font-size: 12px">工作窗口 64K</span><span class="pill mono" style="font-size: 12px">上下文 128K</span></div>
+        </a>
+        <div class="gl">配置</div>
+        <div class="grp">
+          <a class="row" href="#"><span class="ric"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/></svg></span><span class="rtt">密钥与端点</span><span class="mono" style="height: 26px; min-width: 26px; padding: 0 8px; border-radius: 13px; background: var(--card); display: flex; align-items: center; justify-content: center; font-size: 12px">2</span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+          <a class="row" href="#"><span class="ric" style="background: var(--accBg); color: var(--acc); font-weight: 700">林</span><span class="rtt">林川<span class="rsub">linchuan@example.com</span></span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="gl">其他</div>
+        <div class="grp">
+          <a class="row" href="#"><span class="ric"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg></span><span class="rtt">外观</span><span style="font-size: 13px; color: var(--mut)">跟随系统</span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+          <a class="row" href="#"><span class="ric"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span><span class="rtt">连接测试<span class="rsub">检查流式输出、断线续传和延迟</span></span><svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="mono" style="padding: 20px 12px; font-size: 12px; color: var(--mut)">v0.1.0 · 192.168.1.10:8000</div>
+      </div>
+      <nav class="tabs" aria-label="主导航">
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</a>
+        <a class="tab" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</a>
+        <a class="tab ton" href="#" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</a>
+      </nav>
+      <div style="position: absolute; z-index: 6; inset: 0; background: var(--scrim)"></div>
+      <div role="dialog" aria-label="外观" style="position: absolute; z-index: 7; left: 177px; width: 480px; top: 400px; background: var(--card); border-radius: 32px; padding: 20px 16px 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--sh)">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px 0 8px">
+          <div style="font-size: 20px; line-height: 28px; font-weight: 700">外观</div>
+          <button type="button" aria-label="关闭" style="width: 36px; height: 36px; border: 0; border-radius: 18px; background: var(--bg2); color: var(--ink); display: flex; align-items: center; justify-content: center"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div role="radiogroup" aria-label="外观" style="display: flex; flex-direction: column; gap: 6px">
+          <button type="button" role="radio" aria-checked="true" style="display: flex; align-items: center; gap: 14px; min-height: 72px; padding: 0 12px 0 16px; border: 0; border-radius: 20px; background: var(--accBg); box-shadow: inset 0 0 0 2px var(--acc); font-family: inherit; text-align: left; color: var(--ink)">
+            <span style="width: 22px; height: 22px; border-radius: 11px; box-shadow: inset 0 0 0 7px var(--acc); flex: none"></span>
+            <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 500">跟随系统</span><span class="rsub">随手机的深色模式切换</span></span>
+            <span style="display: flex; gap: 4px"><span style="width: 36px; height: 44px; border-radius: 10px; background: #FFFFFF; box-shadow: inset 0 0 0 1px #DCDCD6; display: flex; align-items: flex-end; padding: 5px"><span style="width: 100%; height: 6px; border-radius: 3px; background: #F5F5F2"></span></span><span style="width: 36px; height: 44px; border-radius: 10px; background: #111113; display: flex; align-items: flex-end; padding: 5px"><span style="width: 100%; height: 6px; border-radius: 3px; background: #27272B"></span></span></span>
+          </button>
+          <button type="button" role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 14px; min-height: 72px; padding: 0 12px 0 16px; border: 0; border-radius: 20px; background: var(--bg2); font-family: inherit; text-align: left; color: var(--ink)">
+            <span style="width: 22px; height: 22px; border-radius: 11px; box-shadow: inset 0 0 0 1.75px var(--line2); flex: none"></span>
+            <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 500">浅色</span><span class="rsub">白底，适合白天</span></span>
+            <span style="width: 36px; height: 44px; border-radius: 10px; background: #FFFFFF; box-shadow: inset 0 0 0 1px #DCDCD6; display: flex; align-items: flex-end; padding: 5px"><span style="width: 100%; height: 6px; border-radius: 3px; background: #F5F5F2"></span></span>
+          </button>
+          <button type="button" role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 14px; min-height: 72px; padding: 0 12px 0 16px; border: 0; border-radius: 20px; background: var(--bg2); font-family: inherit; text-align: left; color: var(--ink)">
+            <span style="width: 22px; height: 22px; border-radius: 11px; box-shadow: inset 0 0 0 1.75px var(--line2); flex: none"></span>
+            <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 16px; font-weight: 500">夜间</span><span class="rsub">深色底，适合暗处阅读</span></span>
+            <span style="width: 36px; height: 44px; border-radius: 10px; background: #111113; display: flex; align-items: flex-end; padding: 5px"><span style="width: 100%; height: 6px; border-radius: 3px; background: #27272B"></span></span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":3302,"height":1234}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
