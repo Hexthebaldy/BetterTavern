@@ -157,6 +157,24 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 
 还没有的页面：世界、时间线、大纲（M2、M3）。
 
+**平板**按 [design/ui-v2-soft/tablet/](design/ui-v2-soft/tablet/README.md) 实现：同一套代码做响应式，视觉规则不变，只换布局；手机上的布局和行为不变。
+
+- 方向：`app.config.ts` 打开 `ios.supportsTablet`，`orientation` 不锁（iPad 要参与分屏和台前调度，必须支持所有方向；
+  Expo 会把 `UISupportedInterfaceOrientations~ipad` 填成四个方向）。iPhone 用 `ios.infoPlist` 只给竖屏，
+  启动时再按屏幕短边（< 600 是手机）用 `expo-screen-orientation` 锁竖屏，管住 Android 手机和 Expo Go（`src/utils/orientation.ts`）。
+  所有 `Modal` 都要声明支持全部方向，否则 iPad 横着打开面板会被转回竖屏（`MODAL_ORIENTATIONS`）。
+- 断点只看窗口宽度（`useWindowDimensions().width`，见 `src/theme/layout.ts` 和 `src/hooks/useLayout.ts`），不判断设备型号或横竖屏：
+  < 600 是手机布局；600–899 内容收进居中单栏（≤ 640），Tab 栏仍在底部、宽 392 居中；≥ 900 左侧浮动导航栏，设置和剧本详情两栏；
+  阅读页 ≥ 1100 时世界状态停靠在右侧。旋转、分屏拖动时只换布局，页面不卸载，草稿、滚动位置、打开的故事都保留。
+- 浮层（`components/sheet.tsx`）：底部面板在平板上换成居中对话框（≤ 480）；阅读页“更多”贴着按钮弹出；世界状态从右侧滑出；
+  故事、剧本卡片长按时卡片抬起、下方弹出菜单（`useOverlay().menu` 的 `anchor`）；提示浮条宽 ≤ 480。
+- 阅读页：正文最宽 640 居中，行动面板宽 672、同一条中线，宽屏选项两列；停靠的开关存在界面偏好里（`worldDocked`）。
+- 故事列表网格 1 / 2 / 3 列，最近一个故事放大成主卡；剧本网格宽屏按 240 一列（≤ 5 列），列表视图限宽 640。
+- 设置宽屏两栏：设置子页的主体在 `features/settings/screens/`（连接测试在 `features/probe/ProbeBody.tsx`），
+  既是路由页面，也嵌进右栏（`SettingsPane.tsx`）；跳转经 `useSettingsNav()`，右栏里换成自己的小栈。
+  右栏是“灰底白卡”，用 `RaisedSurface` 换这一片的色板，页面主体不用改。
+- 登录、注册宽屏左右分栏（左侧插画区，`components/AuthLayout.tsx`），中屏表单宽 440 居中。
+
 ### 目录（实际）
 
 ```
@@ -170,21 +188,25 @@ apps/mobile/
     ├── storage/  secure.ts                 # expo-secure-store（令牌、服务器地址、界面偏好）
     ├── features/
     │   ├── play/     turnMachine.ts  playSession.ts  usePlaySession.ts  StoryFeed.tsx  ActionBar.tsx  ActionParts.tsx
-    │   │             WorldSheet.tsx  worldGraph.ts  MoreSheet.tsx  reading.ts
+    │   │             WorldSheet.tsx  WorldParts.tsx  worldGraph.ts  MoreSheet.tsx  reading.ts
+    │   ├── stories/  StoryCards.tsx                   # 平板的故事卡片（网格小卡、主卡）
+    │   ├── library/  LibraryParts.tsx                 # 剧本库的卡片、列表行、空状态
     │   ├── scenario/ StartForm.tsx  startForm.ts      # 开始新故事的表单与内置选项
     │   ├── settings/ labels.ts  servers.ts  window.ts  ModelPicker.tsx  CredentialSheets.tsx  ProbeResults.tsx
-    │   └── probe/    probeSession.ts  DiagnosticsCard.tsx   # 连接测试；诊断日志的导出和清空
-    ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  overlay  dialog  icons
-    │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx
-    ├── hooks/      useAsync.ts  useKeyboardLift.ts
+    │   │             nav.tsx  SettingsPane.tsx  screens/（导演模型、密钥与端点、密钥详情、账户的页面主体）
+    │   └── probe/    probeSession.ts  DiagnosticsCard.tsx  ProbeBody.tsx   # 连接测试；诊断日志的导出和清空
+    ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  sheet  overlay  dialog  icons
+    │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx  AuthLayout.tsx
+    ├── hooks/      useAsync.ts  useKeyboardLift.ts  useLayout.ts
     ├── observability/ log.ts  requests.ts  persist.ts  setup.ts   # 诊断日志：脱敏、请求记录、存文件、启动时安装
     ├── theme/      index.ts                # 设计 token：圆角、字号、间距、字体族；色板和主题表的出口
     │               palettes.ts  themes.ts  # 色板（浅色、深色）与主题表（浅色、夜间）；ThemeProvider.tsx 提供 usePalette()
-    └── utils/      format.ts  ids.ts
+    │               layout.ts               # 平板断点、栏宽、列数和浮层形态（纯函数）
+    └── utils/      format.ts  ids.ts  orientation.ts
 ```
 
 `*.test.ts` 与被测文件放在一起，`npm test`（`node --test`）运行：SSE 解析与重连、回合状态机、`PlaySession`（加载、幂等重试、409 的处理、续传、轮询）、
-`SessionManager`、`ApiClient`，以及界面背后的纯逻辑（最近服务器、阅读字号、开始表单的拼接、窗口格子、关系图布局、数字格式）。
+`SessionManager`、`ApiClient`，以及界面背后的纯逻辑（最近服务器、阅读字号、开始表单的拼接、窗口格子、关系图布局、数字格式、平板断点与栏宽）。
 
 **字体**：界面用系统黑体，不打包；等宽字用 `@expo-google-fonts/ibm-plex-mono`；叙述用思源宋体的 GB2312 子集（`assets/fonts/NotoSerifSC-Regular.ttf`，约 3.2 MB，OFL 许可）。
 子集的字符表由 `scripts/font-subset-chars.py` 生成，再用 fonttools 的 `pyftsubset` 从完整字体裁出；GB2312 以外的生僻字退回系统字体显示。

@@ -1,4 +1,7 @@
-/** 登录。服务器地址在页面底部更改；连不上服务器时自动打开服务器面板。 */
+/**
+ * 登录。服务器地址在页面底部更改；连不上服务器时自动打开服务器面板。
+ * 平板（components/AuthLayout.tsx）：宽屏左边是插画区、表单在右半边居中；中屏表单宽 440 居中。
+ */
 
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -6,9 +9,11 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, describeError } from "../../src/api/client.ts";
+import { AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
 import { Logo } from "../../src/components/Logo.tsx";
 import { ServerRow, ServerSheet } from "../../src/components/ServerSetting.tsx";
 import { Button, Field, IconButton, Notice } from "../../src/components/ui.tsx";
+import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
 import { space, usePalette } from "../../src/theme/index.ts";
@@ -25,6 +30,9 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serverOpen, setServerOpen] = useState(false);
+  const { compact, expanded } = useLayout();
+  const column = useAuthColumn();
+  const formWidth = useAuthFormWidth();
 
   const submit = async (): Promise<void> => {
     if (!email.trim() || !password) return;
@@ -46,29 +54,43 @@ export default function LoginScreen() {
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
-    >
+  const form = (
+    <View style={{ flex: 1 }}>
       {error ? (
-        <Notice
-          floating
-          message={error}
-          onClose={() => setError(null)}
-          style={[styles.error, { top: insets.top + space.s }]}
-        />
+        // 平板上和表单一样宽，在表单那一栏里居中
+        <View
+          pointerEvents="box-none"
+          style={[styles.error, { top: insets.top + space.s }, formWidth ? styles.errorRow : null]}
+        >
+          <Notice
+            floating
+            message={error}
+            onClose={() => setError(null)}
+            style={formWidth ? { width: formWidth } : null}
+          />
+        </View>
       ) : null}
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + space.l }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + space.l },
+          // 平板上表单限宽、在页面中间
+          compact ? null : styles.centered,
+          column,
+        ]}
         keyboardShouldPersistTaps="handled"
       >
-        <Logo />
+        {/* 宽屏的 Logo 和介绍在左边的插画区里 */}
+        {expanded ? null : <Logo />}
         <View style={{ gap: 10 }}>
           <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
             继续你的故事
           </Text>
-          <Text style={[styles.lead, { color: palette.mut }]}>导入一张角色卡，用第一人称把故事写下去。</Text>
+          {expanded ? null : (
+            <Text style={[styles.lead, { color: palette.mut }]}>
+              导入一张角色卡，用第一人称把故事写下去。
+            </Text>
+          )}
         </View>
         <View style={styles.form}>
           <Field
@@ -124,7 +146,15 @@ export default function LoginScreen() {
           </View>
         </View>
       </ScrollView>
-      <ServerRow onChange={() => setServerOpen(true)} />
+    </View>
+  );
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1, backgroundColor: palette.bg }}
+    >
+      <AuthSplit form={form} footer={<ServerRow onChange={() => setServerOpen(true)} width={formWidth} />} />
       <ServerSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
     </KeyboardAvoidingView>
   );
@@ -132,7 +162,9 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   error: { position: "absolute", zIndex: 4, left: space.l, right: space.l },
+  errorRow: { left: 0, right: 0, alignItems: "center" },
   content: { paddingHorizontal: space.page, paddingTop: space.xl, paddingBottom: space.xxl, gap: 32 },
+  centered: { flexGrow: 1, justifyContent: "center" },
   big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
   lead: { fontSize: 15, lineHeight: 24 },
   form: { gap: space.l },

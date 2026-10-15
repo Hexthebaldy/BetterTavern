@@ -2,20 +2,15 @@
  * 剧本详情：封面、角色卡概要、原卡的开场白，下面是“开始新的故事”的五步表单。
  * 开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
  * 右上角“更多”里可以重命名、删除剧本；删除按钮也在页面最底下。
+ *
+ * 平板（theme/layout.ts）：中屏单栏，宽 640，居中。宽屏两栏（设计稿 T12），两栏各自滚动：
+ * 左栏宽 420 是封面（高 236，返回和“更多”浮在上面）、名字、标签、统计、简介、原卡开场白；
+ * 右栏是开始新故事的五步，底部浮着一条摘要栏（已选项胶囊加“开始故事”），圆角 34，带投影。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { useRef, useState } from "react";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, describeError } from "../../src/api/client.ts";
@@ -30,13 +25,16 @@ import {
   Loading,
   Notice,
   Pill,
+  useColumnStyle,
   useOverlay,
   type IconName,
 } from "../../src/components/ui.tsx";
 import { StartForm, type StartValues } from "../../src/features/scenario/StartForm.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
+import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { font, radius, size, space, type, usePalette } from "../../src/theme/index.ts";
+import { pane } from "../../src/theme/layout.ts";
 
 /** 角色卡里可能被截断的字段 */
 const FIELD_NAMES: Record<string, string> = {
@@ -162,7 +160,11 @@ export default function ScenarioScreen() {
   const palette = usePalette();
   const overlay = useOverlay();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, expanded } = useLayout();
+  const column = useColumnStyle();
+  const moreButton = useRef<View>(null);
+  // 宽屏右栏底部浮着的摘要栏有多高：表单最后留出这么多
+  const [barHeight, setBarHeight] = useState(120);
   const {
     data: scenario,
     error,
@@ -242,98 +244,172 @@ export default function ScenarioScreen() {
         { key: "rename", label: "重命名剧本", icon: "write" },
         { key: "delete", label: "删除剧本", icon: "trash", danger: true },
       ],
+      // 平板上贴着“更多”按钮弹出
+      anchor: moreButton,
     });
     if (key === "rename") void rename();
     if (key === "delete") void remove();
   };
 
   const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
-  const coverWidth = width - space.list * 2;
-  const coverHeight = Math.round(coverWidth * 0.82);
+  // 封面宽度：手机整屏减两边 12；中屏的居中栏最宽 640；宽屏左栏 420
+  const coverWidth = expanded
+    ? pane.scenarioInfo
+    : Math.min(width, column ? pane.readable : width) - space.list * 2;
+  const coverHeight = expanded ? 236 : Math.round(coverWidth * 0.82);
+
+  const cover = (
+    <View style={styles.cover}>
+      <Cover
+        seed={scenario.id}
+        blobId={scenario.avatar_blob_id}
+        width={coverWidth}
+        height={coverHeight}
+        rounded={34}
+      />
+      {/* 封面伸到状态栏下面，两个按钮避开刘海和灵动岛 */}
+      <View style={[styles.coverBar, { top: Math.max(insets.top - space.list, 0) + space.s }]}>
+        <IconButton
+          icon="back"
+          label="返回"
+          tone="card"
+          diameter={size.touch}
+          onPress={() => router.back()}
+        />
+        <IconButton
+          ref={moreButton}
+          icon="more"
+          label="更多：重命名、删除"
+          tone="card"
+          diameter={size.touch}
+          onPress={() => void more()}
+        />
+      </View>
+    </View>
+  );
+  const startHead = (
+    <View style={[styles.startHead, expanded ? { paddingTop: insets.top + space.l } : null]}>
+      <Text accessibilityRole="header" style={[styles.startTitle, { color: palette.ink }]}>
+        开始新的故事
+      </Text>
+      <Text style={[styles.caption, { color: palette.mut }]}>只有第 1 步必填</Text>
+    </View>
+  );
+  const form = (
+    <StartForm
+      cardName={scenario.name}
+      wide={expanded}
+      onChange={(next, parts) => {
+        setValues(next);
+        setSummary(parts);
+      }}
+    />
+  );
+  const startButton = (
+    <Button
+      label="开始故事"
+      trailingIcon="arrowRight"
+      between
+      onPress={() => void start()}
+      busy={starting}
+      disabled={!values?.name}
+      style={styles.startButton}
+    />
+  );
+  const errorNotice = startError ? (
+    <Notice
+      message={routeMissing ? "没有可用模型" : describeError(startError)}
+      actionLabel={routeMissing ? "去设置" : undefined}
+      onAction={routeMissing ? () => router.push("/settings/routes") : undefined}
+    />
+  ) : null;
+  const pills = (
+    <View
+      style={[styles.summary, expanded ? { flex: 1 } : null]}
+      accessible
+      accessibilityLabel={`将要开始：${summary.join("，")}`}
+    >
+      {summary.map((part) => (
+        <Pill key={part} label={part} />
+      ))}
+    </View>
+  );
+  const danger = (
+    <View style={styles.danger}>
+      <Button
+        label="删除剧本"
+        variant="danger"
+        icon="trash"
+        onPress={() => void remove()}
+        style={{ alignSelf: "stretch" }}
+      />
+      <Text style={[styles.caption, { color: palette.mut }]}>已经开始的故事不受影响。</Text>
+    </View>
+  );
+
+  if (expanded) {
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1, flexDirection: "row", backgroundColor: palette.bg }}
+      >
+        <ScrollView
+          style={{ width: pane.scenarioInfo + space.list * 2, flexGrow: 0 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}
+        >
+          {cover}
+          <Overview scenario={scenario} />
+          {danger}
+        </ScrollView>
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: barHeight + insets.bottom + space.xl }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {startHead}
+            {form}
+          </ScrollView>
+          <View
+            onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
+            style={[
+              styles.submit,
+              styles.floatingBar,
+              {
+                bottom: Math.max(insets.bottom, space.l),
+                backgroundColor: palette.card,
+                boxShadow: palette.shadowFloat,
+              },
+            ]}
+          >
+            {errorNotice}
+            <View style={styles.barRow}>
+              {pills}
+              {startButton}
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1, backgroundColor: palette.bg }}
     >
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}
+        contentContainerStyle={[{ paddingBottom: insets.bottom + 48 }, column]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.cover}>
-          <Cover
-            seed={scenario.id}
-            blobId={scenario.avatar_blob_id}
-            width={coverWidth}
-            height={coverHeight}
-            rounded={34}
-          />
-          {/* 封面伸到状态栏下面，两个按钮避开刘海和灵动岛 */}
-          <View style={[styles.coverBar, { top: Math.max(insets.top - space.list, 0) + space.s }]}>
-            <IconButton
-              icon="back"
-              label="返回"
-              tone="card"
-              diameter={size.touch}
-              onPress={() => router.back()}
-            />
-            <IconButton
-              icon="more"
-              label="更多：重命名、删除"
-              tone="card"
-              diameter={size.touch}
-              onPress={() => void more()}
-            />
-          </View>
-        </View>
+        {cover}
         <Overview scenario={scenario} />
-
-        <View style={styles.startHead}>
-          <Text accessibilityRole="header" style={[styles.startTitle, { color: palette.ink }]}>
-            开始新的故事
-          </Text>
-          <Text style={[styles.caption, { color: palette.mut }]}>只有第 1 步必填</Text>
-        </View>
-        <StartForm
-          cardName={scenario.name}
-          onChange={(next, parts) => {
-            setValues(next);
-            setSummary(parts);
-          }}
-        />
+        {startHead}
+        {form}
         <View style={[styles.submit, { backgroundColor: palette.card, boxShadow: palette.shadowFloat }]}>
-          {startError ? (
-            <Notice
-              message={routeMissing ? "没有可用模型" : describeError(startError)}
-              actionLabel={routeMissing ? "去设置" : undefined}
-              onAction={routeMissing ? () => router.push("/settings/routes") : undefined}
-            />
-          ) : null}
-          <View style={styles.summary} accessible accessibilityLabel={`将要开始：${summary.join("，")}`}>
-            {summary.map((part) => (
-              <Pill key={part} label={part} />
-            ))}
-          </View>
-          <Button
-            label="开始故事"
-            trailingIcon="arrowRight"
-            between
-            onPress={() => void start()}
-            busy={starting}
-            disabled={!values?.name}
-            style={styles.startButton}
-          />
+          {errorNotice}
+          {pills}
+          {startButton}
         </View>
-
-        <View style={styles.danger}>
-          <Button
-            label="删除剧本"
-            variant="danger"
-            icon="trash"
-            onPress={() => void remove()}
-            style={{ alignSelf: "stretch" }}
-          />
-          <Text style={[styles.caption, { color: palette.mut }]}>已经开始的故事不受影响。</Text>
-        </View>
+        {danger}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -393,5 +469,8 @@ const styles = StyleSheet.create({
   },
   summary: { flexDirection: "row", flexWrap: "wrap", gap: 4, paddingHorizontal: 4 },
   startButton: { height: 56, borderRadius: 28, paddingLeft: space.page, paddingRight: space.s },
+  /** 宽屏右栏底部浮着的摘要栏 */
+  floatingBar: { position: "absolute", left: 0, right: 0, marginTop: 0, borderRadius: 34 },
+  barRow: { flexDirection: "row", alignItems: "center", gap: space.m },
   danger: { marginTop: 40, marginHorizontal: space.list, gap: space.s, alignItems: "center" },
 });

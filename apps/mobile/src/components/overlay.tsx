@@ -1,11 +1,11 @@
 /**
- * 浮层：底部面板、对话框、墨色浮条，以及给页面用的 useOverlay()（确认、输入、菜单、浮条）。
+ * 浮层：对话框、墨色浮条、菜单，以及给页面用的 useOverlay()（确认、输入、菜单、浮条）。面板本身在 sheet.tsx。
  *
- * 底部面板浮起，四周离屏幕边缘 8，圆角 32，顶部一根 40×5 的拖拽条；点遮罩、下拉或 Android 返回键关闭。
- * 面板里有输入框时，键盘弹出后整个面板跟着浮到键盘上方（useKeyboardLift），输入框不会被盖住。
- * 对话框是居中的白色圆角卡片，上方一个圆形图标写清后果；删除用红色，揭示秘密之类的提醒用琥珀色。
- * 有底部面板开着时，对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）。
- * 墨色胶囊浮条贴着标签栏上方浮起，3 秒后自动消失（带操作的多留一会儿）。
+ * 对话框是居中的白色圆角卡片（宽 ≤ 480），上方一个圆形图标写清后果；删除用红色，揭示秘密之类的提醒用琥珀色。
+ * 有面板开着时，对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）。
+ * 墨色胶囊浮条贴着标签栏上方浮起，3 秒后自动消失（带操作的多留一会儿）；平板上宽 ≤ 480，
+ * 中屏在底部 Tab 栏上方居中，宽屏在内容区（x ≥ 124）底部居中。
+ * 菜单在手机上是底部面板；平板上长按卡片时，卡片抬起（放大 3%，白底加投影），下方弹出宽 240 的菜单，背景加浅遮罩。
  */
 
 import {
@@ -17,197 +17,26 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
-import {
-  Animated,
-  Modal,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { Animated, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useKeyboardLift } from "../hooks/useKeyboardLift.ts";
-import { radius, space, useIsDark, usePalette } from "../theme/index.ts";
+import { useLayout } from "../hooks/useLayout.ts";
+import { BaseSurface, radius, space, useIsDark, usePalette } from "../theme/index.ts";
+import { cardMenuFrame, toastFrame } from "../theme/layout.ts";
 import { tabBarTop } from "./bars.tsx";
 import { Dialog, type DialogTone } from "./dialog.tsx";
 import { Icon, type IconName } from "./icons.tsx";
-import { IconButton } from "./primitives.tsx";
-
-// ---- 底部面板 ----------------------------------------------------------------------------
-
-/** 最近一次面板开始收起的时间：iOS 上一个 Modal 还没收完就弹下一个会弹不出来，对话框要等它收完 */
-let sheetClosingAt = 0;
-const SHEET_CLOSE_MS = 180;
-
-export function Sheet({
-  visible,
-  onClose,
-  title,
-  header,
-  full,
-  children,
-  style,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  /** 默认的标题行（标题加关闭按钮） */
-  title?: string;
-  /** 自定义标题区（替换默认标题行，仍然可以下拉关闭） */
-  header?: ReactNode;
-  /** 从状态栏下方一直到底（世界状态面板） */
-  full?: boolean;
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const palette = usePalette();
-  const insets = useSafeAreaInsets();
-  const [mounted, setMounted] = useState(visible);
-  const progress = useRef(new Animated.Value(0)).current;
-  const drag = useRef(new Animated.Value(0)).current;
-  const shown = useRef(false);
-  const { height: keyboardHeight, lift } = useKeyboardLift();
-
-  useEffect(() => {
-    if (visible) {
-      shown.current = true;
-      setMounted(true);
-      drag.setValue(0);
-      Animated.timing(progress, { toValue: 1, duration: 220, useNativeDriver: true }).start();
-    } else if (shown.current) {
-      shown.current = false;
-      sheetClosingAt = Date.now();
-      Animated.timing(progress, { toValue: 0, duration: SHEET_CLOSE_MS, useNativeDriver: true }).start(
-        ({ finished }) => {
-          if (finished) setMounted(false);
-        },
-      );
-    }
-  }, [visible, progress, drag]);
-
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  const pan = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
-        onPanResponderMove: (_, g) => drag.setValue(Math.max(0, g.dy)),
-        onPanResponderRelease: (_, g) => {
-          if (g.dy > 80 || g.vy > 1) closeRef.current();
-          else Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start();
-        },
-      }),
-    [drag],
-  );
-
-  if (!mounted) return null;
-  const translateY = Animated.add(progress.interpolate({ inputRange: [0, 1], outputRange: [1000, 0] }), drag);
-  return (
-    <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: palette.scrim, opacity: progress }]}>
-        <Pressable
-          style={{ flex: 1 }}
-          onPress={onClose}
-          accessibilityLabel="关闭"
-          accessibilityRole="button"
-        />
-      </Animated.View>
-      {/* 外层跟着键盘抬高（布局动画），里层负责进出场和下拉（原生动画），两种动画不放在同一个视图上 */}
-      <Animated.View
-        style={[styles.sheetHost, { paddingTop: insets.top + space.s, paddingBottom: lift }]}
-        pointerEvents="box-none"
-      >
-        <Animated.View
-          accessibilityViewIsModal
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: palette.sheet,
-              // 键盘弹出时贴着键盘，不再给 Home 指示条留位置
-              paddingBottom: keyboardHeight > 0 ? space.l : Math.max(insets.bottom - space.s, space.l),
-              transform: [{ translateY }],
-            },
-            full ? styles.sheetFull : null,
-            style,
-          ]}
-        >
-          <View {...pan.panHandlers}>
-            <View style={[styles.handle, { backgroundColor: palette.line2 }]} />
-            {header ??
-              (title ? (
-                <View style={styles.sheetTitleRow}>
-                  <Text accessibilityRole="header" style={[styles.sheetTitle, { color: palette.ink }]}>
-                    {title}
-                  </Text>
-                  <IconButton icon="close" label="关闭" size={18} diameter={36} onPress={onClose} />
-                </View>
-              ) : (
-                <View style={{ height: space.xs }} />
-              ))}
-          </View>
-          {children}
-        </Animated.View>
-      </Animated.View>
-      <OverlayOutlet active={visible} />
-    </Modal>
-  );
-}
-
-/**
- * 面板里再嵌一层的底色（深色下面板比页面亮，不能直接用 bg2）：
- * - inset：凹下去的分组（浅色 bg2，深色 bg）；raised：分组里选中的那一格（浅色白，深色 bg3）
- * - fill：直接放在面板上的灰色块，比如阅读页的选项、次要按钮（浅色 bg2，深色 bg3）
- */
-export function useSheetSurfaces(): { inset: string; raised: string; fill: string } {
-  const palette = usePalette();
-  const dark = useIsDark();
-  return dark
-    ? { inset: palette.bg, raised: palette.bg3, fill: palette.bg3 }
-    : { inset: palette.bg2, raised: palette.card, fill: palette.bg2 };
-}
-
-/** 面板里的一组菜单（凹下去的圆角卡片） */
-export function MenuGroup({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const { inset } = useSheetSurfaces();
-  return <View style={[styles.menuGroup, { backgroundColor: inset }, style]}>{children}</View>;
-}
-
-/** 面板里的一行菜单项 */
-export function MenuItem({
-  icon,
-  label,
-  onPress,
-  danger,
-}: {
-  icon: IconName;
-  label: string;
-  onPress: () => void;
-  danger?: boolean;
-}) {
-  const palette = usePalette();
-  const color = danger ? palette.err : palette.ink;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.menuItem,
-        {
-          backgroundColor: pressed ? palette.bg3 : "transparent",
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        },
-      ]}
-    >
-      <Icon name={icon} color={color} />
-      <Text style={{ fontSize: 16, lineHeight: 22, color }}>{label}</Text>
-    </Pressable>
-  );
-}
+import {
+  MenuGroup,
+  MenuItem,
+  MODAL_ORIENTATIONS,
+  OutletContext,
+  Sheet,
+  sheetCloseWait,
+  type Outlets,
+} from "./sheet.tsx";
 
 // ---- useOverlay -------------------------------------------------------------------------
 
@@ -233,6 +62,12 @@ export type PromptOptions = {
 export type MenuOptions = {
   title?: string;
   items: { key: string; label: string; icon: IconName; danger?: boolean }[];
+  /** 平板上：菜单贴着这张卡片弹出（手机上忽略，仍是底部面板） */
+  anchor?: RefObject<View | null>;
+  /** 平板上：抬起的卡片画成什么（通常就是卡片本身） */
+  lifted?: ReactNode;
+  /** 抬起的卡片的圆角，默认和故事卡片一样 24 */
+  liftedRadius?: number;
 };
 
 export type ToastOptions = {
@@ -256,31 +91,6 @@ type Request =
   | { kind: "menu"; options: MenuOptions; resolve: (key: string | null) => void };
 
 const OverlayContext = createContext<Overlay | null>(null);
-
-/** 打开着的底部面板（最上面的那个）里画对话框的位置 */
-type Outlets = {
-  top: number | null;
-  register: (id: number) => void;
-  unregister: (id: number) => void;
-  renderDialog: (inline: boolean) => ReactNode;
-};
-
-const OutletContext = createContext<Outlets | null>(null);
-let nextOutletId = 1;
-
-/** 面板打开时登记自己；对话框弹在最上面那个打开着的面板里 */
-function OverlayOutlet({ active }: { active: boolean }) {
-  const outlets = useContext(OutletContext);
-  const [id] = useState(() => nextOutletId++);
-  const register = outlets?.register;
-  const unregister = outlets?.unregister;
-  useEffect(() => {
-    if (!active || !register || !unregister) return;
-    register(id);
-    return () => unregister(id);
-  }, [active, id, register, unregister]);
-  return outlets && outlets.top === id ? <>{outlets.renderDialog(true)}</> : null;
-}
 
 export function useOverlay(): Overlay {
   const value = useContext(OverlayContext);
@@ -310,7 +120,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const open = useCallback(
     (next: Request) => {
       settle(null); // 同时只有一个：新的请求把旧的当作取消
-      const wait = next.kind === "menu" ? 0 : Math.max(0, sheetClosingAt + SHEET_CLOSE_MS + 120 - Date.now());
+      const wait = next.kind === "menu" ? 0 : sheetCloseWait();
       setTimeout(() => {
         current.current = next;
         if (next.kind === "prompt") setDraft(next.options.initial ?? "");
@@ -400,7 +210,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
           ) : null}
         </View>
         {top === null ? renderDialog(false) : null}
-        <MenuSheet options={menuRequest} onSettle={settle} />
+        <Menu options={menuRequest} onSettle={settle} />
       </OutletContext.Provider>
     </OverlayContext.Provider>
   );
@@ -451,6 +261,142 @@ function PromptDialog({
   );
 }
 
+/** 手机上是底部面板；平板上有卡片可以贴就贴着卡片弹出，没有就是居中对话框 */
+function Menu({
+  options,
+  onSettle,
+}: {
+  options: MenuOptions | null;
+  onSettle: (key: string | null) => void;
+}) {
+  const { compact } = useLayout();
+  // 量不到卡片位置时退回面板（平板上是居中对话框）
+  const [unplaceable, setUnplaceable] = useState(false);
+  useEffect(() => {
+    if (options) setUnplaceable(false);
+  }, [options]);
+  if (!compact && options?.anchor && !unplaceable) {
+    return <CardMenu options={options} onSettle={onSettle} onUnplaceable={() => setUnplaceable(true)} />;
+  }
+  return <MenuSheet options={options} onSettle={onSettle} />;
+}
+
+type Rect = { x: number; y: number; width: number; height: number };
+
+const CARD_MENU_ITEM = 52;
+
+/** 平板上长按卡片：卡片抬起（放大 3%，白底加投影），下方弹出宽 240 的菜单，背景加浅遮罩；点外面关闭 */
+function CardMenu({
+  options,
+  onSettle,
+  onUnplaceable,
+}: {
+  options: MenuOptions;
+  onSettle: (key: string | null) => void;
+  onUnplaceable: () => void;
+}) {
+  const palette = usePalette();
+  const dark = useIsDark();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useLayout();
+  const [card, setCard] = useState<Rect | null>(null);
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const node = options.anchor?.current;
+    if (!node) {
+      onUnplaceable();
+      return;
+    }
+    node.measureInWindow((x, y, w, h) => {
+      if (w <= 0 || h <= 0) onUnplaceable();
+      else setCard({ x, y, width: w, height: h });
+    });
+    // 只在打开时量一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options]);
+
+  useEffect(() => {
+    if (card) Animated.timing(progress, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+  }, [card, progress]);
+
+  if (!card) return null;
+  const menuHeight = options.items.length * CARD_MENU_ITEM + space.s * 2;
+  const frame = cardMenuFrame(card, { width, height }, menuHeight, insets.bottom);
+  return (
+    <Modal
+      transparent
+      visible
+      animationType="none"
+      onRequestClose={() => onSettle(null)}
+      statusBarTranslucent
+      supportedOrientations={MODAL_ORIENTATIONS}
+    >
+      <BaseSurface>
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: dark ? "rgba(0,0,0,0.4)" : "rgba(20,20,20,0.18)", opacity: progress },
+          ]}
+        >
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => onSettle(null)}
+            accessibilityRole="button"
+            accessibilityLabel="关闭"
+          />
+        </Animated.View>
+        {options.lifted ? (
+          <Animated.View
+            pointerEvents="none"
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden
+            style={[
+              styles.lifted,
+              {
+                borderRadius: options.liftedRadius ?? radius.option,
+                left: card.x,
+                top: card.y,
+                width: card.width,
+                height: card.height,
+                backgroundColor: palette.card,
+                boxShadow: palette.shadowFloat,
+                transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
+              },
+            ]}
+          >
+            {options.lifted}
+          </Animated.View>
+        ) : null}
+        <Animated.View
+          accessibilityViewIsModal
+          style={[
+            styles.cardMenu,
+            {
+              left: frame.left,
+              top: frame.top,
+              width: frame.width,
+              backgroundColor: palette.card,
+              boxShadow: palette.shadowFloat,
+              opacity: progress,
+            },
+          ]}
+        >
+          {options.items.map((item) => (
+            <MenuItem
+              key={item.key}
+              icon={item.icon}
+              label={item.label}
+              danger={item.danger}
+              onPress={() => onSettle(item.key)}
+            />
+          ))}
+        </Animated.View>
+      </BaseSurface>
+    </Modal>
+  );
+}
+
 function MenuSheet({
   options,
   onSettle,
@@ -482,17 +428,19 @@ function MenuSheet({
 function Toast({ message, options, onDone }: { message: string; options: ToastOptions; onDone: () => void }) {
   const palette = usePalette();
   const insets = useSafeAreaInsets();
+  const { size, width } = useLayout();
+  const frame = toastFrame(size, width);
+  // 宽屏没有底部标签栏：在内容区底部、离底 32
+  const bottom =
+    frame && !frame.aboveTabBar ? insets.bottom + space.xl + 4 : tabBarTop(insets.bottom) + space.m;
   return (
     <View
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
       style={[
         styles.toast,
-        {
-          bottom: tabBarTop(insets.bottom) + space.m,
-          backgroundColor: palette.ink,
-          boxShadow: palette.shadowFloat,
-        },
+        frame ? { left: frame.left, right: undefined, width: frame.width } : null,
+        { bottom, backgroundColor: palette.ink, boxShadow: palette.shadowFloat },
       ]}
     >
       <Icon name={options.icon ?? "checkCircle"} size={18} color={palette.bg} />
@@ -516,34 +464,8 @@ function Toast({ message, options, onDone }: { message: string; options: ToastOp
 }
 
 const styles = StyleSheet.create({
-  sheetHost: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, justifyContent: "flex-end" },
-  sheet: {
-    marginHorizontal: space.s,
-    marginBottom: space.s,
-    borderRadius: radius.sheet,
-    overflow: "hidden",
-  },
-  /** 从状态栏下方一直到底：离状态栏 36 */
-  sheetFull: { flex: 1, marginTop: space.xxl - space.s, paddingBottom: 0 },
-  handle: { alignSelf: "center", width: 40, height: 5, borderRadius: 2.5, marginTop: 10 },
-  sheetTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: space.m,
-    paddingBottom: space.m,
-    paddingLeft: space.page - 4,
-    paddingRight: space.l,
-  },
-  sheetTitle: { flex: 1, fontSize: 20, lineHeight: 28, fontWeight: "700" },
-  menuGroup: { borderRadius: 26, padding: space.xs },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    height: 56,
-    paddingHorizontal: space.l,
-    borderRadius: radius.card,
-  },
+  lifted: { position: "absolute", overflow: "hidden" },
+  cardMenu: { position: "absolute", borderRadius: radius.group, padding: space.s },
   promptInput: {
     alignSelf: "stretch",
     height: 52,

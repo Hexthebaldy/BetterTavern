@@ -1,12 +1,17 @@
-/** 注册：邮箱、密码（至少 8 位，下面一条长度进度条）、可选的昵称 */
+/**
+ * 注册：邮箱、密码（至少 8 位，下面一条长度进度条）、可选的昵称。
+ * 平板版式和登录一样（components/AuthLayout.tsx）：宽屏左边插画区，中屏表单宽 440 居中。
+ */
 
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ApiError, describeError } from "../../src/api/client.ts";
+import { AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
 import { ServerRow, ServerSheet } from "../../src/components/ServerSetting.tsx";
 import { BackBar, Button, Field, IconButton, Notice } from "../../src/components/ui.tsx";
+import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
 import { font, space, usePalette } from "../../src/theme/index.ts";
@@ -47,6 +52,9 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
   const [serverOpen, setServerOpen] = useState(false);
+  const { compact } = useLayout();
+  const column = useAuthColumn();
+  const formWidth = useAuthFormWidth();
 
   const ready = !!email.trim() && password.length >= MIN_PASSWORD;
 
@@ -74,13 +82,13 @@ export default function RegisterScreen() {
   const errorFor = (field: string): string | null =>
     fieldError?.field === field ? fieldError.message : null;
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
-    >
+  const form = (
+    <View style={{ flex: 1 }}>
       <BackBar onBack={() => router.replace("/login")} />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.content, compact ? null : styles.centered, column]}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
           创建账户
         </Text>
@@ -138,7 +146,15 @@ export default function RegisterScreen() {
           />
         </View>
       </ScrollView>
-      <ServerRow onChange={() => setServerOpen(true)} />
+    </View>
+  );
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1, backgroundColor: palette.bg }}
+    >
+      <AuthSplit form={form} footer={<ServerRow onChange={() => setServerOpen(true)} width={formWidth} />} />
       <ServerSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
     </KeyboardAvoidingView>
   );
@@ -146,6 +162,7 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: space.page, paddingTop: space.l, paddingBottom: space.xxl, gap: space.xl },
+  centered: { flexGrow: 1, justifyContent: "center" },
   big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
   form: { gap: 18 },
   lengthRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingLeft: space.xs },

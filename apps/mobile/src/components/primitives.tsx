@@ -2,7 +2,17 @@
  * 基本部件：页面容器、加载、文字、按钮、分组卡与列表行、分区标题。页面经 ui.tsx 引用。
  */
 
-import { Children, Fragment, isValidElement, useEffect, useState, type ReactNode } from "react";
+import {
+  Children,
+  createContext,
+  Fragment,
+  isValidElement,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+  type Ref,
+} from "react";
 import {
   Pressable,
   RefreshControl,
@@ -15,10 +25,26 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { useLayout } from "../hooks/useLayout.ts";
 import { font, onColor, radius, size, space, type, usePalette } from "../theme/index.ts";
+import { pane } from "../theme/layout.ts";
 import { Icon, type IconName } from "./icons.tsx";
 
 // ---- 页面 -------------------------------------------------------------------------------
+
+/** 内容已经放在一栏里（平板设置两栏的详情区）：页面不再自己居中限宽 */
+export const InColumnContext = createContext(false);
+
+/**
+ * 平板（中屏、宽屏）上把页面内容收进居中的一栏：给 ScrollView 的 contentContainerStyle 用。
+ * 手机上、或者已经在一栏里时返回 null。maxWidth 传 null 表示这一页不限宽。
+ */
+export function useColumnStyle(maxWidth: number | null = pane.readable): ViewStyle | null {
+  const { compact } = useLayout();
+  const inColumn = useContext(InColumnContext);
+  if (compact || inColumn || maxWidth === null) return null;
+  return { width: "100%", maxWidth, alignSelf: "center" };
+}
 
 export function Page({
   children,
@@ -27,6 +53,8 @@ export function Page({
   contentStyle,
   header,
   bottomSpace = 56,
+  maxWidth = pane.readable,
+  overlay,
 }: {
   children: ReactNode;
   refreshing?: boolean;
@@ -36,14 +64,19 @@ export function Page({
   header?: ReactNode;
   /** 内容底部留白；标签页要让出浮动 Tab 栏（useTabBarSpace） */
   bottomSpace?: number;
+  /** 平板上内容收进居中的一栏，最宽多少（默认 640）；null 不限宽 */
+  maxWidth?: number | null;
+  /** 盖在滚动内容上面、不随它滚动的东西（宽屏设置的右栏） */
+  overlay?: ReactNode;
 }) {
   const palette = usePalette();
+  const column = useColumnStyle(maxWidth);
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       {header}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[{ paddingBottom: bottomSpace }, contentStyle]}
+        contentContainerStyle={[{ paddingBottom: bottomSpace }, column, contentStyle]}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           onRefresh ? (
@@ -53,6 +86,7 @@ export function Page({
       >
         {children}
       </ScrollView>
+      {overlay}
     </View>
   );
 }
@@ -300,6 +334,7 @@ export type IconButtonTone = "grey" | "plain" | "card";
  * plain 透明底（输入框里的显示密码）；card 白底加投影（叠在封面图上）。
  */
 export function IconButton({
+  ref,
   icon,
   label,
   onPress,
@@ -311,6 +346,8 @@ export function IconButton({
   badge,
   style,
 }: {
+  /** 量按钮位置用（平板上贴着按钮弹出的菜单） */
+  ref?: Ref<View>;
   icon: IconName;
   label: string;
   onPress: () => void;
@@ -328,6 +365,7 @@ export function IconButton({
   const slop = Math.max(0, (size.touch - diameter) / 2);
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled }}
@@ -409,6 +447,7 @@ export function ListRow({
   onLongPress,
   chevron,
   mono,
+  selected,
   style,
 }: {
   title: string;
@@ -422,6 +461,8 @@ export function ListRow({
   chevron?: boolean;
   /** 标题用等宽字（模型名之类） */
   mono?: boolean;
+  /** 两栏页面里右栏正打开着这一项：白底加 2px 蓝色内描边 */
+  selected?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
@@ -429,10 +470,21 @@ export function ListRow({
   return (
     <Pressable
       accessibilityRole={onPress ? "button" : undefined}
+      accessibilityState={selected ? { selected } : undefined}
       onPress={onPress}
       onLongPress={onLongPress}
       disabled={!onPress && !onLongPress}
-      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? palette.bg3 : "transparent" }, style]}
+      style={({ pressed }) => [
+        styles.row,
+        { backgroundColor: pressed ? palette.bg3 : "transparent" },
+        selected
+          ? [
+              styles.rowSelected,
+              { backgroundColor: palette.card, boxShadow: `inset 0 0 0 2px ${palette.acc}` },
+            ]
+          : null,
+        style,
+      ]}
     >
       {leading}
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -535,6 +587,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
+  /** 选中的行缩进 4 画成圆角块，内边距少 4，外面看总尺寸不变 */
+  rowSelected: { margin: 4, paddingVertical: 6, paddingHorizontal: 10, minHeight: 56, borderRadius: 22 },
   rowTitle: { fontSize: 16, lineHeight: 22 },
   rowSubtitle: { fontSize: 12.5, lineHeight: 18, marginTop: 1 },
   section: {

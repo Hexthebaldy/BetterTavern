@@ -24,7 +24,15 @@ export {
   type ThemeId,
   type ThemeSetting,
 } from "./themes.ts";
-export { ThemeProvider, useIsDark, usePalette, useTheme } from "./ThemeProvider.tsx";
+export {
+  BaseSurface,
+  RaisedSurface,
+  raisedPalette,
+  ThemeProvider,
+  useIsDark,
+  usePalette,
+  useTheme,
+} from "./ThemeProvider.tsx";
 
 /** 红底、蓝底上的白字（所有主题都一样） */
 export const onColor = "#FFFFFF";

@@ -17,10 +17,12 @@ import { installDiagnostics } from "../src/observability/setup.ts";
 import { AppProvider, useApp } from "../src/state/AppProvider.tsx";
 import { PrefsProvider, usePrefs } from "../src/state/PrefsProvider.tsx";
 import { font, ThemeProvider as AppThemeProvider, useIsDark, usePalette } from "../src/theme/index.ts";
+import { lockPhonesToPortrait } from "../src/utils/orientation.ts";
 
 void SplashScreen.preventAutoHideAsync();
 // 诊断日志（手机上的小本子）尽早装好，启动阶段的错误也能记下来
 installDiagnostics();
+lockPhonesToPortrait();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

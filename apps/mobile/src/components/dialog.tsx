@@ -1,13 +1,16 @@
 /**
  * 对话框：居中的圆角卡片，上方一个圆形图标写清后果，下面并排“取消 / 确认”两个胶囊按钮。
  * 删除用红色，揭示秘密之类的提醒用琥珀色。一般经 useOverlay() 弹出（overlay.tsx），不直接用。
+ * 平板上宽不超过 480，居中。
  */
 
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { onColor, radius, space, type, usePalette } from "../theme/index.ts";
+import { pane } from "../theme/layout.ts";
 import { Icon, type IconName } from "./icons.tsx";
+import { MODAL_ORIENTATIONS } from "./sheet.tsx";
 
 export type DialogTone = "danger" | "warn" | "default";
 
@@ -43,7 +46,14 @@ export function Dialog({ visible, inline, onCancel, ...card }: DialogProps) {
   );
   if (inline) return visible ? <View style={StyleSheet.absoluteFill}>{body}</View> : null;
   return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="fade"
+      onRequestClose={onCancel}
+      statusBarTranslucent
+      supportedOrientations={MODAL_ORIENTATIONS}
+    >
       {body}
     </Modal>
   );
@@ -119,8 +129,17 @@ function DialogCard({
 }
 
 const styles = StyleSheet.create({
-  dialogHost: { flex: 1, justifyContent: "center", paddingHorizontal: space.page },
-  dialog: { borderRadius: radius.sheet, paddingTop: 26, paddingHorizontal: 18, paddingBottom: 18, gap: 18 },
+  dialogHost: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: space.page },
+  /** 平板上最宽 480（手机屏幕本来就比它窄） */
+  dialog: {
+    width: "100%",
+    maxWidth: pane.dialog,
+    borderRadius: radius.sheet,
+    paddingTop: 26,
+    paddingHorizontal: 18,
+    paddingBottom: 18,
+    gap: 18,
+  },
   dialogBody: { alignItems: "center", gap: 10 },
   dialogIcon: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
   dialogTitle: { fontSize: 20, lineHeight: 28, fontWeight: "700", textAlign: "center" },

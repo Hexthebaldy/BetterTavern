@@ -1,9 +1,10 @@
 /**
  * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号），重命名故事、世界状态、删除故事。
  * 阅读设置存在设备上，所有故事共用。
+ * 手机上是底部面板；平板上贴着“更多”按钮弹出（宽 340，右边缘和按钮对齐，底边在行动面板上方 8，不加遮罩）。
  */
 
-import { useRef, useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 
 import { MenuGroup, MenuItem, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
@@ -164,16 +165,21 @@ export function MoreSheet({
   onRename,
   onWorld,
   onDelete,
+  anchor,
+  above,
 }: {
   visible: boolean;
   onClose: () => void;
   onRename: () => void;
   onWorld: () => void;
   onDelete: () => void;
+  /** 平板：菜单贴着这个按钮、在 above（行动面板）上方弹出 */
+  anchor?: RefObject<View | null>;
+  above?: RefObject<View | null>;
 }) {
   const palette = usePalette();
   return (
-    <Sheet visible={visible} onClose={onClose}>
+    <Sheet visible={visible} onClose={onClose} kind="menu" anchor={anchor} above={above}>
       <View style={styles.body}>
         <Text style={[styles.label, { color: palette.mut }]}>阅读设置</Text>
         <FontChoice />

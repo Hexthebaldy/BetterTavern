@@ -2,25 +2,32 @@
  * 阅读主屏：导航栏（返回、标题）、故事流、浮在底部的行动面板。世界状态和“更多”两个按钮在行动面板的右下角。
  * 顶部只放低频入口，所有回合操作都在屏幕下三分之一；离开页面只断开连接，服务端的生成继续，回来时会接上。
  * 行动面板盖在故事流上面：量出它的高度，故事流的底部留白和“回到最新”都跟着它走。
+ *
+ * 平板（theme/layout.ts）：正文收进最宽 640 的阅读栏，行动面板宽 672、同一条中线；
+ * 世界状态在阅读页宽 ≥ 1100 时停靠在右侧，阅读栏和行动面板在剩下的宽度里居中，世界按钮显示为选中，
+ * 再点一次收起；停靠的开关存在界面偏好里，打开任意故事都保持。更窄时从右侧滑出，手机上是底部面板。
+ * 旋转、分屏改变宽度时只换布局：故事流、行动面板都不卸载，滚动位置和草稿都还在；停靠着的面板变窄后换成滑出的。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError } from "../../../src/api/client.ts";
 import type { Scenario } from "../../../src/api/types.ts";
 import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
-import { ActionBar, PANEL_GAP } from "../../../src/features/play/ActionBar.tsx";
+import { ActionBar } from "../../../src/features/play/ActionBar.tsx";
 import { MoreSheet } from "../../../src/features/play/MoreSheet.tsx";
-import { BookHeader, StoryFeed } from "../../../src/features/play/StoryFeed.tsx";
+import { BookHeader, columnWidth, StoryFeed } from "../../../src/features/play/StoryFeed.tsx";
 import { headTurn } from "../../../src/features/play/turnMachine.ts";
 import { usePlaySession } from "../../../src/features/play/usePlaySession.ts";
-import { WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
+import { WorldDock, WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
+import { useLayout } from "../../../src/hooks/useLayout.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../../src/state/PrefsProvider.tsx";
 import { radius, space, usePalette } from "../../../src/theme/index.ts";
+import { pane, readingWidth, worldPresentation } from "../../../src/theme/layout.ts";
 
 function OpeningSkeleton() {
   const palette = usePalette();
@@ -60,17 +67,21 @@ function OpeningSkeleton() {
 function LoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
   const palette = usePalette();
   return (
-    <View style={[styles.failed, { backgroundColor: palette.bg2 }]} accessibilityRole="alert">
-      <View style={[styles.failedIcon, { backgroundColor: palette.errBg }]}>
-        <Icon name="alertCircle" size={28} color={palette.err} />
+    <View style={styles.failedWrap}>
+      <View style={[styles.failed, { backgroundColor: palette.bg2 }]} accessibilityRole="alert">
+        <View style={[styles.failedIcon, { backgroundColor: palette.errBg }]}>
+          <Icon name="alertCircle" size={28} color={palette.err} />
+        </View>
+        <Text
+          style={{ fontSize: 22, lineHeight: 30, fontWeight: "700", color: palette.ink, textAlign: "center" }}
+        >
+          故事没能打开
+        </Text>
+        <Text style={{ fontSize: 15, lineHeight: 24, color: palette.mut, textAlign: "center" }}>
+          {message}
+        </Text>
+        <Button label="重新加载" icon="retry" onPress={onRetry} style={styles.failedButton} />
       </View>
-      <Text
-        style={{ fontSize: 22, lineHeight: 30, fontWeight: "700", color: palette.ink, textAlign: "center" }}
-      >
-        故事没能打开
-      </Text>
-      <Text style={{ fontSize: 15, lineHeight: 24, color: palette.mut, textAlign: "center" }}>{message}</Text>
-      <Button label="重新加载" icon="retry" onPress={onRetry} style={styles.failedButton} />
     </View>
   );
 }
@@ -81,17 +92,44 @@ export default function PlayScreen() {
   const palette = usePalette();
   const overlay = useOverlay();
   const { api } = useApp();
-  const { reading } = usePrefs();
-  const { width } = useWindowDimensions();
+  const { reading, worldDocked, setWorldDocked } = usePrefs();
+  const { width } = useLayout();
   const controls = usePlaySession(id);
   const { state } = controls;
   const [title, setTitle] = useState<string | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
-  const [worldOpen, setWorldOpen] = useState(false);
+  const worldMode = worldPresentation(width);
+  // 停靠模式下开关跟着界面偏好（所有故事共用）；滑出和底部面板只在这一页里开关
+  const [worldOpen, setWorldOpen] = useState(() => worldMode === "dock" && worldDocked);
   const [moreOpen, setMoreOpen] = useState(false);
-  // 行动面板的高度加上离底的 8：故事流在它上方结束
-  const [panel, setPanel] = useState(120);
+  const moreButton = useRef<View>(null);
+  const panelView = useRef<View>(null);
+  // 行动面板盖住的高度（面板、离底的距离、键盘）：故事流在它上方结束
+  const [panel, setPanel] = useState(128);
   const onPanelHeight = useCallback((h: number) => setPanel((old) => (Math.abs(old - h) < 1 ? old : h)), []);
+
+  // 变宽到可以停靠时，偏好里是开着的就展开；变窄时开着的停靠面板换成滑出面板（worldOpen 不变）
+  const lastMode = useRef(worldMode);
+  useEffect(() => {
+    if (lastMode.current !== "dock" && worldMode === "dock" && worldDocked) setWorldOpen(true);
+    lastMode.current = worldMode;
+  }, [worldMode, worldDocked]);
+
+  const docked = worldMode === "dock" && worldOpen;
+  const toggleWorld = (): void => {
+    if (worldMode === "dock") {
+      setWorldOpen(!worldOpen);
+      setWorldDocked(!worldOpen);
+    } else {
+      setWorldOpen(true);
+    }
+  };
+  const closeWorld = (): void => {
+    setWorldOpen(false);
+    if (worldMode === "dock") setWorldDocked(false);
+  };
+  // 阅读区：停靠时让出右边的世界状态面板
+  const available = readingWidth(width, docked);
 
   // 剧本名和封面图片（剧本删掉了也不影响阅读）
   useEffect(() => {
@@ -181,51 +219,65 @@ export default function PlayScreen() {
   }
   const syncing = state.phase === "syncing";
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      {nav}
-      {/* 行动面板自己跟着键盘浮起（见 ActionBar），故事流的底部留白跟着面板走 */}
+    // 左边是阅读区（导航栏、故事流、行动面板），停靠时右边是世界状态；手机上只有阅读区
+    <View style={{ flex: 1, flexDirection: "row", backgroundColor: palette.bg }}>
       <View style={{ flex: 1 }}>
-        <StoryFeed
-          state={state}
-          reading={reading}
-          dimmed={syncing}
-          bottomInset={panel + PANEL_GAP}
-          header={
-            <BookHeader
-              seed={state.scenarioId ?? id}
-              blobId={scenario?.avatar_blob_id ?? null}
-              title={shownTitle}
-              card={scenario?.name ?? null}
-              protagonist={state.protagonist}
-              width={width}
-            />
-          }
-        />
-        {syncing ? (
-          <View accessibilityRole="alert" style={[styles.syncing, { backgroundColor: palette.accBg }]}>
-            <Icon name="retry" size={16} color={palette.acc} />
-            <Text style={{ fontSize: 13.5, fontWeight: "500", color: palette.acc }}>
-              故事有更新，正在同步…
-            </Text>
-          </View>
-        ) : null}
-        <ActionBar
-          state={state}
-          controls={controls}
-          onOpenSettings={() => router.push("/settings/routes")}
-          onOpenWorld={() => setWorldOpen(true)}
-          onOpenMore={() => setMoreOpen(true)}
-          onHeight={onPanelHeight}
-        />
+        {nav}
+        {/* 行动面板自己跟着键盘浮起（见 ActionBar），故事流的底部留白跟着面板走 */}
+        <View style={{ flex: 1 }}>
+          <StoryFeed
+            state={state}
+            reading={reading}
+            dimmed={syncing}
+            bottomInset={panel}
+            available={available}
+            header={
+              <BookHeader
+                seed={state.scenarioId ?? id}
+                blobId={scenario?.avatar_blob_id ?? null}
+                title={shownTitle}
+                card={scenario?.name ?? null}
+                protagonist={state.protagonist}
+                width={columnWidth(available)}
+              />
+            }
+          />
+          {syncing ? (
+            <View accessibilityRole="alert" style={[styles.syncing, { backgroundColor: palette.accBg }]}>
+              <Icon name="retry" size={16} color={palette.acc} />
+              <Text style={{ fontSize: 13.5, fontWeight: "500", color: palette.acc }}>
+                故事有更新，正在同步…
+              </Text>
+            </View>
+          ) : null}
+          <ActionBar
+            state={state}
+            controls={controls}
+            onOpenSettings={() => router.push("/settings/routes")}
+            onOpenWorld={toggleWorld}
+            onOpenMore={() => setMoreOpen(true)}
+            onHeight={onPanelHeight}
+            available={available}
+            worldActive={docked}
+            moreActive={moreOpen}
+            moreRef={moreButton}
+            panelRef={panelView}
+          />
+        </View>
       </View>
-      <WorldSheet visible={worldOpen} onClose={() => setWorldOpen(false)} playthroughId={id} />
+      {docked ? <WorldDock onClose={closeWorld} playthroughId={id} /> : null}
+      <WorldSheet visible={worldOpen && worldMode !== "dock"} onClose={closeWorld} playthroughId={id} />
       <MoreSheet
         visible={moreOpen}
         onClose={() => setMoreOpen(false)}
+        anchor={moreButton}
+        above={panelView}
         onRename={() => void rename()}
         onWorld={() => {
           setMoreOpen(false);
-          setTimeout(() => setWorldOpen(true), 260);
+          // 停靠时直接展开，不用等面板收起
+          if (worldMode === "dock") toggleWorld();
+          else setTimeout(() => setWorldOpen(true), 260);
         }}
         onDelete={() => void remove()}
       />
@@ -234,7 +286,14 @@ export default function PlayScreen() {
 }
 
 const styles = StyleSheet.create({
-  skeleton: { paddingHorizontal: space.read, paddingTop: space.xl, gap: 19 },
+  skeleton: {
+    width: "100%",
+    maxWidth: pane.readable + space.read * 2,
+    alignSelf: "center",
+    paddingHorizontal: space.read,
+    paddingTop: space.xl,
+    gap: 19,
+  },
   skeletonCard: {
     height: 56,
     borderRadius: radius.card,
@@ -251,6 +310,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.l,
     borderRadius: 18,
   },
+  /** 平板上卡片最宽 480，居中；手机上就是整宽 */
+  failedWrap: { width: "100%", maxWidth: pane.dialog + space.l * 2, alignSelf: "center" },
   failed: {
     marginTop: 146,
     marginHorizontal: space.l,

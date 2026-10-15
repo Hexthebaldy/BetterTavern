@@ -1,10 +1,20 @@
 /**
  * 行动面板（ActionBar.tsx）里的几块内容：选项行、“自己写…”行、自由输入、生成中的状态行，
  * 以及放在面板右下角的世界状态和“更多”两个圆按钮。
+ * 平板上世界状态停靠着、或者“更多”菜单开着时，对应的按钮显示为选中（墨色底、反白图标）。
  */
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
+import {
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 
 import type { TurnOption } from "../../api/types.ts";
 import { Icon, IconButton, useSheetSurfaces } from "../../components/ui.tsx";
@@ -60,6 +70,7 @@ export function OptionRow({
   chosen,
   dimmed,
   onPress,
+  style,
 }: {
   option: TurnOption;
   index: number;
@@ -67,6 +78,8 @@ export function OptionRow({
   chosen: boolean;
   dimmed: boolean;
   onPress: () => void;
+  /** 平板宽屏排两列时的宽度和最小高度 */
+  style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
   const surfaces = useSheetSurfaces();
@@ -88,6 +101,7 @@ export function OptionRow({
             opacity: dimmed ? 0.4 : 1,
             transform: [{ scale: on ? 0.98 : 1 }],
           },
+          style,
         ];
       }}
     >
@@ -241,21 +255,42 @@ export function Generating({
 }
 
 /** 世界状态和“更多”（阅读设置、重命名、删除）两个圆按钮，放在面板右下角 */
-export function PanelTools({ onWorld, onMore }: { onWorld: () => void; onMore: () => void }) {
+export function PanelTools({
+  onWorld,
+  onMore,
+  worldActive,
+  moreActive,
+  moreRef,
+}: {
+  onWorld: () => void;
+  onMore: () => void;
+  /** 世界状态停靠着（平板宽屏），再点一次收起 */
+  worldActive?: boolean;
+  /** “更多”菜单正贴着按钮开着（平板） */
+  moreActive?: boolean;
+  /** “更多”按钮：平板上菜单贴着它弹出 */
+  moreRef?: Ref<View>;
+}) {
+  const palette = usePalette();
   const surfaces = useSheetSurfaces();
+  const look = (active?: boolean) =>
+    active
+      ? { style: { backgroundColor: palette.ink }, color: palette.bg }
+      : { style: { backgroundColor: surfaces.fill } };
   return (
     <View style={styles.tools}>
       <IconButton
         icon="world"
-        label="世界状态"
+        label={worldActive ? "收起世界状态" : "世界状态"}
         onPress={onWorld}
-        style={{ backgroundColor: surfaces.fill }}
+        {...look(worldActive)}
       />
       <IconButton
+        ref={moreRef}
         icon="more"
         label="更多：阅读设置、重命名、删除"
         onPress={onMore}
-        style={{ backgroundColor: surfaces.fill }}
+        {...look(moreActive)}
       />
     </View>
   );

@@ -2,6 +2,7 @@
  * “开始新的故事”的五步表单：名字（建议标签 + 随机）、身份（图块 + 可改的底稿）、篇幅（行数图示）、
  * 文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）。只有第 1 步必填。
  * 选择最终拼回接口原来的字段，见 startForm.ts。
+ * 宽屏的剧本详情两栏里（wide）：名字建议排在输入框右侧，身份图块一行排 4 个。
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -75,9 +76,12 @@ const LENGTH_GLYPHS: Record<Preferences["length"], { d: string; width: number }>
 export function StartForm({
   cardName,
   onChange,
+  wide,
 }: {
   cardName: string;
   onChange: (values: StartValues, summary: string[]) => void;
+  /** 宽屏两栏：名字建议放到输入框右边，身份图块一行 4 个 */
+  wide?: boolean;
 }) {
   const palette = usePalette();
   const overlay = useOverlay();
@@ -144,40 +148,47 @@ export function StartForm({
   return (
     <View>
       <Step n="1" title="你扮演谁">
-        <Field
-          label="主角的名字"
-          hideLabel
-          onGrey
-          value={name}
-          onChangeText={changeName}
-          maxLength={NAME_MAX}
-          placeholder="名字"
-          trailing={
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="随机一个名字"
-              onPress={() => changeName(randomName(name))}
-              style={({ pressed }) => [
-                styles.dice,
-                {
-                  backgroundColor: pressed ? palette.bg3 : palette.bg2,
-                  transform: [{ scale: pressed ? 0.97 : 1 }],
-                },
-              ]}
-            >
-              <Icon name="dice" size={20} />
-            </Pressable>
-          }
-        />
-        <View style={styles.wrap}>
-          {suggestions.map((n) => (
-            <Chip key={n} label={n} onGrey selected={name.trim() === n} onPress={() => changeName(n)} />
-          ))}
+        <View style={wide ? styles.nameRow : styles.nameColumn}>
+          <Field
+            label="主角的名字"
+            hideLabel
+            onGrey
+            value={name}
+            onChangeText={changeName}
+            maxLength={NAME_MAX}
+            placeholder="名字"
+            style={wide ? { flex: 1 } : undefined}
+            trailing={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="随机一个名字"
+                onPress={() => changeName(randomName(name))}
+                style={({ pressed }) => [
+                  styles.dice,
+                  {
+                    backgroundColor: pressed ? palette.bg3 : palette.bg2,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  },
+                ]}
+              >
+                <Icon name="dice" size={20} />
+              </Pressable>
+            }
+          />
+          <View style={wide ? styles.nameChips : styles.wrap}>
+            {suggestions.map((n) => (
+              <Chip key={n} label={n} onGrey selected={name.trim() === n} onPress={() => changeName(n)} />
+            ))}
+          </View>
         </View>
       </Step>
 
       <Step n="2" title="这个角色是谁" optional="可选">
-        <View style={styles.tiles} accessibilityRole="radiogroup" accessibilityLabel="身份">
+        <View
+          style={[styles.tiles, wide ? { flexWrap: "nowrap" } : null]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="身份"
+        >
           {[
             ...IDENTITIES.map((i) => ({ key: i.key, label: i.label, icon: i.icon })),
             { key: "", label: "自己写", icon: "write" as const },
@@ -192,6 +203,7 @@ export function StartForm({
                 onPress={() => pickIdentity(i.key || null)}
                 style={({ pressed }) => [
                   styles.tile,
+                  wide ? styles.tileWide : null,
                   {
                     backgroundColor: on ? palette.accBg : palette.card,
                     boxShadow: on ? `inset 0 0 0 2px ${palette.acc}` : undefined,
@@ -321,6 +333,11 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: space.s },
   tile: { width: "48.5%", minHeight: 96, padding: 14, borderRadius: radius.card, gap: space.m },
+  tileWide: { width: undefined, flex: 1, minWidth: 0 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: space.s },
+  /** 手机上：输入框和名字建议上下排，间距和步骤里其他内容一样 */
+  nameColumn: { gap: 14 },
+  nameChips: { flexDirection: "row", gap: 6 },
   tileIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   lengths: { flexDirection: "row", padding: 4, gap: 4, borderRadius: 26 },
   length: { flex: 1, alignItems: "center", gap: 10, paddingTop: 16, paddingBottom: 12, borderRadius: 22 },

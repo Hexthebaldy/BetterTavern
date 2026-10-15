@@ -9,6 +9,10 @@
  * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 浮出“回到最新”。
  * 只有玩家亲手拖动或惯性滚动才会关掉跟随：内容变长时程序滚动产生的事件里，偏移量常常落后于新的内容高度，
  * 不能当成玩家翻走了。
+ *
+ * 平板上内容收进一条阅读栏（theme/layout.ts 的 readableColumn）：正文最宽 640、在阅读区里居中，
+ * “我的行动”卡片、状态行、书名页跟着这条栏走，左右边距和手机一样；字号仍由阅读设置决定，栏宽不随字号变。
+ * 滚动区仍是整个阅读区，两边空白处也能拖动。
  */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
@@ -26,6 +30,7 @@ import {
 import { Cover } from "../../components/Cover.tsx";
 import { Dots, Icon, Pill } from "../../components/ui.tsx";
 import { font, radius, size, space, usePalette } from "../../theme/index.ts";
+import { readableColumn } from "../../theme/layout.ts";
 import { BASE_SIZE, lineHeightFor, MAX_SIZE, readingSize, type ReadingPrefs } from "./reading.ts";
 import type { PendingTurn, Phase, PlayState, StoryTurn } from "./turnMachine.ts";
 
@@ -316,6 +321,7 @@ export function StoryFeed({
   reading,
   dimmed,
   bottomInset,
+  available,
 }: {
   state: PlayState;
   header?: ReactElement;
@@ -324,6 +330,8 @@ export function StoryFeed({
   dimmed?: boolean;
   /** 底部被浮动行动面板盖住的高度：内容在它上方结束，“回到最新”浮在它上方 */
   bottomInset: number;
+  /** 阅读区的宽度（世界状态停靠时比窗口窄）：正文栏在里面居中 */
+  available: number;
 }) {
   const palette = usePalette();
   const narr = useNarrativeStyle(reading);
@@ -397,6 +405,8 @@ export function StoryFeed({
         data={items}
         keyExtractor={(item) => item.key}
         renderItem={renderItem}
+        // 正文栏两侧的空白：手机上是 0（正文本来就离边 24）
+        contentContainerStyle={{ paddingHorizontal: sideInset(available) }}
         ListHeaderComponent={header}
         // 面板下面的留白放在列表尾部而不是 paddingBottom：scrollToEnd 只算到尾部组件，不算内边距。
         // 每个回合下面自带 16 的间距，合起来最后一行离面板 18
@@ -445,6 +455,16 @@ export function StoryFeed({
 }
 
 const BOOK_RADIUS = 30;
+
+/** 阅读栏两侧多出来的空白（不算正文自己的 24 页边距） */
+export function sideInset(available: number): number {
+  return Math.max(0, readableColumn(available).left - space.read);
+}
+
+/** 阅读栏连同页边距的宽度：书名页的封面按它算 */
+export function columnWidth(available: number): number {
+  return available - sideInset(available) * 2;
+}
 
 const styles = StyleSheet.create({
   book: {

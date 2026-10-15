@@ -32,7 +32,7 @@ export const THEME_ORDER: ThemeId[] = ["light", "night"];
 /** 用户的外观设置：跟随系统，或固定某个主题 */
 export type ThemeSetting = "system" | ThemeId;
 
-export const SYSTEM_SETTING = { label: "跟随系统", note: "随手机的深色模式切换" };
+export const SYSTEM_SETTING = { label: "跟随系统", note: "随系统的深色模式切换" };
 
 function isThemeId(value: unknown): value is ThemeId {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);

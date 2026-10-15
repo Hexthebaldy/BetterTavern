@@ -1,10 +1,13 @@
 /**
  * 设置首页：最上面是墨色的导演模型卡片（没设置时是一张琥珀色的引导卡），下面两组：配置、其他。
- * “其他”里的“外观”打开主题面板（跟随系统 / 浅色 / 夜间），选了立刻生效。
+ * “其他”里的“外观”打开主题面板（跟随系统 / 浅色 / 夜间），选了立刻生效；平板上它是居中对话框。
+ *
+ * 平板（theme/layout.ts）：中屏单栏，宽 640，居中，逐层进入，和手机一样；
+ * 宽屏两栏（设计稿 T13、T14）：左栏宽 340 就是这一页，右栏是详情区（features/settings/SettingsPane.tsx），
+ * 左栏里打开着的那一项白底加 2px 蓝色内描边，导演模型卡片换成浅灰的。默认打开导演模型，没有时打开密钥与端点。
  */
 
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "../../src/api/client.ts";
@@ -25,59 +28,80 @@ import {
 import { CLIENT_VERSION } from "../../src/config.ts";
 import { AppearanceSheet } from "../../src/features/settings/AppearanceSheet.tsx";
 import { CREDENTIAL_STATUS } from "../../src/features/settings/labels.ts";
+import { useSettingsNav, type SettingsTarget } from "../../src/features/settings/nav.tsx";
 import { displayServer } from "../../src/features/settings/servers.ts";
+import { SettingsPane } from "../../src/features/settings/SettingsPane.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
+import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
 import { font, settingLabel, space, usePalette } from "../../src/theme/index.ts";
+import { centerColumn, pane, rail, tabInsets } from "../../src/theme/layout.ts";
 import { formatTokens } from "../../src/utils/format.ts";
 
+/**
+ * 导演模型卡片。手机和中屏是墨色的；宽屏两栏的左栏里换成浅灰（light），右栏打开着它时白底加蓝色内描边。
+ */
 function DirectorCard({
   route,
   credential,
   onPress,
+  light,
+  selected,
 }: {
   route: ModelRoute;
   credential: Credential | undefined;
   onPress: () => void;
+  light?: boolean;
+  selected?: boolean;
 }) {
   const palette = usePalette();
   const { model_window: total, working_cap: cap, max_tokens: out } = route.window;
   const used = Math.min(cap, total);
   const story = Math.max(0, used - out) / total;
   const output = Math.min(out, used) / total;
-  const faint = { color: palette.bg, opacity: 0.65 };
+  const fg = light ? palette.ink : palette.bg;
+  const faint = light ? { color: palette.mut } : { color: palette.bg, opacity: 0.65 };
+  const soft = light ? palette.bg3 : palette.arrowBg;
   const statusDot =
     credential?.status === "ok"
-      ? palette.okOnInk
+      ? light
+        ? palette.ok
+        : palette.okOnInk
       : credential?.status === "invalid"
         ? palette.err
         : palette.warn;
+  const background = light ? (selected ? palette.card : palette.bg2) : palette.ink;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`导演模型 ${route.model}`}
+      accessibilityState={selected ? { selected } : undefined}
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { backgroundColor: palette.ink, transform: [{ scale: pressed ? 0.98 : 1 }] },
+        {
+          backgroundColor: background,
+          boxShadow: selected ? `inset 0 0 0 2px ${palette.acc}` : undefined,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
       ]}
     >
       <View style={styles.cardTop}>
         <Text style={[{ fontSize: 13 }, faint]}>导演模型</Text>
         {credential ? (
-          <View style={[styles.cardStatus, { backgroundColor: palette.arrowBg }]}>
+          <View style={[styles.cardStatus, { backgroundColor: light ? palette.bg3 : palette.arrowBg }]}>
             <View style={[styles.dot, { backgroundColor: statusDot }]} />
-            <Text style={{ fontSize: 12, color: palette.bg }}>{CREDENTIAL_STATUS[credential.status]}</Text>
+            <Text style={{ fontSize: 12, color: fg }}>{CREDENTIAL_STATUS[credential.status]}</Text>
           </View>
         ) : null}
       </View>
       <View style={styles.cardMain}>
-        <View style={[styles.cardIcon, { backgroundColor: palette.arrowBg }]}>
-          <Icon name="director" color={palette.bg} />
+        <View style={[styles.cardIcon, { backgroundColor: light ? palette.card : palette.arrowBg }]}>
+          <Icon name="director" color={fg} />
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={[styles.model, { color: palette.bg }]}>
+          <Text numberOfLines={1} style={[styles.model, { color: fg }]}>
             {route.model}
           </Text>
           <Text numberOfLines={1} style={[{ fontSize: 12.5, lineHeight: 18 }, faint]}>
@@ -85,13 +109,18 @@ function DirectorCard({
             {credential ? ` · 尾号 ${credential.key_last4}` : ""}
           </Text>
         </View>
-        <Icon name="chevronRight" size={18} color={palette.bg} />
+        {light ? null : <Icon name="chevronRight" size={18} color={fg} />}
       </View>
       <View style={{ marginTop: space.l, gap: 6 }}>
-        <View style={[styles.bar, { backgroundColor: palette.arrowBg }]} accessibilityElementsHidden>
-          <View style={[styles.barPart, { flex: story, backgroundColor: palette.bg }]} />
+        <View style={[styles.bar, { backgroundColor: soft }]} accessibilityElementsHidden>
           <View
-            style={[styles.barPart, { flex: output, marginLeft: 2, backgroundColor: palette.accOnInk }]}
+            style={[styles.barPart, { flex: story, backgroundColor: light ? palette.ink : palette.bg }]}
+          />
+          <View
+            style={[
+              styles.barPart,
+              { flex: output, marginLeft: 2, backgroundColor: light ? palette.acc : palette.accOnInk },
+            ]}
           />
           <View style={{ flex: Math.max(0, 1 - story - output) }} />
         </View>
@@ -147,26 +176,56 @@ function SetupCard({ hasKey, onPress }: { hasKey: boolean; onPress: () => void }
 
 export default function SettingsScreen() {
   const { api, user, serverUrl } = useApp();
-  const router = useRouter();
+  const nav = useSettingsNav();
   const palette = usePalette();
   const { theme } = usePrefs();
+  const { size: layoutSize, width, expanded } = useLayout();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  // 宽屏两栏：右栏打开着哪一项（没点过就按有没有导演模型决定）
+  const [picked, setPicked] = useState<SettingsTarget | null>(null);
   const { data, error, refreshing, refresh, reload } = useAsync(async () => {
     const [routes, credentials] = await Promise.all([api.routes.list(), api.credentials.list()]);
     return { director: routes.find((r) => r.task === "director") ?? null, credentials };
   }, [api]);
+  const reloadQuietly = useCallback(() => void refresh(), [refresh]);
 
-  const bottomSpace = useTabBarSpace();
+  const { bottom: bottomSpace } = useTabBarSpace();
   const director = data?.director ?? null;
   const credentials = data?.credentials ?? [];
   const name = user?.display_name || user?.email || "账户";
+  const paneRoot: SettingsTarget | null =
+    picked ?? (data ? { screen: director ? "routes" : "credentials" } : null);
+  const open = (target: SettingsTarget): void => {
+    if (!expanded) {
+      nav.open(target);
+      return;
+    }
+    setPicked(target);
+    // 手机上回到设置首页时会重新取数据；两栏时左栏一直在，换一项时取一次（右栏里可能刚改过密钥状态）
+    void refresh();
+  };
+  const isOpen = (screen: SettingsTarget["screen"]): boolean => expanded && paneRoot?.screen === screen;
+
+  // 中屏：标题和居中的那一栏对齐；宽屏：左栏从导航栏右边开始，宽 340
+  const sides = tabInsets(layoutSize);
+  const column = sides ? centerColumn(width, sides) : null;
+  const headerInsets = expanded
+    ? { left: rail.contentLeft + space.m, right: width - rail.contentLeft - pane.list }
+    : column
+      ? { left: column.left + space.m, right: column.right + space.m }
+      : undefined;
   return (
     <Page
-      header={<LargeHeader title="设置" />}
+      header={<LargeHeader title="设置" insets={headerInsets} />}
       refreshing={refreshing}
       onRefresh={() => void refresh()}
       bottomSpace={bottomSpace}
-      contentStyle={{ paddingHorizontal: space.list }}
+      maxWidth={expanded ? null : undefined}
+      contentStyle={[
+        { paddingHorizontal: space.list },
+        expanded ? { marginLeft: rail.contentLeft - space.list, width: pane.list + space.list * 2 } : null,
+      ]}
+      overlay={expanded && paneRoot ? <SettingsPane root={paneRoot} onNavigate={reloadQuietly} /> : null}
     >
       {error ? (
         <Notice
@@ -181,12 +240,14 @@ export default function SettingsScreen() {
         <DirectorCard
           route={director}
           credential={credentials.find((c) => c.id === director.credential_id)}
-          onPress={() => router.push("/settings/routes")}
+          onPress={() => open({ screen: "routes" })}
+          light={expanded}
+          selected={isOpen("routes")}
         />
       ) : data ? (
         <SetupCard
           hasKey={credentials.length > 0}
-          onPress={() => router.push(credentials.length > 0 ? "/settings/routes" : "/settings/credentials")}
+          onPress={() => open({ screen: credentials.length > 0 ? "routes" : "credentials" })}
         />
       ) : null}
 
@@ -199,7 +260,8 @@ export default function SettingsScreen() {
             subtitle="还没有设置"
             subtitleColor={palette.warn}
             leading={<RowIcon name="director" />}
-            onPress={() => router.push("/settings/routes")}
+            onPress={() => open({ screen: "routes" })}
+            selected={isOpen("routes")}
           />
         ) : null}
         <ListRow
@@ -219,7 +281,8 @@ export default function SettingsScreen() {
               )
             ) : null
           }
-          onPress={() => router.push("/settings/credentials")}
+          onPress={() => open({ screen: "credentials" })}
+          selected={isOpen("credentials")}
         />
         <ListRow
           key="account"
@@ -232,7 +295,8 @@ export default function SettingsScreen() {
               </Text>
             </View>
           }
-          onPress={() => router.push("/settings/account")}
+          onPress={() => open({ screen: "account" })}
+          selected={isOpen("account")}
         />
       </Group>
       <GroupLabel style={styles.label}>其他</GroupLabel>
@@ -247,7 +311,8 @@ export default function SettingsScreen() {
           title="连接测试"
           subtitle="检查流式输出、断线续传和延迟"
           leading={<RowIcon name="probe" />}
-          onPress={() => router.push("/dev/probe")}
+          onPress={() => open({ screen: "probe" })}
+          selected={isOpen("probe")}
         />
       </Group>
       <Text style={[styles.footer, { color: palette.mut }]}>

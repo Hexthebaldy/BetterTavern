@@ -20,7 +20,7 @@ import { Button, Icon, RadioMark, Sheet } from "./ui.tsx";
 const RECENT_FAILURE_MS = 10 * 60_000;
 
 /** 页面底部的服务器行 */
-export function ServerRow({ onChange }: { onChange: () => void }) {
+export function ServerRow({ onChange, width }: { onChange: () => void; width?: number | null }) {
   const { serverUrl } = useApp();
   const palette = usePalette();
   const insets = useSafeAreaInsets();
@@ -35,6 +35,8 @@ export function ServerRow({ onChange }: { onChange: () => void }) {
           marginBottom: Math.max(insets.bottom, space.l),
           backgroundColor: pressed ? palette.bg3 : palette.bg2,
         },
+        // 平板：和表单一样宽、居中（登录页的 AuthLayout）
+        width ? { width, alignSelf: "center", marginHorizontal: 0 } : null,
       ]}
     >
       <Icon name="server" size={18} color={palette.mut} />

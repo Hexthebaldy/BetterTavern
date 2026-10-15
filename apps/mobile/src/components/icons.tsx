@@ -63,6 +63,8 @@ const ICONS = {
   chevronDown: [{ d: "M6 9l6 6 6-6" }],
   chevronUp: [{ d: "M6 15l6-6 6 6" }],
   close: [{ d: "M6 6l12 12M18 6L6 18" }],
+  /** 收起停靠在右侧的面板（平板阅读页的世界状态） */
+  sidebar: [{ rect: [3.5, 4.5, 17, 15, 4] }, { d: "M14.5 4.5v15M8 10l2 2-2 2" }],
   cross: [{ d: "M7 7l10 10M17 7L7 17" }],
   arrowRight: [{ d: "M5 12h14M13 6l6 6-6 6" }],
   arrowLeft: [{ d: "M19 12H5M11 6l-6 6 6 6" }],
