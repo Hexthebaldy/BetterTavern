@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Web 端 · 阅读页 · 输入与更多</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--ok:#13875A;--okBg:#E9F6EF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--narr:#222222;--pri:#1A1A1A;--onPri:#FFFFFF;--priHv:#33332F;--card:#FFFFFF;--sheet:#FFFFFF;--scrim:rgba(20,20,20,.38);--arrowBg:rgba(255,255,255,.14);--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10);--lift:0 1px 3px rgba(20,20,20,.12);--chrome:#ECECE8;--url:rgba(255,255,255,.85);--frame:#E2E2DE;--fade:rgba(255,255,255,0);--hv:#EBEBE7;--cardHv:#FFFFFF}
+.D{--bg:#111113;--bg2:#1C1C1F;--bg3:#27272B;--ink:#F2F2F0;--ink2:#D3D3CF;--mut:#9C9C97;--line:#2A2A2F;--line2:#3A3A40;--acc:#8597FF;--accBg:#1F2546;--ok:#43C98C;--okBg:#11281D;--warn:#F0B257;--warnBg:#2C2213;--err:#FF7466;--errBg:#2F1715;--narr:#E2E2DE;--pri:#F2F2F0;--onPri:#111113;--priHv:#FFFFFF;--card:#2A2A2F;--sheet:#1F1F23;--scrim:rgba(0,0,0,.6);--arrowBg:rgba(0,0,0,.08);--sh:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.5);--lift:0 1px 3px rgba(0,0,0,.35);--chrome:#202023;--url:rgba(255,255,255,.07);--frame:#2A2A2F;--fade:rgba(17,17,19,0);--hv:#27272B;--cardHv:#313136}
+.L,.D{--fill:var(--bg2);--onFill:var(--card);--inset:var(--bg2);--raised:var(--card)}
+.L .panel{--fill:var(--card);--onFill:var(--bg2);--inset:var(--bg3);--raised:var(--card)}
+.D .panel{--fill:var(--card);--onFill:var(--bg2);--inset:var(--bg);--raised:var(--bg3)}
+.L .sheet{--fill:var(--bg2);--onFill:var(--sheet);--inset:var(--bg2);--raised:var(--card);--hv:#EBEBE7}
+.D .sheet{--fill:var(--bg3);--onFill:var(--sheet);--inset:var(--bg);--raised:var(--bg3);--hv:#2E2E33}
+.bd0{box-sizing:border-box;padding:40px;display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif;background:#FFFFFF}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;gap:10px;height:30px;padding:0 14px;border-radius:15px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:#6E6D68}
+.tag b{font-family:"Noto Sans SC",sans-serif;font-weight:500;color:#1A1A1A}
+.win{border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px var(--frame),0 18px 50px rgba(20,20,20,.08);flex:none;background:var(--bg)}
+.chrome{height:44px;background:var(--chrome);position:relative;display:flex;align-items:center;gap:8px;padding:0 18px}
+.chrome i{display:block;width:12px;height:12px;border-radius:6px}
+.url{position:absolute;left:50%;top:8px;transform:translateX(-50%);width:460px;height:28px;border-radius:14px;background:var(--url);display:flex;align-items:center;justify-content:center;gap:6px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--mut)}
+.url b{font-weight:500;color:var(--ink2)}
+.vp{position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased}
+.vp *{box-sizing:border-box}
+.ab{position:absolute!important}
+.fx{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+.f1{flex:1;min-width:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.serif{font-family:"Noto Serif SC","Songti SC",serif}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.mut{color:var(--mut)}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big{font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.h1{font-size:26px;line-height:34px;font-weight:700;letter-spacing:-.01em;margin:0}
+.h2{font-size:20px;line-height:28px;font-weight:700;margin:0}
+.h3{font-size:17px;line-height:24px;font-weight:700;margin:0}
+.sec{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;font-size:17px;line-height:24px;font-weight:700}
+.sec .m{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:400;color:var(--mut)}
+.cnt{font-family:"IBM Plex Mono",monospace;font-size:13px;height:32px;min-width:32px;padding:0 10px;border-radius:16px;background:var(--bg2);display:inline-flex;align-items:center;justify-content:center;color:var(--ink2)}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;border:0;border-radius:22px;font-family:inherit;font-size:15px;line-height:20px;font-weight:500;white-space:nowrap;flex:none}
+.btn.lg{height:52px;border-radius:26px;font-size:16px;padding:0 24px}
+.btn.sm{height:36px;border-radius:18px;font-size:14px;padding:0 14px}
+.btn.between{justify-content:space-between}
+.bp{background:var(--pri);color:var(--onPri)}
+.bp.hv{background:var(--priHv)}
+.bs{background:var(--fill);color:var(--ink)}
+.bs.hv{background:var(--hv)}
+.bq{background:transparent;color:var(--ink)}
+.bx{background:var(--errBg);color:var(--err)}
+.bw{background:var(--warn);color:#FFFFFF}
+.D .bw{color:#111113}
+.dis{opacity:.32}
+.arr{width:32px;height:32px;border-radius:16px;background:var(--arrowBg);display:flex;align-items:center;justify-content:center;margin-right:-14px}
+.lg .arr{width:36px;height:36px;border-radius:18px;margin-right:-16px}
+.ib{width:40px;height:40px;border-radius:20px;background:var(--fill);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;flex:none;position:relative}
+.ib.on{background:var(--ink);color:var(--bg)}
+.ib.ghost{background:transparent;color:var(--mut)}
+.ib.hv{background:var(--hv)}
+.ib .bdg{position:absolute;right:7px;top:7px;width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 2px var(--fill)}
+.ring{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--acc)}
+.iring{box-shadow:inset 0 0 0 2px var(--acc)}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:7px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line2),0 1px 0 var(--line2);font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1;color:var(--mut);flex:none;font-weight:500}
+.kbd.lg{height:26px;min-width:26px;font-size:12px;border-radius:8px;padding:0 8px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:14px;background:var(--fill);font-size:12.5px;color:var(--ink2);white-space:nowrap;flex:none}
+.pill.s{height:24px;padding:0 9px;border-radius:12px;font-size:12px}
+.pill.acc{background:var(--accBg);color:var(--acc);font-weight:500}
+.pill.accS{background:var(--acc);color:#FFFFFF;font-weight:600}
+.D .pill.accS{color:#111113}
+.pill.ok{background:var(--okBg);color:var(--ok)}
+.pill.warn{background:var(--warnBg);color:var(--warn)}
+.pill.err{background:var(--errBg);color:var(--err)}
+.pill.card{background:var(--card)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:3px;background:currentColor;flex:none}
+.stat{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap}
+.stat.ok{color:var(--ok)}.stat.warn{color:var(--warn)}.stat.err{color:var(--err)}
+/* fields */
+.fld{display:flex;flex-direction:column;gap:8px}
+.lab{font-size:13px;line-height:18px;color:var(--ink2);font-weight:500;padding-left:4px}
+.hint{font-size:12.5px;line-height:18px;color:var(--mut);padding-left:4px}
+.inp{display:flex;align-items:center;gap:10px;width:100%;height:52px;border-radius:14px;background:var(--fill);padding:0 8px 0 16px;font-size:15px;color:var(--ink)}
+.inp.ph{color:var(--mut)}
+.inp.foc{box-shadow:inset 0 0 0 2px var(--acc)}
+.caret{display:inline-block;width:2px;height:20px;background:var(--acc);margin-left:1px;vertical-align:-4px;border-radius:1px}
+.chk{width:22px;height:22px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:inset 0 0 0 1.75px var(--line2)}
+.chk.on{background:var(--ink);box-shadow:none;color:var(--bg)}
+.rad{width:22px;height:22px;border-radius:11px;flex:none;box-shadow:inset 0 0 0 1.75px var(--line2)}
+.rad.on{box-shadow:inset 0 0 0 6.5px var(--acc)}
+.tgl{width:52px;height:32px;border-radius:16px;background:var(--bg3);position:relative;flex:none}
+.tgl::after{content:"";position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:13px;background:#FFFFFF;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.tgl.on{background:var(--acc)}
+.tgl.on::after{left:23px}
+.segc{display:flex;gap:4px;padding:4px;border-radius:26px;background:var(--inset)}
+.segc>span{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:22px;font-size:14.5px;color:var(--mut)}
+.segc>span.on{background:var(--raised);color:var(--ink);font-weight:600;box-shadow:var(--lift)}
+.D .segc>span.on{box-shadow:none}
+/* sidebar */
+.sb{position:absolute;z-index:4;left:12px;top:12px;bottom:12px;width:268px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;padding:12px}
+.sbh{display:flex;align-items:center;gap:10px;height:44px;padding:0 0 0 8px;flex:none}
+.sbh .nm{flex:1;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.ni{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:22px;font-size:15px;color:var(--ink2);flex:none}
+.ni.on{background:var(--ink);color:var(--bg);font-weight:500}
+.ni.hv{background:var(--bg3)}
+.sbl{display:flex;align-items:center;justify-content:space-between;padding:0 10px;margin:22px 0 4px;font-size:12.5px;color:var(--mut);flex:none}
+.grp{padding:10px 10px 4px;font-size:11.5px;color:var(--mut);font-family:"IBM Plex Mono",monospace;letter-spacing:.04em}
+.sr{position:relative;display:flex;align-items:center;gap:10px;height:54px;padding:0 8px;border-radius:18px;flex:none}
+.sr.on{background:var(--card);box-shadow:var(--lift)}
+.D .sr.on{box-shadow:none}
+.sr.hv{background:var(--bg3)}
+.sr .tt{font-size:14px;line-height:20px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr .st{font-size:11.5px;line-height:16px;color:var(--mut);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.sr .st.lv{color:var(--acc)}
+.sr .st.warn{color:var(--warn)}
+.sba{display:flex;align-items:center;gap:10px;padding:8px;border-radius:20px;margin-top:auto;flex:none}
+.av{width:32px;height:32px;border-radius:16px;background:var(--accBg);color:var(--acc);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:none}
+/* rail */
+.rail{position:absolute;z-index:4;left:12px;top:12px;bottom:12px;width:76px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;align-items:center;padding:16px 0 12px;gap:4px}
+.rn{width:60px;height:60px;border-radius:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink2);font-size:11px;line-height:14px}
+.rn.on{background:var(--ink);color:var(--bg);font-weight:500}
+.rsep{width:28px;height:1px;background:var(--line2);margin:8px 0}
+.rcv{width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;position:relative}
+.rcv.on{background:var(--card);box-shadow:var(--lift)}
+.rcv .ld{position:absolute;right:5px;top:5px;width:9px;height:9px;border-radius:5px;background:var(--acc);box-shadow:0 0 0 2px var(--bg2)}
+/* overlays */
+.menu{position:absolute;z-index:9;padding:6px;border-radius:24px;background:var(--sheet);box-shadow:var(--sh)}
+.mi{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-radius:18px;font-size:15px;color:var(--ink)}
+.mi.hv{background:var(--hv)}
+.mi.err{color:var(--err)}
+.mi .kbd{margin-left:auto}
+.msep{height:1px;background:var(--line);margin:4px 10px}
+.scrim{position:absolute;inset:0;z-index:8;background:var(--scrim)}
+.dlg{position:absolute;z-index:9;background:var(--sheet);border-radius:32px;box-shadow:var(--sh);display:flex;flex-direction:column}
+.tip{position:absolute;z-index:9;display:flex;align-items:center;gap:8px;height:32px;padding:0 6px 0 12px;border-radius:16px;background:var(--ink);color:var(--bg);font-size:12.5px;white-space:nowrap;box-shadow:var(--sh)}
+.tip .kbd{background:rgba(255,255,255,.16);box-shadow:none;color:inherit;height:20px;min-width:20px;border-radius:6px}
+.D .tip .kbd{background:rgba(0,0,0,.1)}
+.toast{position:absolute;z-index:9;display:flex;align-items:center;gap:10px;height:52px;padding:0 6px 0 18px;border-radius:26px;background:var(--ink);color:var(--bg);font-size:14px;box-shadow:var(--sh)}
+.cursor{position:absolute;z-index:20;width:20px;height:24px;pointer-events:none}
+/* covers */
+.cv path,.cv circle.o{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.cv .bgr{fill:var(--onFill)}
+.cv .dt{fill:var(--acc)}
+.cv .soft{stroke:var(--line2)}
+/* reading */
+.rtop{position:absolute;z-index:3;top:0;height:76px;display:flex;align-items:flex-start;justify-content:center;padding-top:24px;background:linear-gradient(var(--bg) 55%,var(--fade))}
+.rtop .t{font-size:15px;line-height:22px;font-weight:600}
+.feed{position:absolute;z-index:1}
+.narr{font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--narr);margin:0 0 16px;text-align:justify;letter-spacing:.175px}
+.note{margin:4px 0 20px;padding-left:14px;border-left:3px solid var(--line2);font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--ink2);letter-spacing:.175px}
+.scur{display:inline-block;width:3px;height:20px;border-radius:1.5px;background:var(--acc);vertical-align:-3px;margin-left:2px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{display:flex;align-items:center;gap:12px;min-height:76px;padding:10px 14px 10px 12px;border-radius:24px;background:var(--fill);font-size:15px;line-height:22px;color:var(--ink)}
+.opt.hv{background:var(--hv)}
+.opt.on{background:var(--accBg);box-shadow:inset 0 0 0 2px var(--acc)}
+.key{width:32px;height:32px;border-radius:16px;background:var(--onFill);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;flex:none}
+.opt.on .key{background:var(--acc);color:var(--bg)}
+.book{border-radius:32px;background:var(--bg2);padding:12px 12px 18px;display:flex;flex-direction:column;gap:12px;margin-bottom:28px}
+.abar{position:absolute;z-index:5;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:8px 0 14px}
+.abar .in{margin:0 auto;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 4px}
+.tb{width:44px;height:44px;border-radius:22px;background:var(--fill);color:var(--ink);display:flex;align-items:center;justify-content:center;flex:none;position:relative}
+.tb.on{background:var(--ink);color:var(--bg)}
+.tb.hv{background:var(--hv)}
+.tb .bdg{position:absolute;right:8px;top:8px;width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 2px var(--fill)}
+.wpill{flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:44px;padding:0 11px 0 16px;border-radius:22px;background:var(--fill);color:var(--mut);font-size:15px}
+.lst{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding-left:8px;font-size:15px;color:var(--ink)}
+.ldot{width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 4px var(--accBg);flex:none}
+.stopb{display:flex;align-items:center;gap:8px;height:44px;padding:0 18px 0 14px;border-radius:22px;background:var(--fill);font-size:15px;flex:none}
+.ta{border-radius:24px;background:var(--fill);padding:14px 16px;font-size:16px;line-height:25px;height:124px;color:var(--ink)}
+.ta.foc{box-shadow:inset 0 0 0 2px var(--acc)}
+/* world panel */
+.wp{position:absolute;z-index:4;top:12px;bottom:12px;width:400px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;overflow:hidden}
+.wph{display:flex;align-items:flex-start;gap:12px;padding:16px 12px 0 20px}
+.wph .t{font-size:24px;line-height:32px;font-weight:700}
+.wph .s{font-size:12px;line-height:17px;color:var(--mut)}
+.seg{display:grid;gap:4px;padding:4px;border-radius:24px;background:var(--inset)}
+.sg{display:flex;align-items:center;justify-content:center;gap:5px;height:38px;border-radius:19px;font-size:13.5px;color:var(--ink2)}
+.sg.on{background:var(--raised);color:var(--ink);font-weight:600;box-shadow:var(--lift)}
+.D .sg.on{box-shadow:none}
+.n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--mut);font-weight:400}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:16px;background:var(--fill);font-size:13px;color:var(--ink);flex:none}
+.chip.on{background:var(--ink);color:var(--bg)}
+.ent{display:flex;gap:12px;padding:12px;border-radius:22px;background:var(--fill)}
+.ent.me{background:var(--accBg)}
+.ent.hv{box-shadow:var(--lift)}
+.eic{width:40px;height:40px;border-radius:20px;background:var(--onFill);display:flex;align-items:center;justify-content:center;flex:none}
+.ent.me .eic{background:var(--acc);color:#FFFFFF}
+.D .ent.me .eic{color:#111113}
+.en{font-size:15.5px;line-height:22px;font-weight:700}
+.kd{font-size:12px;line-height:17px;color:var(--mut)}
+.es{font-size:13.5px;line-height:21px;color:var(--ink2)}
+.rchip{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 9px;border-radius:13px;background:var(--onFill);font-size:12.5px;color:var(--ink)}
+.rchip .k{font-size:12px;color:var(--mut)}
+.fact{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:20px;background:var(--fill)}
+.fact.sec{background:var(--warnBg)}
+.fdot{width:6px;height:6px;border-radius:3px;background:var(--ink);margin-top:8px;flex:none}
+.lnk{display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:16px;background:var(--fill);font-size:14px}
+.lnk .m{height:24px;padding:0 9px;border-radius:12px;background:var(--onFill);font-size:12px;color:var(--mut);display:flex;align-items:center}
+/* story cards */
+.sc{position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:24px;background:var(--bg2);min-width:0;overflow:hidden}
+.sc.hv{background:var(--bg3)}
+.sc .tt{font-size:17px;line-height:24px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--mut);white-space:nowrap}
+.live{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;background:var(--accBg);font-size:12.5px;color:var(--acc);font-weight:500;white-space:nowrap;flex:none}
+.ex{font-size:14px;line-height:21px;color:var(--ink2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* library tiles */
+.tile{display:flex;flex-direction:column;padding:8px;border-radius:26px;background:var(--bg2);min-width:0;position:relative}
+.tile.hv{background:var(--bg3)}
+.tile .meta{padding:10px 8px 6px;display:flex;flex-direction:column;gap:3px}
+.tile .nm{font-size:16px;line-height:22px;font-weight:700}
+.tile .sm{font-size:12.5px;line-height:18px;color:var(--mut);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:36px}
+.tcv{display:block;width:100%;height:auto}
+.tcv path,.tcv circle.o{fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tcv .bgr{fill:var(--card)}
+.tcv .dt{fill:var(--acc)}
+.tcv .soft{stroke:var(--line2)}
+/* settings */
+.grpl{padding:0 16px;margin:22px 0 8px;font-size:13px;color:var(--mut)}
+.group{border-radius:28px;background:var(--bg2);padding:6px;display:flex;flex-direction:column;gap:2px}
+.lr{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 12px;border-radius:22px}
+.lr.on{background:var(--card);box-shadow:inset 0 0 0 2px var(--acc)}
+.lr.hv{background:var(--bg3)}
+.lr .t{font-size:15.5px;line-height:22px}
+.lr .s{font-size:12.5px;line-height:18px;color:var(--mut)}
+.rico{width:36px;height:36px;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;flex:none}
+.pm{width:40px;height:40px;border-radius:20px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;flex:none;color:var(--ink)}
+.pm.ink{background:var(--ink);color:var(--bg)}
+.pm.acc{background:var(--acc);color:#FFFFFF}
+.pane{position:absolute;z-index:2;top:12px;bottom:12px;right:12px;border-radius:32px;background:var(--bg2);overflow:hidden}
+.wc{border-radius:28px;background:var(--card)}
+.back{display:inline-flex;align-items:center;gap:4px;height:36px;padding:0 14px 0 8px;border-radius:18px;background:var(--card);font-size:13.5px;color:var(--ink)}
+</style>
+</helmet>
+<div class="bd0" style="width: 3000px; height: 1066px">
+<div class="cell"><div class="tag"><b>W08</b> 1440 · 阅读 · 自己写（底栏原地展开）· 世界收起 · 侧栏行悬停出现“…”</div><div class="win L" style="width: 1440px"><div class="chrome"><i style="background: #FF5F57"></i><i style="background: #FEBC2E"></i><i style="background: #28C840"></i><div class="url"><svg class="i" style="width: 12px; height: 12px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>bettertavern.app<b>/play/7f3a</b></div></div><section class="vp L" style="width: 1440px; height: 900px"><nav class="sb panel" aria-label="侧栏"><div class="sbh"><svg width="26" height="26" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true" style="flex: none"><g style="fill: none; stroke: var(--ink); stroke-linejoin: miter"><path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" style="stroke-width: 3.84"/><path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" style="stroke-width: 3.84"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" style="stroke-width: 4.16"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" style="fill: var(--acc)"/></svg><span class="nm">BetterTavern</span><span class="ib ghost" style="width: 36px; height: 36px"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="4"/><path d="M9.5 4.5v15"/></svg></span></div><div class="col" style="gap: 2px; margin-top: 14px"><div class="ni on"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</div><div class="ni"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</div><div class="ni"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</div></div><div class="sbl"><span>最近的故事</span><span class="mono">5</span></div><div class="col" style="gap: 2px; overflow: hidden"><div class="grp">今天</div><div class="sr on"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--bg2)"/><path style="stroke-width: 3.2" d="M8 60q10-7 20 0t20 0 20 0 20 0M8 74q10-7 20 0t20 0 20 0 20 0"/><circle class="dt" cx="66" cy="28" r="9"/></svg><span class="f1 col"><span class="tt">雨夜渡口</span><span class="st mono">刚刚</span></span></div><div class="sr"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--card)"/><path class="soft" d="M20 36h56M20 60h56M36 20v56M60 20v56" style="stroke-width: 1.6"/><path style="stroke-width: 3.2" d="M20 80A60 60 0 0180 20"/><circle class="dt" cx="60" cy="36" r="7"/></svg><span class="f1 col"><span class="tt">第七号观测站</span><span class="st lv"><i class="dot"></i>正在写开场</span></span></div><div class="sr"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--card)"/><circle class="o" style="stroke-width: 3.2" cx="48" cy="48" r="24"/><path style="stroke-width: 3.2" d="M48 48V32M48 48l11 7"/><circle class="dt" cx="48" cy="48" r="4"/></svg><span class="f1 col"><span class="tt">钟楼下的信</span><span class="st mono">3 小时前</span></span></div><div class="grp">本周</div><div class="sr hv"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--card)"/><path class="soft" d="M14 30h68M14 42h40"/><path style="stroke-width: 3.2" d="M14 72h68M26 72a22 22 0 0144 0"/><circle class="dt" cx="70" cy="36" r="7"/></svg><span class="f1 col"><span class="tt">白鹭镇异闻</span><span class="st mono">昨天</span></span><span class="ib" style="width: 30px; height: 30px; background: var(--card); color: var(--ink)"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span></div><div class="grp">更早</div><div class="sr"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--card)"/><path style="stroke-width: 3.2" d="M18 74l12-26 12 26zM40 74l14-36 14 36zM62 74l9-18 9 18z"/><circle class="dt" cx="54" cy="62" r="5"/></svg><span class="f1 col"><span class="tt">林间旅店</span><span class="st warn">开场还没有写好</span></span></div></div><div class="sba"><span class="av">林</span><span class="f1 col"><span style="font-size: 14px; font-weight: 500">林川</span><span class="mono ell" style="font-size: 11.5px; color: var(--mut)">linchuan@example.com</span></span></div></nav><div class="rtop" style="left: 280px; width: 1160px"><span class="t">雨夜渡口</span></div><div class="feed" style="left: 540px; width: 640px; bottom: 231px"><div class="book" style="width: 616px; margin: 0 12px 28px"><div style="height: 112px; border-radius: 22px; background: var(--card); overflow: hidden; position: relative"><svg viewBox="0 0 592 112" width="592" height="112" preserveAspectRatio="xMidYMid slice" style="display: block"><path d="M-10 70q37-22 74 0t74 0 74 0 74 0 74 0 74 0 74 0 74 0 74 0M-10 92q37-22 74 0t74 0 74 0 74 0 74 0 74 0 74 0 74 0 74 0" style="fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round"/><circle cx="452" cy="34" r="12" style="fill: var(--acc)"/></svg></div><div style="padding: 2px 8px 0" class="col"><span class="h1">雨夜渡口</span><span class="fx" style="gap: 6px; margin-top: 10px"><span class="pill card s">沈知微</span><span class="pill acc s">我是 林川</span></span></div></div><div style="padding: 0 24px"><p class="narr">雨是从傍晚开始下的。渡口的灯一盏接一盏亮起来，又被风吹得摇摇晃晃，像谁在水面上撒了一把碎金。</p></div><div style="padding: 0 24px"><p class="narr">我推开茶馆的门，檐下的铜铃响了两声。柜台后的女人没有抬头，只把一只粗瓷杯推到桌沿。她的手指很白，指节上却有一道旧疤，像是被绳索勒过。</p></div><div style="padding: 0 24px"><div class="note">我在她对面坐下，问她这道疤是怎么来的。</div></div><div style="padding: 0 24px"><p class="narr">沈知微终于抬起眼。那是一双很静的眼睛，静得让我想起深夜无人的河面。</p></div><div style="padding: 0 24px"><p class="narr">“客人问得太多了。”她往我杯里续了茶，水声很轻，“在这个渡口，问得多的人，往往走不了。”</p></div><div style="padding: 0 24px"><p class="narr">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p></div><div style="padding: 4px 12px 0"><div class="opts" style="width: 616px"><div class="opt" style="width: 305px"><span class="key">A</span><span class="f1">起身走到窗边，看清河上是什么船</span></div><div class="opt" style="width: 305px"><span class="key">B</span><span class="f1">按住她续茶的手，追问“走不了”是什么意思</span></div><div class="opt" style="width: 616px"><span class="key">C</span><span class="f1">把怀里那封信放到桌上，看她认不认得上面的字</span></div></div></div></div><div class="abar" style="left: 280px; width: 1160px; padding-top: 12px"><div style="width: 672px; margin: 0 auto; padding: 0 4px; display: flex; flex-direction: column; gap: 8px"><div class="ta foc">我把信从怀里取出来，压在茶杯下面，等她先开口。<span class="caret"></span></div><div class="fx" style="gap: 8px"><span class="btn bs" style="padding: 0 18px 0 12px; gap: 6px"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>收起</span><span class="f1"></span><span class="mono" style="font-size: 12px; color: var(--mut); display: flex; align-items: center; gap: 6px; margin-right: 6px"><span class="kbd">Enter</span>发送<span style="margin: 0 2px">·</span><span class="kbd">Shift</span>+<span class="kbd">Enter</span>换行</span><span class="btn bp" style="padding: 0 18px 0 8px"><span class="arr" style="margin: 0; width: 30px; height: 30px"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>发送</span></div></div></div><svg class="cursor" viewBox="0 0 20 24" style="left: 150px; top: 516px"><path d="M2 1.5v18.2l4.6-4.4 3 6.6 3.1-1.4-3-6.4h6.6z" style="fill: #111; stroke: #fff; stroke-width: 1.4; stroke-linejoin: round"/></svg></section></div></div><div class="cell"><div class="tag"><b>W09</b> 1440 · 夜间 · “更多”贴着按钮弹出（宽 340，不加遮罩）</div><div class="win D" style="width: 1440px"><div class="chrome"><i style="background: #FF5F57"></i><i style="background: #FEBC2E"></i><i style="background: #28C840"></i><div class="url"><svg class="i" style="width: 12px; height: 12px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>bettertavern.app<b>/play/7f3a</b></div></div><section class="vp D" style="width: 1440px; height: 900px"><nav class="sb panel" aria-label="侧栏"><div class="sbh"><svg width="26" height="26" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true" style="flex: none"><g style="fill: none; stroke: var(--ink); stroke-linejoin: miter"><path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" style="stroke-width: 3.84"/><path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" style="stroke-width: 3.84"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" style="stroke-width: 4.16"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" style="fill: var(--acc)"/></svg><span class="nm">BetterTavern</span><span class="ib ghost" style="width: 36px; height: 36px"><svg class="i" style="width: 19px; height: 19px" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="4"/><path d="M9.5 4.5v15"/></svg></span></div><div class="col" style="gap: 2px; margin-top: 14px"><div class="ni on"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>故事</div><div class="ni"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg>剧本</div><div class="ni"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>设置</div></div><div class="sbl"><span>最近的故事</span><span class="mono">5</span></div><div class="col" style="gap: 2px; overflow: hidden"><div class="grp">今天</div><div class="sr on"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--bg2)"/><path style="stroke-width: 3.2" d="M8 60q10-7 20 0t20 0 20 0 20 0M8 74q10-7 20 0t20 0 20 0 20 0"/><circle class="dt" cx="66" cy="28" r="9"/></svg><span class="f1 col"><span class="tt">雨夜渡口</span><span class="st mono">刚刚</span></span></div><div class="sr"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--card)"/><path class="soft" d="M20 36h56M20 60h56M36 20v56M60 20v56" style="stroke-width: 1.6"/><path style="stroke-width: 3.2" d="M20 80A60 60 0 0180 20"/><circle class="dt" cx="60" cy="36" r="7"/></svg><span class="f1 col"><span class="tt">第七号观测站</span><span class="st lv"><i class="dot"></i>正在写开场</span></span></div><div class="sr"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--card)"/><circle class="o" style="stroke-width: 3.2" cx="48" cy="48" r="24"/><path style="stroke-width: 3.2" d="M48 48V32M48 48l11 7"/><circle class="dt" cx="48" cy="48" r="4"/></svg><span class="f1 col"><span class="tt">钟楼下的信</span><span class="st mono">3 小时前</span></span></div><div class="grp">本周</div><div class="sr"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--card)"/><path class="soft" d="M14 30h68M14 42h40"/><path style="stroke-width: 3.2" d="M14 72h68M26 72a22 22 0 0144 0"/><circle class="dt" cx="70" cy="36" r="7"/></svg><span class="f1 col"><span class="tt">白鹭镇异闻</span><span class="st mono">昨天</span></span></div><div class="grp">更早</div><div class="sr"><svg class="cv" width="36" height="36" viewBox="0 0 96 96" aria-hidden="true" style="flex: none"><rect class="bgr" width="96" height="96" rx="32" style="fill: var(--card)"/><path style="stroke-width: 3.2" d="M18 74l12-26 12 26zM40 74l14-36 14 36zM62 74l9-18 9 18z"/><circle class="dt" cx="54" cy="62" r="5"/></svg><span class="f1 col"><span class="tt">林间旅店</span><span class="st warn">开场还没有写好</span></span></div></div><div class="sba"><span class="av">林</span><span class="f1 col"><span style="font-size: 14px; font-weight: 500">林川</span><span class="mono ell" style="font-size: 11.5px; color: var(--mut)">linchuan@example.com</span></span></div></nav><div class="rtop" style="left: 280px; width: 1160px"><span class="t">雨夜渡口</span></div><div class="feed" style="left: 540px; width: 640px; bottom: 99px"><div class="book" style="width: 616px; margin: 0 12px 28px"><div style="height: 112px; border-radius: 22px; background: var(--card); overflow: hidden; position: relative"><svg viewBox="0 0 592 112" width="592" height="112" preserveAspectRatio="xMidYMid slice" style="display: block"><path d="M-10 70q37-22 74 0t74 0 74 0 74 0 74 0 74 0 74 0 74 0 74 0M-10 92q37-22 74 0t74 0 74 0 74 0 74 0 74 0 74 0 74 0 74 0" style="fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round"/><circle cx="452" cy="34" r="12" style="fill: var(--acc)"/></svg></div><div style="padding: 2px 8px 0" class="col"><span class="h1">雨夜渡口</span><span class="fx" style="gap: 6px; margin-top: 10px"><span class="pill card s">沈知微</span><span class="pill acc s">我是 林川</span></span></div></div><div style="padding: 0 24px"><p class="narr">雨是从傍晚开始下的。渡口的灯一盏接一盏亮起来，又被风吹得摇摇晃晃，像谁在水面上撒了一把碎金。</p></div><div style="padding: 0 24px"><p class="narr">我推开茶馆的门，檐下的铜铃响了两声。柜台后的女人没有抬头，只把一只粗瓷杯推到桌沿。她的手指很白，指节上却有一道旧疤，像是被绳索勒过。</p></div><div style="padding: 0 24px"><div class="note">我在她对面坐下，问她这道疤是怎么来的。</div></div><div style="padding: 0 24px"><p class="narr">沈知微终于抬起眼。那是一双很静的眼睛，静得让我想起深夜无人的河面。</p></div><div style="padding: 0 24px"><p class="narr">“客人问得太多了。”她往我杯里续了茶，水声很轻，“在这个渡口，问得多的人，往往走不了。”</p></div><div style="padding: 0 24px"><p class="narr">窗外忽然传来船桨拍水的声音——可最后一班船，明明已经走了。</p></div><div style="padding: 4px 12px 0"><div class="opts" style="width: 616px"><div class="opt" style="width: 305px"><span class="key">A</span><span class="f1">起身走到窗边，看清河上是什么船</span></div><div class="opt" style="width: 305px"><span class="key">B</span><span class="f1">按住她续茶的手，追问“走不了”是什么意思</span></div><div class="opt" style="width: 616px"><span class="key">C</span><span class="f1">把怀里那封信放到桌上，看她认不认得上面的字</span></div></div></div></div><div class="abar" style="left: 280px; width: 1160px"><div class="in" style="width: 672px"><span class="tb"><svg class="i" style="width: 21px; height: 21px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span><span class="wpill"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg><span class="f1 ell">自己写…</span><span class=kbd>/</span></span><span class="tb on"><svg class="i" style="width: 21px; height: 21px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span></div></div><div class="menu sheet" style="left: 852px; bottom: 68px; width: 340px; padding: 8px; border-radius: 32px"><div style="font-size: 13px; line-height: 18px; color: var(--mut); padding: 8px 8px 4px">阅读设置</div><div class="col" style="gap: 8px"><div class="segc" style="padding: 4px; border-radius: 26px"><span class="on" style="height: 52px; gap: 8px"><span class="serif" style="font-size: 20px; font-weight: 400">宋</span>宋体</span><span style="height: 52px; gap: 8px"><span style="font-size: 20px; font-weight: 700">黑</span>黑体</span></div><div class="fx" style="height: 60px; padding: 0 8px; border-radius: 26px; background: var(--inset)"><span class="fx" style="width: 44px; height: 44px; border-radius: 22px; background: var(--raised); justify-content: center; font-size: 14px">A</span><span class="f1" style="padding: 0 14px; position: relative; height: 52px; display: flex; align-items: center"><span style="display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--bg3); position: relative"><span style="position: absolute; left: 0; top: 0; height: 6px; width: 33.3%; border-radius: 3px; background: var(--acc)"></span><span style="position: absolute; left: calc(33.3% - 12px); top: -9px; width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,.3)"></span></span></span><span class="fx" style="width: 44px; height: 44px; border-radius: 22px; background: var(--raised); justify-content: center; font-size: 22px">A</span></div><div class="fx" style="justify-content: space-between; padding: 0 8px"><span class="mono" style="font-size: 12px; color: var(--mut)">17.5 / 31 · 跟随浏览器字号</span></div><div class="col" style="border-radius: 26px; background: var(--inset); padding: 4px; margin-top: 4px"><div class="mi"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg>重命名故事</div><div class="mi"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>世界状态<span class="kbd">W</span></div><div class="mi hv"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="3"/><path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M8 14h8"/></svg>键盘快捷键<span class="kbd">?</span></div><div class="mi err"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>删除故事</div></div></div></div><svg class="cursor" viewBox="0 0 20 24" style="left: 1022px; top: 746px"><path d="M2 1.5v18.2l4.6-4.4 3 6.6 3.1-1.4-3-6.4h6.6z" style="fill: #111; stroke: #fff; stroke-width: 1.4; stroke-linejoin: round"/></svg></section></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":3000,"height":1066}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

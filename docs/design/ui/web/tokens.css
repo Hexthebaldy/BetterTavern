@@ -1,0 +1,258 @@
+/*
+ * BetterTavern 电脑 Web 端 · 设计变量（白 / 柔线 / 大圆角）
+ *
+ * 和手机、平板是同一套值：颜色取自 apps/mobile/src/theme/palettes.ts（原稿 docs/design/ui/tokens.ts），
+ * 圆角、字号取自 src/theme/index.ts。
+ *
+ * 用法：
+ * - 调色板变量名 = 色板字段名的短横线写法（accBg → --acc-bg，shadowFloat → --shadow-float）。建议主题组件从共用色板
+ *   把当前主题写到 :root 上，并在 <html> 上设 data-scheme="light|dark"；下面“浅色”“夜间”两段可以当对照，
+ *   也是脚本加载前的兜底。
+ * - 网页端新增的是后面几段：悬停色、面板与对话框里的表面、圆角、布局尺寸、动效，以及浏览器全局样式
+ *   （焦点环、选中色、滚动条、悬停只在有鼠标时生效）。
+ */
+
+/* ---------- 浅色 ---------- */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;          /* 页面底色 */
+  --bg2: #f5f5f2;         /* 灰卡：列表卡片、分组、输入框、次要按钮、选项 */
+  --bg3: #ebebe7;         /* 凹面：轨道、骨架屏；悬停时灰块深一档也用它 */
+  --ink: #1a1a1a;         /* 主文字、选中态底 */
+  --ink2: #3d3c38;        /* 次级正文、“我的行动” */
+  --mut: #6e6d68;         /* 说明、占位、未选中图标 */
+  --line: #eeeeea;        /* 行与行之间的分隔、底部操作栏顶上的细线 */
+  --line2: #dcdcd6;       /* “我的行动”左边的竖线、未选中单选圈、键帽描边 */
+  --acc: #2f55f4;         /* 强调：“我”、选中项、流式光标、焦点环 */
+  --acc-bg: #eef2ff;
+  --ok: #13875a;
+  --ok-bg: #e9f6ef;
+  --warn: #b25a0b;
+  --warn-bg: #fff4e4;
+  --err: #d3392b;
+  --err-bg: #fdeeeb;
+  --narr: #222222;        /* 叙述正文 */
+  --pri: #1a1a1a;         /* 主按钮 */
+  --on-pri: #ffffff;
+  --pri-hover: #33332f;   /* 主按钮悬停：浅一档 */
+  --card: #ffffff;        /* 灰卡里再嵌的白卡；提示浮条 */
+  --sheet: #ffffff;       /* 对话框、弹出菜单、右键菜单 */
+  --scrim: rgba(20, 20, 20, 0.38);
+  --arrow-bg: rgba(255, 255, 255, 0.14); /* 主按钮右侧箭头圆 */
+  --shadow-float: 0 1px 2px rgba(20, 20, 20, 0.05), 0 8px 28px rgba(20, 20, 20, 0.1);
+  --shadow-lift: 0 1px 3px rgba(20, 20, 20, 0.12);
+  --shadow-knob: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --card-hover: #ffffff;  /* 白卡悬停不换色，加 --shadow-lift */
+}
+
+/* ---------- 夜间 ---------- */
+[data-scheme="dark"] {
+  color-scheme: dark;
+  --bg: #111113;
+  --bg2: #1c1c1f;
+  --bg3: #27272b;
+  --ink: #f2f2f0;
+  --ink2: #d3d3cf;
+  --mut: #9c9c97;
+  --line: #2a2a2f;
+  --line2: #3a3a40;
+  --acc: #8597ff;
+  --acc-bg: #1f2546;
+  --ok: #43c98c;
+  --ok-bg: #11281d;
+  --warn: #f0b257;
+  --warn-bg: #2c2213;
+  --err: #ff7466;
+  --err-bg: #2f1715;
+  --narr: #e2e2de;
+  --pri: #f2f2f0;
+  --on-pri: #111113;
+  --pri-hover: #ffffff;
+  --card: #2a2a2f;
+  --sheet: #1f1f23;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --arrow-bg: rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 1px 3px rgba(20, 20, 20, 0.12);
+  --shadow-knob: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --card-hover: #313136;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme]) {
+    color-scheme: dark;
+    --bg: #111113;
+    --bg2: #1c1c1f;
+    --bg3: #27272b;
+    --ink: #f2f2f0;
+    --ink2: #d3d3cf;
+    --mut: #9c9c97;
+    --line: #2a2a2f;
+    --line2: #3a3a40;
+    --acc: #8597ff;
+    --acc-bg: #1f2546;
+    --ok: #43c98c;
+    --ok-bg: #11281d;
+    --warn: #f0b257;
+    --warn-bg: #2c2213;
+    --err: #ff7466;
+    --err-bg: #2f1715;
+    --narr: #e2e2de;
+    --pri: #f2f2f0;
+    --on-pri: #111113;
+    --pri-hover: #ffffff;
+    --card: #2a2a2f;
+    --sheet: #1f1f23;
+    --scrim: rgba(0, 0, 0, 0.6);
+    --arrow-bg: rgba(0, 0, 0, 0.08);
+    --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.5);
+    --shadow-lift: 0 1px 3px rgba(20, 20, 20, 0.12);
+    --card-hover: #313136;
+  }
+}
+
+/*
+ * ---------- 表面 ----------
+ * 同一个“灰块”放在不同的底上颜色不同，规则和 App 的 useSheetSurfaces / PanelSurfaces / RaisedSurface 一样：
+ *   --fill      直接放在这块底上的灰块（选项、次要按钮、输入框）
+ *   --on-fill   灰块里再嵌的小块（选项的字母圆、世界卡片里的图标圆）
+ *   --inset     凹下去的分组（分段控件的轨道、菜单组）
+ *   --raised    分组里选中的那一格
+ *   --hover     这块底上灰块的悬停色
+ */
+:root,
+[data-scheme] {
+  --fill: var(--bg2);
+  --on-fill: var(--card);
+  --inset: var(--bg2);
+  --raised: var(--card);
+  --hover: var(--bg3);
+}
+/* 灰底面板：侧栏、导航条、世界（停靠和滑出）。里面的卡片是白的 */
+.surface-panel {
+  --fill: var(--card);
+  --on-fill: var(--bg2);
+  --inset: var(--bg3);
+  --raised: var(--card);
+  --hover: var(--bg3);
+}
+/* 对话框、弹出菜单、右键菜单 */
+.surface-sheet {
+  --fill: var(--bg2);
+  --on-fill: var(--sheet);
+  --inset: var(--bg2);
+  --raised: var(--card);
+  --hover: var(--bg3);
+}
+[data-scheme="dark"] .surface-panel { --inset: var(--bg); --raised: var(--bg3); }
+[data-scheme="dark"] .surface-sheet { --fill: var(--bg3); --inset: var(--bg); --raised: var(--bg3); --hover: #2e2e33; }
+/* 设置右栏：整片“灰底白卡”，相当于 App 的 RaisedSurface（bg → bg2，bg2 → card，card → bg2）；对话框里的表面就是现在的 --sheet-fill、--sheet-inset、--sheet-raised */
+.surface-raised {
+  background: var(--bg2);
+  --fill: var(--card);
+  --on-fill: var(--bg2);
+  --inset: var(--bg2);
+  --raised: var(--card);
+}
+
+/* ---------- 圆角：容器越大圆角越大；嵌套时内层 = 外层 − 内边距；按钮、标签、分段控件全圆 ---------- */
+:root {
+  --r-tag: 10px;
+  --r-input: 14px;
+  --r-cover: 16px;
+  --r-card: 20px;
+  --r-option: 24px;   /* 选项、故事小卡、右键菜单 */
+  --r-group: 28px;    /* 分组、侧栏、世界面板、故事主卡 */
+  --r-sheet: 32px;    /* 对话框、设置右栏 */
+  --r-pill: 999px;
+}
+
+/* ---------- 字体与字号 ---------- */
+:root {
+  --font-sans: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* 叙述：17.5 / 31。跟随浏览器字号时用 rem（以 16px 为 1rem），固定字号时用 px */
+  --narr-size: 1.09375rem;
+  --narr-leading: 1.77;
+  --narr-tracking: 0.01em;
+}
+
+/* ---------- 布局 ---------- */
+:root {
+  --edge: 12px;            /* 浮起的面板离窗口边 */
+  --sidebar: 268px;
+  --rail: 76px;
+  --gutter: 40px;
+  --content-max: 1200px;
+  --readable: 640px;
+  --action-panel: 672px;
+  --world: 400px;
+  --settings-list: 340px;
+  --scenario-info: 420px;
+  --dialog: 480px;
+  --popover: 340px;
+  --context-menu: 240px;
+}
+
+/* ---------- 动效：和 App 一样短，按下缩小 ---------- */
+:root {
+  --press: 0.98;           /* 小按钮 0.97 */
+  --dur-fast: 120ms;       /* 悬停、按下 */
+  --dur: 220ms;            /* 菜单、提示出现 */
+  --dur-panel: 360ms;      /* 侧栏、世界面板展开收起；“回到最新”按钮伸缩 */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur: 0ms; --dur-panel: 0ms; --press: 1; }
+}
+
+/* ================= 浏览器全局样式 ================= */
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 选中文字：浅蓝底。正文可以选中复制；按钮、标签、导航不可选 */
+::selection { background: var(--acc-bg); color: inherit; }
+button, [role="button"], nav, .no-select { user-select: none; -webkit-user-select: none; }
+
+/* 键盘焦点：2px 蓝环，和元素之间隔 2px 的底色；鼠标点击不出现 */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+/* 输入框聚焦是 2px 内描边，和手机一样（鼠标点进去也显示） */
+input:focus, textarea:focus, [contenteditable]:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--acc);
+}
+
+/* 滚动条：细的浮层样式，只在内容区自己的滚动容器上 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background: var(--line2) padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--mut) padding-box; }
+
+/* 悬停只在有鼠标的设备上生效，触屏的平板浏览器不会“卡”在悬停色上 */
+@media (hover: hover) and (pointer: fine) {
+  .hover-fill:hover { background: var(--hover); }
+  .hover-card:hover { box-shadow: var(--shadow-lift); }
+  .hover-pri:hover { background: var(--pri-hover); }
+}
+.pressable:active { transform: scale(var(--press)); transition: transform var(--dur-fast) var(--ease); }
+
+/* 可点击的东西用手形光标；正文是文字光标 */
+a, button, [role="button"], [role="menuitem"], [role="tab"], [role="radio"], [role="switch"] { cursor: pointer; }
+.narrative { cursor: text; user-select: text; }
