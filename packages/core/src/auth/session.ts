@@ -33,6 +33,8 @@ export type SessionDeps = {
 };
 
 export function sessionFromAuth(auth: AuthResponse, now: number): StoredSession {
+  // 请求体模式（App）一定有刷新令牌；没有说明请求发错了模式
+  if (auth.refresh_token === null) throw new Error("响应里没有刷新令牌");
   return {
     user: auth.user,
     accessToken: auth.access_token,

@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     auth_secret: SecretStr | None = None
     access_token_ttl_s: int = Field(default=900, ge=60)
     refresh_token_ttl_s: int = Field(default=30 * 86400, ge=3600)
+    # 网页端放刷新令牌的 Cookie 带不带 Secure（只走 https）。不设置时：开发环境不带
+    # （Safari 在 http://localhost 上不保存带 Secure 的 Cookie），其他环境都带
+    auth_cookie_secure: bool | None = None
 
     # 只允许 https 和公网地址；自己部署、想接本机 Ollama 时可以打开。多人共用的公开服务不要开
     allow_private_endpoints: bool = False
@@ -67,7 +70,8 @@ class Settings(BaseSettings):
     rate_limit_turns_per_min: int = Field(default=30, ge=1)
     rate_limit_probe_per_min: int = Field(default=5, ge=1)
 
-    # 开发时允许的跨域来源（Expo Web 调试用），逗号分隔；生产环境一般不需要
+    # 允许的跨域来源，逗号分隔。网页和接口同源部署时不需要；网页放在别的域名下时把网页的地址加进来，
+    # 网页端的 Cookie 登录也只接受同源和这里列出的来源
     cors_origins: str = ""
 
     @property
@@ -85,6 +89,12 @@ class Settings(BaseSettings):
         if self.enable_probe_endpoints is None:
             return not self.is_prod
         return self.enable_probe_endpoints
+
+    @property
+    def refresh_cookie_secure(self) -> bool:
+        if self.auth_cookie_secure is None:
+            return self.env != "dev"
+        return self.auth_cookie_secure
 
     @property
     def cors_origin_list(self) -> list[str]:

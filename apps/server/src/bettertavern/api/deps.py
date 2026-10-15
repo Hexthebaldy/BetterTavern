@@ -10,6 +10,7 @@ from fastapi import Depends, Header, Request
 from bettertavern.infra.observability.context import bind_user
 from bettertavern.services.container import Services
 from bettertavern.services.errors import RateLimited, Unauthenticated
+from bettertavern.settings import Settings
 
 from .ratelimit import RateLimiter
 
@@ -29,8 +30,13 @@ def get_limiters(request: Request) -> Limiters:
     return request.app.state.limiters
 
 
+def get_settings(request: Request) -> Settings:
+    return request.app.state.settings
+
+
 ServicesDep = Annotated[Services, Depends(get_services)]
 LimitersDep = Annotated[Limiters, Depends(get_limiters)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
 # async：同步的依赖会放到线程池里跑，那里绑定的日志上下文（用户代号）带不回请求本身

@@ -41,5 +41,6 @@ class AuthOut(BaseModel):
     access_token: str
     token_type: str = "Bearer"
     expires_in: int
-    refresh_token: str
+    # Cookie 模式（网页端）下是 None：刷新令牌只在 Set-Cookie 里
+    refresh_token: str | None
     refresh_expires_at: datetime

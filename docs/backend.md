@@ -827,7 +827,7 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 
 | 分组 | 方法与路径 | 说明 |
 | --- | --- | --- |
-| 认证 | `POST /auth/register`、`/auth/login`、`/auth/refresh`、`/auth/logout` | 刷新令牌每次轮换，复用旧令牌视为被盗并吊销整族 |
+| 认证 | `POST /auth/register`、`/auth/login`、`/auth/refresh`、`/auth/logout` | 刷新令牌每次轮换，复用旧令牌视为被盗并吊销整族；网页带 `X-Auth-Mode: cookie`，刷新令牌只放在 HttpOnly Cookie 里 |
 | 账户 | `GET /me/export`、`DELETE /me` | 导出全部数据（JSON）；异步硬删除账户与全部数据 |
 | 模型 | `GET/POST /model-routes`、`GET/PATCH/DELETE /model-routes/{id}` | 玩家配好的模型（Key、端点、模型名、窗口、写法设置），其中一个是导演。创建时做 SSRF 校验，响应里只回密钥后四位；保存时检查窗口设置能否被模型满足（第 4 节） |
 | 模型 | `POST /providers/{provider}/models`、`GET /model-routes/{id}/models`、`POST /model-routes/{id}/probe` | 用还没保存的 Key 或已存的 Key 列出厂商的模型（带上下文长度）；能力探测（第 8 节） |
@@ -1078,7 +1078,7 @@ apps/server/
 | --- | --- |
 | 数据库泄露后暴露 API Key | AES-256-GCM 信封加密：每把密钥一个随机数据密钥（DEK），DEK 由主密钥（KEK）加密，主密钥来自环境变量、文件或 KMS，不在数据库里；`key_id` 支持轮换；接口只回后四位；只在 provider 层请求时解密，用完不缓存明文 |
 | 自定义端点打内网（SSRF） | 第 8 节的 `SafeTransport`：创建与请求两次校验，IP 钉住，默认禁私网 |
-| 账户被盗 | argon2id 哈希；访问令牌 15 分钟；刷新令牌轮换并存哈希，复用即吊销整族；登录限流；可选邮箱验证 |
+| 账户被盗 | argon2id 哈希；访问令牌 15 分钟；刷新令牌轮换并存哈希，复用即吊销整族；网页的刷新令牌在 HttpOnly、SameSite=Strict 的 Cookie 里，页面脚本（包括被注入的脚本）读不到，跨站请求被拒；登录限流；可选邮箱验证 |
 | 越权访问他人数据 | 仓储层强制 `user_id` 条件；跨租户访问一律 404；可选 Postgres 行级安全；CI 按 OpenAPI 的每条路由自动生成跨租户测试 |
 | 提示注入（玩家输入、角色卡、模型输出里夹带指令） | 见下 |
 | 日志泄露故事或密钥 | structlog 脱敏处理器，思路借自 hermes-agent 的 `redact.py`，只实现我们需要的：密钥格式、Bearer 令牌、邮箱；日志默认不含故事文本（`LOG_STORY_TEXT=false`）；调试抓取默认关闭，开启后限时 |
@@ -1149,6 +1149,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | `EMAIL_TAKEN` | 409 | 邮箱已注册 |
 | `INVALID_CREDENTIALS` | 401 / 403 | 登录时邮箱或密码不对（401）；删除账户时密码不对（403） |
 | `REFRESH_INVALID`、`REFRESH_REUSED` | 401 | 刷新令牌无效或过期；用过的令牌超过 30 秒宽限期后又出现，整族吊销 |
+| `CROSS_SITE` | 403 | 网页的 Cookie 登录请求来自别的网站 |
 | `CREDENTIAL_UNREADABLE` | 409 | 模型的 Key 无法解密（主密钥换了却没保留旧的），需要重新填写 |
 | `CARD_INVALID` | 422 | 角色卡无法解析 |
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体超过限制 |

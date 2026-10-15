@@ -36,6 +36,7 @@
 - 访问令牌是 JWT（HS256），默认 15 分钟过期（`ACCESS_TOKEN_TTL_S`）。客户端把它当作不透明的字符串使用，不要解析里面的内容。
 - 令牌缺失、格式不对或已过期时返回 401 `UNAUTHENTICATED`。客户端的处理方式：用刷新令牌刷新一次，再重试原请求；刷新也返回 401 时，回到登录页。
 - 刷新令牌（`rt_…`）默认 30 天过期，每次刷新都会换新的，规则见 [`POST /v1/auth/refresh`](auth.md#post-v1authrefresh)。
+  App 把它放在响应体和请求体里；网页用 Cookie 模式（`X-Auth-Mode: cookie`），刷新令牌只在 HttpOnly Cookie 里，见 [auth.md 的“两种登录方式”](auth.md#两种登录方式)。
 - 服务端校验访问令牌时不查数据库。账户删除后，已经签发的访问令牌在过期前仍能通过鉴权，但读到的列表都是空的、单个资源都是 404，写入会失败。
 
 ### 请求头
@@ -47,6 +48,7 @@
 | `Last-Event-ID` | 回合事件流、探针事件流 | 断线续传，见 [events.md](events.md) |
 | `If-None-Match` | `GET /v1/blobs/{blob_id}` | 带上次拿到的 `ETag`，没有变化时返回 304 |
 | `User-Agent` | 注册、登录、刷新 | 记在刷新令牌上，排错用 |
+| `X-Auth-Mode` | 注册、登录、刷新、退出 | 只能是 `cookie`：网页用，刷新令牌放在 Cookie 里，见 [auth.md](auth.md#两种登录方式) |
 | `X-Client-Version` | 客户端的每个请求 | 客户端版本号。M1 的服务端不检查它（设计里的 `CLIENT_TOO_OLD` 还没做），只记在访问日志里 |
 | `X-Request-ID` | 任何请求（可选） | 请求单号，8 到 64 个字符，只能是字母、数字和 `. _ : -`。App 每个请求生成一个；没带或格式不对时服务端生成。服务端这次请求的所有日志都带着它，响应头 `X-Request-ID` 原样带回 |
 
@@ -122,6 +124,7 @@
 | `INVALID_CREDENTIALS` | 401 / 403 | 登录时邮箱或密码不对（401）；删除账户时密码不对（403） |  |
 | `REFRESH_INVALID` | 401 | 刷新令牌无效、已吊销或已过期 |  |
 | `REFRESH_REUSED` | 401 | 用过的刷新令牌超过 30 秒后又出现，整个家族已被吊销 |  |
+| `CROSS_SITE` | 403 | 网页的 Cookie 登录请求来自别的网站（`Sec-Fetch-Site` 不是同源，`Origin` 也不在 `CORS_ORIGINS` 里） |  |
 | `NOT_FOUND` | 404 | 资源不存在，或者不属于你；路径不存在也是这个码 |  |
 | `METHOD_NOT_ALLOWED` | 405 | 路径存在，但不支持这个方法 |  |
 | `EMAIL_TAKEN` | 409 | 邮箱已经注册过 |  |

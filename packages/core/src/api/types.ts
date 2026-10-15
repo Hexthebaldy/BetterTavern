@@ -27,7 +27,8 @@ export type AuthResponse = {
   access_token: string;
   token_type: string;
   expires_in: number;
-  refresh_token: string;
+  /** Cookie 模式（网页）下是 null：刷新令牌只在 HttpOnly Cookie 里 */
+  refresh_token: string | null;
   refresh_expires_at: string;
 };
 
