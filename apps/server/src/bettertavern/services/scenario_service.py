@@ -11,7 +11,7 @@ from typing import Any
 import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from bettertavern.domain.scenario.card import CharacterCard
+from bettertavern.domain.scenario.card import CharacterCard, display_text
 from bettertavern.importers.character_card import CardError, import_card
 from bettertavern.infra.db.repositories import library as repo
 from bettertavern.infra.db.sqlutil import is_uuid
@@ -60,8 +60,9 @@ def strip_nul(value: Any) -> Any:
     return value
 
 
-def _preview(text: str) -> str:
-    text = " ".join(text.split())
+def _preview(text: str, *, char: str) -> str:
+    # 先合并空白，跨行写的 *动作* 也能认出来
+    text = display_text(" ".join(text.split()), char=char)
     return text if len(text) <= PREVIEW_CHARS else text[:PREVIEW_CHARS] + "…"
 
 
@@ -76,8 +77,8 @@ def _view(row: repo.ScenarioRow, *, duplicate: bool = False) -> ScenarioView:
         name=row.name,
         source_kind=row.source_kind,
         avatar_blob_id=row.avatar_blob_id,
-        description_preview=_preview(card.description),
-        first_mes_preview=_preview(card.first_mes),
+        description_preview=_preview(card.description, char=card.name or row.name),
+        first_mes_preview=_preview(card.first_mes, char=card.name or row.name),
         creator=card.creator,
         tags=list(card.tags),
         book_entries=len(card.book),

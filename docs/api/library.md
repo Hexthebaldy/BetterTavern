@@ -92,7 +92,7 @@
 | `name` | string | 显示名 |
 | `source_kind` | string | 卡片格式：`card_v1` / `card_v2` / `card_v3` |
 | `avatar_blob_id` | string / null | 头像，用 `GET /v1/blobs/{blob_id}` 读取；JSON 卡片为 null |
-| `description_preview` | string | 角色描述的预览：合并空白后的前 280 个字符，超出时末尾加“…” |
+| `description_preview` | string | 角色描述的预览，直接给人看：合并空白，`{{char}}` 换成角色名、`{{user}}` 换成“你”（英文卡换成 you），`*动作*` 换成括号（中文卡用全角括号），`**加粗**` 只留文字，落单的星号去掉；然后取前 280 个字符，超出时末尾加“…”。存的卡片原文和发给模型的文本不受影响 |
 | `first_mes_preview` | string | 开场白的预览，规则同上 |
 | `creator` | string | 卡片作者 |
 | `tags` | array of string | 卡片的标签 |

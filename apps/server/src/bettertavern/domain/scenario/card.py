@@ -77,3 +77,32 @@ def apply_macros(text: str, *, user: str, char: str) -> str:
     text = _USER.sub(lambda _m: user, text)
     text = _CHAR.sub(lambda _m: char, text)
     return _OTHER_MACRO.sub("", text)
+
+
+_BOLD = re.compile(r"\*\*([^*\n]+?)\*\*")
+# 连同两边的空格一起匹配：中文的动作换成全角括号，括号两边不留空格
+_ACTION = re.compile(r"([ \t]*)\*([^*\n]+?)\*([ \t]*)")
+_CJK = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+
+
+def _action(match: re.Match[str], *, chinese: bool) -> str:
+    lead, inner, trail = match.group(1), match.group(2).strip(), match.group(3)
+    if not inner:
+        return lead + trail
+    if chinese:
+        return f"（{inner}）"
+    return f"{lead}({inner}){trail}"
+
+
+def display_text(text: str, *, char: str) -> str:
+    """给人看的卡片文字（剧本库和详情页的预览），不用于发给模型的文本。
+
+    {{char}} 换成角色名，{{user}} 换成“你”（英文卡换成 you）；SillyTavern 用 *……* 写动作，
+    换成括号（中文卡用全角括号）；**加粗** 只留文字；落单的星号去掉。
+    中文还是英文看卡片原文，不看替换进去的名字。
+    """
+    chinese = _CJK.search(text) is not None
+    text = apply_macros(text, user="你" if chinese else "you", char=char)
+    text = _BOLD.sub(r"\1", text)
+    text = _ACTION.sub(lambda m: _action(m, chinese=chinese), text)
+    return text.replace("*", "")

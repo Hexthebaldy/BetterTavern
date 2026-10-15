@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from bettertavern.domain.scenario.card import apply_macros
+from bettertavern.domain.scenario.card import apply_macros, display_text
 from bettertavern.importers.character_card import CardError, import_card
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -153,3 +153,21 @@ def test_identical_files_have_identical_hashes() -> None:
 def test_macros() -> None:
     text = "{{char}} 看着 {{user}}，<USER> 也看着 <BOT>。{{random:a,b}}{{ time }}结束"
     assert apply_macros(text, user="林川", char="阿苓") == "阿苓 看着 林川，林川 也看着 阿苓。结束"
+
+
+@pytest.mark.parametrize(
+    ("text", "shown"),
+    [
+        ("{{char}}是{{User}}的青梅竹马", "阿苓是你的青梅竹马"),
+        ("*阿苓抬起头* 外乡人？先把斗篷上的水拧干。", "（阿苓抬起头）外乡人？先把斗篷上的水拧干。"),
+        ("“来了？” *{{char}}放下杯子* “坐。”", "“来了？”（阿苓放下杯子）“坐。”"),
+        ("**加粗**和*动作*", "加粗和（动作）"),
+        ("*smiles at <USER>* Welcome, **traveler**.", "(smiles at you) Welcome, traveler."),
+        ("*{{char}} nods* Sit.", "(阿苓 nods) Sit."),
+        ("3 * 4 = 12，没有成对的星号", "3  4 = 12，没有成对的星号"),
+        ("前面 *  * 后面", "前面  后面"),
+        ("没有任何标记的文字", "没有任何标记的文字"),
+    ],
+)
+def test_display_text(text: str, shown: str) -> None:
+    assert display_text(text, char="阿苓") == shown

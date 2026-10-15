@@ -252,6 +252,9 @@ async def test_full_m1_flow(running: Running) -> None:
         assert r.status_code == 201, r.text
         scenario = r.json()
         assert scenario["name"] == "阿苓" and scenario["book_entries"] == 1
+        # 预览是给人看的：宏换成名字，*动作* 换成括号
+        assert scenario["description_preview"].startswith("阿苓 是灰石镇酒馆的帮工")
+        assert scenario["first_mes_preview"] == "（阿苓抬起头）外乡人？先把斗篷上的水拧干。"
         r = await client.post("/v1/scenarios/import", headers=auth, files=files)
         assert r.status_code == 200 and r.json()["duplicate"] is True
 
