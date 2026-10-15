@@ -1,9 +1,10 @@
 SERVER := apps/server
 MOBILE := apps/mobile
+VIS := apps/vis
 COMPOSE := docker compose -f deploy/docker-compose.dev.yml
 TEST_DB := postgresql://bettertavern:bettertavern@localhost:5432/bettertavern
 
-.PHONY: install dev worker migrate db-up db-down test test-integration lint fmt mobile-install mobile-test eval-director
+.PHONY: install dev worker migrate db-up db-down test test-integration lint fmt mobile-install mobile-test vis-install vis vis-test eval-director
 
 install:
 	cd $(SERVER) && uv sync
@@ -40,6 +41,16 @@ mobile-install:
 
 mobile-test:
 	cd $(MOBILE) && npm test
+
+vis-install:
+	cd $(VIS) && npm install
+
+vis:
+	cd $(VIS) && npm run build
+	cd $(SERVER) && uv run bettertavern vis
+
+vis-test:
+	cd $(VIS) && npm test
 
 eval-director:
 	cd $(SERVER) && uv run python -m evals.director_compliance $(ARGS)

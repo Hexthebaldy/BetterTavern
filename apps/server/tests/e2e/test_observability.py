@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import AsyncIterator, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,8 @@ from bettertavern.infra.observability.logging import configure_logging
 from bettertavern.providers.sse_parser import SseDecoder
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.settings import Settings
+from bettertavern.vis.app import create_vis_app
+from bettertavern.vis.logstore import LogStore
 from tests.fakes.asgi_server import AsgiServer
 from tests.fakes.llm_server import (
     DONE,
@@ -101,8 +104,16 @@ def log_file(tmp_path: Path) -> Iterator[Path]:
         structlog.reset_defaults()
 
 
+@dataclass
+class Running:
+    base_url: str
+    schema: str
+
+
 @pytest.fixture
-async def base_url(fake_llm: RunningFakeLLM, tmp_path: Path, log_file: Path) -> AsyncIterator[str]:
+async def running(
+    fake_llm: RunningFakeLLM, tmp_path: Path, log_file: Path
+) -> AsyncIterator[Running]:
     assert URL is not None
     fake_llm.app.default_reply = reply
     async with temp_schema(URL) as schema:
@@ -123,7 +134,7 @@ async def base_url(fake_llm: RunningFakeLLM, tmp_path: Path, log_file: Path) -> 
         )
         server = AsgiServer(create_app(settings, services=services), lifespan="on").start()
         try:
-            yield server.base_url
+            yield Running(server.base_url, schema)
         finally:
             server.stop()
 
@@ -147,9 +158,15 @@ def read_log(file: Path) -> tuple[str, list[dict[str, Any]]]:
     return text, [json.loads(line) for line in text.splitlines()]
 
 
-async def test_a_turn_leaves_a_complete_trail_without_story_or_secrets(
-    base_url: str, log_file: Path, fake_llm: RunningFakeLLM
-) -> None:
+@dataclass
+class Played:
+    user_id: str
+    playthrough_id: str
+    turn_id: str
+
+
+async def play_two_turns(base_url: str, fake_llm: RunningFakeLLM) -> Played:
+    """注册、配模型、导入角色卡、开局，再提交一个行动；每一步都带上暗号"""
     async with httpx.AsyncClient(base_url=base_url, timeout=30) as client:
         r = await client.post("/v1/auth/register", json={"email": EMAIL, "password": PASSWORD})
         token = r.json()["access_token"]
@@ -191,6 +208,14 @@ async def test_a_turn_leaves_a_complete_trail_without_story_or_secrets(
         assert r.headers["X-Request-ID"] == TURN_REQUEST_ID
         turn_id = r.json()["turn"]["id"]
         await finish(client, r.json()["events_url"], token)
+    return Played(user_id, playthrough_id, turn_id)
+
+
+async def test_a_turn_leaves_a_complete_trail_without_story_or_secrets(
+    running: Running, log_file: Path, fake_llm: RunningFakeLLM
+) -> None:
+    played = await play_two_turns(running.base_url, fake_llm)
+    user_id, playthrough_id, turn_id = played.user_id, played.playthrough_id, played.turn_id
 
     text, entries = read_log(log_file)
     for secret in (SECRET, API_KEY, PASSWORD, EMAIL, user_id):
@@ -221,3 +246,72 @@ async def test_a_turn_leaves_a_complete_trail_without_story_or_secrets(
     assert access and all(e["user_ref"].startswith("u_") for e in access)
     submit = next(e for e in access if e.get("request_id") == TURN_REQUEST_ID)
     assert submit["status"] == 201 and submit["route"] == "/v1/playthroughs/{playthrough_id}/turns"
+
+
+async def test_vis_shows_the_turn_without_story_unless_asked(
+    running: Running, log_file: Path, fake_llm: RunningFakeLLM
+) -> None:
+    played = await play_two_turns(running.base_url, fake_llm)
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+    assert URL is not None
+    vis = create_vis_app(
+        store=LogStore(log_file.parent, min_interval_s=0),
+        engine=engine_for(URL, running.schema),
+        web_dir=None,
+        story_allowed=True,
+        env="test",
+    )
+    transport = httpx.ASGITransport(app=vis)
+    async with (
+        vis.router.lifespan_context(vis),
+        httpx.AsyncClient(transport=transport, base_url="http://vis") as client,
+    ):
+        meta = (await client.get("/api/meta")).json()
+        assert meta["db"] is True and meta["logs"]["entries"] > 0
+
+        listed = (await client.get("/api/playthroughs")).json()["playthroughs"]
+        assert [p["id"] for p in listed] == [played.playthrough_id]
+        assert listed[0]["turns"] == 2 and listed[0]["user_ref"].startswith("u_")
+
+        pt = (await client.get(f"/api/playthroughs/{played.playthrough_id}")).json()
+        assert [t["seq"] for t in pt["turns"]] == [0, 1]
+        assert pt["turns"][1]["run"]["output_tokens"] == 60
+
+        r = await client.get(f"/api/turns/{played.turn_id}")
+        detail = r.json()
+        assert SECRET not in r.text
+        assert detail["turn"]["action"]["text_chars"] > 0
+        assert "text" not in detail["turn"]["action"]
+        kinds = [s["kind"] for s in detail["timeline"]["spans"]]
+        for kind in ("http", "turn", "provider_wait", "provider_stream", "commit", "sse"):
+            assert kind in kinds, kind
+        assert detail["runs"][0]["agent"] == "director"
+
+        shown = (await client.get(f"/api/turns/{played.turn_id}?story=1")).json()
+        assert SECRET in shown["turn"]["narrative"]
+        assert SECRET in shown["turn"]["action"]["text"]
+
+        failed = (await client.get("/api/requests?kind=failed")).json()["requests"]
+        assert failed == []
+        submitted = next(
+            r
+            for r in (await client.get("/api/requests")).json()["requests"]
+            if r["request_id"] == TURN_REQUEST_ID
+        )
+        assert submitted["turn_ids"] == [played.turn_id]
+
+        found = (await client.get(f"/api/search?q={TURN_REQUEST_ID[:10]}")).json()["results"]
+        assert {"kind": "request", "id": TURN_REQUEST_ID} in found
+        found = (await client.get(f"/api/search?q={played.turn_id[:8]}")).json()["results"]
+        assert any(f["kind"] == "turn" and f["id"] == played.turn_id for f in found)
+
+        overview = (await client.get("/api/overview")).json()
+        assert overview["db"]["turns"]["ok"] == 2
+        assert overview["db"]["director"]["output_tokens"] == 120
+
+        logs = (await client.get(f"/api/logs?id={played.turn_id}&level=info")).json()
+        assert logs["entries"]
+        assert all(e.get("turn_id") == played.turn_id for e in logs["entries"])
+        later = (await client.get(f"/api/logs?after={logs['cursor']}")).json()
+        assert later["entries"] == []

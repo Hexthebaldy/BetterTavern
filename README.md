@@ -38,6 +38,9 @@ make worker         # 另开一个终端，启动 worker（M1 的热路径不需
 make mobile-install # 装客户端依赖；之后在 apps/mobile 下 npm start
 ```
 
+排查问题时用日志查看器：`make vis-install` 装一次依赖，之后 `make vis`，打开 http://127.0.0.1:8100 。
+它把 `apps/server/.data/logs/` 下的日志和数据库里的回合画成时间线，用法见 [docs/testing.md 第 1 节](docs/testing.md)。
+
 开发环境不配置密钥也能启动：服务端第一次启动时生成主密钥和令牌签名密钥，存在 `apps/server/.data/dev-secrets.json`
 （权限 0600，已在 .gitignore 里）。生产环境必须在环境变量里配置 `MASTER_KEYS` 和 `AUTH_SECRET`，用
 `uv run bettertavern keygen` 生成；主密钥丢了，已保存的模型 Key 就解不开了。
@@ -53,6 +56,7 @@ make test               # 后端单测与端到端测试（不需要数据库）
 make test-integration   # 需要 make db-up；会建临时 schema，测完删除（队列、账户、回合的并发与租约）
 make lint               # ruff、pyright、import-linter
 make mobile-test        # 客户端的纯逻辑：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端
+make vis-test           # 日志查看器的纯逻辑：中文目录、格式化、手机日志解析
 ```
 
 ## 合规率评测（M0 的 go / no-go）
@@ -72,6 +76,7 @@ HF_TOKEN=hf_... uv run python -m evals.director_compliance --provider huggingfac
 ```
 apps/server     后端：FastAPI、agent runtime、provider 层、队列、迁移、测试、评测
 apps/mobile     客户端：Expo + TypeScript
+apps/vis        本机日志查看器的网页（接口在 apps/server 的 bettertavern vis）
 deploy          docker compose 与镜像
 docs            设计文档，以及数据模型和接口的参考文档
 ```

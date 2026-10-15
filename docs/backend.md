@@ -947,7 +947,7 @@ apps/server/
 │   ├── entrypoints/                    # 组装根：唯一允许 import 所有层的地方
 │   │   ├── api.py                      # create_app()：装配路由、中间件、生命周期
 │   │   ├── worker.py                   # worker 进程：领取任务，按 kind 分派给 pipeline_service
-│   │   └── cli.py                      # bettertavern serve / worker / migrate / keygen / export
+│   │   └── cli.py                      # bettertavern serve / worker / migrate / keygen / vis / export
 │   │
 │   ├── api/                            # HTTP 层：只做解析、鉴权、序列化
 │   │   ├── deps.py                     # 依赖注入：db 会话、当前用户、服务容器
@@ -1015,6 +1015,9 @@ apps/server/
 │   │   ├── character_card/  png.py  v2.py  v3.py  normalize.py
 │   │   └── lorebook/  README.md        # v1 占位，说明将来的转换规则
 │   │
+│   ├── vis/                            # 本机日志查看器的接口（只读，见 testing.md 第 1 节）
+│   │   └── app.py  logstore.py  timeline.py  issues.py  queries.py  views.py
+│   │
 │   └── infra/                          # 叶子适配层：数据库、队列、事件总线、加密、存储、可观测
 │       ├── db/  engine.py  locks.py
 │       │   ├── models/                 # SQLAlchemy ORM，一个文件一组表
@@ -1048,7 +1051,8 @@ apps/server/
 6. `api` 不 import `infra.db.models`，只通过 `services` 访问数据。
 7. 提示词是数据文件：Python 里不写超过一行的提示词字符串，由测试扫描保证。
 8. 一个 agent 一个文件，agent 之间不互相 import，由 `graphs/` 编排。
-9. 单个文件超过约 600 行就拆成门面加同级文件（借鉴 hermes-agent 的 `AGENTS.md`：Facade + siblings 布局与 Code Shape Rules）。
+9. `vis` 是本机的只读调试工具：业务代码不 import 它，它也不 import `api`、`services`、`runtime`、`providers`，只读日志文件和数据库。
+10. 单个文件超过约 600 行就拆成门面加同级文件（借鉴 hermes-agent 的 `AGENTS.md`：Facade + siblings 布局与 Code Shape Rules）。
 
 ### 扩展点速查
 
