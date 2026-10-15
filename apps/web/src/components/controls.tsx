@@ -10,6 +10,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
   type Ref,
+  type TextareaHTMLAttributes,
 } from "react";
 
 import { Icon, type IconName } from "./Icon.tsx";
@@ -232,6 +233,139 @@ export function PasswordField(props: Omit<FieldProps, "type" | "trailing">) {
         />
       }
     />
+  );
+}
+
+type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label: string;
+  /** 标签只给读屏用，不显示 */
+  hideLabel?: boolean;
+  /** 右下角显示“已输入 / 上限”（需要 maxLength） */
+  counter?: boolean;
+  hint?: string;
+  error?: string | null;
+  height?: number;
+  ref?: Ref<HTMLTextAreaElement>;
+};
+
+/** 多行输入框：同输入框的外观，右下角可以带字数 */
+export function TextArea({
+  label,
+  hideLabel,
+  counter,
+  hint,
+  error,
+  height = 100,
+  className,
+  id,
+  ref,
+  ...input
+}: TextAreaProps) {
+  const autoId = useId();
+  const inputId = id ?? autoId;
+  const messageId = `${inputId}-message`;
+  const length = typeof input.value === "string" ? input.value.length : 0;
+  return (
+    <div className={cx(styles.field, className)}>
+      {hideLabel ? null : (
+        <div className={styles.labelRow}>
+          <label htmlFor={inputId} className={styles.label}>
+            {label}
+          </label>
+        </div>
+      )}
+      <div className={styles.inputBox}>
+        <textarea
+          ref={ref}
+          id={inputId}
+          aria-label={hideLabel ? label : undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error || hint ? messageId : undefined}
+          className={cx(styles.input, styles.textarea, error && styles.invalid)}
+          style={{ height }}
+          {...input}
+        />
+        {counter && input.maxLength ? (
+          <span className={cx(styles.count, styles.innerCount)}>
+            {length} / {input.maxLength}
+          </span>
+        ) : null}
+      </div>
+      {error ? (
+        <div id={messageId} className={styles.message}>
+          <Icon name="alertCircle" size={15} />
+          <span>{error}</span>
+        </div>
+      ) : hint ? (
+        <div id={messageId} className={cx(styles.message, styles.hint)}>
+          {hint}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ---- 标签、勾选 -----------------------------------------------------------------------------
+
+/** 胶囊标签：可点的选项（名字建议、文风）。选中是墨色底；check 时是多选，前面带一个勾 */
+export function Chip({
+  label,
+  selected = false,
+  onClick,
+  check,
+  icon,
+  accent,
+}: {
+  label: string;
+  selected?: boolean;
+  onClick: () => void;
+  check?: boolean;
+  icon?: IconName;
+  /** “+ 自定义”这类入口，用蓝字 */
+  accent?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role={check ? "checkbox" : undefined}
+      aria-checked={check ? selected : undefined}
+      aria-pressed={check ? undefined : selected}
+      className={cx(styles.chip, selected && styles.chipOn, accent && styles.chipAccent)}
+      onClick={onClick}
+    >
+      {selected && check ? <Icon name="check" size={14} strokeWidth={2.4} /> : null}
+      {icon ? <Icon name={icon} size={15} /> : null}
+      {label}
+    </button>
+  );
+}
+
+/** 22 的圆角勾选框加文字；plus 是“其他…”入口（浅蓝底的加号） */
+export function Checkbox({
+  label,
+  checked,
+  onToggle,
+  plus,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+  plus?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role={plus ? undefined : "checkbox"}
+      aria-checked={plus ? undefined : checked}
+      className={cx(styles.checkRow, plus && styles.checkPlus)}
+      onClick={onToggle}
+    >
+      <span className={cx(styles.box, checked && styles.boxOn, plus && styles.boxPlus)}>
+        {checked ? <Icon name="check" size={14} strokeWidth={2.6} /> : null}
+        {plus ? <Icon name="plus" size={14} strokeWidth={2.2} /> : null}
+      </span>
+      <span>{label}</span>
+    </button>
   );
 }
 

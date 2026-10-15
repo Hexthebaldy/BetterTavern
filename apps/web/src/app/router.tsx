@@ -10,6 +10,8 @@ import { RegisterPage } from "../pages/auth/RegisterPage.tsx";
 import { LibraryPage } from "../pages/library/LibraryPage.tsx";
 import { NotFound } from "../pages/NotFound.tsx";
 import { Pending } from "../pages/Pending.tsx";
+import { PlayRoute } from "../pages/play/PlayPage.tsx";
+import { ScenarioPage } from "../pages/scenario/ScenarioPage.tsx";
 import { StoriesPage } from "../pages/stories/StoriesPage.tsx";
 import { GuestOnly, RequireAuth } from "./guards.tsx";
 
@@ -27,8 +29,8 @@ export const router = createBrowserRouter([
       { path: "/", element: <Navigate to="/playthroughs" replace /> },
       { path: "/playthroughs", element: <StoriesPage /> },
       { path: "/library", element: <LibraryPage /> },
-      { path: "/scenario/:id", element: <Pending title="剧本" /> },
-      { path: "/play/:id", element: <Pending title="故事" /> },
+      { path: "/scenario/:id", element: <ScenarioPage /> },
+      { path: "/play/:id", element: <PlayRoute /> },
       { path: "/settings", element: <Pending title="设置" /> },
       { path: "/settings/models", element: <Pending title="模型" /> },
       { path: "/settings/model/:id", element: <Pending title="模型" /> },

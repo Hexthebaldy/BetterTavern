@@ -1,0 +1,350 @@
+/* 世界状态面板（W06、W07、W10、W11）：数值取自 WebPlay.dc.html 的 .wp、.seg、.ent、.fact、.lnk，和 App 的 WorldParts */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-group);
+  background: var(--bg2);
+  color: var(--ink);
+}
+.dock {
+  position: fixed;
+  z-index: 15;
+  top: var(--edge);
+  right: var(--edge);
+  bottom: var(--edge);
+  width: var(--world);
+}
+dialog.slideOver {
+  position: fixed;
+  inset: var(--edge) var(--edge) var(--edge) auto;
+  margin: 0;
+  width: min(var(--world), calc(100vw - 24px));
+  height: calc(100vh - 24px);
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  box-shadow: var(--shadow-float);
+}
+dialog.slideOver[open] {
+  display: flex;
+  animation: slide var(--dur-panel) var(--ease);
+}
+dialog.sheet {
+  inset: 8px;
+  width: auto;
+  height: calc(100vh - 16px);
+}
+@keyframes slide {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 12px 0 20px;
+}
+.headText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.title {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+}
+.subtitle {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--mut);
+}
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: 14px 12px 0;
+  padding: 4px;
+  border-radius: 24px;
+  background: var(--inset);
+}
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 38px;
+  border: 0;
+  border-radius: 19px;
+  background: transparent;
+  color: var(--ink2);
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+.tabOn {
+  background: var(--raised);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+}
+.count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--mut);
+}
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 36px;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 12px 0;
+}
+.filters button {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+}
+.entity {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--fill);
+  color: var(--ink);
+  text-align: left;
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.entityMe {
+  background: var(--acc-bg);
+}
+.entityIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: var(--on-fill);
+}
+.entityMe .entityIcon {
+  background: var(--acc);
+  color: #ffffff;
+}
+.entityBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.entityTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.entityName {
+  flex: 1;
+  min-width: 0;
+  font-size: 15.5px;
+  line-height: 22px;
+  font-weight: 700;
+}
+.chevron {
+  color: var(--mut);
+}
+.kind {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--mut);
+}
+.me {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--acc);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+}
+.summary {
+  font-size: 13.5px;
+  line-height: 21px;
+  color: var(--ink2);
+}
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.relChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.relChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 13px;
+  background: var(--on-fill);
+  font-size: 12.5px;
+}
+@media (hover: hover) and (pointer: fine) {
+  button.entity:hover {
+    box-shadow: var(--shadow-lift);
+  }
+}
+.graph {
+  margin: 12px 12px 0;
+  border-radius: var(--r-group);
+  background: var(--fill);
+  overflow: hidden;
+}
+.graph svg {
+  display: block;
+  font-family: var(--font-sans);
+}
+.link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: var(--fill);
+  font-size: 14px;
+}
+.linkName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.right {
+  text-align: right;
+}
+.linkMid {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 12px;
+  background: var(--on-fill);
+  font-size: 12px;
+  color: var(--mut);
+  flex: none;
+}
+.fact {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--r-card);
+  background: var(--fill);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
+}
+.factSecret {
+  background: var(--warn-bg);
+}
+.factSecret .kind,
+.factIcon {
+  color: var(--warn);
+}
+.factIcon {
+  margin-top: 3px;
+}
+.factBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.factDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  margin-top: 8px;
+  flex: none;
+  background: var(--ink);
+}
+.hidden {
+  align-items: center;
+  padding: 6px 6px 6px 14px;
+  color: var(--warn);
+  font-size: 13px;
+}
+.flex {
+  flex: 1;
+}
+.revealPill {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: var(--on-fill);
+  font-weight: 600;
+}
+.empty {
+  padding: 24px;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--mut);
+}
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 36px;
+  color: var(--mut);
+}
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--ink2);
+}

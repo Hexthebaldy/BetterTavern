@@ -15,6 +15,7 @@ export function Dialog({
   initialFocus,
   width,
   className,
+  bare,
   children,
 }: {
   /** 读屏用的名字（通常就是标题） */
@@ -23,6 +24,8 @@ export function Dialog({
   initialFocus?: RefObject<HTMLElement | null>;
   width?: number;
   className?: string;
+  /** 不要默认的内边距和排版（侧边滑出的面板自己排） */
+  bare?: boolean;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -66,7 +69,7 @@ export function Dialog({
         if (event.target === ref.current) close.current();
       }}
     >
-      <div className={styles.dialogInner}>{children}</div>
+      {bare ? children : <div className={styles.dialogInner}>{children}</div>}
     </dialog>
   );
 }

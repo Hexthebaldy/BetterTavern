@@ -47,7 +47,7 @@ export function useStoryActions() {
     }
   };
 
-  const remove = async (story: Playthrough): Promise<void> => {
+  const remove = async (story: Pick<Playthrough, "id" | "title">): Promise<void> => {
     const ok = await overlay.confirm({
       title: `删除“${story.title}”？`,
       message: "删除后故事和世界状态都无法恢复。",

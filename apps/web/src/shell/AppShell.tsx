@@ -38,6 +38,8 @@ type ShellValue = {
 
 const ShellContext = createContext<ShellValue | null>(null);
 
+const TOP_LEVEL = new Set(["/playthroughs", "/library", "/settings"]);
+
 export function useShell(): ShellValue {
   const value = useContext(ShellContext);
   if (!value) throw new Error("useShell 必须在 AppShell 里使用");
@@ -53,6 +55,8 @@ export function AppShell() {
   const preferred = navMode(width, sidebarCollapsed);
   const nav = override ?? preferred;
   const showOverlay = overlay && nav === "rail";
+  // 和 App 一样：底部 Tab 栏只在三个一级页上，进了阅读页、剧本详情、设置子页就收起（它们有自己的返回）
+  const topLevel = TOP_LEVEL.has(pathname);
 
   // 点了侧栏里的一项（换了页面）就收回盖在上面的侧栏
   useEffect(() => setOverlay(false), [pathname]);
@@ -82,7 +86,7 @@ export function AppShell() {
 
   return (
     <ShellContext.Provider value={value}>
-      <div className={styles.shell} data-nav={nav} style={frame}>
+      <div className={styles.shell} data-nav={nav} data-top={topLevel || undefined} style={frame}>
         <OverlayProvider>
           <ImportProvider>
             {nav === "sidebar" ? <Sidebar onCollapse={toggleSidebar} /> : null}
@@ -96,7 +100,7 @@ export function AppShell() {
             <main className={styles.main} id="main">
               <Outlet />
             </main>
-            {nav === "tabbar" ? <TabBar /> : null}
+            {nav === "tabbar" && topLevel ? <TabBar /> : null}
           </ImportProvider>
         </OverlayProvider>
       </div>

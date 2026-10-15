@@ -10,7 +10,7 @@
   min-height: 100vh;
   padding-left: var(--nav-width, 0px);
 }
-.shell[data-nav="tabbar"] .main {
+.shell[data-nav="tabbar"][data-top] .main {
   /* 最后一项不被底部的胶囊挡住：16 + 64 + 24 */
   padding-bottom: 104px;
 }
