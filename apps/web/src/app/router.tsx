@@ -9,9 +9,13 @@ import { LoginPage } from "../pages/auth/LoginPage.tsx";
 import { RegisterPage } from "../pages/auth/RegisterPage.tsx";
 import { LibraryPage } from "../pages/library/LibraryPage.tsx";
 import { NotFound } from "../pages/NotFound.tsx";
-import { Pending } from "../pages/Pending.tsx";
 import { PlayRoute } from "../pages/play/PlayPage.tsx";
 import { ScenarioPage } from "../pages/scenario/ScenarioPage.tsx";
+import { AccountBody } from "../pages/settings/AccountBody.tsx";
+import { ModelPage } from "../pages/settings/ModelBody.tsx";
+import { ModelsBody } from "../pages/settings/ModelsBody.tsx";
+import { ProbeBody } from "../pages/settings/ProbeBody.tsx";
+import { SettingsIndex, SettingsLayout } from "../pages/settings/SettingsLayout.tsx";
 import { StoriesPage } from "../pages/stories/StoriesPage.tsx";
 import { GuestOnly, RequireAuth } from "./guards.tsx";
 
@@ -31,11 +35,17 @@ export const router = createBrowserRouter([
       { path: "/library", element: <LibraryPage /> },
       { path: "/scenario/:id", element: <ScenarioPage /> },
       { path: "/play/:id", element: <PlayRoute /> },
-      { path: "/settings", element: <Pending title="设置" /> },
-      { path: "/settings/models", element: <Pending title="模型" /> },
-      { path: "/settings/model/:id", element: <Pending title="模型" /> },
-      { path: "/settings/account", element: <Pending title="账户" /> },
-      { path: "/dev/probe", element: <Pending title="连接测试" /> },
+      {
+        path: "/settings",
+        element: <SettingsLayout />,
+        children: [
+          { index: true, element: <SettingsIndex /> },
+          { path: "models", element: <ModelsBody /> },
+          { path: "model/:id", element: <ModelPage /> },
+          { path: "account", element: <AccountBody /> },
+        ],
+      },
+      { path: "/dev", element: <SettingsLayout />, children: [{ path: "probe", element: <ProbeBody /> }] },
       { path: "*", element: <NotFound /> },
     ],
   },

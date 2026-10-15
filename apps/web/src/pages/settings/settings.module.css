@@ -1,0 +1,1451 @@
+/*
+ * 设置（W13–W17）：数值取自 docs/design/ui/web/source/WebSettings*.dc.html 的 .group、.lr、.pane、.back，
+ * 和 App 的设置页、ModelsBody、ModelBody、AddModelForm、AccountBody、ProbeBody。
+ *
+ * 卡片的底色用当前表面的 --fill：左栏和窄屏的页面上是灰卡，宽屏右栏（.surface-raised，整片灰底）里是白卡；
+ * 卡片里面的输入框、次要按钮再换一档（--inner），和 App 的 RaisedSurface 一样。
+ */
+
+/* ---- 版式 ---- */
+.split {
+  display: flex;
+  height: 100vh;
+}
+.list {
+  width: calc(var(--settings-list) + var(--gutter));
+  flex: none;
+  overflow-y: auto;
+  padding: 40px 0 32px var(--gutter);
+}
+.pane {
+  position: fixed;
+  top: var(--edge);
+  right: var(--edge);
+  bottom: var(--edge);
+  left: calc(var(--nav-width, 0px) + var(--gutter) + var(--settings-list) + 24px);
+  border-radius: var(--r-sheet);
+  overflow: hidden;
+  container: pane / inline-size;
+}
+.paneScroll {
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px 12px 48px;
+}
+.backPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  margin: 8px 0 0 12px;
+  padding: 0 14px 0 8px;
+  border-radius: 18px;
+  background: var(--card);
+  font-size: 13.5px;
+}
+.single {
+  max-width: calc(var(--readable) + 24px);
+  margin: 0 auto;
+  padding: 12px 12px 56px;
+}
+.backButton {
+  margin: 4px 0 0 4px;
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+  color: var(--mut);
+}
+.flex {
+  flex: 1;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.monoSmall {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mut);
+}
+.muted {
+  color: var(--mut);
+}
+.warnText {
+  color: var(--warn);
+}
+.errText {
+  color: var(--err);
+}
+.okText {
+  color: var(--ok);
+}
+.hiddenLabel label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* 卡片：底色跟着表面，里面再换一档 */
+.formCard,
+.pickerCard,
+.memory,
+.checks,
+.kvGroup,
+.tile,
+.report,
+.cell,
+.modelList,
+.switchRow {
+  background: var(--fill);
+  --inner: var(--on-fill);
+}
+.formCard > *,
+.pickerCard > *,
+.memory > *,
+.checks > *,
+.kvGroup > *,
+.tile > *,
+.report > *,
+.modelList > *,
+.switchRow > * {
+  --fill: var(--inner);
+}
+
+/* ---- 页头、分节 ---- */
+.bodyHead {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 12px 10px;
+}
+.bodyTitle {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.monoTitle {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.lead {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--mut);
+}
+.note {
+  padding: 0 12px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--mut);
+}
+.warnNote {
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--warn);
+}
+.section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 12px 4px;
+}
+.sectionTitle {
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+}
+.sectionMeta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* ---- 左栏：设置首页 ---- */
+.listBody {
+  display: flex;
+  flex-direction: column;
+}
+.director {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  padding: 18px;
+  border-radius: 30px;
+  background: var(--ink);
+  color: var(--bg);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.director:active {
+  transform: scale(var(--press));
+}
+.directorLight {
+  background: var(--bg2);
+  color: var(--ink);
+}
+.director.selected {
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--acc);
+}
+@media (hover: hover) and (pointer: fine) {
+  .directorLight:not(.selected):hover {
+    background: var(--bg3);
+  }
+}
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.faint {
+  font-size: 13px;
+  opacity: 0.65;
+}
+.directorLight .faint,
+.directorLight .faintSmall,
+.directorLight .small {
+  opacity: 1;
+  color: var(--mut);
+}
+.faintSmall {
+  font-size: 12.5px;
+  line-height: 18px;
+  opacity: 0.65;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cardStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  background: var(--arrow-bg);
+  font-size: 12px;
+}
+.directorLight .cardStatus {
+  background: var(--bg3);
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+}
+.dot-ok {
+  background: var(--ok-on-ink);
+}
+.directorLight .dot-ok {
+  background: var(--ok);
+}
+.dot-invalid {
+  background: var(--err);
+}
+.dot-unverified {
+  background: var(--warn);
+}
+.cardMain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.cardIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: var(--arrow-bg);
+}
+.directorLight .cardIcon {
+  background: var(--card);
+}
+.directorLight.selected .cardIcon {
+  background: var(--bg2);
+}
+.cardText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.model {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 24px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.windowBar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  margin: 16px 0 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--arrow-bg);
+}
+.directorLight .windowBar {
+  background: var(--bg3);
+}
+.barStory {
+  border-radius: 4px;
+  background: var(--bg);
+}
+.barOutput {
+  border-radius: 4px;
+  background: var(--acc-on-ink);
+}
+.directorLight .barStory {
+  background: var(--ink);
+}
+.directorLight .barOutput {
+  background: var(--acc);
+}
+.small {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.65;
+}
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+  padding: 18px;
+  border-radius: 30px;
+  background: var(--warn-bg);
+}
+.setupTitle {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+.setupSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.setupStep {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 12px;
+  border-radius: 18px;
+  font-size: 15px;
+  color: var(--mut);
+}
+.setupCurrent {
+  background: var(--card);
+  color: var(--ink);
+}
+.setupKey {
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1.5px var(--line2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ok);
+}
+.setupKeyOn {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: none;
+}
+.setupGo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 8px 0 24px;
+  border-radius: 26px;
+  background: var(--pri);
+  color: var(--on-pri);
+  font-size: 16px;
+  font-weight: 500;
+}
+.setupArrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--arrow-bg);
+}
+.groupLabel {
+  padding: 0 16px;
+  margin: 22px 0 8px;
+  font-size: 13px;
+  color: var(--mut);
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: var(--r-group);
+  background: var(--bg2);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: 15.5px;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.row.selected {
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--acc);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:not(.selected):hover,
+  .modelRow:hover {
+    background: var(--bg3);
+  }
+}
+.rowIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: var(--card);
+}
+.row.selected .rowIcon,
+.row.selected .avatar {
+  background: var(--bg2);
+}
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.rowTitle {
+  font-size: 15.5px;
+  line-height: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rowSub {
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--mut);
+}
+.chevron {
+  color: var(--mut);
+}
+.count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: var(--acc-bg);
+  color: var(--acc);
+  font-size: 15px;
+  font-weight: 700;
+}
+.footer {
+  padding: 16px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--mut);
+}
+
+/* ---- 对话框里 ---- */
+.dialogTitle {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+  text-align: center;
+}
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.themes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.themeOption {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--r-card);
+  background: var(--fill);
+  color: var(--ink);
+  text-align: left;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.themeOn {
+  background: var(--acc-bg);
+  box-shadow: inset 0 0 0 2px var(--acc);
+}
+@media (hover: hover) and (pointer: fine) {
+  .themeOption:not(.themeOn):hover {
+    background: var(--hover);
+  }
+}
+.themeLabel {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+}
+.radio {
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  flex: none;
+  box-shadow: inset 0 0 0 1.75px var(--line2);
+}
+.radioOn {
+  box-shadow: inset 0 0 0 7px var(--acc);
+}
+.swatch {
+  display: flex;
+  width: 56px;
+  height: 40px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--line2);
+  flex: none;
+}
+.swatchPart {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 7px 6px 0;
+}
+.swatchBar {
+  height: 8px;
+  border-radius: 4px;
+}
+.swatchDots {
+  display: flex;
+  gap: 4px;
+}
+.swatchDots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+/* ---- 服务商标记、Key ---- */
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.mark-card {
+  background: var(--card);
+  color: var(--ink);
+}
+.mark-grey {
+  background: var(--bg2);
+  color: var(--ink);
+}
+.mark-ink {
+  background: var(--ink);
+  color: var(--bg);
+}
+.mark-acc {
+  background: var(--acc);
+  color: #ffffff;
+}
+.keyField input,
+.monoField input {
+  font-family: var(--font-mono);
+  font-size: 15px;
+}
+.keyField input {
+  -webkit-text-security: disc;
+}
+
+/* ---- 模型列表 ---- */
+.modelList {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border-radius: 28px;
+}
+.modelRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 14px;
+  border-radius: 24px;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.modelRow + .modelRow {
+  box-shadow: 0 -1px 0 var(--line);
+}
+.modelRow .mark-card {
+  background: var(--on-fill);
+}
+.modelName {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.modelName.mono {
+  font-size: 15px;
+}
+.modelMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.modelMeta .monoSmall {
+  flex-shrink: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- 添加模型 ---- */
+.addForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.addRight {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.formCard {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 16px 12px;
+  border-radius: 30px;
+}
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.formLabel {
+  padding-left: 4px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--ink2);
+}
+.providerTiles {
+  display: flex;
+  gap: 6px;
+}
+.providerTile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 112px;
+  padding: 14px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--fill);
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 18px;
+  text-align: left;
+}
+.providerTile .mark-grey {
+  background: var(--inner, var(--bg2));
+}
+.providerOn {
+  background: var(--acc-bg);
+  box-shadow: inset 0 0 0 2px var(--acc);
+}
+.choice {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 4px 16px;
+  border-radius: 16px;
+  background: var(--fill);
+}
+.saveRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.saveRow .choice {
+  flex: 1;
+  min-width: 240px;
+}
+.saveButton {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* 选模型 */
+.pickerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 30px;
+}
+.search {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 13px;
+  color: var(--mut);
+  pointer-events: none;
+}
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  border-radius: 22px;
+  padding: 0 12px 0 42px;
+  background: var(--fill);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+.refresh {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fill);
+  color: var(--ink);
+  flex: none;
+}
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.modelOption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.modelOptionOn {
+  background: var(--fill);
+  box-shadow: inset 0 0 0 2px var(--acc);
+}
+@media (hover: hover) and (pointer: fine) {
+  .modelOption:not(.modelOptionOn):hover {
+    background: var(--hover);
+  }
+}
+.optionName {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.optionNameOn {
+  font-weight: 500;
+}
+.ctx {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 12px;
+  background: var(--fill);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink2);
+}
+.ctxOn {
+  background: var(--acc-bg);
+  color: var(--acc);
+}
+.footnote {
+  padding: 6px 14px 4px;
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* 分段 */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 26px;
+  background: var(--inset);
+}
+.segment {
+  flex: 1;
+  height: 44px;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--mut);
+  font-size: 14.5px;
+}
+.segmentOn {
+  background: var(--raised);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+}
+.segment:disabled {
+  opacity: 0.32;
+}
+
+/* ---- 模型详情 ---- */
+.modelHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 4px 16px 12px;
+}
+.statusLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cells {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 22px;
+}
+.cellKey {
+  font-size: 12px;
+  color: var(--mut);
+}
+.cellValue {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cellValue.mono {
+  font-size: 14px;
+}
+.hint {
+  padding: 4px 12px 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+.probeButton {
+  flex: 1;
+  min-height: 60px;
+  border: 0;
+  border-radius: 30px;
+  background: var(--fill);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 500;
+}
+@media (hover: hover) and (pointer: fine) {
+  .probeButton:not(:disabled):hover {
+    background: var(--hover);
+  }
+}
+.probeNote {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--mut);
+}
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  padding: 12px 16px;
+  border-radius: 26px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.switchIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: var(--fill);
+}
+.toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 52px;
+  height: 32px;
+  margin: 0;
+  border-radius: 16px;
+  background: var(--bg3);
+  flex: none;
+  transition: background-color var(--dur) var(--ease);
+}
+.toggle::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: #ffffff;
+  box-shadow: var(--shadow-knob);
+  transition: left var(--dur) var(--ease);
+}
+.toggle:checked {
+  background: var(--acc);
+}
+.toggle:checked::after {
+  left: 23px;
+}
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 28px;
+}
+.cancelDirector {
+  height: 44px;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--err);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* 能记住多少 */
+.memory {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px;
+  border-radius: 30px;
+}
+.memoryTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.memoryTitle h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+.blocks {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  gap: 4px;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--fill);
+}
+.block {
+  aspect-ratio: 1;
+  border-radius: 999px;
+}
+.block-story {
+  background: var(--ink);
+}
+.block-output {
+  background: var(--acc);
+}
+.block-free {
+  background: var(--bg3);
+}
+.blockMark {
+  box-shadow:
+    0 0 0 2.5px var(--card),
+    0 0 0 4.5px var(--warn);
+}
+.legends {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--ink2);
+}
+.swatchDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+}
+.markSwatch {
+  box-shadow: inset 0 0 0 2.5px var(--warn);
+}
+
+/* 测试结果 */
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 30px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 22px;
+  font-size: 15px;
+  line-height: 22px;
+}
+.checkRowFail {
+  background: var(--err-bg);
+}
+.checkMark {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: #ffffff;
+}
+.checkOk {
+  background: var(--ok);
+}
+.checkFail {
+  background: var(--err);
+}
+.checkSkip {
+  background: var(--bg3);
+  color: var(--mut);
+}
+.track {
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--fill);
+}
+.trackFill {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ink);
+}
+.trackFail {
+  background: var(--err);
+}
+.ms {
+  width: 72px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--mut);
+}
+
+/* ---- 账户（W15）：居中，宽 520 ---- */
+.account {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 32px;
+}
+.accountHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 24px 0 14px;
+}
+.bigAvatar {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 6px;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--acc);
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 700;
+}
+.accountName {
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 700;
+}
+.kvGroup {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 6px;
+  border-radius: var(--r-group);
+}
+.kv {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 14px;
+}
+.kv + .kv {
+  box-shadow: 0 -1px 0 var(--line);
+}
+.kvKey {
+  width: 44px;
+  font-size: 13px;
+  color: var(--mut);
+}
+.kvValue {
+  flex: 1;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.danger {
+  margin-top: 20px;
+  padding: 8px 14px 14px;
+  border-radius: var(--r-group);
+  background: var(--err-bg);
+}
+.dangerHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--err);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+}
+.dangerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dangerForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dangerForm input {
+  background: var(--card);
+}
+.accountStats {
+  display: flex;
+  gap: 6px;
+}
+.accountStat {
+  flex: 1;
+  height: 60px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--card);
+}
+.accountStatValue {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 17px;
+}
+.accountStatLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--mut);
+}
+
+/* ---- 连接测试（W17） ---- */
+.devPill {
+  margin-bottom: 4px;
+}
+.server {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: var(--fill);
+}
+.probeButtons {
+  display: flex;
+  gap: 6px;
+}
+.probeButtons > * {
+  flex: 1;
+  padding: 0 8px;
+}
+.tiles {
+  display: flex;
+  gap: 6px;
+}
+.tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 24px;
+}
+.tileValue {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 34px;
+  letter-spacing: -0.02em;
+}
+.spark {
+  width: 100%;
+  height: 60px;
+  margin-top: 8px;
+}
+.tail {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--ink2);
+  overflow-wrap: anywhere;
+}
+.tailCaret {
+  color: var(--acc);
+}
+.report {
+  border-radius: 30px;
+  overflow: hidden;
+}
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+}
+.verdictOk {
+  background: var(--ok-bg);
+}
+.verdictFail {
+  background: var(--err-bg);
+}
+.verdictMark {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+.verdictOk .verdictMark {
+  background: var(--ok);
+}
+.verdictFail .verdictMark {
+  background: var(--err);
+}
+.verdictTitle {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 900;
+}
+.reportRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.report > .reportRow + .reportRow,
+.report > .latency,
+.report > .latency + .reportRow {
+  box-shadow: 0 -1.5px 0 var(--bg);
+}
+.tile .reportRow {
+  min-height: 0;
+  padding: 0;
+}
+.latency {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.latency .reportRow {
+  min-height: 0;
+  padding: 0;
+}
+.axis {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--fill);
+}
+.axisRange {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 6px;
+  background: var(--ink);
+}
+.axisTarget {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 1.5px;
+  background: var(--err);
+}
+.axisLabels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--mut);
+}
+
+/* 右栏够宽（≥ 720）时分两栏：放在最后，覆盖上面的单栏样式 */
+@container pane (min-width: 720px) {
+  .twoColumns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  .addForm {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .addBottom {
+    grid-column: 1 / -1;
+  }
+}

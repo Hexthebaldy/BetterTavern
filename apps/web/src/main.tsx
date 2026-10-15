@@ -11,9 +11,12 @@ import { RouterProvider } from "react-router/dom";
 import { ApiError } from "@bettertavern/core/api/client";
 
 import { router } from "./app/router.tsx";
+import { installDiagnostics } from "./observability/setup.ts";
 import { AppProvider } from "./state/AppProvider.tsx";
 import { PrefsProvider } from "./state/PrefsProvider.tsx";
 import { ThemeProvider } from "./theme/ThemeProvider.tsx";
+
+installDiagnostics();
 
 const queries = new QueryClient({
   defaultOptions: {
