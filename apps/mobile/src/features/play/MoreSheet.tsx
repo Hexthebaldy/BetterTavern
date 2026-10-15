@@ -1,7 +1,7 @@
 /**
  * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号），重命名故事、世界状态、删除故事。
  * 阅读设置存在设备上，所有故事共用。
- * 手机上是底部面板；平板上贴着“更多”按钮弹出（宽 340，右边缘和按钮对齐，底边在行动面板上方 8，不加遮罩）。
+ * 手机上是底部面板；平板上贴着操作栏的“更多”按钮弹出（宽 340，右边缘和按钮对齐，底边在按钮上方 8，不加遮罩）。
  */
 
 import { useRef, useState, type RefObject } from "react";
@@ -173,7 +173,7 @@ export function MoreSheet({
   onRename: () => void;
   onWorld: () => void;
   onDelete: () => void;
-  /** 平板：菜单贴着这个按钮、在 above（行动面板）上方弹出 */
+  /** 平板：菜单贴着这个按钮弹出；传了 above 时底边放在它的顶边上方 */
   anchor?: RefObject<View | null>;
   above?: RefObject<View | null>;
 }) {

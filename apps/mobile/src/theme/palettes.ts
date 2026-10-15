@@ -36,7 +36,7 @@ export type Palette = {
   onPri: string;
   /** 浮层：Tab 栏、提示浮条、对话框；灰卡里再嵌的白卡 */
   card: string;
-  /** 阅读页底部行动面板与各类底部面板 */
+  /** 各类底部面板、对话框、弹出菜单 */
   sheet: string;
   /** 面板、对话框后面的遮罩 */
   scrim: string;

@@ -79,7 +79,7 @@ describe("平板布局", () => {
     assert.deepEqual(readableColumn(readingWidth(1194, true)), { left: 73, width: 640 });
   });
 
-  it("行动面板最宽 672、和阅读栏同一条中线；手机上左右各离边 8", () => {
+  it("底部操作栏的内容最宽 672、和阅读栏同一条中线；手机上左右各离边 8", () => {
     assert.deepEqual(actionPanelFrame(390), { left: 8, width: 374 });
     assert.deepEqual(actionPanelFrame(1194), { left: 261, width: 672 });
     const panel = actionPanelFrame(834);
@@ -111,13 +111,17 @@ describe("平板布局", () => {
     assert.ok(wide && wide.left >= 124 && wide.width === 480 && !wide.aboveTabBar);
   });
 
-  it("“更多”菜单：右边和按钮对齐，底边在面板上方 8，不出窗口", () => {
+  it("“更多”菜单：右边和按钮对齐，底边在按钮上方 8；上面放不下就放到按钮下面", () => {
     const window = { width: 1194, height: 834 };
-    const frame = popoverFrame({ x: 880, y: 760, width: 44, height: 44 }, window, 700);
+    const button = { x: 880, y: 700, width: 44, height: 44 };
+    const frame = popoverFrame(button, window, button.y, 360, 40);
     assert.equal(frame.left + frame.width, 924);
-    assert.equal(frame.bottom, 834 - 700 + 8);
+    assert.equal(frame.top, 700 - 8 - 360);
+    // 按钮在屏幕上半部（故事很短时）：放到按钮下面
+    const high = popoverFrame({ ...button, y: 200 }, window, 200, 360, 40);
+    assert.equal(high.top, 200 + 44 + 8);
     // 按钮靠左时不超出左边
-    assert.equal(popoverFrame({ x: 10, y: 760, width: 44, height: 44 }, window, 700).left, 16);
+    assert.equal(popoverFrame({ ...button, x: 10 }, window, 700, 360, 40).left, 16);
   });
 
   it("长按卡片的菜单放在卡片下面，放不下就放到上面", () => {

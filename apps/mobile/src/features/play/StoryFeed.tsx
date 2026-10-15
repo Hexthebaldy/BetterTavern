@@ -1,12 +1,14 @@
 /**
- * 故事流：书名页、已完成的回合（memo 固定，不随流式文字重渲染）加上正在生成的那一段。
+ * 故事流：书名页、已完成的回合（memo 固定，不随流式文字重渲染）、正在生成的那一段，最后是行动区
+ * （选项、“自己写…”、生成中的状态，见 TurnActions.tsx），行动区跟着正文一起滚动。
  *
- * “我的行动”是一张缩进的灰色圆角卡片（左右 16），前面一个浅蓝小圆里的转折箭头，同时充当回合之间的分隔；
- * 它不是聊天气泡。叙述用宋体（阅读设置里可换黑体），左右页边距 24，段落之间空 16，两端对齐。
+ * “我的行动”和叙述是同一种字（阅读设置里的宋体或黑体、字号），颜色浅一档，左边一道竖线，
+ * 不画卡片，读起来是故事的一部分而不是聊天气泡。叙述左右页边距 24，段落之间空 16，两端对齐。
  * 流式光标是 3×20 的蓝色圆头竖条，不闪烁。
  *
- * 底部浮着行动面板：内容底部按 bottomInset 留白，“回到最新”浮在面板上方。
- * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 浮出“回到最新”。
+ * 底部固定着操作栏（BottomBar.tsx）：内容底部按 bottomInset 留白。正在发送、正在构思、重连这些状态也在操作栏里，正文这里不重复。
+ * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 时经 onAwayChange 告诉页面，
+ * 操作栏中间换成“回到最新”（调用 ref 上的 jumpToLatest）。
  * 只有玩家亲手拖动或惯性滚动才会关掉跟随：内容变长时程序滚动产生的事件里，偏移量常常落后于新的内容高度，
  * 不能当成玩家翻走了。
  *
@@ -15,10 +17,18 @@
  * 滚动区仍是整个阅读区，两边空白处也能拖动。
  */
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  type ReactElement,
+  type Ref,
+} from "react";
 import {
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -28,7 +38,7 @@ import {
 } from "react-native";
 
 import { Cover } from "../../components/Cover.tsx";
-import { Dots, Icon, Pill } from "../../components/ui.tsx";
+import { Icon, Pill } from "../../components/ui.tsx";
 import { font, radius, size, space, usePalette } from "../../theme/index.ts";
 import { readableColumn } from "../../theme/layout.ts";
 import { BASE_SIZE, lineHeightFor, MAX_SIZE, readingSize, type ReadingPrefs } from "./reading.ts";
@@ -109,19 +119,21 @@ export function BookHeader({
   );
 }
 
-/** “我的行动”卡片；读屏时前面加上“我的行动：” */
-export function ActionNote({ text }: { text: string }) {
+/** “我的行动”：和叙述同样的字，颜色浅一档，左边一道竖线；读屏时前面加上“我的行动：” */
+export function ActionNote({ text, narr }: { text: string; narr: Narr }) {
   const palette = usePalette();
   return (
     <View
       accessible
       accessibilityLabel={`我的行动：${text}`}
-      style={[styles.note, { backgroundColor: palette.bg2 }]}
+      style={[styles.note, { borderLeftColor: palette.line2 }]}
     >
-      <View style={[styles.noteIcon, { backgroundColor: palette.accBg }]}>
-        <Icon name="turn" size={14} color={palette.acc} strokeWidth={2.4} />
-      </View>
-      <Text style={[styles.noteText, { color: palette.ink }]} selectable>
+      <Text
+        selectable
+        allowFontScaling={narr.scale}
+        maxFontSizeMultiplier={narr.maxScale}
+        style={[narr.style, { color: palette.ink2, textAlign: "left" }]}
+      >
         {text}
       </Text>
     </View>
@@ -192,44 +204,11 @@ const TurnBlock = memo(function TurnBlock({ turn, narr }: { turn: StoryTurn; nar
   const showAction = turn.action.source !== "opening" && turn.action.text.length > 0;
   return (
     <View style={styles.turn}>
-      {showAction ? <ActionNote text={turn.action.text} /> : null}
+      {showAction ? <ActionNote text={turn.action.text} narr={narr} /> : null}
       <Narrative text={turn.narrative} narr={narr} />
     </View>
   );
 });
-
-/** 正文上方的状态胶囊：重连时琥珀色，其余是浅灰 */
-function StatusLine({ pending, phase }: { pending: PendingTurn; phase: Phase }) {
-  const palette = usePalette();
-  let icon: ReactElement | null = <Dots color={palette.acc} cell={5} gap={3} />;
-  let text: string | null = null;
-  let warn = false;
-  if (phase === "reconnecting") {
-    icon = <Icon name="retry" size={14} color={palette.warn} />;
-    text = "连接断了，正在重连…";
-    warn = true;
-  } else if (phase === "polling") {
-    icon = <Icon name="retry" size={14} color={palette.warn} />;
-    text = "网络不太稳定，正在等待结果…";
-    warn = true;
-  } else if (phase === "submitting") {
-    text = "正在发送…";
-  } else if (pending.waitingState) {
-    text = "世界还在更新…";
-  } else if (phase === "streaming" && pending.narrative === "") {
-    text = "正在构思…";
-  }
-  if (!text) return null;
-  return (
-    <View
-      style={[styles.status, { backgroundColor: warn ? palette.warnBg : palette.bg2 }]}
-      accessibilityLiveRegion="polite"
-    >
-      {icon}
-      <Text style={{ fontSize: 12.5, color: warn ? palette.warn : palette.mut }}>{text}</Text>
-    </View>
-  );
-}
 
 /** 第一次开场：先搭建世界，再写开场。当前一步是白色的圆角行 */
 function OpeningSteps({ building }: { building: boolean }) {
@@ -287,8 +266,7 @@ function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: P
   }
   return (
     <View style={styles.turn}>
-      {showAction && pending.action ? <ActionNote text={pending.action.text} /> : null}
-      {failed ? null : <StatusLine pending={pending} phase={phase} />}
+      {showAction && pending.action ? <ActionNote text={pending.action.text} narr={narr} /> : null}
       <Narrative
         text={pending.narrative}
         narr={narr}
@@ -315,30 +293,49 @@ function OpeningMissing() {
   );
 }
 
+/** 页面经 ref 调用：回到最新一段并恢复跟随 */
+export type StoryFeedHandle = { jumpToLatest: () => void };
+
 export function StoryFeed({
+  ref,
   state,
   header,
   reading,
+  footer,
   dimmed,
   bottomInset,
   available,
+  onAwayChange,
 }: {
+  ref?: Ref<StoryFeedHandle>;
   state: PlayState;
   header?: ReactElement;
+  /** 接在最后一段后面的行动区 */
+  footer?: ReactElement;
   reading: ReadingPrefs;
   /** 同步中：内容变淡 */
   dimmed?: boolean;
-  /** 底部被浮动行动面板盖住的高度：内容在它上方结束，“回到最新”浮在它上方 */
+  /** 底部被操作栏（和展开时的键盘）盖住的高度：内容在它上方结束 */
   bottomInset: number;
   /** 阅读区的宽度（世界状态停靠时比窗口窄）：正文栏在里面居中 */
   available: number;
+  /** 离开 / 回到最新位置（离底超过 80pt） */
+  onAwayChange?: (away: boolean) => void;
 }) {
-  const palette = usePalette();
   const narr = useNarrativeStyle(reading);
   const list = useRef<FlatList<Item>>(null);
+  // 最后一项离操作栏 16
+  const bottomSpace = bottomInset + space.l;
   const following = useRef(true);
   const byUser = useRef(false); // 玩家正在拖动，或者拖动之后的惯性滚动
-  const [showLatest, setShowLatest] = useState(false);
+  const away = useRef(false);
+  const awayRef = useRef(onAwayChange);
+  awayRef.current = onAwayChange;
+  const setAway = useCallback((next: boolean) => {
+    if (away.current === next) return;
+    away.current = next;
+    awayRef.current?.(next);
+  }, []);
 
   const items = useMemo(() => {
     const result: Item[] = state.turns.map((turn) => ({ key: turn.id, turn }));
@@ -346,14 +343,17 @@ export function StoryFeed({
     return result;
   }, [state.turns, state.pending]);
 
-  const track = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-    const distance = contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    const atBottom = distance < FOLLOW_THRESHOLD;
-    if (!atBottom && !byUser.current) return;
-    following.current = atBottom;
-    setShowLatest((shown) => (shown === !atBottom ? shown : !atBottom));
-  }, []);
+  const track = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+      const distance = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+      const atBottom = distance < FOLLOW_THRESHOLD;
+      if (!atBottom && !byUser.current) return;
+      following.current = atBottom;
+      setAway(!atBottom);
+    },
+    [setAway],
+  );
 
   const onDragStart = useCallback(() => {
     byUser.current = true;
@@ -375,16 +375,17 @@ export function StoryFeed({
     });
   }, []);
 
-  // 行动面板换了内容、高度变了：底部留白跟着变，停在底部时继续贴住最新
+  // 操作栏高度变了（展开输入框、弹出键盘）：底部留白跟着变，停在底部时继续贴住最新
   useEffect(() => {
     stickToEnd();
   }, [bottomInset, stickToEnd]);
 
   const jumpToLatest = useCallback(() => {
     following.current = true;
-    setShowLatest(false);
+    setAway(false);
     list.current?.scrollToEnd({ animated: true });
-  }, []);
+  }, [setAway]);
+  useImperativeHandle(ref, () => ({ jumpToLatest }), [jumpToLatest]);
 
   const renderItem = useCallback(
     ({ item }: { item: Item }) =>
@@ -397,7 +398,6 @@ export function StoryFeed({
   );
 
   const missingOpening = state.turns.length === 0 && state.phase === "idle";
-  const live = state.pending !== null && state.phase !== "failed";
   return (
     <View style={{ flex: 1, opacity: dimmed ? 0.4 : 1 }}>
       <FlatList
@@ -408,12 +408,12 @@ export function StoryFeed({
         // 正文栏两侧的空白：手机上是 0（正文本来就离边 24）
         contentContainerStyle={{ paddingHorizontal: sideInset(available) }}
         ListHeaderComponent={header}
-        // 面板下面的留白放在列表尾部而不是 paddingBottom：scrollToEnd 只算到尾部组件，不算内边距。
-        // 每个回合下面自带 16 的间距，合起来最后一行离面板 18
+        // 行动区和底部留白放在列表尾部而不是 paddingBottom：scrollToEnd 只算到尾部组件，不算内边距
         ListFooterComponent={
           <>
             {missingOpening ? <OpeningMissing /> : null}
-            <View style={{ height: bottomInset + 2 }} />
+            {footer}
+            <View style={{ height: bottomSpace }} />
           </>
         }
         scrollIndicatorInsets={{ bottom: bottomInset }}
@@ -430,26 +430,6 @@ export function StoryFeed({
         initialNumToRender={12}
         windowSize={9}
       />
-      {showLatest ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={live ? "回到最新，有新内容" : "回到最新"}
-          onPress={jumpToLatest}
-          style={({ pressed }) => [
-            styles.latest,
-            {
-              bottom: bottomInset + space.l,
-              backgroundColor: palette.ink,
-              boxShadow: palette.shadowStrong,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-            },
-          ]}
-        >
-          <Icon name="down" size={16} color={palette.bg} />
-          <Text style={{ fontSize: 14, fontWeight: "500", color: palette.bg }}>回到最新</Text>
-          {live ? <View style={[styles.latestDot, { backgroundColor: palette.accOnInk }]} /> : null}
-        </Pressable>
-      ) : null}
     </View>
   );
 }
@@ -480,25 +460,15 @@ const styles = StyleSheet.create({
   bookTitle: { paddingHorizontal: 6, fontSize: 28, lineHeight: 34, fontWeight: "900", letterSpacing: -0.84 },
   bookChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 6 },
   turn: { marginBottom: space.l },
+  /** 竖线在正文的左边距上，字往里缩 14 */
   note: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: space.m,
-    marginTop: 6,
-    marginBottom: 22,
-    marginHorizontal: space.l,
-    paddingVertical: 14,
-    paddingHorizontal: space.l,
-    borderRadius: radius.card,
+    marginTop: space.xs,
+    marginBottom: space.l,
+    marginLeft: space.read,
+    marginRight: space.read,
+    paddingLeft: 14,
+    borderLeftWidth: 3,
   },
-  noteIcon: {
-    width: size.actionIcon,
-    height: size.actionIcon,
-    borderRadius: size.actionIcon / 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  noteText: { flex: 1, fontSize: 15, lineHeight: 24, fontWeight: "500" },
   paragraph: { marginBottom: space.l, paddingHorizontal: space.read },
   caretOnly: { paddingHorizontal: space.read - 3, justifyContent: "center" },
   cutBox: {
@@ -509,17 +479,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cut: { fontSize: 12, lineHeight: 16 },
-  status: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.s,
-    height: 28,
-    paddingHorizontal: space.m,
-    marginLeft: space.read,
-    marginBottom: space.m,
-    borderRadius: 14,
-  },
   steps: { marginHorizontal: space.list, padding: space.s, borderRadius: 26, gap: 4 },
   stepRow: {
     flexDirection: "row",
@@ -540,16 +499,4 @@ const styles = StyleSheet.create({
     paddingTop: space.s,
   },
   missingIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  latest: {
-    position: "absolute",
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.s,
-    height: 44,
-    paddingLeft: 14,
-    paddingRight: 18,
-    borderRadius: 22,
-  },
-  latestDot: { width: 7, height: 7, borderRadius: 3.5 },
 });

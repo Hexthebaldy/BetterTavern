@@ -4,8 +4,8 @@
  * 手机上是底部面板：四周离屏幕边缘 8，圆角 32，顶部一根 40×5 的拖拽条；点遮罩、下拉或 Android 返回键关闭。
  * 平板（中屏、宽屏）上按 theme/layout.ts 的 overlayPresentation 换形态，内容不变：
  * - kind="choice"（默认：服务器、外观、编辑密钥……）→ 居中对话框：宽 ≤ 480，圆角 32，没有拖拽条，右上角关闭，点遮罩关闭；
- * - kind="menu"（阅读页“更多”）→ 贴着 anchor 按钮弹出：宽 340，圆角 28，右边缘和按钮对齐，底边在 above 的顶边上方 8，
- *   不加遮罩，点外面关闭；量不到按钮的位置时退回居中对话框；
+ * - kind="menu"（阅读页“更多”）→ 贴着 anchor 按钮弹出：宽 340，圆角 28，右边缘和按钮对齐，底边在按钮
+ *   （或 above）的顶边上方 8，上面放不下就放到按钮下方；不加遮罩，点外面关闭；量不到按钮的位置时退回居中对话框；
  * - full（世界状态）→ 从右侧滑出：宽 400，上、下、右各留 8，圆角 32，有遮罩。
  * 面板里有输入框时，键盘弹出后面板跟着浮到键盘上方（useKeyboardLift），输入框不会被盖住。
  * 有面板开着时，useOverlay() 的对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）。
@@ -90,7 +90,11 @@ function OverlayOutlet({ active }: { active: boolean }) {
 // ---- 面板 -------------------------------------------------------------------------------
 
 type Presentation = "sheet" | "dialog" | "popover" | "side";
-type Placed = { left: number; bottom: number; width: number };
+type Rect = { x: number; y: number; width: number; height: number };
+/** 弹出菜单贴着的按钮，以及菜单底边不能低于的 y */
+type Anchored = { trigger: Rect; bottom: number };
+/** 菜单的高度还没量出来时先按这个估计（阅读页“更多”大约这么高） */
+const POPOVER_ESTIMATE = 380;
 
 /** 量出 ref 在窗口里的位置；量不到（还没布局、已经卸载）给 null */
 function measure(ref: RefObject<View | null> | undefined): Promise<{
@@ -135,7 +139,7 @@ export function Sheet({
   kind?: OverlayKind;
   /** 弹出菜单贴着的按钮 */
   anchor?: RefObject<View | null>;
-  /** 弹出菜单的底边放在它的顶边上方 8（阅读页的行动面板）；不传就放在按钮上方 */
+  /** 弹出菜单的底边放在它的顶边上方 8；不传就放在按钮上方 */
   above?: RefObject<View | null>;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -148,8 +152,9 @@ export function Sheet({
   const drag = useRef(new Animated.Value(0)).current;
   const shown = useRef(false);
   const { height: keyboardHeight, lift } = useKeyboardLift();
-  // 弹出菜单的位置：undefined 还在量，null 量不到（退回对话框）
-  const [placed, setPlaced] = useState<Placed | null | undefined>(undefined);
+  // 弹出菜单贴着的按钮：undefined 还在量，null 量不到（退回对话框）
+  const [placed, setPlaced] = useState<Anchored | null | undefined>(undefined);
+  const [popHeight, setPopHeight] = useState(POPOVER_ESTIMATE);
 
   const wanted: Presentation = size === "compact" ? "sheet" : full ? "side" : overlayPresentation(kind, size);
   const presentation: Presentation = wanted === "popover" && placed === null ? "dialog" : wanted;
@@ -183,8 +188,7 @@ export function Sheet({
         setPlaced(null);
         return;
       }
-      const bottomEdge = floor ? floor.y : trigger.y;
-      setPlaced(popoverFrame(trigger, { width: windowWidth, height: windowHeight }, bottomEdge));
+      setPlaced({ trigger, bottom: floor ? floor.y : trigger.y });
     })();
     return () => {
       alive = false;
@@ -292,15 +296,28 @@ export function Sheet({
       </View>
     );
   } else if (presentation === "popover") {
-    body = placed ? (
+    const frame = placed
+      ? popoverFrame(
+          placed.trigger,
+          { width: windowWidth, height: windowHeight },
+          placed.bottom,
+          popHeight,
+          insets.top + space.s,
+        )
+      : null;
+    body = frame ? (
       <Animated.View
         accessibilityViewIsModal
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          setPopHeight((old) => (Math.abs(old - h) < 1 ? old : h));
+        }}
         style={[
           styles.popover,
           {
-            left: placed.left,
-            bottom: placed.bottom,
-            width: placed.width,
+            left: frame.left,
+            top: frame.top,
+            width: frame.width,
             backgroundColor: palette.sheet,
             boxShadow: palette.shadowFloat,
             opacity: progress,
@@ -397,6 +414,16 @@ export function PanelSurfaces({ children }: { children: ReactNode }) {
         ? { inset: palette.bg, raised: palette.bg3, fill: palette.card, onFill: palette.bg2 }
         : { inset: palette.bg3, raised: palette.card, fill: palette.card, onFill: palette.bg2 },
     [dark, palette],
+  );
+  return <SurfacesContext.Provider value={value}>{children}</SurfacesContext.Provider>;
+}
+
+/** 直接放在页面上的表面（阅读页故事流末尾的选项）：灰卡是 bg2，灰卡里的小圆是白色 card */
+export function PageSurfaces({ children }: { children: ReactNode }) {
+  const palette = usePalette();
+  const value = useMemo<Surfaces>(
+    () => ({ inset: palette.bg2, raised: palette.card, fill: palette.bg2, onFill: palette.card }),
+    [palette],
   );
   return <SurfacesContext.Provider value={value}>{children}</SurfacesContext.Provider>;
 }

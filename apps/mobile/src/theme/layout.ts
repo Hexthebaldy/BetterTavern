@@ -26,7 +26,7 @@ export function sizeClass(width: number): SizeClass {
 export const pane = {
   /** 阅读栏、表单、单栏页面的最大宽度 */
   readable: 640,
-  /** 阅读页行动面板：阅读栏两侧各多 16 */
+  /** 阅读页底部操作栏的内容：阅读栏两侧各多 16 */
   actionPanel: 672,
   /** 两栏页面的左栏（设置列表） */
   list: 340,
@@ -76,7 +76,7 @@ export function libraryColumns(size: SizeClass, contentWidth: number): number {
   return Math.max(2, Math.min(5, Math.floor(contentWidth / 240)));
 }
 
-/** 阅读页行动面板里的选项排几列：宽屏两列，其他一列（奇数个时最后一项占满一行） */
+/** 阅读页末尾的选项排几列：宽屏两列，其他一列（奇数个时最后一项占满一行） */
 export function optionColumns(size: SizeClass): 1 | 2 {
   return size === "expanded" ? 2 : 1;
 }
@@ -118,7 +118,7 @@ export function readingWidth(width: number, docked: boolean): number {
 }
 
 /**
- * 阅读页行动面板的左右位置：宽 672，和阅读栏中线对齐；放不下时左右各离边 8（手机上就是这样）。
+ * 阅读页底部操作栏内容的左右位置：宽 672，和阅读栏中线对齐；放不下时左右各离边 8（手机上就是这样）。
  */
 export function actionPanelFrame(available: number): { left: number; width: number } {
   const width = Math.min(pane.actionPanel, Math.max(0, available - 16));
@@ -181,19 +181,26 @@ export function toastFrame(
 }
 
 /**
- * 贴着触发按钮弹出的菜单：右边缘和按钮右边缘对齐，底边在 bottom 上方 8；放不下时贴着窗口边缘。
- * trigger 是按钮在窗口里的位置，bottom 是菜单底边不能低于的 y（通常是行动面板的顶边）。
+ * 贴着触发按钮弹出的菜单：右边缘和按钮右边缘对齐，底边在 bottom 上方 8；上面放不下（比如按钮在屏幕上半部）
+ * 就放到按钮下方 8。trigger 是按钮在窗口里的位置，bottom 是菜单底边不能低于的 y（通常是按钮的顶边），
+ * menuHeight 是菜单的高度（还没量出来时给个估计），topLimit 是菜单顶边不能高于的 y（状态栏下方）。
+ * 返回菜单的 left、top 和宽度（以窗口为准）。
  */
 export function popoverFrame(
   trigger: { x: number; y: number; width: number; height: number },
   window: { width: number; height: number },
   bottom: number,
+  menuHeight: number,
+  topLimit: number,
   menuWidth: number = pane.popover,
-): { left: number; bottom: number; width: number } {
+): { left: number; top: number; width: number } {
   const width = Math.min(menuWidth, window.width - 32);
   const right = trigger.x + trigger.width;
   const left = Math.min(Math.max(16, right - width), window.width - 16 - width);
-  return { left, bottom: window.height - bottom + 8, width };
+  const above = bottom - 8 - menuHeight;
+  const top =
+    above >= topLimit ? above : Math.min(trigger.y + trigger.height + 8, window.height - 16 - menuHeight);
+  return { left, top: Math.max(topLimit, top), width };
 }
 
 /**

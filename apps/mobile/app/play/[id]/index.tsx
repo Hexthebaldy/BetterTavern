@@ -1,12 +1,14 @@
 /**
- * 阅读主屏：导航栏（返回、标题）、故事流、浮在底部的行动面板。世界状态和“更多”两个按钮在行动面板的右下角。
- * 顶部只放低频入口，所有回合操作都在屏幕下三分之一；离开页面只断开连接，服务端的生成继续，回来时会接上。
- * 行动面板盖在故事流上面：量出它的高度，故事流的底部留白和“回到最新”都跟着它走。
+ * 阅读主屏：导航栏（返回、标题）、故事流、底部固定的操作栏。离开页面只断开连接，服务端的生成继续，回来时会接上。
+ * - 选项接在最新一段后面（TurnActions.tsx），跟着正文滚动，不挡正文；
+ * - 操作栏（BottomBar.tsx）左边“世界”，右边“更多”，中间是“自己写…”、生成中的状态和“停止”，
+ *   或者往上翻时的“回到最新”。量出它的高度，故事流的底部按它留白。
+ * 输入框的开关、草稿、是否离开了最新位置都放在这一页，旋转、分屏时都不会丢。
  *
- * 平板（theme/layout.ts）：正文收进最宽 640 的阅读栏，行动面板宽 672、同一条中线；
- * 世界状态在阅读页宽 ≥ 1100 时停靠在右侧，阅读栏和行动面板在剩下的宽度里居中，世界按钮显示为选中，
+ * 平板（theme/layout.ts）：正文收进最宽 640 的阅读栏，操作栏的内容宽 672、同一条中线；
+ * 世界状态在阅读页宽 ≥ 1100 时停靠在右侧，阅读栏和操作栏在剩下的宽度里居中，世界按钮显示为选中，
  * 再点一次收起；停靠的开关存在界面偏好里，打开任意故事都保持。更窄时从右侧滑出，手机上是底部面板。
- * 旋转、分屏改变宽度时只换布局：故事流、行动面板都不卸载，滚动位置和草稿都还在；停靠着的面板变窄后换成滑出的。
+ * 旋转、分屏改变宽度时只换布局：故事流、操作栏都不卸载，滚动位置和草稿都还在；停靠着的面板变窄后换成滑出的。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,9 +19,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { describeError } from "../../../src/api/client.ts";
 import type { Scenario } from "../../../src/api/types.ts";
 import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
-import { ActionBar } from "../../../src/features/play/ActionBar.tsx";
+import { BottomBar } from "../../../src/features/play/BottomBar.tsx";
 import { MoreSheet } from "../../../src/features/play/MoreSheet.tsx";
-import { BookHeader, columnWidth, StoryFeed } from "../../../src/features/play/StoryFeed.tsx";
+import {
+  BookHeader,
+  columnWidth,
+  StoryFeed,
+  type StoryFeedHandle,
+} from "../../../src/features/play/StoryFeed.tsx";
+import { TurnActions } from "../../../src/features/play/TurnActions.tsx";
 import { headTurn } from "../../../src/features/play/turnMachine.ts";
 import { usePlaySession } from "../../../src/features/play/usePlaySession.ts";
 import { WorldDock, WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
@@ -103,10 +111,15 @@ export default function PlayScreen() {
   const [worldOpen, setWorldOpen] = useState(() => worldMode === "dock" && worldDocked);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreButton = useRef<View>(null);
-  const panelView = useRef<View>(null);
-  // 行动面板盖住的高度（面板、离底的距离、键盘）：故事流在它上方结束
-  const [panel, setPanel] = useState(128);
-  const onPanelHeight = useCallback((h: number) => setPanel((old) => (Math.abs(old - h) < 1 ? old : h)), []);
+  const feed = useRef<StoryFeedHandle>(null);
+  // 自己写：输入框展开着没有、草稿
+  const [writing, setWriting] = useState(false);
+  const [draft, setDraft] = useState("");
+  // 往上翻离开了最新位置：操作栏中间换成“回到最新”
+  const [away, setAway] = useState(false);
+  // 操作栏盖住的高度（展开时连同键盘）：故事流在它上方结束
+  const [bar, setBar] = useState(80);
+  const onBarHeight = useCallback((h: number) => setBar((old) => (Math.abs(old - h) < 1 ? old : h)), []);
 
   // 变宽到可以停靠时，偏好里是开着的就展开；变窄时开着的停靠面板换成滑出面板（worldOpen 不变）
   const lastMode = useRef(worldMode);
@@ -218,19 +231,35 @@ export default function PlayScreen() {
     );
   }
   const syncing = state.phase === "syncing";
+  const send = (text: string): void => {
+    setWriting(false);
+    setDraft("");
+    controls.submit({ source: "text", text });
+  };
   return (
-    // 左边是阅读区（导航栏、故事流、行动面板），停靠时右边是世界状态；手机上只有阅读区
+    // 左边是阅读区（导航栏、故事流、操作栏），停靠时右边是世界状态；手机上只有阅读区
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: palette.bg }}>
       <View style={{ flex: 1 }}>
         {nav}
-        {/* 行动面板自己跟着键盘浮起（见 ActionBar），故事流的底部留白跟着面板走 */}
+        {/* 操作栏自己跟着键盘浮起（见 BottomBar），故事流的底部留白跟着它走 */}
         <View style={{ flex: 1 }}>
           <StoryFeed
+            ref={feed}
             state={state}
             reading={reading}
             dimmed={syncing}
-            bottomInset={panel}
+            bottomInset={bar}
             available={available}
+            onAwayChange={setAway}
+            footer={
+              <TurnActions
+                state={state}
+                controls={controls}
+                onOpenSettings={() => router.push("/settings/models")}
+                onPicked={() => setWriting(false)}
+                available={available}
+              />
+            }
             header={
               <BookHeader
                 seed={state.scenarioId ?? id}
@@ -250,18 +279,24 @@ export default function PlayScreen() {
               </Text>
             </View>
           ) : null}
-          <ActionBar
+          <BottomBar
             state={state}
             controls={controls}
-            onOpenSettings={() => router.push("/settings/models")}
+            writing={writing}
+            onWrite={() => setWriting(true)}
+            onCloseWrite={() => setWriting(false)}
+            draft={draft}
+            onDraft={setDraft}
+            onSend={send}
+            away={away}
+            onJumpToLatest={() => feed.current?.jumpToLatest()}
             onOpenWorld={toggleWorld}
             onOpenMore={() => setMoreOpen(true)}
-            onHeight={onPanelHeight}
-            available={available}
             worldActive={docked}
             moreActive={moreOpen}
             moreRef={moreButton}
-            panelRef={panelView}
+            onHeight={onBarHeight}
+            available={available}
           />
         </View>
       </View>
@@ -271,7 +306,6 @@ export default function PlayScreen() {
         visible={moreOpen}
         onClose={() => setMoreOpen(false)}
         anchor={moreButton}
-        above={panelView}
         onRename={() => void rename()}
         onWorld={() => {
           setMoreOpen(false);
