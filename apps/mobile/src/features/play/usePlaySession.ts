@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 
 import type { NewAction } from "../../api/types.ts";
+import { diagnostics } from "../../observability/log.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { newIdempotencyKey } from "../../utils/ids.ts";
 import { PlaySession } from "./playSession.ts";
@@ -47,6 +48,20 @@ export function usePlaySession(playthroughId: string): PlayControls {
     let frame: number | null = null;
     let latest = session.getState();
     const unsubscribe = session.subscribe((next) => {
+      // 阶段变化记进诊断日志（流式文字的每个片段不记）
+      if (next.phase !== latest.phase) {
+        diagnostics.log(
+          next.phase === "failed" || next.phase === "load_failed" ? "warn" : "info",
+          "turn.phase",
+          {
+            playthrough_id: playthroughId,
+            turn_id: next.pending?.turnId ?? null,
+            from: latest.phase,
+            to: next.phase,
+            code: next.error?.code ?? null,
+          },
+        );
+      }
       latest = next;
       if (frame === null) {
         frame = requestAnimationFrame(() => {

@@ -11,6 +11,7 @@ import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 
 import type { FetchLike } from "../../src/api/sse/sseClient.ts";
 import { ServerSheet } from "../../src/components/ServerSetting.tsx";
+import { DiagnosticsCard } from "../../src/features/probe/DiagnosticsCard.tsx";
 import { BackBar, Button, Icon, Page, Pill, SectionHeader, Segmented } from "../../src/components/ui.tsx";
 import {
   DEFAULT_PROBE_CONFIG,
@@ -380,6 +381,7 @@ export default function ProbeScreen() {
       ) : null}
       {report ? <ReportView report={report.report} duration={report.duration} /> : null}
       {error ? <Text style={[styles.note, { color: palette.err }]}>出错：{error}</Text> : null}
+      <DiagnosticsCard />
       <ServerSheet
         visible={picking}
         onClose={() => setPicking(false)}

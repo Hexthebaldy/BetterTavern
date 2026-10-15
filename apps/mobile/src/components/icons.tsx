@@ -29,6 +29,7 @@ const ICONS = {
   settings: [{ d: "M4 7h9M17 7h3M4 17h3M11 17h9" }, { circle: [15, 7, 2] }, { circle: [9, 17, 2] }],
   world: [{ circle: [12, 12, 9] }, { d: "M15.5 8.5l-2 5-5 2 2-5z" }],
   import: [{ d: "M12 4v11M7.5 10.5L12 15l4.5-4.5" }, { d: "M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3" }],
+  share: [{ d: "M12 15V4M7.5 8.5L12 4l4.5 4.5" }, { d: "M5 13v5a2 2 0 002 2h10a2 2 0 002-2v-5" }],
   write: [{ d: "M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z" }],
   send: [{ d: "M12 19V6M6.5 11.5L12 6l5.5 5.5" }],
   stop: [{ rect: [5, 5, 14, 14, 3.5], solid: true, bare: true }],

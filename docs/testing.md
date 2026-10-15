@@ -71,6 +71,16 @@ App 报错时显示这个单号，拿它去日志里一搜：搜不到说明请�
 **访问日志与异常**：最外层的中间件（`api/request_context.py`）在每个请求结束时记一条 `http.request`（方法、路径、路由模板、状态码、耗时、客户端版本）；
 事件流这类长连接在连接结束时才记，耗时就是连接时长；健康检查成功时不记。未处理的异常记 `http.error`（带堆栈），返回 500 `INTERNAL_ERROR`。
 
+**手机上的诊断日志**（`apps/mobile/src/observability/`）：只存在手机上，不上传。
+
+- 最多保留最近 500 条，存在 App 文档目录的 `diagnostics.jsonl`，App 重启后接着用；格式和服务端一致（时间、级别、事件名加字段），脱敏规则也一样。
+- 记什么：`app.started`、`app.error`（没人处理的异常，崩溃前立刻写盘）、`session.status`（登录状态变化）、`server.changed`、
+  `api.request`（失败的和超过 2 秒的请求，带单号、状态码、耗时、错误码；连不上时带底层异常和当时的服务器地址）、
+  `sse.state` / `sse.error` / `sse.finished`（推送连接的断开、重连、转轮询，每次连接都有自己的单号）、`turn.phase`（回合状态机的阶段变化）。
+- 正常的请求、连接中这类 `debug` 记录只在开发时打到 Metro 终端，不占小本子的位置。
+- 每个请求都带 `X-Request-ID`；意外的错误（连不上、5xx、返回内容看不懂）在界面上附上单号的前 8 位，拿它去服务端日志里查。
+- “设置 → 连接测试”页底部可以导出（系统分享面板，开头几行说明，后面每行一条 JSON）和清空。
+
 追踪（M4）用 OpenTelemetry。一个回合是一条 trace：根 span `turn`，子 span 有 `barrier_wait`、`assemble_context`、`provider.stream`（属性：model、ttft\_ms、各类 token 数、缓存命中比例）、`commit`。后台任务通过 `jobs.payload.traceparent` 接上同一条 trace，子 span 是 `state_keeper`、`gate.*`、`compactor`、`outline_reviser`。span 属性里不放文本。
 
 ### 指标

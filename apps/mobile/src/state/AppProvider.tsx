@@ -22,6 +22,8 @@ import { sseTurnConnector, type TurnConnector } from "../api/turnStream.ts";
 import type { AuthResponse, User } from "../api/types.ts";
 import { SessionManager, type SessionStatus } from "../auth/session.ts";
 import { CLIENT_VERSION, DEFAULT_SERVER_URL, normalizeServerUrl } from "../config.ts";
+import { diagnostics } from "../observability/log.ts";
+import { requestFields, requestLevel, serverHost } from "../observability/requests.ts";
 import { loadServerUrl, saveServerUrl, secureSessionStorage } from "../storage/secure.ts";
 
 type Services = {
@@ -40,6 +42,9 @@ function createServices(): Services {
     baseUrl: () => serverUrl.current,
     fetch: (url, init) => fetch(url, init),
     clientVersion: CLIENT_VERSION,
+    // 失败的和慢的请求记进诊断日志，正常的只在开发时打到终端
+    onRequest: (record) =>
+      diagnostics.log(requestLevel(record), "api.request", requestFields(record, serverUrl.current)),
     auth: {
       accessToken: () => session?.accessToken() ?? Promise.resolve(null),
       refresh: () => session?.refresh() ?? Promise.resolve(false),
@@ -51,6 +56,13 @@ function createServices(): Services {
     refresh: (token) => api.auth.refresh(token),
   });
   session = manager;
+  let lastStatus = manager.getStatus();
+  manager.subscribe(() => {
+    const next = manager.getStatus();
+    if (next === lastStatus) return;
+    diagnostics.info("session.status", { from: lastStatus, to: next });
+    lastStatus = next;
+  });
   const authHeaders = async (): Promise<Record<string, string>> => {
     const token = await manager.accessToken();
     return token ? { Authorization: `Bearer ${token}`, "X-Client-Version": CLIENT_VERSION } : {};
@@ -62,6 +74,7 @@ function createServices(): Services {
     fetch: streamFetch,
     headers: authHeaders,
     onUnauthorized: () => manager.refresh().catch(() => false),
+    log: (level, event, fields) => diagnostics.log(level, event, fields),
   });
   return { api, session: manager, connectTurn, authHeaders, serverUrl };
 }
@@ -111,6 +124,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setServerUrl = useCallback(
     async (raw: string) => {
       const url = normalizeServerUrl(raw) || DEFAULT_SERVER_URL;
+      diagnostics.info("server.changed", {
+        from: serverHost(services.serverUrl.current),
+        to: serverHost(url),
+      });
       services.serverUrl.current = url;
       setServerUrlState(url);
       await saveServerUrl(url === DEFAULT_SERVER_URL ? null : url).catch(() => undefined);

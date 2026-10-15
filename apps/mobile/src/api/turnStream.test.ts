@@ -77,3 +77,38 @@ describe("回合事件流（SseClient + PlaySession）", () => {
     session.dispose();
   });
 });
+
+describe("回合事件流的诊断日志", () => {
+  it("每次连接带新的单号；断线、重连、结束都记下来", async () => {
+    const ids: (string | undefined)[] = [];
+    let calls = 0;
+    const fetch: FetchLike = async (_url, init) => {
+      ids.push(init.headers["X-Request-ID"]);
+      calls += 1;
+      if (calls === 1) throw new TypeError("Network request failed");
+      return { ok: true, status: 200, body: body([COMPLETED]) };
+    };
+    const logs: [string, string, Record<string, unknown>][] = [];
+    let n = 0;
+    const connect = sseTurnConnector({
+      url: (id) => `http://server/v1/turns/${id}/events`,
+      fetch,
+      headers: async () => ({ Authorization: "Bearer t" }),
+      onUnauthorized: async () => false,
+      sleep: async () => undefined,
+      log: (level, event, fields) => logs.push([level, event, fields]),
+      newRequestId: () => `sse-${(n += 1)}`,
+    });
+    const stream = connect("T", { onEvent: () => undefined, onState: () => undefined });
+    assert.equal(await stream.run(), "completed");
+    assert.deepEqual(ids, ["sse-1", "sse-2"]);
+    const error = logs.find(([, event]) => event === "sse.error");
+    assert.equal(error?.[0], "warn");
+    assert.equal(error?.[2].request_id, "sse-1");
+    assert.equal(error?.[2].error, "TypeError");
+    const reconnecting = logs.find(([, event, f]) => event === "sse.state" && f.state === "reconnecting");
+    assert.equal(reconnecting?.[0], "warn");
+    const finished = logs.find(([, event]) => event === "sse.finished");
+    assert.deepEqual(finished?.[2], { turn_id: "T", outcome: "completed", reconnects: 1 });
+  });
+});

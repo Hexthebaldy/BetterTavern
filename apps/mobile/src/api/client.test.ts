@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { ApiClient, ApiError, type HttpFetch, type HttpRequestInit, type HttpResponse } from "./client.ts";
+import {
+  ApiClient,
+  ApiError,
+  describeError,
+  type HttpFetch,
+  type HttpRequestInit,
+  type HttpResponse,
+  type RequestRecord,
+} from "./client.ts";
 import { createApi } from "./endpoints.ts";
 
 type Reply = { status: number; body?: unknown; text?: string } | Error | "hang";
@@ -154,5 +162,79 @@ describe("ApiClient", () => {
     const turns = await api.turns.history("p1", 3, 50);
     assert.deepEqual(turns, [{ id: "t1" }]);
     assert.equal(calls[1]?.url, "http://server/v1/playthroughs/p1/turns?after_seq=3&limit=50");
+  });
+});
+
+describe("请求单号", () => {
+  function recorded(fetch: HttpFetch) {
+    const records: RequestRecord[] = [];
+    let n = 0;
+    const api = new ApiClient({
+      baseUrl: () => "http://server",
+      fetch,
+      clientVersion: "test",
+      onRequest: (record) => records.push(record),
+      newRequestId: () => `req-${String((n += 1)).padStart(8, "0")}`,
+    });
+    return { api, records };
+  }
+
+  it("每个请求带一个新的单号，结束时报告状态、耗时、错误码", async () => {
+    const { fetch, calls } = scripted([
+      { status: 200, body: { ok: true } },
+      problem(409, "TURN_IN_PROGRESS", "上一轮还在生成中"),
+    ]);
+    const { api, records } = recorded(fetch);
+    await api.get("/v1/playthroughs?limit=20");
+    await assert.rejects(api.post("/v1/playthroughs/p1/turns", {}));
+    assert.equal(calls[0]?.init.headers["X-Request-ID"], "req-00000001");
+    assert.equal(calls[1]?.init.headers["X-Request-ID"], "req-00000002");
+    assert.deepEqual(
+      records.map((r) => [r.method, r.path, r.status, r.code, r.requestId]),
+      [
+        ["GET", "/v1/playthroughs", 200, null, "req-00000001"],
+        ["POST", "/v1/playthroughs/p1/turns", 409, "TURN_IN_PROGRESS", "req-00000002"],
+      ],
+    );
+    assert.ok(records.every((r) => r.durationMs >= 0));
+  });
+
+  it("错误带单号：优先用服务端错误体里的，连不上时用自己生成的", async () => {
+    const { fetch } = scripted([
+      problem(500, "INTERNAL_ERROR", "服务端出错了", { request_id: "server-side-id-1" }),
+      new TypeError("Network request failed"),
+    ]);
+    const { api, records } = recorded(fetch);
+    const internal = await api.get("/v1/me").catch((e: unknown) => e);
+    const offline = await api.get("/v1/me").catch((e: unknown) => e);
+    assert.ok(internal instanceof ApiError && offline instanceof ApiError);
+    assert.equal(internal.requestId, "server-side-id-1");
+    assert.equal(offline.requestId, "req-00000002");
+    assert.equal(records[1]?.status, 0);
+    assert.equal(records[1]?.code, "NETWORK");
+  });
+
+  it("意外的错误在提示里附上单号的前 8 位，业务错误不附", async () => {
+    const network = new ApiError("连不上服务器", {
+      status: 0,
+      code: "NETWORK",
+      retryable: true,
+      requestId: "9f2c4e1a7b3d",
+    });
+    const garbled = new ApiError("服务器返回的内容无法解析", {
+      status: 200,
+      code: "BAD_RESPONSE",
+      retryable: false,
+      requestId: "abcdef1234",
+    });
+    const conflict = new ApiError("上一轮还在生成中", {
+      status: 409,
+      code: "TURN_IN_PROGRESS",
+      retryable: false,
+      requestId: "x",
+    });
+    assert.equal(describeError(network), "连不上服务器（单号 9f2c4e1a）");
+    assert.equal(describeError(garbled), "服务器返回的内容无法解析（单号 abcdef12）");
+    assert.equal(describeError(conflict), "上一轮还在生成中");
   });
 });

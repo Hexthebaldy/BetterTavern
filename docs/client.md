@@ -173,10 +173,11 @@ apps/mobile/
     │   │             WorldSheet.tsx  worldGraph.ts  MoreSheet.tsx  reading.ts
     │   ├── scenario/ StartForm.tsx  startForm.ts      # 开始新故事的表单与内置选项
     │   ├── settings/ labels.ts  servers.ts  window.ts  ModelPicker.tsx  CredentialSheets.tsx  ProbeResults.tsx
-    │   └── probe/    probeSession.ts
+    │   └── probe/    probeSession.ts  DiagnosticsCard.tsx   # 连接测试；诊断日志的导出和清空
     ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  overlay  dialog  icons
     │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx
-    ├── hooks/      useAsync.ts
+    ├── hooks/      useAsync.ts  useKeyboardLift.ts
+    ├── observability/ log.ts  requests.ts  persist.ts  setup.ts   # 诊断日志：脱敏、请求记录、存文件、启动时安装
     ├── theme/      index.ts                # 设计 token：圆角、字号、间距、字体族；色板和主题表的出口
     │               palettes.ts  themes.ts  # 色板（浅色、深色）与主题表（浅色、夜间）；ThemeProvider.tsx 提供 usePalette()
     └── utils/      format.ts  ids.ts

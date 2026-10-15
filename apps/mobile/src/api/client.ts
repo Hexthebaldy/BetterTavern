@@ -3,8 +3,13 @@
  *
  * 带令牌的请求遇到 401 时先让会话刷新一次令牌再重试一次；还是 401 就把错误交给调用方
  * （会话那边刷新失败时已经退出登录）。只用标准 fetch 接口，Node 测试里也能跑。
+ *
+ * 每个请求带一个请求单号（X-Request-ID），服务端这次请求的日志都带着它；ApiError 上也有，
+ * 意外的错误（连不上、5xx、返回内容看不懂）在界面上会附上单号的前 8 位，方便去日志里查。
+ * 每个请求结束时调用 onRequest，App 用它把失败和慢的请求记进诊断日志。
  */
 
+import { newRequestId } from "../observability/log.ts";
 import type { Problem } from "./types.ts";
 
 export type HttpRequestInit = {
@@ -36,6 +41,7 @@ export type ApiErrorInit = {
   retryable: boolean;
   problem?: Problem | null;
   timedOut?: boolean;
+  requestId?: string | null;
 };
 
 export class ApiError extends Error {
@@ -45,6 +51,8 @@ export class ApiError extends Error {
   readonly retryable: boolean;
   readonly problem: Problem | null;
   readonly timedOut: boolean;
+  /** 出错的那个请求的单号；不是请求引起的错误为 null */
+  readonly requestId: string | null;
 
   constructor(message: string, init: ApiErrorInit) {
     super(message);
@@ -54,6 +62,7 @@ export class ApiError extends Error {
     this.retryable = init.retryable;
     this.problem = init.problem ?? null;
     this.timedOut = init.timedOut ?? false;
+    this.requestId = init.requestId ?? null;
   }
 
   get isNetwork(): boolean {
@@ -66,12 +75,13 @@ export class ApiError extends Error {
   }
 }
 
-export function networkError(cause: unknown, timedOut: boolean): ApiError {
+export function networkError(cause: unknown, timedOut: boolean, requestId: string | null = null): ApiError {
   const error = new ApiError(timedOut ? "服务器响应超时" : "连不上服务器，请检查网络和服务器地址", {
     status: 0,
     code: timedOut ? "TIMEOUT" : "NETWORK",
     retryable: true,
     timedOut,
+    requestId,
   });
   (error as { cause?: unknown }).cause = cause;
   return error;
@@ -98,21 +108,38 @@ const STATUS_MESSAGES: Record<number, string> = {
 };
 
 /** 把非 2xx 响应变成 ApiError：优先用服务端的 problem+json，其次（比如代理返回的 HTML）按状态码 */
-export function errorFromResponse(status: number, data: unknown): ApiError {
+export function errorFromResponse(status: number, data: unknown, requestId: string | null = null): ApiError {
   if (isProblem(data)) {
     return new ApiError(data.title, {
       status,
       code: data.code,
       retryable: data.retryable === true,
       problem: data,
+      requestId: typeof data.request_id === "string" ? data.request_id : requestId,
     });
   }
   return new ApiError(STATUS_MESSAGES[status] ?? `服务器返回了错误（HTTP ${status}）`, {
     status,
     code: `HTTP_${status}`,
     retryable: status >= 500 || status === 429,
+    requestId,
   });
 }
+
+/** 一个请求的结果，给诊断日志用（不含请求体和响应体） */
+export type RequestRecord = {
+  method: string;
+  /** 不带查询参数的路径 */
+  path: string;
+  /** 0 表示没有拿到响应 */
+  status: number;
+  durationMs: number;
+  requestId: string;
+  /** 出错时的错误码 */
+  code: string | null;
+  /** 连不上时底层异常的类型和说明（例如 TypeError: Network request failed） */
+  detail?: string;
+};
 
 export type RequestOptions = {
   /** JSON 请求体 */
@@ -132,9 +159,13 @@ export type ApiClientOptions = {
   clientVersion: string;
   auth?: AuthHooks;
   timeoutMs?: number;
+  /** 每个请求结束时调用（包括连不上的） */
+  onRequest?: (record: RequestRecord) => void;
+  /** 生成请求单号（测试里替换） */
+  newRequestId?: () => string;
 };
 
-type RawResponse = { status: number; ok: boolean; text: string };
+type RawResponse = { status: number; ok: boolean; text: string; requestId: string; durationMs: number };
 
 export class ApiClient {
   private readonly options: ApiClientOptions;
@@ -151,10 +182,29 @@ export class ApiClient {
     const auth = options.auth === false ? undefined : this.options.auth;
     let raw = await this.send(method, path, options, auth);
     if (raw.status === 401 && auth) {
+      this.report(method, path, raw, "UNAUTHENTICATED");
       const refreshed = await auth.refresh().catch(() => false);
       if (refreshed) raw = await this.send(method, path, options, auth);
     }
-    return parse<T>(raw);
+    try {
+      const data = parse<T>(raw);
+      this.report(method, path, raw, null);
+      return data;
+    } catch (error) {
+      this.report(method, path, raw, error instanceof ApiError ? error.code : "UNKNOWN");
+      throw error;
+    }
+  }
+
+  private report(method: string, path: string, raw: RawResponse, code: string | null): void {
+    this.options.onRequest?.({
+      method,
+      path: path.split("?")[0] ?? path,
+      status: raw.status,
+      durationMs: raw.durationMs,
+      requestId: raw.requestId,
+      code,
+    });
   }
 
   get<T>(path: string, options?: RequestOptions): Promise<T> {
@@ -183,9 +233,11 @@ export class ApiClient {
     options: RequestOptions,
     auth: AuthHooks | undefined,
   ): Promise<RawResponse> {
+    const requestId = (this.options.newRequestId ?? newRequestId)();
     const headers: Record<string, string> = {
       Accept: "application/json",
       "X-Client-Version": this.options.clientVersion,
+      "X-Request-ID": requestId,
       ...options.headers,
     };
     let body: string | FormData | undefined;
@@ -205,6 +257,7 @@ export class ApiClient {
     const forward = (): void => controller.abort();
     outer?.addEventListener("abort", forward, { once: true });
     let timedOut = false;
+    const started = Date.now();
     const timer = setTimeout(
       () => {
         timedOut = true;
@@ -217,12 +270,21 @@ export class ApiClient {
       if (body !== undefined) init.body = body;
       const response = await this.options.fetch(`${this.options.baseUrl()}${path}`, init);
       const text = response.status === 204 ? "" : await response.text();
-      return { status: response.status, ok: response.ok, text };
+      return { status: response.status, ok: response.ok, text, requestId, durationMs: Date.now() - started };
     } catch (error) {
       if (outer?.aborted) throw error; // 调用方主动取消：原样抛出，由调用方忽略
-      // 界面上一律显示“连不上服务器”，原始异常只在开发时打到 Metro 终端，便于区分真断网和请求没发出去
-      if (typeof __DEV__ !== "undefined" && __DEV__) console.log(`[api] ${method} ${path} 失败：`, error);
-      throw networkError(error, timedOut);
+      // 界面上一律显示“连不上服务器”；原始异常的类型和说明记进诊断日志，便于区分真断网和请求没发出去
+      const failed = networkError(error, timedOut, requestId);
+      this.options.onRequest?.({
+        method,
+        path: path.split("?")[0] ?? path,
+        status: 0,
+        durationMs: Date.now() - started,
+        requestId,
+        code: failed.code,
+        detail: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      });
+      throw failed;
     } finally {
       clearTimeout(timer);
       outer?.removeEventListener("abort", forward);
@@ -239,20 +301,31 @@ function parse<T>(raw: RawResponse): T {
       data = undefined;
     }
   }
-  if (!raw.ok) throw errorFromResponse(raw.status, data);
+  if (!raw.ok) throw errorFromResponse(raw.status, data, raw.requestId);
   if (raw.text !== "" && data === undefined) {
+    // 常见原因：服务器地址填成了别的服务（比如 Expo 的 8081 端口），返回的是网页
     throw new ApiError("服务器返回的内容无法解析", {
       status: raw.status,
       code: "BAD_RESPONSE",
       retryable: false,
+      requestId: raw.requestId,
     });
   }
   return data as T;
 }
 
+/** 出乎意料的错误：连不上、服务端 5xx、返回内容看不懂。这些在界面上附上单号，方便查日志 */
+function unexpected(error: ApiError): boolean {
+  return error.status === 0 || error.status >= 500 || error.code === "BAD_RESPONSE";
+}
+
 /** 界面上显示的错误文字 */
 export function describeError(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
+  if (error instanceof ApiError) {
+    return unexpected(error) && error.requestId
+      ? `${error.message}（单号 ${error.requestId.slice(0, 8)}）`
+      : error.message;
+  }
   if (error instanceof Error && error.message) return error.message;
   return "出了点问题，请重试";
 }

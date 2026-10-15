@@ -9,6 +9,8 @@ export type Problem = {
   status: number;
   code: string;
   retryable?: boolean;
+  /** 这次请求的单号（和响应头 X-Request-ID 相同），拿它去服务端日志里查 */
+  request_id?: string;
   [key: string]: unknown;
 };
 
