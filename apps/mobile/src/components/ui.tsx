@@ -1,5 +1,5 @@
 /**
- * 界面部件（UI v2 柔和圆角版「白 / 柔线 / 大圆角」，设计稿见 docs/design/ui-v2-soft/）。页面只从这里 import。
+ * 界面部件（「白 / 柔线 / 大圆角」，设计稿见 docs/design/ui/）。页面只从这里 import。
  *
  * - primitives.tsx：页面容器、加载、文字、胶囊按钮、圆形图标按钮、分组卡、列表行、分区标题
  * - feedback.tsx：提示条、胶囊标签、状态、加载失败

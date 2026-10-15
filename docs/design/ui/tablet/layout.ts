@@ -1,5 +1,6 @@
 /**
- * 平板响应式布局的常量和纯函数，取自 docs/design/ui-v2-soft/tablet/source/TabletSystem.dc.html。
+ * 平板响应式布局的常量和纯函数，取自 docs/design/ui/tablet/source/TabletSystem.dc.html。
+ * 这是设计原稿；App 里用的是 apps/mobile/src/theme/layout.ts（在这份基础上加了浮层位置等函数和测试）。
  * 只依赖窗口宽度（useWindowDimensions().width），不判断设备型号或横竖屏，分屏、台前调度同样适用。
  * 这里只有数据和纯函数，不依赖 React Native，可以像 theme/themes.ts 一样用 node --test 测。
  */

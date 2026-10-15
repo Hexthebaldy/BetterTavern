@@ -1,6 +1,6 @@
 # BetterTavern 平板 UI · 响应式布局（柔和圆角版）
 
-这一份是 `apps/mobile` 在平板上的设计稿。颜色、圆角、字体、组件全部沿用上一级目录（`docs/design/ui-v2-soft/`）的手机设计稿和 `tokens.ts`。本目录只规定一件事：窗口变宽以后，布局怎么变。
+这一份是 `apps/mobile` 在平板上的设计稿。颜色、圆角、字体、组件全部沿用上一级目录（`docs/design/ui/`）的手机设计稿和 `tokens.ts`。本目录只规定一件事：窗口变宽以后，布局怎么变。
 
 **实现方式是同一套代码做响应式，不另写一套平板页面。** 每个页面根据窗口宽度选择布局。
 
@@ -21,13 +21,13 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 
 | 画板 | 截图 | 对应代码 |
 | --- | --- | --- |
-| 布局系统：断点、导航、栏宽、浮层、阅读页、网格 | `TabletSystem.png` | `layout.ts`，以及下文“实现要点” |
+| 布局系统：断点、导航、栏宽、浮层、阅读页、网格 | `TabletSystem.png` | `layout.ts`（App 里是 `src/theme/layout.ts`），以及下文“实现要点” |
 | T01 宽屏登录（左右分栏）· T02 中屏注册 + 服务器对话框 | `TabletAuth.png` | `app/(auth)/*`、`src/components/ServerSetting.tsx` |
 | T03 宽屏故事网格 + 长按菜单 · T04 中屏深色两列 | `TabletStories.png` | `app/(tabs)/playthroughs.tsx`、`src/components/bars.tsx` |
 | T05 宽屏阅读空闲（选项两列）· T06 生成中 + 世界状态停靠 · T07 中屏阅读 | `TabletPlay.png` | `app/play/[id]/index.tsx`、`src/features/play/*` |
-| T08 “更多”贴按钮弹出 · T09 自己写 + 键盘 · T10 世界状态滑出 + 揭示确认 | `TabletPlay2.png` | `MoreSheet.tsx`、`ActionParts.tsx`、`WorldSheet.tsx` |
+| T08 “更多”贴按钮弹出 · T09 自己写 + 键盘 · T10 世界状态滑出 + 揭示确认 | `TabletPlay2.png` | `MoreSheet.tsx`、`BottomBar.tsx`、`WorldSheet.tsx` |
 | T11 宽屏剧本网格 · T12 剧本详情两栏 | `TabletLibrary.png` | `app/(tabs)/library.tsx`、`app/scenario/[id].tsx`、`src/features/scenario/StartForm.tsx` |
-| T13 设置两栏 + 密钥详情 · T14 设置两栏 + 导演模型 · T15 中屏设置 + 外观对话框 | `TabletSettings.png` | `app/(tabs)/settings.tsx`、`app/settings/*`、`src/features/settings/AppearanceSheet.tsx` |
+| T13 设置两栏 + 密钥详情 · T14 设置两栏 + 导演模型 · T15 中屏设置 + 外观对话框 | `TabletSettings.png` | `app/(tabs)/settings.tsx`、`src/features/settings/SettingsPane.tsx`、`screens/`、`AppearanceSheet.tsx` |
 
 ## 先改配置
 
@@ -76,7 +76,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 | 用途 | 宽度 |
 | --- | --- |
 | 阅读栏、表单、单栏页面（上限） | 640 |
-| 阅读页行动面板 | 672 |
+| 阅读页底部操作栏的内容 | 672 |
 | 设置左栏 | 340 |
 | 剧本详情信息栏 | 420 |
 | 世界状态面板 | 400 |
@@ -95,7 +95,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
   - 没有拖拽条，右上角有关闭按钮；
   - 点遮罩关闭。
 - **弹出菜单：** 阅读页“更多”菜单贴着触发按钮弹出。
-  - 宽 340，圆角 28，右边缘和按钮右边缘对齐，底边在面板上方 8；
+  - 宽 340，圆角 28，右边缘和按钮右边缘对齐，底边在按钮上方 8；上面放不下时改到按钮下方；
   - 不加遮罩，点外面关闭；
   - 打开时触发按钮显示为选中（墨色）。
   - 按钮位置用 `ref.measureInWindow()` 取得；量不到时退回居中对话框。
@@ -105,26 +105,25 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 ### 4. 阅读页（T05–T10）
 
 - **阅读栏：** 最宽 640，用 `readableColumn(available)` 计算位置。
-  - 叙述、“我的行动”卡片、状态行、开场的书名卡（`BookHeader`）都在这条栏里；
+  - 叙述、“我的行动”、接在正文后面的选项、开场的书名卡（`BookHeader`）都在这条栏里；
   - 字号仍由阅读设置决定，栏宽不随字号变化；
   - 导航栏的标题和阅读栏中线对齐，返回按钮仍在左上角。
-- **行动面板：** 宽 672，和阅读栏中线对齐，离底 20 加安全区。
-  - 宽屏下选项排成 2 列网格，每格最小高 76；选项数为奇数时，最后一项占满一行。
-  - 中屏下选项仍是一列。
-  - “自己写…”那一行和右侧的世界、更多两个圆按钮不变。
-  - 生成中那一行（拖拽条、状态、世界、更多、停止）不变。
+- **选项：** 接在正文后面（画板 T05–T07 里还在底部面板里，已经改掉，见上一级 README 的“阅读页要点”）。
+  - 宽屏下排成 2 列网格，每格最小高 76；选项数为奇数时，最后一项占满一行。
+  - 中屏下仍是一列。
+- **底部操作栏：** 贴着屏幕底边、铺满阅读区，里面的内容宽 672，和阅读栏中线对齐。左边世界、右边更多，中间是“自己写…”或生成状态和“停止”，和手机一样。
 - **世界状态**，用 `worldPresentation(width)` 判断形态：
   - **≥ 1100，停靠：**
     - 面板在右侧，宽 400，上、下、右各留 8，圆角 32，底色 `bg2`，不加遮罩；
     - 实体卡片改用白色 `card` 底；
-    - 阅读栏和行动面板在剩下的宽度（`width − 408`）里重新居中；
+    - 阅读栏和底部操作栏在剩下的宽度（`width − 408`）里重新居中；
     - 世界按钮显示为选中（墨色底、白色图标），再点一次收起；
     - 面板右上角有收起按钮（侧栏图标）。
     - 停靠时的开关状态存到 `PrefsProvider`，下次打开任意故事时保持。
   - **600–1099，滑出：** 从右侧滑出，宽 400，上、下、右各留 8，圆角 32，有遮罩。右上角的关闭按钮是 ×。
   - **< 600：** 现有的底部面板。
   - **揭示秘密的确认框：** 在任何形态下都是居中对话框（宽 ≤ 480），盖在世界面板之上。
-- **自由输入：** 键盘弹起时，面板跟着键盘上移，沿用 `useKeyboardLift`，阅读栏的底部留白也跟着变。iPad 横屏的键盘大约占 400 高，故事流只剩一两段可见，这是正常的。
+- **自由输入：** 点“自己写…”在操作栏里原地展开，键盘弹起时跟着上移，沿用 `useKeyboardLift`，阅读栏的底部留白也跟着变。iPad 横屏的键盘大约占 400 高，故事流只剩一两段可见，这是正常的。
 - **滚动跟随、流式光标、读屏朗读：** 逻辑全部不变。
 
 ### 5. 故事列表（T03、T04）

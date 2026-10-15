@@ -1,7 +1,7 @@
 /**
- * UI v2「白 / 柔线 / 大圆角」设计 token，取自 docs/design/ui-v2-soft/source/*.dc.html。
- * 用法：替换 src/theme/index.ts 里的 light / dark / type / space，并新增 radius、shadow、stroke、font。
- * 和直角版（docs/design/ui-v2/tokens.ts）字段名一致，多了 card、sheet、shadow 和一个圆角阶梯。
+ * 第一版正式 UI「白 / 柔线 / 大圆角」的设计 token 原稿，取自 docs/design/ui/source/*.dc.html。
+ * App 里的取值在 apps/mobile/src/theme/（palettes.ts、index.ts），从这里搬过去后按实现做过少量调整：
+ * 阅读页的浮动行动面板已经改成贴边的操作栏，floatingSheet 和“我的行动”卡片相关的取值不再使用（见 README“阅读页要点”）。
  * 对比度：文字色在对应底色上都 ≥ 4.5:1（mut 在白底上约 5.2:1）。
  */
 

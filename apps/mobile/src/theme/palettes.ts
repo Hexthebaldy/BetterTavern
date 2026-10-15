@@ -1,5 +1,5 @@
 /**
- * 色板：每个主题一套，字段完全相同（Palette 类型强制填全）。取值来自 docs/design/ui-v2-soft/tokens.ts。
+ * 色板：每个主题一套，字段完全相同（Palette 类型强制填全）。取值来自 docs/design/ui/tokens.ts。
  * 这里只放颜色和投影；圆角、字号、间距不随主题变（见 index.ts）。
  */
 
