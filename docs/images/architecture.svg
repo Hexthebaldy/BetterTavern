@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" font-family="-apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#2F55F4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect width="960" height="470" rx="28" fill="#FFFFFF"/>
+
+  <!-- 手机 App -->
+  <rect x="24" y="70" width="210" height="300" rx="30" fill="#F5F5F2"/>
+  <rect x="94" y="100" width="70" height="120" rx="16" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.4"/>
+  <rect x="117" y="108" width="24" height="6" rx="3" fill="#1A1A1A"/>
+  <rect x="104" y="126" width="50" height="5" rx="2.5" fill="#DCDCD6"/>
+  <rect x="104" y="137" width="42" height="5" rx="2.5" fill="#DCDCD6"/>
+  <rect x="104" y="148" width="48" height="5" rx="2.5" fill="#DCDCD6"/>
+  <rect x="104" y="166" width="50" height="14" rx="7" fill="#EEF2FF"/>
+  <rect x="104" y="185" width="50" height="14" rx="7" fill="#EEF2FF"/>
+  <circle cx="110" cy="173" r="3" fill="#2F55F4"/>
+  <circle cx="110" cy="192" r="3" fill="#2F55F4"/>
+  <text x="129" y="256" font-size="20" font-weight="600" fill="#1A1A1A" text-anchor="middle">手机 App</text>
+  <text x="129" y="286" font-size="14" fill="#3D3C38" text-anchor="middle">读故事、点选项、自己写</text>
+  <text x="129" y="310" font-size="14" fill="#3D3C38" text-anchor="middle">iPhone · Android · 平板</text>
+  <text x="129" y="340" font-size="12.5" fill="#6E6D68" text-anchor="middle">故事和 Key 都存在服务器上</text>
+
+  <!-- 服务器 -->
+  <rect x="330" y="40" width="300" height="300" rx="30" fill="#F5F5F2"/>
+  <text x="480" y="80" font-size="20" font-weight="600" fill="#1A1A1A" text-anchor="middle">你的 BetterTavern 服务器</text>
+  <text x="480" y="104" font-size="13" fill="#6E6D68" text-anchor="middle">自己的电脑，或者一台云服务器</text>
+  <rect x="352" y="124" width="256" height="56" rx="18" fill="#FFFFFF"/>
+  <text x="372" y="149" font-size="15" font-weight="600" fill="#1A1A1A">导演</text>
+  <text x="372" y="169" font-size="13" fill="#3D3C38">每一轮写叙述，再给出两个选项</text>
+  <rect x="352" y="188" width="256" height="56" rx="18" fill="#FFFFFF"/>
+  <text x="372" y="213" font-size="15" font-weight="600" fill="#1A1A1A">搭建世界</text>
+  <text x="372" y="233" font-size="13" fill="#3D3C38">开局时整理人物、地点、物品和秘密</text>
+  <rect x="352" y="252" width="256" height="56" rx="18" fill="#FFFFFF"/>
+  <text x="372" y="277" font-size="15" font-weight="600" fill="#1A1A1A">存档</text>
+  <text x="372" y="297" font-size="13" fill="#3D3C38">故事、世界、加密保存的模型 Key</text>
+
+  <!-- 数据库 -->
+  <ellipse cx="480" cy="384" rx="62" ry="13" fill="#EBEBE7"/>
+  <rect x="418" y="384" width="124" height="40" fill="#EBEBE7"/>
+  <ellipse cx="480" cy="424" rx="62" ry="13" fill="#DCDCD6"/>
+  <ellipse cx="480" cy="384" rx="62" ry="13" fill="#F5F5F2" stroke="#DCDCD6" stroke-width="2"/>
+  <text x="480" y="411" font-size="14" fill="#3D3C38" text-anchor="middle">数据库</text>
+  <line x1="480" y1="340" x2="480" y2="366" stroke="#DCDCD6" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- 模型服务 -->
+  <rect x="726" y="70" width="210" height="300" rx="30" fill="#F5F5F2"/>
+  <text x="831" y="112" font-size="20" font-weight="600" fill="#1A1A1A" text-anchor="middle">模型服务</text>
+  <text x="831" y="136" font-size="13" fill="#6E6D68" text-anchor="middle">用你自己的 API Key</text>
+  <rect x="750" y="158" width="162" height="40" rx="20" fill="#FFFFFF"/>
+  <text x="831" y="183" font-size="14.5" fill="#1A1A1A" text-anchor="middle">DeepSeek</text>
+  <rect x="750" y="206" width="162" height="40" rx="20" fill="#FFFFFF"/>
+  <text x="831" y="231" font-size="14.5" fill="#1A1A1A" text-anchor="middle">Hugging Face</text>
+  <rect x="750" y="254" width="162" height="56" rx="20" fill="#FFFFFF"/>
+  <text x="831" y="278" font-size="14" fill="#1A1A1A" text-anchor="middle">任何 OpenAI</text>
+  <text x="831" y="298" font-size="14" fill="#1A1A1A" text-anchor="middle">兼容接口</text>
+
+  <!-- 箭头：手机 ⇄ 服务器 -->
+  <line x1="244" y1="170" x2="318" y2="170" stroke="#2F55F4" stroke-width="2.4" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <text x="281" y="156" font-size="13" fill="#2F55F4" text-anchor="middle">① 你的行动</text>
+  <line x1="318" y1="250" x2="244" y2="250" stroke="#2F55F4" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 7" marker-end="url(#arrow)"/>
+  <text x="281" y="276" font-size="13" fill="#2F55F4" text-anchor="middle">④ 边写边推送</text>
+
+  <!-- 箭头：服务器 ⇄ 模型 -->
+  <line x1="642" y1="170" x2="714" y2="170" stroke="#2F55F4" stroke-width="2.4" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <text x="678" y="133" font-size="13" fill="#2F55F4" text-anchor="middle">② 前情 + 世界</text>
+  <text x="678" y="152" font-size="13" fill="#2F55F4" text-anchor="middle">+ 你的行动</text>
+  <line x1="714" y1="250" x2="642" y2="250" stroke="#2F55F4" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 7" marker-end="url(#arrow)"/>
+  <text x="678" y="276" font-size="13" fill="#2F55F4" text-anchor="middle">③ 写下一段</text>
+</svg>

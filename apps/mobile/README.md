@@ -18,10 +18,10 @@ npm run setup      # 可选：用 expo install 按 SDK 版本对齐各个 Expo �
 
 ## 运行
 
-1. 启动服务端（见仓库根目录的 README），确认 `http://<电脑的局域网 IP>:8000/health` 在手机浏览器里能打开。
+1. 启动服务端（见 [docs/development.md](../../docs/development.md)），确认 `http://<电脑的局域网 IP>:8000/health` 在手机浏览器里能打开。
 2. 把 `.env` 里的 `EXPO_PUBLIC_API_URL` 改成这个地址（也可以在登录页底部临时改，改过的地址存在手机上）。
 3. `npm start`，用 Expo Go 或开发版 App 打开。
-4. 注册 → 设置 → 密钥与端点：添加 DeepSeek 或 Hugging Face 的 Key → 获取模型列表，选一个模型“设为导演模型”
+4. 注册 → 设置 → 模型 → 添加模型：选 DeepSeek 或 Hugging Face，填 Key（模型列表自动出来），选一个模型并设为导演
    → 剧本 → 导入角色卡（PNG 或 JSON）→ 填主角名字，开始故事。
 
 蜂窝网络下手机要能从公网访问服务端，需要一个 https 地址（部署到有域名的服务器，或用一个 https 隧道）。

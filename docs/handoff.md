@@ -59,7 +59,7 @@ v1 支持 DeepSeek、Hugging Face 和自定义的 OpenAI 兼容端点。
 
 ## 3 本地运行
 
-需要 Python 3.12+ 和 uv、Docker（Postgres）、Node 22.18+。命令都在仓库根目录执行，见 README 的“本地开发”。
+需要 Python 3.12+ 和 uv、Docker（Postgres）、Node 22.18+。命令都在仓库根目录执行，见 [development.md](development.md) 的“本地开发”。
 
 用户的 Mac 上**没有 Docker**，但 Homebrew 的 `postgresql@16` 常驻在 `localhost:5432`，`bettertavern` 角色和同名数据库已经建好，
 `.env` 里默认的 `DATABASE_URL` 和 Makefile 的 `TEST_DB` 都能直接用，跳过 `make db-up` 即可。

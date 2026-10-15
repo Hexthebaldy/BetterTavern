@@ -1,85 +1,139 @@
-# BetterTavern
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/design/logo/svg/logo-dark.svg">
+    <img src="docs/design/logo/svg/logo.svg" width="96" alt="BetterTavern 标志">
+  </picture>
+</p>
 
-服务端生成式互动小说：玩家以第一人称推进剧情，每轮在两个选项里选一个（或自由输入），世界状态由后台 agent 自动维护。
-后端是 Python + FastAPI + LangGraph 的 agent runtime，客户端是 React Native（Expo）。用户自带模型 API Key，
-v1 适配 DeepSeek、Hugging Face 和自定义的 OpenAI 兼容端点。
+<h1 align="center">BetterTavern</h1>
 
-设计文档在 [docs/](docs/README.md)：[后端](docs/backend.md)、[客户端](docs/client.md)、[测试](docs/testing.md)。
-已经实现的表结构和接口见参考文档：[数据模型](docs/data-model/README.md)、[接口](docs/api/README.md)，两个目录里都按领域分文件。
+<p align="center">只写给你一个人的互动小说：你是故事里的“我”，AI 每一轮为你续写，再给你两个选择。</p>
 
-## 当前进度：M1 热路径
+<p align="center">
+  <img src="docs/images/readme/play.png" width="250" alt="阅读页：叙述后面跟着两个选项">
+  &nbsp;
+  <img src="docs/images/readme/world-graph.png" width="250" alt="世界面板：人物、地点和他们之间的关系">
+  &nbsp;
+  <img src="docs/images/readme/library.png" width="250" alt="剧本库：导入的角色卡">
+</p>
 
-M1 把“导入一张角色卡、一轮一轮玩下去”这条主线打通了：
+> **还在开发中。** 第一版的主要功能已经能用，但还没有上架应用商店，需要自己运行服务器，见下面的[怎么开始](#怎么开始)。
+> 截图里的角色和故事都是为演示写的原创内容。
 
-- 账户：注册、登录、刷新令牌轮换（检测盗用）、退出、删除账户。
-- 模型：添加 DeepSeek、Hugging Face 或任意 OpenAI 兼容端点的 Key（服务端加密保存），拉取模型列表、探测能力，给导演选模型；保存时按模型的上下文长度校验工作窗口。
-- 剧本：导入 SillyTavern 角色卡（V1、V2、V3，PNG 或 JSON）。
-- 游玩：开局时 WorldBuilder 根据角色卡生成最小的世界设定，导演写开场；之后每轮流式输出叙述和两个选项，也可以自由输入。提交带幂等键，同一局同一时刻只有一轮在生成（租约），断线后用 `Last-Event-ID` 续传，缓冲过期时一次补全。
-- 客户端：登录注册、剧本库与导入、故事列表、阅读主屏（流式文字、两个选项、自由输入、停止、重试）、密钥与模型设置。
+## 这是什么
 
-M1 的出口标准是 DeepSeek 与 Hugging Face 各完整玩 30 回合、断网续传用例通过，需要在真机上用真实的 Key 验收。
-和设计文档相比的简化（热路径暂不用 LangGraph、回合直接提交、还没有 StateKeeper 等）见
-[docs/backend.md 第 12 节](docs/backend.md)和[docs/client.md 第 3 节](docs/client.md)。
+BetterTavern 是一个手机上的互动小说 App。挑一张角色卡，给主角起个名字，故事就开始了：
 
-M0 的探针仍然保留：SSE 探针在 App 的“设置 → 连接测试”里，导演协议合规率评测见下文。
+- AI 用第一人称写下一段故事，结尾给你两个选项，点一下就继续；
+- 想做选项之外的事，点“自己写”，用一句话告诉它你要做什么；
+- 开局时，AI 会先读角色卡，整理出这个世界里的人物、地点、物品和秘密，之后照着写，不容易前后矛盾。
 
-## 本地开发
+用的是你自己的 AI 模型：DeepSeek、Hugging Face，或者任何兼容 OpenAI 接口的服务，包括在自己电脑上跑的模型。
 
-需要：Python 3.12+ 和 [uv](https://docs.astral.sh/uv/)、Docker（跑 Postgres）、Node 22.18+。
+## 一轮故事
 
-```bash
-cp apps/server/.env.example apps/server/.env
-cp apps/mobile/.env.example apps/mobile/.env   # 改成电脑的局域网 IP
-make db-up          # docker compose 起一个 Postgres
-make install        # uv sync，装后端依赖
-make migrate        # 建表
-make dev            # 启动 api，http://localhost:8000/docs
-make worker         # 另开一个终端，启动 worker（M1 的热路径不需要它）
-make mobile-install # 装客户端依赖；之后在 apps/mobile 下 npm start
-```
+<table align="center">
+  <tr>
+    <td align="center" width="50%"><img src="docs/images/readme/play.png" width="260" alt="一段叙述和两个选项"><br><sub>每一轮：一段叙述，两个选项</sub></td>
+    <td align="center" width="50%"><img src="docs/images/readme/generating.png" width="260" alt="正在写的故事"><br><sub>文字边写边出现，随时可以停下</sub></td>
+  </tr>
+</table>
 
-排查问题时用日志查看器：`make vis-install` 装一次依赖，之后 `make vis`，打开 http://127.0.0.1:8100 。
-它把 `apps/server/.data/logs/` 下的日志和数据库里的回合画成时间线，用法见 [docs/testing.md 第 1 节](docs/testing.md)。
+- 叙述一个字一个字地出来，不用干等；写到一半想换个方向，点“停止”。
+- 网络断了，或者 App 切到后台，回来以后会从断的地方接着写，不重复也不缺字。
+- 生成失败时会告诉你原因，点“重试”再来一次。
 
-开发环境不配置密钥也能启动：服务端第一次启动时生成主密钥和令牌签名密钥，存在 `apps/server/.data/dev-secrets.json`
-（权限 0600，已在 .gitignore 里）。生产环境必须在环境变量里配置 `MASTER_KEYS` 和 `AUTH_SECRET`，用
-`uv run bettertavern keygen` 生成；主密钥丢了，已保存的模型 Key 就解不开了。
+## 从一张角色卡开始
 
-然后在 App 里：注册 → 设置里添加一个模型 Key、选导演模型 → 剧本里导入角色卡 → 开始故事。
+<table align="center">
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/readme/library.png" width="240" alt="剧本库"><br><sub>导入的角色卡都在剧本库里</sub></td>
+    <td align="center" width="33%"><img src="docs/images/readme/scenario.png" width="240" alt="开始一个新故事"><br><sub>给主角起名字，开始故事</sub></td>
+    <td align="center" width="33%"><img src="docs/images/readme/stories.png" width="240" alt="故事列表"><br><sub>每个故事都从上次停下的地方接着读</sub></td>
+  </tr>
+</table>
 
-后端的直接依赖在 `apps/server/pyproject.toml` 里精确锁定，与 `uv.lock` 一致；升级依赖时先改 pyproject，再执行 `uv lock` 并提交锁文件。
+- 支持 SillyTavern 的角色卡：PNG 图片或 JSON 文件，V1、V2、V3 都可以。卡里的图片会成为故事的封面，没有图片的卡会配一张简洁的线条封面。
+- 开局前给主角起名字；想多交代几句也可以：选一个身份（过路的旅人、旧相识……）、每段写多长、想要什么文风。
+- 同一张卡可以开好几个故事，每个故事各走各的。
 
-## 测试
+## 世界会记住
 
-```bash
-make test               # 后端单测与端到端测试（不需要数据库）
-make test-integration   # 需要 make db-up；会建临时 schema，测完删除（队列、账户、回合的并发与租约）
-make lint               # ruff、pyright、import-linter
-make mobile-test        # 客户端的纯逻辑：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端
-make vis-test           # 日志查看器的纯逻辑：中文目录、格式化、手机日志解析
-```
+<table align="center">
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/readme/world.png" width="240" alt="人物与地点"><br><sub>人物、地点、物品、组织</sub></td>
+    <td align="center" width="33%"><img src="docs/images/readme/world-graph.png" width="240" alt="关系图"><br><sub>谁在哪里、谁拿着什么</sub></td>
+    <td align="center" width="33%"><img src="docs/images/readme/world-facts.png" width="240" alt="事实和秘密"><br><sub>秘密先藏着，想看再揭开</sub></td>
+  </tr>
+</table>
 
-## 合规率评测（M0 的 go / no-go）
+- 阅读时点左下角的指南针，打开世界面板：故事里的人物、地点、物品，它们之间的关系，还有已经知道的事实。
+- 主角还不知道的秘密默认藏着，要你确认才会揭开，不会被剧透。
 
-在真实模型上跑 200 回合，统计导演输出协议的合规率。出口标准：无需修复不低于 95%，含修复不低于 99.5%。
+## 舒服地读
 
-```bash
-cd apps/server
-DEEPSEEK_API_KEY=sk-... uv run python -m evals.director_compliance --provider deepseek --model deepseek-flash
-HF_TOKEN=hf_... uv run python -m evals.director_compliance --provider huggingface --model <org/model>:fastest
-```
+<table align="center">
+  <tr>
+    <td align="center" width="50%"><img src="docs/images/readme/dark.png" width="260" alt="夜间模式"><br><sub>夜间模式</sub></td>
+    <td align="center" width="50%"><img src="docs/images/readme/reading-settings.png" width="260" alt="阅读设置"><br><sub>宋体或黑体，字号可调</sub></td>
+  </tr>
+</table>
 
-报告写在 `apps/server/evals/reports/`（不入库）。至少用 3 个模型各跑一次。
+- 外观可以跟随系统，也可以固定成浅色或夜间。
+- 在平板上，正文居中排版，世界面板可以停靠在旁边。
 
-## 目录
+## 用你自己的模型
 
-```
-apps/server     后端：FastAPI、agent runtime、provider 层、队列、迁移、测试、评测
-apps/mobile     客户端：Expo + TypeScript
-apps/vis        本机日志查看器的网页（接口在 apps/server 的 bettertavern vis）
-deploy          docker compose 与镜像
-docs            设计文档，以及数据模型和接口的参考文档
-```
+<p align="center">
+  <img src="docs/images/readme/add-model.png" width="260" alt="添加模型">
+</p>
+
+- 在“设置 → 模型”里添加：选服务商，贴上 API Key，模型列表会自动出来，选一个就好。
+- 可以添加好几个模型，在列表里点一下就能换一个来写故事。
+- 你只为自己用掉的模型额度付费，BetterTavern 不经手。
+
+## 你的故事在哪里
+
+- 故事、世界设定、模型 Key 都保存在你自己运行的服务器上。Key 加密保存，App 里只显示后四位。
+- 只有在写故事的时候，服务器才把需要的前情发给你选的模型服务。
+- 服务器的运行日志不记录故事内容，也不记录 Key。
+
+## 它是怎么工作的
+
+<p align="center">
+  <img src="docs/images/architecture.svg" width="860" alt="手机 App、BetterTavern 服务器和模型服务之间的关系">
+</p>
+
+1. 你点一个选项，或者写下自己的行动，App 把它发给服务器。
+2. 服务器把这个故事的前情、世界设定和你的行动整理好，发给你选的模型。
+3. 模型写下一段叙述和两个新选项。
+4. 服务器一边收一边推给手机，你看到文字一个字一个字地出来；写完以后存档。
+
+为什么要有一台服务器：故事存在服务器上，换手机也不会丢；Key 不放在手机里；写故事的活在服务器上做，手机只负责显示。
+
+给好奇的人：服务器用 Python（FastAPI）和 PostgreSQL，App 用 React Native（Expo），iPhone 和 Android 用同一套代码。
+
+## 现在到哪一步了
+
+**已经能用**：注册登录、导入角色卡、开局搭建世界、一轮一轮地玩、自己写、停止和重试、断线续传、世界面板、阅读设置、夜间模式、平板排版。
+
+**接下来**：世界跟着剧情自动更新（现在世界在开局时搭好，之后还不会变）、回退和重新生成、长篇故事自动整理前情摘要、更多模型服务商、英文界面。
+
+## 怎么开始
+
+现在需要自己运行服务器：
+
+1. 准备一台电脑运行服务器，按[开发者指南](docs/development.md)装好并启动。
+2. 手机上装 [Expo Go](https://expo.dev/go)，扫电脑上显示的二维码打开 App。手机和电脑要在同一个网络里，或者用 Tailscale 这类组网工具连起来。
+3. 在 App 里注册，添加一个模型，导入一张角色卡，开始你的第一个故事。
+
+正式版计划上架应用商店，服务器也会提供更省事的部署方式。
+
+## 更多
+
+- [开发者指南](docs/development.md)：本地开发、测试、目录结构
+- [技术方案](docs/README.md)：后端、客户端、测试的完整设计
+- [界面设计](docs/design/ui/README.md) 和 [标志](docs/design/logo/README.md)
 
 ## 许可证
 
