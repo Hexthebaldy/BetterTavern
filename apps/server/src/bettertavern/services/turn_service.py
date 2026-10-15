@@ -14,6 +14,7 @@ from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.routing import RouteTask
@@ -32,6 +33,8 @@ from bettertavern.runtime.runner import TurnRunnerPool
 from .errors import AppError, Conflict, Invalid, NotFound
 from .route_service import RouteService
 from .views import TurnView
+
+log = structlog.get_logger(__name__)
 
 MAX_IDEMPOTENCY_KEY = 128
 TERMINAL = {
@@ -111,6 +114,7 @@ class TurnService:
         """返回 (回合, 是否新建)。同一个幂等键且请求相同时返回已有回合。"""
         if not is_uuid(playthrough_id):
             raise NotFound("游玩记录不存在")
+        structlog.contextvars.bind_contextvars(playthrough_id=playthrough_id)
         if parent_turn_id is not None and not is_uuid(parent_turn_id):
             raise Invalid("parent_turn_id 格式不对", field="parent_turn_id")
         if idempotency_key is not None and not (0 < len(idempotency_key) <= MAX_IDEMPOTENCY_KEY):
@@ -120,6 +124,8 @@ class TurnService:
         if idempotency_key is not None:
             existing = await self._replay(user_id, idempotency_key, digest)
             if existing is not None:
+                # 同一个幂等键的重复提交（客户端重试）：返回已有的回合，不再生成
+                log.info("turn.replayed", turn_id=existing.id, seq=existing.seq)
                 return existing, False
         # 先确认归属再查路由：别人的游玩记录一律 404，不暴露“没配模型”之类的状态
         async with self._engine.connect() as conn:
@@ -145,6 +151,7 @@ class TurnService:
                         )
                     turn = await repo.get_turn(conn, found[1])
                     if turn is not None:
+                        log.info("turn.replayed", turn_id=turn.id, seq=turn.seq)
                         return TurnView.of(turn), False
             if pt.active_turn_id is not None:
                 if await repo.lease_alive(conn, pt.id):
@@ -154,6 +161,7 @@ class TurnService:
                         active_turn_id=pt.active_turn_id,
                     )
                 # 租约已过期：生成进程没了，先把那一轮标为失败
+                log.warning("turn.lease_expired", count=1, turn_ids=[pt.active_turn_id])
                 await repo.fail_turn(
                     conn, pt.active_turn_id, narrative="", error=repo.RUNNER_LOST_ERROR
                 )
@@ -195,6 +203,16 @@ class TurnService:
             await repo.take_lease(conn, pt.id, turn.id, ttl_s=self._lease_ttl, owner=self._instance)
             if idempotency_key is not None:
                 await repo.insert_idempotency_key(conn, user_id, idempotency_key, digest, turn.id)
+        # 行动的文字不记，只记长度
+        log.info(
+            "turn.submitted",
+            turn_id=turn.id,
+            seq=seq,
+            turn_attempt=attempt,
+            source=action.source,
+            text_chars=len(action.text) if action.text else None,
+            idempotent=idempotency_key is not None,
+        )
         self._runners.start(header_for(pt, turn, user_id))
         return TurnView.of(turn), True
 
@@ -234,6 +252,7 @@ class TurnService:
 
     async def cancel(self, user_id: str, turn_id: str) -> TurnView:
         turn = await self.get(user_id, turn_id)
+        log.info("turn.cancel_requested", turn_id=turn_id, status=turn.status)
         if turn.status != TurnStatus.GENERATING.value:
             return turn
         if not self._runners.cancel(turn_id, "user"):
@@ -249,7 +268,16 @@ class TurnService:
         turn = await self.get(user_id, turn_id)
         stream = self._buffers.get(turn_id)
         if stream is not None:
+            # backlog：续传时缓冲里已经有、要先补发的条数
+            log.info(
+                "sse.subscribe",
+                mode="live",
+                backlog=max(stream.last_seq - after_seq, 0),
+                status=turn.status,
+            )
             return stream.subscribe(after_seq)
+        # 缓冲已过期或不在本进程：等回合结束后一次给全
+        log.info("sse.subscribe", mode="snapshot", status=turn.status)
         return self._snapshot_events(user_id, turn)
 
     async def _snapshot_events(self, user_id: str, turn: TurnView) -> AsyncIterator[StreamEvent]:

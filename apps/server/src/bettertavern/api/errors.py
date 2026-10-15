@@ -52,8 +52,10 @@ _HTTP_CODES = {
 
 
 def install_error_handlers(app: FastAPI) -> None:
+    # 错误码记进日志上下文：这次请求的访问日志（http.request）里就能看到 error_code
     @app.exception_handler(AppError)
     async def app_error(request: Request, exc: AppError) -> JSONResponse:
+        structlog.contextvars.bind_contextvars(error_code=exc.code)
         return problem(
             exc.status,
             exc.code,
@@ -69,12 +71,16 @@ def install_error_handlers(app: FastAPI) -> None:
             {"loc": [str(p) for p in err.get("loc", ())], "msg": str(err.get("msg", ""))}
             for err in exc.errors()[:20]
         ]
+        structlog.contextvars.bind_contextvars(
+            error_code="VALIDATION_ERROR", invalid_fields=[".".join(e["loc"]) for e in errors]
+        )
         return problem(422, "VALIDATION_ERROR", "请求参数不正确", retryable=False, errors=errors)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = _HTTP_CODES.get(exc.status_code, "HTTP_ERROR")
         title = exc.detail if isinstance(exc.detail, str) else code
+        structlog.contextvars.bind_contextvars(error_code=code)
         return problem(exc.status_code, code, title, retryable=False)
 
     # 正常情况下未处理的异常由最外层的 RequestContext 接住；

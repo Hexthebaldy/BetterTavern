@@ -15,6 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from bettertavern.infra.crypto import passwords
@@ -25,8 +26,12 @@ from bettertavern.infra.crypto.tokens import (
     new_refresh_token,
 )
 from bettertavern.infra.db.repositories import accounts as repo
+from bettertavern.infra.observability.context import bind_user
 
 from .errors import AppError, Conflict, Invalid, NotFound, Unauthenticated
+
+# 账户日志不记邮箱和密码；用户用代号 user_ref 表示（登录成功后绑定）
+log = structlog.get_logger(__name__)
 
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD = 8
@@ -138,6 +143,8 @@ class AuthService:
             if row is None:
                 raise Conflict("这个邮箱已经注册过了", code="EMAIL_TAKEN")
             tokens = await self._issue(conn, row.id, str(uuid.uuid4()), user_agent)
+        bind_user(row.id)
+        log.info("auth.registered")
         return _view(row), tokens
 
     async def login(
@@ -148,12 +155,20 @@ class AuthService:
         encoded = row.password_hash if row is not None else passwords.DUMMY_HASH
         ok = await asyncio.to_thread(passwords.verify_password, password, encoded)
         if row is None or not ok:
+            # 原因只记在日志里，返回给客户端的永远是同一句话（不暴露邮箱是否注册过）
+            if row is not None:
+                bind_user(row.id)
+            log.info(
+                "auth.login_failed", reason="unknown_email" if row is None else "wrong_password"
+            )
             raise Unauthenticated("邮箱或密码不正确", code="INVALID_CREDENTIALS")
         async with self._engine.begin() as conn:
             if passwords.needs_rehash(row.password_hash):
                 rehashed = await asyncio.to_thread(passwords.hash_password, password)
                 await repo.update_password_hash(conn, row.id, rehashed)
             tokens = await self._issue(conn, row.id, str(uuid.uuid4()), user_agent)
+        bind_user(row.id)
+        log.info("auth.login")
         return _view(row), tokens
 
     async def refresh(
@@ -165,11 +180,19 @@ class AuthService:
             row = await repo.lock_refresh_token(conn, hash_refresh_token(refresh_token))
             now = self._now()
             if row is None or row.revoked_at is not None or row.expires_at <= now:
+                reason = (
+                    "unknown"
+                    if row is None
+                    else ("revoked" if row.revoked_at is not None else "expired")
+                )
+                log.info("auth.refresh_invalid", reason=reason)
                 raise Unauthenticated("登录已失效，请重新登录", code="REFRESH_INVALID")
             if row.used_at is not None and (now - row.used_at).total_seconds() > REUSE_GRACE_S:
                 # 用过的令牌又出现了：可能被盗。整族吊销，提交后再报错
                 await repo.revoke_family(conn, row.family_id)
                 reused_family = row.family_id
+                bind_user(row.user_id)
+                log.warning("auth.refresh_reused")
             else:
                 user = await repo.get_user(conn, row.user_id)
                 if user is None:
@@ -178,6 +201,8 @@ class AuthService:
                     await repo.mark_refresh_token_used(conn, row.id, at=now)
                 tokens = await self._issue(conn, row.user_id, row.family_id, user_agent)
                 result = (_view(user), tokens)
+                bind_user(row.user_id)
+                log.info("auth.refresh")
         if reused_family is not None or result is None:
             raise Unauthenticated("登录已失效，请重新登录", code="REFRESH_REUSED")
         return result
@@ -187,6 +212,8 @@ class AuthService:
             row = await repo.lock_refresh_token(conn, hash_refresh_token(refresh_token))
             if row is not None:
                 await repo.revoke_family(conn, row.family_id)
+                bind_user(row.user_id)
+        log.info("auth.logout", known_token=row is not None)
 
     # ---- 账户 ---------------------------------------------------------------------------
     async def get_user(self, user_id: str) -> UserView:
@@ -203,6 +230,8 @@ class AuthService:
             raise NotFound("账户不存在")
         ok = await asyncio.to_thread(passwords.verify_password, password, row.password_hash)
         if not ok:
+            log.warning("account.delete_rejected", reason="wrong_password")
             raise AppError("密码不正确", code="INVALID_CREDENTIALS", status=403)
         async with self._engine.begin() as conn:
             await repo.delete_user(conn, user_id)
+        log.info("account.deleted")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
+import structlog
 from fastapi import APIRouter, Header, Query, Request, Response, status
 from starlette.responses import StreamingResponse
 
@@ -167,8 +168,14 @@ async def turn_events(
     last_event_id: Annotated[str | None, Header()] = None,
 ) -> StreamingResponse:
     after = parse_last_event_id(last_event_id, turn_id)
+    # 事件流的日志（sse.open / sse.close）带上回合编号；推送在请求派生的任务里跑，会继承这个绑定
+    structlog.contextvars.bind_contextvars(turn_id=turn_id)
     events = await services.turns.events(user_id, turn_id, after_seq=after)
     shutdown: Shutdown | None = getattr(request.app.state, "shutdown", None)
     return sse_response(
-        event_stream_body(events, stop=shutdown.event if shutdown is not None else None)
+        event_stream_body(
+            events,
+            stop=shutdown.event if shutdown is not None else None,
+            resumed_from=after,
+        )
     )

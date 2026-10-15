@@ -2,18 +2,25 @@
 
 事件 id 为 {stream_id}:{n}，n 在流内递增。每 15 秒发一次 :keepalive 注释行；
 响应头关掉代理缓冲（X-Accel-Buffering: no），SSE 路由不开 gzip。
+
+日志：连接建立时记 sse.open（从第几条续传），结束时记 sse.close（结束原因、发出几条、持续多久）。
+结束原因：completed 事件发完了；client_gone 客户端断开；shutdown 服务端开始优雅退出。
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
+import time
 from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Any
 
+import structlog
 from starlette.responses import StreamingResponse
 
 from bettertavern.runtime.events.buffer import StreamEvent
+
+log = structlog.get_logger(__name__)
 
 KEEPALIVE = b": keepalive\n\n"
 SSE_HEADERS = {
@@ -44,8 +51,15 @@ async def event_stream_body(
     keepalive: float = 15.0,
     retry_ms: int | None = 1000,
     stop: asyncio.Event | None = None,
+    resumed_from: int = 0,
 ) -> AsyncGenerator[bytes, None]:
-    """把事件流编码成 SSE 字节流。stop 置位（进程开始优雅退出）时主动结束，客户端会续传。"""
+    """把事件流编码成 SSE 字节流。stop 置位（进程开始优雅退出）时主动结束，客户端会续传。
+    resumed_from 是客户端带来的 Last-Event-ID 里的序号（0 表示从头开始），只用于记日志"""
+    started = time.perf_counter()
+    sent = 0
+    last_seq = resumed_from
+    reason = "client_gone"
+    log.info("sse.open", resumed_from=resumed_from)
     if retry_ms is not None:
         yield f"retry: {retry_ms}\n\n".encode()
     iterator = aiter(events)
@@ -63,16 +77,27 @@ async def event_stream_body(
             )
             if pending not in done:
                 if stopper is not None and stopper in done:
+                    reason = "shutdown"
                     return
                 yield KEEPALIVE
                 continue
             try:
                 event = pending.result()
             except StopAsyncIteration:
+                reason = "completed"
                 return
             yield encode_event(event)
+            sent += 1
+            last_seq = event.seq
             pending = asyncio.ensure_future(anext(iterator))
     finally:
+        log.info(
+            "sse.close",
+            reason=reason,
+            events_sent=sent,
+            last_seq=last_seq,
+            duration_ms=round((time.perf_counter() - started) * 1000),
+        )
         if stopper is not None:
             stopper.cancel()
         pending.cancel()

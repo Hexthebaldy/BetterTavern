@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.infra.crypto.envelope import DecryptionError, key_id_of, seal_text, unseal_text
@@ -37,6 +40,18 @@ from bettertavern.providers import (
 from bettertavern.providers.errors import ErrorClass
 
 from .errors import AppError, Invalid, NotFound
+
+# 密钥本身、额外请求头的值都不进日志；端点只记主机名
+log = structlog.get_logger(__name__)
+
+
+def _endpoint_host(base_url: str | None) -> str:
+    return (urlparse(base_url).hostname or "?") if base_url else "official"
+
+
+def _elapsed_ms(started: float) -> int:
+    return round((time.perf_counter() - started) * 1000)
+
 
 MAX_LABEL = 60
 MAX_KEY_CHARS = 4096
@@ -197,6 +212,9 @@ class CredentialService:
         try:
             text = unseal_text(self._keyring, row.extra_headers_enc, aad=_aad(row.id, "headers"))
         except DecryptionError as exc:
+            log.error(
+                "credential.unreadable", credential_id=row.id, key_id=key_id_of(row.api_key_enc)
+            )
             raise AppError(
                 "凭据无法解密，请重新填写", code="CREDENTIAL_UNREADABLE", status=409
             ) from exc
@@ -276,6 +294,14 @@ class CredentialService:
                 extra_headers_enc=headers_enc,
                 extra_body=body,
             )
+        log.info(
+            "credential.created",
+            credential_id=row.id,
+            provider=data.provider,
+            endpoint_host=_endpoint_host(base_url),
+            extra_headers=len(headers),
+            extra_body_keys=len(body),
+        )
         return self._view(row)
 
     async def update(
@@ -327,6 +353,24 @@ class CredentialService:
                 status="unverified" if changed_auth else current.status,
                 probed={} if changed_auth else current.probed,
             )
+        changed = [
+            name
+            for name, value in (
+                ("label", patch.label),
+                ("api_key", patch.api_key),
+                ("base_url", patch.base_url if not patch.clear_base_url else ""),
+                ("extra_headers", patch.extra_headers),
+                ("extra_body", patch.extra_body),
+            )
+            if value is not None
+        ]
+        log.info(
+            "credential.updated",
+            credential_id=row.id,
+            fields_changed=changed,
+            auth_changed=changed_auth,
+            endpoint_host=_endpoint_host(base_url),
+        )
         return self._view(row)
 
     async def delete(self, user_id: str, credential_id: str) -> None:
@@ -335,6 +379,7 @@ class CredentialService:
         async with self._engine.begin() as conn:
             if not await repo.delete_credential(conn, user_id, credential_id):
                 raise NotFound("凭据不存在")
+        log.info("credential.deleted", credential_id=credential_id)
 
     # ---- 解密与能力 ----------------------------------------------------------------------
     def resolve_row(self, row: repo.CredentialRow) -> ResolvedCredential:
@@ -378,6 +423,7 @@ class CredentialService:
         cred = self.resolve_row(row)
         adapter = self._hub.adapter(row.provider)
         caps = self.capabilities(row, model)
+        started = time.perf_counter()
         report = await probe_model(adapter, cred, model, caps)
         probed = dict(row.probed)
         models = dict(probed.get("models") or {})
@@ -391,14 +437,32 @@ class CredentialService:
             await repo.set_credential_probe(
                 conn, row.id, probed=probed, status=status, ok=not fatal
             )
+        log.info(
+            "credential.probe",
+            credential_id=row.id,
+            provider=row.provider,
+            model=model,
+            ok=not fatal,
+            fatal=fatal.split(":", 1)[0] if fatal else None,
+            duration_ms=_elapsed_ms(started),
+        )
         return report
 
     async def list_models(self, user_id: str, credential_id: str) -> list[ModelInfo]:
         row = await self._row(user_id, credential_id)
         cred = self.resolve_row(row)
+        started = time.perf_counter()
         try:
             models = await self._hub.adapter(row.provider).list_models(cred)
         except ProviderError as exc:
+            log.warning(
+                "models.list_failed",
+                credential_id=row.id,
+                provider=row.provider,
+                error_class=exc.error_class.value,
+                status=exc.status,
+                duration_ms=_elapsed_ms(started),
+            )
             if exc.error_class is ErrorClass.AUTH:
                 async with self._engine.begin() as conn:
                     await repo.set_credential_probe(
@@ -424,4 +488,12 @@ class CredentialService:
             await repo.set_credential_probe(
                 conn, row.id, probed=probed, status="ok" if row.status != "ok" else None, ok=True
             )
+        log.info(
+            "models.listed",
+            credential_id=row.id,
+            provider=row.provider,
+            count=len(models),
+            with_window=len(windows),
+            duration_ms=_elapsed_ms(started),
+        )
         return models

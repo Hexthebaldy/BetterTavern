@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.scenario.card import CharacterCard
@@ -15,6 +17,9 @@ from bettertavern.infra.db.repositories import library as repo
 from bettertavern.infra.db.sqlutil import is_uuid
 
 from .errors import Invalid, NotFound
+
+# 角色卡的文字不进日志，只记大小、格式、条目数和被截断的字段名
+log = structlog.get_logger(__name__)
 
 PREVIEW_CHARS = 280
 
@@ -89,14 +94,36 @@ class ScenarioService:
         self._engine = engine
 
     async def import_file(self, user_id: str, data: bytes) -> ScenarioView:
+        started = time.perf_counter()
         try:
             # 解析（哈希、base64、JSON、PNG 解压）放到线程里，不占用事件循环
             imported = await asyncio.to_thread(import_card, data)
         except CardError as exc:
+            log.info(
+                "scenario.import_failed",
+                bytes=len(data),
+                reason=str(exc),
+                duration_ms=round((time.perf_counter() - started) * 1000),
+            )
             raise Invalid(f"角色卡导入失败：{exc}", code="CARD_INVALID") from exc
+        card_info = {
+            "bytes": len(data),
+            "spec": imported.card.spec,
+            "has_image": imported.image is not None,
+            "book_entries": len(imported.card.book),
+            "greetings": 1 + len(imported.card.alternate_greetings),
+            "truncated_fields": list(imported.card.truncated),
+        }
         async with self._engine.begin() as conn:
             existing = await repo.find_scenario_by_sha(conn, user_id, imported.sha256)
             if existing is not None:
+                log.info(
+                    "scenario.imported",
+                    scenario_id=existing.id,
+                    duplicate=True,
+                    duration_ms=round((time.perf_counter() - started) * 1000),
+                    **card_info,
+                )
                 return _view(existing, duplicate=True)
             blob_id = None
             if imported.image is not None and imported.image_mime is not None:
@@ -118,6 +145,13 @@ class ScenarioService:
                 card=card,
                 avatar_blob_id=blob_id,
             )
+        log.info(
+            "scenario.imported",
+            scenario_id=row.id,
+            duplicate=False,
+            duration_ms=round((time.perf_counter() - started) * 1000),
+            **card_info,
+        )
         return _view(row)
 
     async def list(self, user_id: str) -> list[ScenarioView]:
@@ -161,6 +195,7 @@ class ScenarioService:
                 raise NotFound("剧本不存在")
             if blob:
                 await repo.delete_blob(conn, user_id, blob)
+        log.info("scenario.deleted", scenario_id=scenario_id)
 
     async def blob(self, user_id: str, blob_id: str) -> BlobView:
         if not is_uuid(blob_id):

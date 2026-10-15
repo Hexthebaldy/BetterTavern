@@ -62,7 +62,9 @@ def create_probe_app(
             return problem(404, "NOT_FOUND", "事件流不存在或缓冲已过期，请改用轮询")
         last_id = request.headers.get("last-event-id") or request.query_params.get("last_event_id")
         after = parse_last_event_id(last_id, stream_id)
-        body = event_stream_body(stream.subscribe(after), keepalive=keepalive, stop=shutdown)
+        body = event_stream_body(
+            stream.subscribe(after), keepalive=keepalive, stop=shutdown, resumed_from=after
+        )
         return sse_response(body)
 
     async def stream_status(request: Request) -> Response:

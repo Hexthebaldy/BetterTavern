@@ -51,6 +51,23 @@ App 报错时显示这个单号，拿它去日志里一搜：搜不到说明请�
 2. 看内容：任何字符串里像密钥的片段（Bearer 令牌、`sk-…`、`hf_…`、JWT、`api_key=…`）抹掉，邮箱打码。异常信息、第三方库的日志也经过这一关。
 3. 看长度：事件名 300 字、字段值 2000 字、异常堆栈 8000 字，超出截断；列表最多 50 项。
 
+**各环节的事件**（带 `duration_ms` 的事件在步骤结束时记，表示这一步花的时间）：
+
+| 环节 | 事件 | 主要字段 |
+| --- | --- | --- |
+| 请求 | `http.request`、`http.error` | 方法、路径、路由模板、状态码、耗时、客户端版本、`error_code`（业务错误码，由错误处理绑定） |
+| 账户 | `auth.registered`、`auth.login`、`auth.login_failed`、`auth.refresh`、`auth.refresh_invalid`、`auth.refresh_reused`（疑似令牌被盗，整族吊销）、`auth.logout`、`account.deleted`、`account.delete_rejected` | 失败原因（`unknown_email` / `wrong_password` / `expired`……）；不记邮箱和密码 |
+| 密钥 | `credential.created` / `updated` / `deleted`、`credential.unreadable`、`credential.probe`、`models.listed`、`models.list_failed` | 服务商、端点主机名、改了哪些字段、探测结果、模型数量、错误类别 |
+| 导入 | `scenario.imported`、`scenario.import_failed`、`scenario.deleted` | 字节数、卡片规范、世界书条目数、开场白数、被截断的字段名、是否重复导入 |
+| 回合 | `turn.submitted`、`turn.replayed`（幂等重放）、`turn.started`、`world.build.started` / `done`、`turn.barrier_waited`、`context.assembled`、`turn.context_overflow_retry`、`turn.fallback`、`director.parse`、`options.repair` / `repair_failed`、`turn.committed`、`turn.commit_rejected`、`turn.failed`、`turn.cancel_requested`、`turn.lease_expired`、`turn.crashed` | 行动来源和文字长度、预算与占用比例、提示词指纹、解析走到哪一级、选项来源、失败码与取消原因、总耗时 |
+| 模型调用 | `provider.request`、`provider.slot_wait` / `slot_timeout`、`provider.retry`、`provider.first_token`、`provider.response`、`provider.failed` | 服务商、模型、第几次尝试、错误类别与 HTTP 状态、重试等待、首字延迟、各类 token 数、结束原因 |
+| 推送 | `sse.subscribe`（实时 / 回合结束后一次给全，续传要补发几条）、`sse.open`、`sse.close` | 从第几条续传、结束原因（`completed` / `client_gone` / `shutdown`）、发出几条、持续多久 |
+| 后台任务 | `job.started` / `done` / `failed` / `released` / `lock_lost` / `renew_failed` / `reaped`、`job.claim_failed`、`queue.listen_*`、`worker.*` | 任务类型、第几次尝试、会不会重试、多久后重试 |
+| 进程 | `app.started`、`app.stopping`、`scheduler.task_failed`、`secrets.dev_generated` | 版本、环境、实例 |
+
+`tests/e2e/test_observability.py` 在角色卡、玩家行动、模型叙述里埋一个暗号，跑完整个回合后检查日志文件：暗号、API Key、密码、邮箱都不出现；
+回合的步骤按顺序出现，并且都带着提交它的那次请求的单号。以后谁不小心把故事写进日志，这个测试会失败。
+
 **访问日志与异常**：最外层的中间件（`api/request_context.py`）在每个请求结束时记一条 `http.request`（方法、路径、路由模板、状态码、耗时、客户端版本）；
 事件流这类长连接在连接结束时才记，耗时就是连接时长；健康检查成功时不记。未处理的异常记 `http.error`（带堆栈），返回 500 `INTERNAL_ERROR`。
 
