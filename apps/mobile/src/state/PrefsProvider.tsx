@@ -7,7 +7,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { DEFAULT_READING, parseReadingPrefs, type ReadingPrefs } from "../features/play/reading.ts";
+import { DEFAULT_READING, parseReadingPrefs, type ReadingPrefs } from "@bettertavern/core/play/reading";
+
 import {
   markServerFailed,
   parseRecentServers,

@@ -15,15 +15,16 @@ import {
   type ReactNode,
 } from "react";
 
-import { ApiClient } from "../api/client.ts";
-import { createApi, type Api } from "../api/endpoints.ts";
-import type { FetchLike } from "../api/sse/sseClient.ts";
-import { sseTurnConnector, type TurnConnector } from "../api/turnStream.ts";
-import type { AuthResponse, User } from "../api/types.ts";
-import { SessionManager, type SessionStatus } from "../auth/session.ts";
+import { ApiClient } from "@bettertavern/core/api/client";
+import { createApi, type Api } from "@bettertavern/core/api/endpoints";
+import type { FetchLike } from "@bettertavern/core/api/sse/sseClient";
+import { sseTurnConnector, type TurnConnector } from "@bettertavern/core/api/turnStream";
+import type { AuthResponse, User } from "@bettertavern/core/api/types";
+import { SessionManager, type SessionStatus } from "@bettertavern/core/auth/session";
+import { diagnostics } from "@bettertavern/core/observability/log";
+import { requestFields, requestLevel, serverHost } from "@bettertavern/core/observability/requests";
+
 import { CLIENT_VERSION, DEFAULT_SERVER_URL, normalizeServerUrl } from "../config.ts";
-import { diagnostics } from "../observability/log.ts";
-import { requestFields, requestLevel, serverHost } from "../observability/requests.ts";
 import { loadServerUrl, saveServerUrl, secureSessionStorage } from "../storage/secure.ts";
 
 type Services = {

@@ -4,7 +4,7 @@
  * 选择控件最终仍拼成原来的字段：主角名、主角简介（≤400 字）、篇幅、文风（≤200 字）、内容边界（≤300 字）。
  */
 
-import type { Preferences } from "../../api/types.ts";
+import type { Preferences } from "../api/types.ts";
 
 export const NAME_MAX = 40;
 export const SUMMARY_MAX = 400;

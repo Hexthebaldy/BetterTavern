@@ -1,14 +1,7 @@
 /** 设置页共用的文字和小规则（模型列表、添加模型、模型详情）。纯逻辑，node --test 可测。 */
 
-import type {
-  ModelInfo,
-  ModelRoute,
-  ProbeCheck,
-  Provider,
-  RouteWindow,
-  WindowSource,
-} from "../../api/types.ts";
-import { formatTokens } from "../../utils/format.ts";
+import type { ModelInfo, ModelRoute, ProbeCheck, Provider, RouteWindow, WindowSource } from "../api/types.ts";
+import { formatTokens } from "../utils/format.ts";
 
 export const MODEL_STATUS: Record<ModelRoute["status"], string> = {
   ok: "可用",

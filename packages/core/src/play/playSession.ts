@@ -7,9 +7,9 @@
  * 退出页面只关闭连接，不取消服务端的生成。
  */
 
-import { ApiError, describeError } from "../../api/client.ts";
-import type { StreamOutcome, TurnConnector, TurnStream, TurnStreamHandlers } from "../../api/turnStream.ts";
-import type { NewAction, PlaythroughDetail, Turn, TurnCreated, TurnError } from "../../api/types.ts";
+import { ApiError, describeError } from "../api/client.ts";
+import type { StreamOutcome, TurnConnector, TurnStream, TurnStreamHandlers } from "../api/turnStream.ts";
+import type { NewAction, PlaythroughDetail, Turn, TurnCreated, TurnError } from "../api/types.ts";
 import {
   canSubmit,
   displayAction,

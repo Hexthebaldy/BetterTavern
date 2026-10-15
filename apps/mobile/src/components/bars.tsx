@@ -25,9 +25,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { bottomBar, rail, tabInsets, type Insets } from "@bettertavern/design/layout";
+
 import { useLayout } from "../hooks/useLayout.ts";
 import { font, size, space, type, usePalette } from "../theme/index.ts";
-import { bottomBar, rail, tabInsets, type Insets } from "../theme/layout.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { Logo } from "./Logo.tsx";
 import { IconButton } from "./primitives.tsx";

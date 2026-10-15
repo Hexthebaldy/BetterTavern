@@ -7,7 +7,8 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ApiError, describeError } from "../../src/api/client.ts";
+import { ApiError, describeError } from "@bettertavern/core/api/client";
+
 import { AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
 import { ServerRow, ServerSheet } from "../../src/components/ServerSetting.tsx";
 import { BackBar, Button, Field, IconButton, Notice } from "../../src/components/ui.tsx";

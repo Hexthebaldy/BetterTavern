@@ -5,7 +5,8 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 
-import type { TurnOption } from "../../api/types.ts";
+import type { TurnOption } from "@bettertavern/core/api/types";
+
 import { Icon, useSheetSurfaces } from "../../components/ui.tsx";
 import { font, radius, size, space, usePalette } from "../../theme/index.ts";
 

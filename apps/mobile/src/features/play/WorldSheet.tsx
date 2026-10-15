@@ -13,8 +13,10 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { describeError } from "../../api/client.ts";
-import type { WorldView } from "../../api/types.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import type { WorldView } from "@bettertavern/core/api/types";
+import { pane } from "@bettertavern/design/layout";
+
 import {
   Dots,
   ErrorState,
@@ -28,7 +30,6 @@ import {
 import { useLayout } from "../../hooks/useLayout.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { radius, space, usePalette } from "../../theme/index.ts";
-import { pane } from "../../theme/layout.ts";
 import { Entities, Facts, Links, type Tab } from "./WorldParts.tsx";
 
 /** 取世界状态、揭示秘密；active 变成 true 时取一次（面板打开、停靠面板展开） */

@@ -44,11 +44,11 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 
 | 画板 | 截图 | 对应代码 |
 | --- | --- | --- |
-| 设计语言、色板、圆角、字体、图标与 Tab | `Main.png` | `src/theme/`、`src/components/icons.tsx` |
+| 设计语言、色板、圆角、字体、图标与 Tab | `Main.png` | `packages/design/src/`（色板、token、图标路径），`src/theme/`、`src/components/icons.tsx` |
 | 组件库 | `Components.png` | `src/components/ui.tsx`（门面）及同目录的各部件 |
 | 登录 · 登录失败与服务器面板 · 注册 | `Auth.png` | `app/(auth)/*`、`src/components/ServerSetting.tsx`；闪屏 `app/index.tsx` 没有单独的画板，按本目录 token 画（标志、名称、一行副标题、三个圆点） |
 | 故事列表（含深色、下拉刷新、空状态、错误） | `Stories.png` | `app/(tabs)/playthroughs.tsx` |
-| 剧本库与导入 | `Library.png` | `app/(tabs)/library.tsx`、`src/features/library/`、`src/components/Cover.tsx` |
+| 剧本库与导入 | `Library.png` | `app/(tabs)/library.tsx`、`src/features/library/`、`src/components/Cover.tsx`（图形在 `packages/design/src/cover.ts`） |
 | 剧本详情 · 开始新故事（整页） | `Scenario.png` | `app/scenario/[id].tsx`、`src/features/scenario/StartForm.tsx` |
 | 阅读页核心状态 | `Play.png` | `app/play/[id]/index.tsx`、`src/features/play/`（`StoryFeed.tsx`、`TurnActions.tsx`、`BottomBar.tsx`） |
 | 阅读页整页特殊状态 | `PlayStates.png` | 同上 |

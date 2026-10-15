@@ -9,9 +9,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import type { Preferences } from "../../api/types.ts";
-import { Checkbox, Chip, Field, Icon, useOverlay } from "../../components/ui.tsx";
-import { font, onColor, radius, space, usePalette } from "../../theme/index.ts";
+import type { Preferences } from "@bettertavern/core/api/types";
 import {
   BOUNDARY_ITEMS,
   composeBoundaries,
@@ -24,7 +22,10 @@ import {
   suggestNames,
   SUMMARY_MAX,
   summaryParts,
-} from "./startForm.ts";
+} from "@bettertavern/core/scenario/startForm";
+
+import { Checkbox, Chip, Field, Icon, useOverlay } from "../../components/ui.tsx";
+import { font, onColor, radius, space, usePalette } from "../../theme/index.ts";
 
 export type StartValues = {
   name: string;

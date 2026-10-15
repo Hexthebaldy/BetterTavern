@@ -6,10 +6,11 @@
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import type { ModelInfo } from "../../api/types.ts";
+import type { ModelInfo } from "@bettertavern/core/api/types";
+import { formatTokens } from "@bettertavern/core/utils/format";
+
 import { Dots, Icon, Notice, RadioMark, SectionHeader } from "../../components/ui.tsx";
 import { font, space, usePalette } from "../../theme/index.ts";
-import { formatTokens } from "../../utils/format.ts";
 
 const MAX_LISTED = 40;
 

@@ -8,12 +8,13 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { formatRelative } from "@bettertavern/core/utils/format";
+
 import { normalizeServerUrl } from "../config.ts";
 import { displayServer, serverChoices, type RecentServer } from "../features/settings/servers.ts";
 import { useApp } from "../state/AppProvider.tsx";
 import { usePrefs } from "../state/PrefsProvider.tsx";
 import { font, radius, space, usePalette } from "../theme/index.ts";
-import { formatRelative } from "../utils/format.ts";
 import { Button, Icon, RadioMark, Sheet } from "./ui.tsx";
 
 /** 失败记录多久之内算“刚才” */

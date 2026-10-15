@@ -5,14 +5,15 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { describeError } from "../../api/client.ts";
-import type { ModelRoutePatch } from "../../api/endpoints.ts";
-import type { ModelRoute, Provider } from "../../api/types.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import type { ModelRoutePatch } from "@bettertavern/core/api/endpoints";
+import type { ModelRoute, Provider } from "@bettertavern/core/api/types";
+import { MANUAL_WINDOW_CHOICES, manualWindowChoice } from "@bettertavern/core/settings/labels";
+
 import { KeyField } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, Segmented, Sheet } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { radius, space, usePalette } from "../../theme/index.ts";
-import { MANUAL_WINDOW_CHOICES, manualWindowChoice } from "./labels.ts";
 
 function OfficialToggle({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
   const palette = usePalette();

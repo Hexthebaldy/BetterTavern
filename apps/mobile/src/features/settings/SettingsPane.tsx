@@ -11,9 +11,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { gutter, settingsDetailLeft } from "@bettertavern/design/layout";
+
 import { Icon, InColumnContext } from "../../components/ui.tsx";
 import { RaisedSurface, space, usePalette } from "../../theme/index.ts";
-import { gutter, settingsDetailLeft } from "../../theme/layout.ts";
 import { ProbeBody } from "../probe/ProbeBody.tsx";
 import { SettingsNavProvider, TARGET_TITLES, type SettingsNav, type SettingsTarget } from "./nav.tsx";
 import { AccountBody } from "./screens/AccountBody.tsx";

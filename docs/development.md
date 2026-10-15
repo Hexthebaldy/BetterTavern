@@ -44,7 +44,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 | `make migrate` | 建表；拉了新代码以后也要跑一次 |
 | `make dev` | 启动 api，接口文档在 http://localhost:8000/docs |
 | `make worker` | 另开一个终端，启动 worker（M1 的热路径不需要它） |
-| `make mobile-install` | 装客户端依赖；之后在 `apps/mobile` 下 `npm start`，用 Expo Go 打开 |
+| `make mobile-install` | 装客户端依赖（在根目录 `npm install`，手机端和 `packages/` 是同一个 npm 工作区）；之后在 `apps/mobile` 下 `npm start`，用 Expo Go 打开 |
 
 开发环境不配置密钥也能启动：服务端第一次启动时生成主密钥和令牌签名密钥，存在 `apps/server/.data/dev-secrets.json`
 （权限 0600，已在 .gitignore 里）。生产环境必须在环境变量里配置 `MASTER_KEYS` 和 `AUTH_SECRET`，用
@@ -65,7 +65,8 @@ cp apps/mobile/.env.example apps/mobile/.env
 | `make test` | 后端单测与端到端测试（不需要数据库） |
 | `make test-integration` | 需要数据库；会建临时 schema，测完删除（队列、账户、回合的并发与租约） |
 | `make lint` | ruff、pyright、import-linter |
-| `make mobile-test` | 客户端的纯逻辑：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端 |
+| `make js-test` | 客户端的纯逻辑（`packages/` 和 `apps/mobile` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局 |
+| `make js-typecheck` | 客户端和共用包的 TypeScript 类型检查 |
 | `make vis-test` | 日志查看器的纯逻辑：中文目录、格式化、手机日志解析 |
 
 ## 合规率评测（M0 的 go / no-go）

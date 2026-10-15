@@ -16,8 +16,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { describeError } from "../../../src/api/client.ts";
-import type { Scenario } from "../../../src/api/types.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import type { Scenario } from "@bettertavern/core/api/types";
+import { headTurn } from "@bettertavern/core/play/turnMachine";
+import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
+
 import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
 import { BottomBar } from "../../../src/features/play/BottomBar.tsx";
 import { MoreSheet } from "../../../src/features/play/MoreSheet.tsx";
@@ -28,14 +31,12 @@ import {
   type StoryFeedHandle,
 } from "../../../src/features/play/StoryFeed.tsx";
 import { TurnActions } from "../../../src/features/play/TurnActions.tsx";
-import { headTurn } from "../../../src/features/play/turnMachine.ts";
 import { usePlaySession } from "../../../src/features/play/usePlaySession.ts";
 import { WorldDock, WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
 import { useLayout } from "../../../src/hooks/useLayout.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../../src/state/PrefsProvider.tsx";
 import { radius, space, usePalette } from "../../../src/theme/index.ts";
-import { pane, readingWidth, worldPresentation } from "../../../src/theme/layout.ts";
 
 function OpeningSkeleton() {
   const palette = usePalette();

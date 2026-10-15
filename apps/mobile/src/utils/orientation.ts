@@ -7,7 +7,7 @@
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Dimensions } from "react-native";
 
-import { locksPortrait } from "../theme/layout.ts";
+import { locksPortrait } from "@bettertavern/design/layout";
 
 export function lockPhonesToPortrait(): void {
   if (!locksPortrait(Dimensions.get("screen"))) return;

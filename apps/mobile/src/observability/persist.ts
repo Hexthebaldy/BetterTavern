@@ -5,7 +5,7 @@
 
 import { File, Paths } from "expo-file-system";
 
-import { diagnostics, type DiagnosticsLog } from "./log.ts";
+import { diagnostics, type DiagnosticsLog } from "@bettertavern/core/observability/log";
 
 const FILE_NAME = "diagnostics.jsonl";
 

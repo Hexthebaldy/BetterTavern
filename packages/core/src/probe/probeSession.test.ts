@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { FetchLike, ResponseLike } from "../../api/sse/sseClient.ts";
+import type { FetchLike, ResponseLike } from "../api/sse/sseClient.ts";
 import { ProbeSession, percentile, type ProbeDeps } from "./probeSession.ts";
 
 const encoder = new TextEncoder();

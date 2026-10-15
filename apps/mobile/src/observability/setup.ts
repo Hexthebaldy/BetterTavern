@@ -6,8 +6,9 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
+import { diagnostics, type LogEntry } from "@bettertavern/core/observability/log";
+
 import { CLIENT_VERSION } from "../config.ts";
-import { diagnostics, type LogEntry } from "./log.ts";
 import { flushDiagnostics, startDiagnosticsPersistence } from "./persist.ts";
 
 type GlobalHandler = (error: unknown, isFatal?: boolean) => void;

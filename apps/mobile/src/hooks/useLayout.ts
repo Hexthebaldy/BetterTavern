@@ -5,7 +5,7 @@
 
 import { useWindowDimensions } from "react-native";
 
-import { sizeClass, type SizeClass } from "../theme/layout.ts";
+import { sizeClass, type SizeClass } from "@bettertavern/design/layout";
 
 export type Layout = {
   width: number;

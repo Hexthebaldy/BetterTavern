@@ -1,6 +1,6 @@
 /** 测试用的回合构造器（只在 *.test.ts 里用） */
 
-import type { Turn, TurnOption } from "../../api/types.ts";
+import type { Turn, TurnOption } from "../api/types.ts";
 
 let counter = 0;
 

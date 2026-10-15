@@ -7,10 +7,11 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
-import type { WorldEntity, WorldView } from "../../api/types.ts";
+import type { WorldEntity, WorldView } from "@bettertavern/core/api/types";
+import { layoutGraph, NODE_HEIGHT, relLabel } from "@bettertavern/core/play/worldGraph";
+
 import { Chip, Icon, Pill, useSheetSurfaces, type IconName } from "../../components/ui.tsx";
 import { onColor, radius, space, useIsDark, usePalette } from "../../theme/index.ts";
-import { layoutGraph, NODE_HEIGHT, relLabel } from "./worldGraph.ts";
 
 export type Tab = "entities" | "links" | "facts";
 type Filter = "all" | "character" | "location" | "item" | "organization";

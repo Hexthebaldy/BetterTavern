@@ -8,11 +8,13 @@ M1 的客户端：登录注册、剧本库与角色卡导入、故事列表、�
 
 需要 Node 22.18 或更新版本（测试直接运行 TypeScript）。
 
+手机端和 `packages/`（和网页端共用的纯逻辑、设计数据）是同一个 npm 工作区，依赖装在仓库根目录，锁文件也在根目录：
+
 ```bash
-cd apps/mobile
-npm install        # 装 package.json 里的依赖（含 M1 新增的 expo-secure-store、expo-document-picker、@types/node）
-npm run setup      # 可选：用 expo install 按 SDK 版本对齐各个 Expo 模块的版本
+npm install
 ```
+
+可选：在 `apps/mobile` 下 `npm run setup`，用 expo install 按 SDK 版本对齐各个 Expo 模块的版本。
 
 `expo-secure-store` 与 `expo-document-picker` 都包含在 Expo Go 里，不需要重新打开发版 App。
 
@@ -35,15 +37,21 @@ npm run setup      # 可选：用 expo install 按 SDK 版本对齐各个 Expo �
 
 ## 测试
 
+在仓库根目录：
+
 ```bash
-npm test           # node --test：SSE 解析与重连、回合状态机、PlaySession、令牌刷新、接口客户端
+npm test
+```
+
+```bash
 npm run typecheck
 ```
 
-这些纯逻辑只用标准 Web API（fetch、TextDecoder、ReadableStream、AbortController），不依赖 RN，
+`npm test` 跑所有工作区的 `node --test`：SSE 解析与重连、回合状态机、PlaySession、令牌刷新、接口客户端在 `packages/core`，
+布局和主题在 `packages/design`。这些纯逻辑只用标准 Web API（fetch、TextDecoder、ReadableStream、AbortController），不依赖 RN，
 所以用 Node 自带的测试运行器就能测。界面组件还没有自动化测试。
 
-在电脑上可以用同一套探针逻辑先排除服务端和代理的问题：
+在电脑上可以用同一套探针逻辑先排除服务端和代理的问题（在 `apps/mobile` 下）：
 
 ```bash
 npm run probe -- http://localhost:8000 20

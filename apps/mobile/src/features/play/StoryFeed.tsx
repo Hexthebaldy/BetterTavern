@@ -37,12 +37,19 @@ import {
   type TextStyle,
 } from "react-native";
 
+import { readableColumn } from "@bettertavern/design/layout";
+import {
+  BASE_SIZE,
+  lineHeightFor,
+  MAX_SIZE,
+  readingSize,
+  type ReadingPrefs,
+} from "@bettertavern/core/play/reading";
+import type { PendingTurn, Phase, PlayState, StoryTurn } from "@bettertavern/core/play/turnMachine";
+
 import { Cover } from "../../components/Cover.tsx";
 import { Icon, Pill } from "../../components/ui.tsx";
 import { font, radius, size, space, usePalette } from "../../theme/index.ts";
-import { readableColumn } from "../../theme/layout.ts";
-import { BASE_SIZE, lineHeightFor, MAX_SIZE, readingSize, type ReadingPrefs } from "./reading.ts";
-import type { PendingTurn, Phase, PlayState, StoryTurn } from "./turnMachine.ts";
 
 type Item = { key: string; turn: StoryTurn } | { key: "pending"; pending: PendingTurn };
 

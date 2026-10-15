@@ -7,9 +7,6 @@
 import { useRef, useState, type RefObject } from "react";
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 
-import { MenuGroup, MenuItem, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
-import { usePrefs } from "../../state/PrefsProvider.tsx";
-import { font, onColor, space, usePalette } from "../../theme/index.ts";
 import {
   lineHeightFor,
   READING_SIZES,
@@ -17,7 +14,11 @@ import {
   sizeIndex,
   stepSize,
   type ReadingFont,
-} from "./reading.ts";
+} from "@bettertavern/core/play/reading";
+
+import { MenuGroup, MenuItem, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
+import { usePrefs } from "../../state/PrefsProvider.tsx";
+import { font, onColor, space, usePalette } from "../../theme/index.ts";
 
 /** 字号轨道两头的留白 */
 const TRACK_PADDING = 14;

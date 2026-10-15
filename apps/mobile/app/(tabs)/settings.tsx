@@ -10,8 +10,12 @@
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { describeError } from "../../src/api/client.ts";
-import type { ModelRoute } from "../../src/api/types.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import type { ModelRoute } from "@bettertavern/core/api/types";
+import { MODEL_STATUS, WINDOW_SOURCE } from "@bettertavern/core/settings/labels";
+import { centerColumn, pane, rail, tabInsets } from "@bettertavern/design/layout";
+import { formatTokens } from "@bettertavern/core/utils/format";
+
 import {
   Button,
   Group,
@@ -27,7 +31,6 @@ import {
 } from "../../src/components/ui.tsx";
 import { CLIENT_VERSION } from "../../src/config.ts";
 import { AppearanceSheet } from "../../src/features/settings/AppearanceSheet.tsx";
-import { MODEL_STATUS, WINDOW_SOURCE } from "../../src/features/settings/labels.ts";
 import { useSettingsNav, type SettingsTarget } from "../../src/features/settings/nav.tsx";
 import { displayServer } from "../../src/features/settings/servers.ts";
 import { SettingsPane } from "../../src/features/settings/SettingsPane.tsx";
@@ -36,8 +39,6 @@ import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
 import { font, settingLabel, space, usePalette } from "../../src/theme/index.ts";
-import { centerColumn, pane, rail, tabInsets } from "../../src/theme/layout.ts";
-import { formatTokens } from "../../src/utils/format.ts";
 
 /**
  * 导演模型卡片。手机和中屏是墨色的；宽屏两栏的左栏里换成浅灰（light），右栏打开着它时白底加蓝色内描边。

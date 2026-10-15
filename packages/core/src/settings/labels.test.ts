@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { ModelInfo, ModelRoute, RouteWindow } from "../../api/types.ts";
+import type { ModelInfo, ModelRoute, RouteWindow } from "../api/types.ts";
 import { manualWindowChoice, modelTitle, needsManualWindow, windowNote } from "./labels.ts";
 
 function route(id: string, provider: string, last4: string, shares: string[] = [], label = ""): ModelRoute {

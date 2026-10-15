@@ -11,8 +11,8 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { Appearance, useColorScheme } from "react-native";
 
-import type { Palette } from "./palettes.ts";
-import { resolveTheme, THEMES, type ThemeDef, type ThemeSetting } from "./themes.ts";
+import type { Palette } from "@bettertavern/design/palettes";
+import { resolveTheme, THEMES, type ThemeDef, type ThemeSetting } from "@bettertavern/design/themes";
 
 const ThemeContext = createContext<ThemeDef | null>(null);
 /** 根上的主题（没有被 RaisedSurface 换过色板） */

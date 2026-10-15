@@ -5,7 +5,7 @@
 
 import * as SecureStore from "expo-secure-store";
 
-import { parseStoredSession, type SessionStorage, type StoredSession } from "../auth/session.ts";
+import { parseStoredSession, type SessionStorage, type StoredSession } from "@bettertavern/core/auth/session";
 
 const SESSION_KEY = "bt.session";
 const SERVER_KEY = "bt.server";

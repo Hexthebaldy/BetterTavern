@@ -21,7 +21,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 
 | 画板 | 截图 | 对应代码 |
 | --- | --- | --- |
-| 布局系统：断点、导航、栏宽、浮层、阅读页、网格 | `TabletSystem.png` | `layout.ts`（App 里是 `src/theme/layout.ts`），以及下文“实现要点” |
+| 布局系统：断点、导航、栏宽、浮层、阅读页、网格 | `TabletSystem.png` | `layout.ts`（App 里是 `packages/design/src/layout.ts`），以及下文“实现要点” |
 | T01 宽屏登录（左右分栏）· T02 中屏注册 + 服务器对话框 | `TabletAuth.png` | `app/(auth)/*`、`src/components/ServerSetting.tsx` |
 | T03 宽屏故事网格 + 长按菜单 · T04 中屏深色两列 | `TabletStories.png` | `app/(tabs)/playthroughs.tsx`、`src/components/bars.tsx` |
 | T05 宽屏阅读空闲（选项两列）· T06 生成中 + 世界状态停靠 · T07 中屏阅读 | `TabletPlay.png` | `app/play/[id]/index.tsx`、`src/features/play/*` |

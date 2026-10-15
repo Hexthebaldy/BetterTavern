@@ -35,10 +35,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { overlayPresentation, pane, popoverFrame, type OverlayKind } from "@bettertavern/design/layout";
+
 import { useKeyboardLift } from "../hooks/useKeyboardLift.ts";
 import { useLayout } from "../hooks/useLayout.ts";
 import { BaseSurface, radius, space, useIsDark, usePalette } from "../theme/index.ts";
-import { overlayPresentation, pane, popoverFrame, type OverlayKind } from "../theme/layout.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { IconButton } from "./primitives.tsx";
 

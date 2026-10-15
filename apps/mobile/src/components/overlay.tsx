@@ -22,9 +22,10 @@ import {
 import { Animated, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { cardMenuFrame, toastFrame } from "@bettertavern/design/layout";
+
 import { useLayout } from "../hooks/useLayout.ts";
 import { BaseSurface, radius, space, useIsDark, usePalette } from "../theme/index.ts";
-import { cardMenuFrame, toastFrame } from "../theme/layout.ts";
 import { tabBarTop } from "./bars.tsx";
 import { Dialog, type DialogTone } from "./dialog.tsx";
 import { Icon, type IconName } from "./icons.tsx";

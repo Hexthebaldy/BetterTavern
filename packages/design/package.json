@@ -1,0 +1,18 @@
+{
+  "name": "@bettertavern/design",
+  "version": "0.1.0",
+  "private": true,
+  "description": "手机端和网页端共用的设计数据：色板、主题、尺寸 token、断点与布局函数、图标、封面、标志",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "node --test --experimental-strip-types",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "~6.0.3"
+  }
+}

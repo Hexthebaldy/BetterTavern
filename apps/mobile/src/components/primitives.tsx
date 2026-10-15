@@ -25,9 +25,10 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { pane } from "@bettertavern/design/layout";
+
 import { useLayout } from "../hooks/useLayout.ts";
 import { font, onColor, radius, size, space, type, usePalette } from "../theme/index.ts";
-import { pane } from "../theme/layout.ts";
 import { Icon, type IconName } from "./icons.tsx";
 
 // ---- 页面 -------------------------------------------------------------------------------

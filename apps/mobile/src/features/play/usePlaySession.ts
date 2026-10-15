@@ -8,12 +8,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 
-import type { NewAction } from "../../api/types.ts";
-import { diagnostics } from "../../observability/log.ts";
+import type { NewAction } from "@bettertavern/core/api/types";
+import { diagnostics } from "@bettertavern/core/observability/log";
+import { newIdempotencyKey } from "@bettertavern/core/utils/ids";
+import { PlaySession } from "@bettertavern/core/play/playSession";
+import { initialPlayState, type PlayState } from "@bettertavern/core/play/turnMachine";
+
 import { useApp } from "../../state/AppProvider.tsx";
-import { newIdempotencyKey } from "../../utils/ids.ts";
-import { PlaySession } from "./playSession.ts";
-import { initialPlayState, type PlayState } from "./turnMachine.ts";
 
 export type PlayControls = {
   state: PlayState;

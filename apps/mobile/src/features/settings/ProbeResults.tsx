@@ -4,11 +4,12 @@
 
 import { StyleSheet, Text, View } from "react-native";
 
-import type { ProbeReport } from "../../api/types.ts";
+import type { ProbeReport } from "@bettertavern/core/api/types";
+import { formatRelative } from "@bettertavern/core/utils/format";
+import { CHECK_NAMES, checkCounts } from "@bettertavern/core/settings/labels";
+
 import { Icon, Notice, SectionHeader } from "../../components/ui.tsx";
 import { font, onColor, space, usePalette } from "../../theme/index.ts";
-import { formatRelative } from "../../utils/format.ts";
-import { CHECK_NAMES, checkCounts } from "./labels.ts";
 
 function Mark({ ok }: { ok: boolean | null }) {
   const palette = usePalette();

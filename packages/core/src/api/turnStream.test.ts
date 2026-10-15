@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { PlaySession } from "../features/play/playSession.ts";
-import { makeTurn } from "../features/play/testing.ts";
+import { PlaySession } from "../play/playSession.ts";
+import { makeTurn } from "../play/testing.ts";
 import { sseTurnConnector } from "./turnStream.ts";
 import type { FetchLike } from "./sse/sseClient.ts";
 

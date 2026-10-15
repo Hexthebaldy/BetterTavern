@@ -35,7 +35,7 @@ App 用到的图标文件已经放在 `apps/mobile/assets/`，见下面的“App
 | 内核 | 边长 26，实心 |
 | 尖角 | 直角斜接（miter），不做圆角 |
 
-精确坐标以 `svg/logo.svg` 为准。`apps/mobile/src/components/Logo.tsx` 里的四条路径和它完全一致。
+精确坐标以 `svg/logo.svg` 为准。`packages/design/src/logo.ts` 里的四条路径和它完全一致（手机端和网页端都从这里取）。
 
 ## 颜色
 
@@ -70,7 +70,7 @@ App 图标原稿按主屏尺寸调过，用的是 ×1.35。`Logo` 组件会根�
 
 已经接好的部分：
 
-- **`apps/mobile/src/components/Logo.tsx`：** 换成了新标志，接口不变（`<Logo size={…} />`）。用到它的地方：
+- **`apps/mobile/src/components/Logo.tsx`：** 换成了新标志，接口不变（`<Logo size={…} />`），几何在 `packages/design/src/logo.ts`。用到它的地方：
   - 恢复登录状态时的闪屏 `app/index.tsx`，56；
   - 登录页，48；
   - 宽屏登录的插画区，40；

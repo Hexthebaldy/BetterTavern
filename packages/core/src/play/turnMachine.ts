@@ -6,7 +6,7 @@
  * 见 docs/client.md 第 1 节。
  */
 
-import type { NewAction, Turn, TurnAction, TurnError, TurnEvent, TurnOption } from "../../api/types.ts";
+import type { NewAction, Turn, TurnAction, TurnError, TurnEvent, TurnOption } from "../api/types.ts";
 
 export type Phase =
   | "loading"

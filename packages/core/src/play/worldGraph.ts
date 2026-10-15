@@ -3,7 +3,7 @@
  * 只画出现在关系里的实体，最多 8 个（主角一定在）。纯函数，坐标以画布左上角为原点。
  */
 
-import type { WorldEntity } from "../../api/types.ts";
+import type { WorldEntity } from "../api/types.ts";
 
 export type GraphNode = {
   id: string;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { WorldEntity } from "../../api/types.ts";
+import type { WorldEntity } from "../api/types.ts";
 import { layoutGraph, nodeWidth, relLabel } from "./worldGraph.ts";
 
 function entity(id: string, name: string, extra: Partial<WorldEntity> = {}): WorldEntity {

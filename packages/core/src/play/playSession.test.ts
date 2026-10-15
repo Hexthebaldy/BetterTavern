@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { ApiError } from "../../api/client.ts";
-import type { NewAction, PlaythroughDetail, Turn, TurnEvent } from "../../api/types.ts";
-import type { StreamOutcome, TurnStream, TurnStreamHandlers } from "../../api/turnStream.ts";
+import { ApiError } from "../api/client.ts";
+import type { NewAction, PlaythroughDetail, Turn, TurnEvent } from "../api/types.ts";
+import type { StreamOutcome, TurnStream, TurnStreamHandlers } from "../api/turnStream.ts";
 import { PlaySession, type PlayApi } from "./playSession.ts";
 import { makeTurn, opts } from "./testing.ts";
 import { headTurn } from "./turnMachine.ts";

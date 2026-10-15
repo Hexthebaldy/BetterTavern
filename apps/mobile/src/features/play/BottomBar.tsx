@@ -18,12 +18,13 @@ import { useEffect, useRef, useState, type Ref } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { actionPanelFrame } from "@bettertavern/design/layout";
+import { canAct, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
+
 import { Icon, IconButton, PageSurfaces, useSheetSurfaces, type IconName } from "../../components/ui.tsx";
 import { useKeyboardLift } from "../../hooks/useKeyboardLift.ts";
 import { space, usePalette } from "../../theme/index.ts";
-import { actionPanelFrame } from "../../theme/layout.ts";
 import { FreeInput } from "./ActionParts.tsx";
-import { canAct, isLive, needsOpening, type PlayState } from "./turnMachine.ts";
 import type { PlayControls } from "./usePlaySession.ts";
 
 type Props = {

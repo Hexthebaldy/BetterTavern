@@ -6,8 +6,8 @@
  * 第二个参数是时长（秒）；跑到 40% 时会主动断开一次连接，验证 Last-Event-ID 续传。
  */
 
-import { DEFAULT_PROBE_CONFIG, ProbeSession } from "../src/features/probe/probeSession.ts";
-import type { FetchLike } from "../src/api/sse/sseClient.ts";
+import { DEFAULT_PROBE_CONFIG, ProbeSession } from "@bettertavern/core/probe/probeSession";
+import type { FetchLike } from "@bettertavern/core/api/sse/sseClient";
 
 const baseUrl = process.argv[2] ?? "http://localhost:8000";
 const durationS = Number(process.argv[3] ?? 20);

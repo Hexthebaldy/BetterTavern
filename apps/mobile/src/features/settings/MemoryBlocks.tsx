@@ -6,11 +6,12 @@
 import { useState } from "react";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
-import type { ModelRoute } from "../../api/types.ts";
+import type { ModelRoute } from "@bettertavern/core/api/types";
+import { formatTokens } from "@bettertavern/core/utils/format";
+import { WINDOW_SOURCE } from "@bettertavern/core/settings/labels";
+import { choiceTokens, windowBlocks, type WindowChoice } from "@bettertavern/core/settings/window";
+
 import { font, space, usePalette } from "../../theme/index.ts";
-import { formatTokens } from "../../utils/format.ts";
-import { WINDOW_SOURCE } from "./labels.ts";
-import { choiceTokens, windowBlocks, type WindowChoice } from "./window.ts";
 
 const COLUMNS = 16;
 const GAP = 4;

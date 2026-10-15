@@ -13,8 +13,10 @@ import { useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ApiError, describeError } from "../../src/api/client.ts";
-import type { Scenario } from "../../src/api/types.ts";
+import { ApiError, describeError } from "@bettertavern/core/api/client";
+import type { Scenario } from "@bettertavern/core/api/types";
+import { pane } from "@bettertavern/design/layout";
+
 import { Cover } from "../../src/components/Cover.tsx";
 import {
   BackBar,
@@ -34,7 +36,6 @@ import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { font, radius, size, space, type, usePalette } from "../../src/theme/index.ts";
-import { pane } from "../../src/theme/layout.ts";
 
 /** 角色卡里可能被截断的字段 */
 const FIELD_NAMES: Record<string, string> = {

@@ -6,9 +6,10 @@
 import { useSyncExternalStore } from "react";
 import { Share, StyleSheet, Text, View } from "react-native";
 
+import { diagnostics, exportText } from "@bettertavern/core/observability/log";
+
 import { Button, SectionHeader, useOverlay } from "../../components/ui.tsx";
 import { CLIENT_VERSION } from "../../config.ts";
-import { diagnostics, exportText } from "../../observability/log.ts";
 import { platformLabel } from "../../observability/setup.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { space, usePalette } from "../../theme/index.ts";

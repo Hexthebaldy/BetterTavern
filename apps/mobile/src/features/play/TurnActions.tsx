@@ -11,13 +11,20 @@
 import type { ReactNode } from "react";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
+import { optionColumns } from "@bettertavern/design/layout";
+import {
+  canAct,
+  canRetry,
+  headTurn,
+  needsOpening,
+  type PlayState,
+} from "@bettertavern/core/play/turnMachine";
+
 import { Button, Icon, PageSurfaces, useSheetSurfaces } from "../../components/ui.tsx";
 import { useLayout } from "../../hooks/useLayout.ts";
 import { radius, space, usePalette } from "../../theme/index.ts";
-import { optionColumns } from "../../theme/layout.ts";
 import { OptionRow } from "./ActionParts.tsx";
 import { columnWidth } from "./StoryFeed.tsx";
-import { canAct, canRetry, headTurn, needsOpening, type PlayState } from "./turnMachine.ts";
 import type { PlayControls } from "./usePlaySession.ts";
 
 /** 平板两列选项的最小高度 */

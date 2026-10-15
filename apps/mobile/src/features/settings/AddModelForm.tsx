@@ -7,13 +7,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { describeError } from "../../api/client.ts";
-import type { ModelInfo, ModelRoute, Provider } from "../../api/types.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import type { ModelInfo, ModelRoute, Provider } from "@bettertavern/core/api/types";
+import { MANUAL_WINDOW_CHOICES, needsManualWindow, providerMark } from "@bettertavern/core/settings/labels";
+
 import { KeyField, ProviderMark } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, SectionHeader, Segmented } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { space, usePalette } from "../../theme/index.ts";
-import { MANUAL_WINDOW_CHOICES, needsManualWindow, providerMark } from "./labels.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
 
 function ProviderTile({

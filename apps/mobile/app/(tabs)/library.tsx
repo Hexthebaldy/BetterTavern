@@ -14,8 +14,10 @@ import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 
-import { describeError } from "../../src/api/client.ts";
-import type { Scenario } from "../../src/api/types.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import type { Scenario } from "@bettertavern/core/api/types";
+import { cellWidth, centerColumn, gap, libraryColumns, tabInsets } from "@bettertavern/design/layout";
+
 import { SwipeRow } from "../../src/components/SwipeRow.tsx";
 import {
   ErrorState,
@@ -40,7 +42,6 @@ import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
 import { radius, space, usePalette } from "../../src/theme/index.ts";
-import { cellWidth, centerColumn, gap, libraryColumns, tabInsets } from "../../src/theme/layout.ts";
 
 const MAX_BYTES = 16 * 1024 * 1024;
 

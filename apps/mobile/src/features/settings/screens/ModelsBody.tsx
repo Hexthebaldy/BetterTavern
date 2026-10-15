@@ -6,8 +6,11 @@
 
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { describeError } from "../../../api/client.ts";
-import type { ModelRoute } from "../../../api/types.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import type { ModelRoute } from "@bettertavern/core/api/types";
+import { formatTokens } from "@bettertavern/core/utils/format";
+import { MODEL_STATUS, modelTitle, providerMark, statusKind } from "@bettertavern/core/settings/labels";
+
 import { ProviderMark } from "../../../components/KeyParts.tsx";
 import {
   ErrorState,
@@ -23,9 +26,7 @@ import {
 import { useAsync } from "../../../hooks/useAsync.ts";
 import { useApp } from "../../../state/AppProvider.tsx";
 import { font, space, usePalette } from "../../../theme/index.ts";
-import { formatTokens } from "../../../utils/format.ts";
 import { AddModelForm } from "../AddModelForm.tsx";
-import { MODEL_STATUS, modelTitle, providerMark, statusKind } from "../labels.ts";
 import { SettingsBack, useSettingsNav } from "../nav.tsx";
 
 function ModelRow({ route, onPress }: { route: ModelRoute; onPress: () => void }) {

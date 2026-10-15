@@ -13,5 +13,6 @@
 .git
 .github
 apps/mobile
+packages
 apps/server/evals/reports
 docs

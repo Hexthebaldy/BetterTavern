@@ -24,7 +24,7 @@
 
 **密钥处理**：玩家在设置页输入 API Key，经 TLS 一次性发给服务端；输入框是只写的，之后界面只显示后四位。客户端不在设备上保存模型密钥，丢设备不会泄露它们。
 
-### 流式：`SseClient`（`src/api/sse.ts`）
+### 流式：`SseClient`（`packages/core/src/api/sse/`）
 
 Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body.getReader()` 读取流，并给出了带 `Accept: text/event-stream` 的示例（文档对应 SDK 57）。文档没有明确承诺真机上长连接 SSE 的表现，所以这条放进 M0 探针，通过之前不动工后面的界面。
 
@@ -36,7 +36,7 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 
 **M0 探针的验收标准**：iOS 与 Android 真机，Wi-Fi 与蜂窝网络，各跑一次 3 分钟以上的长流；中文无乱码；中途断网再恢复后用 `Last-Event-ID` 续传，拼出的文本与最终叙述一致；服务端发出到屏幕上出现的延迟 p95 小于 300 毫秒。
 
-### 回合状态机（`features/play/turnMachine.ts`，纯 reducer，可单测）
+### 回合状态机（`packages/core/src/play/turnMachine.ts`，纯 reducer，可单测）
 
 | 状态 | 事件 | 下一状态 | 界面表现 |
 | --- | --- | --- | --- |
@@ -122,8 +122,8 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | 设计 | M1 的做法 | 补齐时间 |
 | --- | --- | --- |
 | TanStack Query 管服务端数据 | `src/hooks/useAsync.ts`：进入或回到页面时取一次，可下拉刷新 | 页面变多、需要缓存与失效时（M2） |
-| Zustand 管登录态与回合状态 | 登录态在 `src/auth/session.ts`（`SessionManager`，经 `useSyncExternalStore` 接入 React）；回合状态由 `PlaySession` 持有，`usePlaySession` 订阅 | 需要跨页面共享的界面状态时 |
-| `openapi-fetch` 加生成的类型 | `src/api/client.ts` 的 `ApiClient`（带令牌、401 时刷新一次再重试、problem+json 转 `ApiError`、超时）加手写的 `types.ts` 与 `endpoints.ts`。字段与 [api/](api/README.md) 里各领域的请求和响应模型一一对应，改接口时一起改 | 契约工具链接入时 |
+| Zustand 管登录态与回合状态 | 登录态在 `packages/core/src/auth/session.ts`（`SessionManager`，经 `useSyncExternalStore` 接入 React）；回合状态由 `PlaySession` 持有，`usePlaySession` 订阅 | 需要跨页面共享的界面状态时 |
+| `openapi-fetch` 加生成的类型 | `packages/core/src/api/client.ts` 的 `ApiClient`（带令牌、401 时刷新一次再重试、problem+json 转 `ApiError`、超时）加手写的 `types.ts` 与 `endpoints.ts`。字段与 [api/](api/README.md) 里各领域的请求和响应模型一一对应，改接口时一起改 | 契约工具链接入时 |
 | FlashList | `FlatList`：已完成的回合用 `memo` 固定，只有生成中的那一段重渲染 | 故事很长、出现卡顿时 |
 | expo-sqlite 本地缓存 | 不缓存，打开故事时整条拉取（分页，每页 200 回合） | M2 |
 | i18n | 界面文字直接写在组件里（只有中文） | 加英文时 |
@@ -153,7 +153,7 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、模型数，输入密码确认） |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
 
-界面按 [design/ui/](design/ui/README.md) 的设计稿实现（“白 / 柔线 / 大圆角”，第一版正式界面；交互规则也在那份 README 里）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `src/theme/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）。和设计稿不同：
+界面按 [design/ui/](design/ui/README.md) 的设计稿实现（“白 / 柔线 / 大圆角”，第一版正式界面；交互规则也在那份 README 里）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `packages/design/src/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）。和设计稿不同：
 阅读页的选项不再放在固定于底部的行动面板里（它在手机上长期盖住小半屏正文），而是接在故事流末尾（`TurnActions.tsx`），跟着正文滚动；
 底部只留一条贴边的操作栏（`BottomBar.tsx`，iPhone 上连同安全区约 80pt，故事流的底部按它的高度留白）：左边世界状态，右边“更多”，
 中间按状态换成“自己写…”（点了原地展开成输入框，跟着键盘浮起）、生成中的状态和“停止”、同步中的提示；
@@ -168,7 +168,7 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
   Expo 会把 `UISupportedInterfaceOrientations~ipad` 填成四个方向）。iPhone 用 `ios.infoPlist` 只给竖屏，
   启动时再按屏幕短边（< 600 是手机）用 `expo-screen-orientation` 锁竖屏，管住 Android 手机和 Expo Go（`src/utils/orientation.ts`）。
   所有 `Modal` 都要声明支持全部方向，否则 iPad 横着打开面板会被转回竖屏（`MODAL_ORIENTATIONS`）。
-- 断点只看窗口宽度（`useWindowDimensions().width`，见 `src/theme/layout.ts` 和 `src/hooks/useLayout.ts`），不判断设备型号或横竖屏：
+- 断点只看窗口宽度（`useWindowDimensions().width`，见 `packages/design/src/layout.ts` 和 `src/hooks/useLayout.ts`），不判断设备型号或横竖屏：
   < 600 是手机布局；600–899 内容收进居中单栏（≤ 640），Tab 栏仍在底部、宽 392 居中；≥ 900 左侧浮动导航栏，设置和剧本详情两栏；
   阅读页 ≥ 1100 时世界状态停靠在右侧。旋转、分屏拖动时只换布局，页面不卸载，草稿、滚动位置、打开的故事都保留。
 - 浮层（`components/sheet.tsx`）：底部面板在平板上换成居中对话框（≤ 480）；阅读页“更多”贴着按钮弹出；世界状态从右侧滑出；
@@ -182,37 +182,58 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 
 ### 目录（实际）
 
+手机端和网页端共用的纯 TypeScript 放在 `packages/`（npm 工作区，仓库根目录的 `package.json` 登记）。包里只有逻辑和数据：
+不 import React、React Native、Expo 或浏览器专属的接口，用到的平台能力（令牌存储、`fetch`、当前时间）由调用方传进来。
+导入写成 `@bettertavern/core/api/client`：包的 `exports` 把 `./*` 指到 `src/*.ts`，直接用源码、不预先编译，Metro、Vite 和
+`node --experimental-strip-types` 都能读。所以包里只能用“去掉类型就是 JavaScript”的写法（不用 enum、namespace），
+类型导入写 `import type`（`tsconfig.base.json` 的 `erasableSyntaxOnly`、`verbatimModuleSyntax` 会检查）。
+
 ```
+packages/
+├── core/src/                  # @bettertavern/core
+│   ├── api/      client.ts  endpoints.ts  types.ts  events.ts  turnStream.ts  sse/（SseParser、SseClient）
+│   ├── auth/     session.ts                # SessionManager：令牌、单飞刷新
+│   ├── play/     turnMachine.ts  playSession.ts  reading.ts  worldGraph.ts  testing.ts（测试用的回合样本）
+│   ├── scenario/ startForm.ts              # 开始新故事的内置选项与拼接
+│   ├── settings/ labels.ts  window.ts      # 模型状态、窗口来源的文案；“能记住多少”的格子
+│   ├── probe/    probeSession.ts           # 连接测试
+│   ├── observability/ log.ts  requests.ts  # 诊断日志：脱敏、请求记录
+│   └── utils/    format.ts  ids.ts
+└── design/src/                # @bettertavern/design
+    ├── palettes.ts  themes.ts              # 色板（浅色、深色）与主题表（浅色、夜间）
+    ├── tokens.ts                           # 圆角、字号、间距、控件尺寸（不随主题变）
+    ├── layout.ts                           # 平板断点、栏宽、列数和浮层形态
+    └── icons.ts  cover.ts  logo.ts         # 图标路径、几何封面的图形、标志的几何：只有数据，两端各自画
+
 apps/mobile/
 ├── app/                       # 路由，见上表；_layout.tsx 里按登录状态切换可访问的页面
 └── src/
-    ├── api/      client.ts  endpoints.ts  types.ts  events.ts  turnStream.ts  sse/（SseParser、SseClient）
-    ├── auth/     session.ts                # SessionManager：令牌、单飞刷新
+    ├── config.ts                           # 版本号、默认服务器地址
     ├── state/    AppProvider.tsx           # 组装 ApiClient、会话、事件流连接；useApp()
     │             PrefsProvider.tsx         # 设备上的界面偏好：最近用过的服务器、阅读设置、剧本库视图、外观
     ├── storage/  secure.ts                 # expo-secure-store（令牌、服务器地址、界面偏好）
     ├── features/
-    │   ├── play/     turnMachine.ts  playSession.ts  usePlaySession.ts  StoryFeed.tsx  TurnActions.tsx  BottomBar.tsx
-    │   │             ActionParts.tsx  WorldSheet.tsx  WorldParts.tsx  worldGraph.ts  MoreSheet.tsx  reading.ts
+    │   ├── play/     usePlaySession.ts  StoryFeed.tsx  TurnActions.tsx  BottomBar.tsx
+    │   │             ActionParts.tsx  WorldSheet.tsx  WorldParts.tsx  MoreSheet.tsx
     │   ├── stories/  StoryCards.tsx                   # 平板的故事卡片（网格小卡、主卡）
     │   ├── library/  LibraryParts.tsx                 # 剧本库的卡片、列表行、空状态
-    │   ├── scenario/ StartForm.tsx  startForm.ts      # 开始新故事的表单与内置选项
-    │   ├── settings/ labels.ts  servers.ts  window.ts  AddModelForm.tsx  ModelPicker.tsx  ModelSheets.tsx
-    │   │             MemoryBlocks.tsx  ProbeResults.tsx  nav.tsx  SettingsPane.tsx
+    │   ├── scenario/ StartForm.tsx                    # 开始新故事的表单
+    │   ├── settings/ servers.ts  AddModelForm.tsx  ModelPicker.tsx  ModelSheets.tsx
+    │   │             MemoryBlocks.tsx  ProbeResults.tsx  AppearanceSheet.tsx  nav.tsx  SettingsPane.tsx
     │   │             screens/（模型列表、模型详情、账户的页面主体）
-    │   └── probe/    probeSession.ts  DiagnosticsCard.tsx  ProbeBody.tsx   # 连接测试；诊断日志的导出和清空
+    │   └── probe/    DiagnosticsCard.tsx  ProbeBody.tsx   # 连接测试；诊断日志的导出和清空
     ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  sheet  overlay  dialog  icons
     │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx  AuthLayout.tsx
     ├── hooks/      useAsync.ts  useKeyboardLift.ts  useLayout.ts
-    ├── observability/ log.ts  requests.ts  persist.ts  setup.ts   # 诊断日志：脱敏、请求记录、存文件、启动时安装
-    ├── theme/      index.ts                # 设计 token：圆角、字号、间距、字体族；色板和主题表的出口
-    │               palettes.ts  themes.ts  # 色板（浅色、深色）与主题表（浅色、夜间）；ThemeProvider.tsx 提供 usePalette()
-    │               layout.ts               # 平板断点、栏宽、列数和浮层形态（纯函数）
-    └── utils/      format.ts  ids.ts  orientation.ts
+    ├── observability/ persist.ts  setup.ts  # 诊断日志存文件、启动时安装
+    ├── theme/      index.ts                # 设计 token 的出口：共用的色板、主题表和 tokens，加上字体族
+    │               ThemeProvider.tsx       # usePalette()、RaisedSurface
+    └── utils/      orientation.ts
 ```
 
-`*.test.ts` 与被测文件放在一起，`npm test`（`node --test`）运行：SSE 解析与重连、回合状态机、`PlaySession`（加载、幂等重试、409 的处理、续传、轮询）、
-`SessionManager`、`ApiClient`，以及界面背后的纯逻辑（最近服务器、阅读字号、开始表单的拼接、窗口格子、关系图布局、数字格式、平板断点与栏宽）。
+`*.test.ts` 与被测文件放在一起，在仓库根目录 `npm test`（各工作区的 `node --test`）运行。`packages/core`：SSE 解析与重连、回合状态机、
+`PlaySession`（加载、幂等重试、409 的处理、续传、轮询）、`SessionManager`、`ApiClient`、诊断日志，以及开始表单的拼接、窗口格子、
+关系图布局、阅读字号、数字格式；`packages/design`：平板断点与栏宽、主题、几何封面；`apps/mobile`：最近用过的服务器。
 
 **字体**：界面用系统黑体，不打包；等宽字用 `@expo-google-fonts/ibm-plex-mono`；叙述用思源宋体的 GB2312 子集（`assets/fonts/NotoSerifSC-Regular.ttf`，约 3.2 MB，OFL 许可）。
 子集的字符表由 `scripts/font-subset-chars.py` 生成，再用 fonttools 的 `pyftsubset` 从完整字体裁出；GB2312 以外的生僻字退回系统字体显示。

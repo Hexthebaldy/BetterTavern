@@ -4,7 +4,7 @@ VIS := apps/vis
 COMPOSE := docker compose -f deploy/docker-compose.dev.yml
 TEST_DB := postgresql://bettertavern:bettertavern@localhost:5432/bettertavern
 
-.PHONY: install dev worker migrate db-up db-down test test-integration lint fmt mobile-install mobile-test vis-install vis vis-test eval-director
+.PHONY: install dev worker migrate db-up db-down test test-integration lint fmt js-install js-test js-typecheck mobile-install vis-install vis vis-test eval-director
 
 install:
 	cd $(SERVER) && uv sync
@@ -36,11 +36,18 @@ lint:
 fmt:
 	cd $(SERVER) && uv run ruff format . && uv run ruff check --fix .
 
-mobile-install:
-	cd $(MOBILE) && npm install && npm run setup
+# 前端是一个 npm 工作区（根目录 package.json）：apps/mobile 和 packages/*，依赖装在根目录
+js-install:
+	npm install
 
-mobile-test:
-	cd $(MOBILE) && npm test
+js-test:
+	npm test
+
+js-typecheck:
+	npm run typecheck
+
+mobile-install: js-install
+	cd $(MOBILE) && npm run setup
 
 vis-install:
 	cd $(VIS) && npm install

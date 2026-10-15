@@ -6,7 +6,9 @@
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { describeError } from "../../../api/client.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import { formatDate } from "@bettertavern/core/utils/format";
+
 import {
   Button,
   Field,
@@ -20,7 +22,6 @@ import {
 import { SettingsBack } from "../nav.tsx";
 import { useApp } from "../../../state/AppProvider.tsx";
 import { font, onColor, radius, space, usePalette } from "../../../theme/index.ts";
-import { formatDate } from "../../../utils/format.ts";
 
 type Counts = { stories: number; scenarios: number; models: number };
 

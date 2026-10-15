@@ -1,7 +1,8 @@
 /**
  * 平板响应式布局的常量和纯函数，取自 docs/design/ui/tablet/（layout.ts 与 source/TabletSystem.dc.html）。
  * 只依赖窗口宽度（useWindowDimensions().width），不判断设备型号或横竖屏，分屏、台前调度同样适用。
- * 这里只有数据和纯函数，不依赖 React Native，和 themes.ts 一样用 node --test 测。页面经 hooks/useLayout.ts 取当前布局。
+ * 这里只有数据和纯函数，不依赖 React Native，和 themes.ts 一样用 node --test 测。
+ * 手机端的页面经 apps/mobile/src/hooks/useLayout.ts 取当前布局；网页端在这上面再加电脑的一档（apps/web 的 theme/layout.ts）。
  */
 
 /** 窄：手机布局；中：居中单栏 + 底部胶囊；宽：左侧导航栏 + 两栏 */

@@ -13,6 +13,8 @@
     "probe": "node --experimental-strip-types scripts/probe-cli.mts"
   },
   "dependencies": {
+    "@bettertavern/core": "*",
+    "@bettertavern/design": "*",
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
     "@types/react": "~19.2.4",
     "expo": "~57.0.0",

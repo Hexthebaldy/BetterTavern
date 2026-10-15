@@ -9,12 +9,18 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 
-import type { FetchLike } from "../../api/sse/sseClient.ts";
+import type { FetchLike } from "@bettertavern/core/api/sse/sseClient";
+import {
+  DEFAULT_PROBE_CONFIG,
+  ProbeSession,
+  type ProbeProgress,
+  type ProbeReport,
+} from "@bettertavern/core/probe/probeSession";
+
 import { ServerSheet } from "../../components/ServerSetting.tsx";
 import { DiagnosticsCard } from "./DiagnosticsCard.tsx";
 import { Button, Icon, Page, Pill, SectionHeader, Segmented } from "../../components/ui.tsx";
 import { SettingsBack } from "../settings/nav.tsx";
-import { DEFAULT_PROBE_CONFIG, ProbeSession, type ProbeProgress, type ProbeReport } from "./probeSession.ts";
 import { displayServer } from "../settings/servers.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { font, onColor, space, usePalette } from "../../theme/index.ts";

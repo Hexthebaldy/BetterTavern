@@ -6,12 +6,13 @@ import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
-import type { Scenario } from "../../api/types.ts";
+import type { Scenario } from "@bettertavern/core/api/types";
+import { formatBytes } from "@bettertavern/core/utils/format";
+
 import { Cover } from "../../components/Cover.tsx";
 import { Button, Icon, type IconName } from "../../components/ui.tsx";
 import type { LibraryView } from "../../state/PrefsProvider.tsx";
 import { font, radius, size, space, usePalette } from "../../theme/index.ts";
-import { formatBytes } from "../../utils/format.ts";
 
 export function summary(s: Scenario): string {
   return s.description_preview || s.first_mes_preview || (s.creator ? `作者：${s.creator}` : "");

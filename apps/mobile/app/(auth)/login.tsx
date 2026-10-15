@@ -8,7 +8,8 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ApiError, describeError } from "../../src/api/client.ts";
+import { ApiError, describeError } from "@bettertavern/core/api/client";
+
 import { AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
 import { Logo } from "../../src/components/Logo.tsx";
 import { ServerRow, ServerSheet } from "../../src/components/ServerSetting.tsx";

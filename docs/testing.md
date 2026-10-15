@@ -211,7 +211,7 @@ make vis
 
 `integration` 与 `e2e/test_m1_flow.py` 需要 `BT_TEST_DATABASE_URL`（`make test-integration`），没有设置时跳过。
 
-客户端（`apps/mobile`，`npm test`）：`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
+客户端（仓库根目录 `npm test`，主要在 `packages/core`）：`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
 `TURN_IN_PROGRESS` / `STALE_PARENT`、续传、轮询、失效登录）、`turnStream`（半截终止事件后的恢复）、`session`（单飞刷新）、`client`（401 重试、problem+json）。
 界面还没有自动化测试。
 

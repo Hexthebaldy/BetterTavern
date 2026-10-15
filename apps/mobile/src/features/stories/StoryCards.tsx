@@ -11,11 +11,12 @@
 import type { ReactNode, Ref } from "react";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
-import type { Playthrough } from "../../api/types.ts";
+import type { Playthrough } from "@bettertavern/core/api/types";
+import { formatRelative } from "@bettertavern/core/utils/format";
+
 import { Cover } from "../../components/Cover.tsx";
 import { Icon, Pill } from "../../components/ui.tsx";
 import { font, radius, size, space, usePalette } from "../../theme/index.ts";
-import { formatRelative } from "../../utils/format.ts";
 
 /** 小卡的高度；主卡高两格加中间的间距 */
 export const STORY_CARD_HEIGHT = 184;

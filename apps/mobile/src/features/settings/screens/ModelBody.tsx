@@ -7,8 +7,24 @@
 import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { describeError } from "../../../api/client.ts";
-import type { ModelRoute } from "../../../api/types.ts";
+import { describeError } from "@bettertavern/core/api/client";
+import type { ModelRoute } from "@bettertavern/core/api/types";
+import { formatTokens } from "@bettertavern/core/utils/format";
+import {
+  MODEL_STATUS,
+  describeWindow,
+  modelTitle,
+  providerName,
+  statusKind,
+  windowNote,
+} from "@bettertavern/core/settings/labels";
+import {
+  choiceTokens,
+  WINDOW_CHOICES,
+  windowChoice,
+  type WindowChoice,
+} from "@bettertavern/core/settings/window";
+
 import {
   Button,
   ErrorState,
@@ -27,13 +43,10 @@ import {
 import { useAsync } from "../../../hooks/useAsync.ts";
 import { useApp } from "../../../state/AppProvider.tsx";
 import { font, space, usePalette } from "../../../theme/index.ts";
-import { formatTokens } from "../../../utils/format.ts";
-import { MODEL_STATUS, describeWindow, modelTitle, providerName, statusKind, windowNote } from "../labels.ts";
 import { MemoryBlocks } from "../MemoryBlocks.tsx";
 import { EditSheet, ReplaceKeySheet, WindowSheet } from "../ModelSheets.tsx";
 import { SettingsBack, useSettingsNav } from "../nav.tsx";
 import { ProbeResults } from "../ProbeResults.tsx";
-import { choiceTokens, WINDOW_CHOICES, windowChoice, type WindowChoice } from "../window.ts";
 
 type Message = { tone: "error" | "info"; text: string };
 

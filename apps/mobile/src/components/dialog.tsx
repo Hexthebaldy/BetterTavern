@@ -7,8 +7,9 @@
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { pane } from "@bettertavern/design/layout";
+
 import { onColor, radius, space, type, usePalette } from "../theme/index.ts";
-import { pane } from "../theme/layout.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { MODAL_ORIENTATIONS } from "./sheet.tsx";
 

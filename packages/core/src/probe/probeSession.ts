@@ -6,8 +6,8 @@
  * 服务端发出到屏幕上出现的延迟 p95 小于 300 毫秒。
  */
 
-import { SseClient, type FetchLike, type SseClientState } from "../../api/sse/sseClient.ts";
-import type { SseMessage } from "../../api/sse/sseParser.ts";
+import { SseClient, type FetchLike, type SseClientState } from "../api/sse/sseClient.ts";
+import type { SseMessage } from "../api/sse/sseParser.ts";
 
 export type ProbeConfig = {
   durationS: number;

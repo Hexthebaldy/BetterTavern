@@ -1119,7 +1119,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | 会话通道 `/playthroughs/{id}/events` 与 `playthrough.ready` | 没有实现；开局构建在开场回合自己的事件流里报告，新增 `world.building` 与 `world.ready`（data：`source`、`entities`）两个事件 | 单设备游玩用不到会话通道。M2 有了 `state.updated` 再加 |
 | 文件存储 `infra/storage/`（本地或 S3） | 角色卡头像存在 Postgres 的 `blobs` 表（bytea），通过 `GET /v1/blobs/{id}` 读取（要带令牌，有 ETag） | 头像最大 16 MB，量小。换对象存储只影响 `infra/db/repositories/library.py` |
 | `infra/db/models/` 的 ORM 模型 | `infra/db/repositories/` 直接写 SQL（SQLAlchemy Core）；涉及用户数据的查询都带 `user_id` 条件 | 查询都是手写的围栏条件，ORM 帮不上忙 |
-| 契约工具链（OpenAPI 生成客户端类型） | 客户端类型手写在 `apps/mobile/src/api/types.ts`，与 `api/schemas/` 一一对应 | M2 接入工具链后由生成的类型取代 |
+| 契约工具链（OpenAPI 生成客户端类型） | 客户端类型手写在 `packages/core/src/api/types.ts`，与 `api/schemas/` 一一对应 | M2 接入工具链后由生成的类型取代 |
 | 限流 | 进程内计数（`api/ratelimit.py`），每个 api 实例各算各的 | 单实例够用；多实例部署时换 Redis |
 | 租约清理在 worker 里 | api 进程每 15 秒执行一次（`services/maintenance.py`），顺带清理过期的幂等键和刷新令牌 | 回合本来就在 api 进程里跑，清理放在一起最简单 |
 | 删除账户是异步硬删除，另有导出 | `DELETE /v1/me` 需要密码，同步删除；导出还没做 | M4 |
