@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { storyStatus } from "./storyStatus.ts";
+
+const idle = { active_turn_id: null, head_turn_id: "t9", head_excerpt: "雨还在下。" };
+
+describe("storyStatus", () => {
+  it("平时没有状态", () => {
+    assert.equal(storyStatus(idle), null);
+  });
+
+  it("正在生成：开场还是下一段", () => {
+    assert.deepEqual(storyStatus({ ...idle, active_turn_id: "t10" }), {
+      kind: "writing",
+      label: "正在写下一段",
+    });
+    assert.deepEqual(storyStatus({ active_turn_id: "t1", head_turn_id: null, head_excerpt: "" }), {
+      kind: "writing",
+      label: "正在写开场",
+    });
+  });
+
+  it("开场没写成、也没有在写", () => {
+    assert.deepEqual(storyStatus({ active_turn_id: null, head_turn_id: null, head_excerpt: "" }), {
+      kind: "noOpening",
+      label: "开场还没有写好",
+    });
+  });
+});

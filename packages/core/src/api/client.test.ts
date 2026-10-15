@@ -147,6 +147,29 @@ describe("ApiClient", () => {
     assert.equal(calls[0]?.init.body, JSON.stringify({ refresh_token: "rt_x" }));
   });
 
+  it("网页的 Cookie 模式：认证请求带 X-Auth-Mode，刷新和退出不带请求体", async () => {
+    const { fetch, calls } = scripted([
+      { status: 200, body: {} },
+      { status: 200, body: {} },
+      { status: 204 },
+    ]);
+    const api = createApi(client(fetch), { authMode: "cookie" });
+    await api.auth.login({ email: "lin@example.com", password: "pw" });
+    await api.auth.refresh(null);
+    await api.auth.logout(null);
+    for (const call of calls) {
+      assert.equal(call.init.headers["X-Auth-Mode"], "cookie");
+      assert.equal(call.init.headers.Authorization, undefined);
+    }
+    assert.equal(calls[0]?.init.body, JSON.stringify({ email: "lin@example.com", password: "pw" }));
+    assert.equal(calls[1]?.init.body, undefined);
+    assert.equal(calls[2]?.init.body, undefined);
+    // App 不带这个请求头
+    const app = scripted([{ status: 200, body: {} }]);
+    await createApi(client(app.fetch)).auth.refresh("rt_x");
+    assert.equal(app.calls[0]?.init.headers["X-Auth-Mode"], undefined);
+  });
+
   it("提交行动带 Idempotency-Key；历史接口取出 turns", async () => {
     const { fetch, calls } = scripted([
       { status: 201, body: { turn: { id: "t2" }, events_url: "/v1/turns/t2/events" } },

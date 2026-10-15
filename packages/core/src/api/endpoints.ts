@@ -60,21 +60,39 @@ export type NewPlaythrough = {
 
 const enc = encodeURIComponent;
 
-export function createApi(client: ApiClient) {
+/**
+ * 刷新令牌放在哪：body 是 App（在请求体和响应体里，自己保存）；cookie 是网页（在浏览器的 HttpOnly Cookie 里，
+ * 请求带 X-Auth-Mode: cookie，刷新和退出不带请求体）。见 docs/api/auth.md 的“两种登录方式”。
+ */
+export type AuthMode = "body" | "cookie";
+
+/** 刷新、退出的请求体：Cookie 模式下令牌由浏览器带上，不放进请求体 */
+function tokenBody(mode: AuthMode, refreshToken: string | null): { refresh_token: string } | undefined {
+  if (mode === "cookie" || refreshToken === null) return undefined;
+  return { refresh_token: refreshToken };
+}
+
+export function createApi(client: ApiClient, options: { authMode?: AuthMode } = {}) {
+  const mode = options.authMode ?? "body";
+  const authHeaders: Record<string, string> = mode === "cookie" ? { "X-Auth-Mode": "cookie" } : {};
   return {
     auth: {
       register: (body: { email: string; password: string; display_name?: string }) =>
-        client.post<AuthResponse>("/v1/auth/register", body, { auth: false }),
+        client.post<AuthResponse>("/v1/auth/register", body, { auth: false, headers: authHeaders }),
       login: (body: { email: string; password: string }) =>
-        client.post<AuthResponse>("/v1/auth/login", body, { auth: false }),
-      refresh: (refreshToken: string) =>
-        client.post<AuthResponse>("/v1/auth/refresh", { refresh_token: refreshToken }, { auth: false }),
-      logout: (refreshToken: string) =>
-        client.post<void>(
-          "/v1/auth/logout",
-          { refresh_token: refreshToken },
-          { auth: false, timeoutMs: 5_000 },
-        ),
+        client.post<AuthResponse>("/v1/auth/login", body, { auth: false, headers: authHeaders }),
+      /** 网页（Cookie 模式）传 null */
+      refresh: (refreshToken: string | null) =>
+        client.post<AuthResponse>("/v1/auth/refresh", tokenBody(mode, refreshToken), {
+          auth: false,
+          headers: authHeaders,
+        }),
+      logout: (refreshToken: string | null) =>
+        client.post<void>("/v1/auth/logout", tokenBody(mode, refreshToken), {
+          auth: false,
+          headers: authHeaders,
+          timeoutMs: 5_000,
+        }),
       me: () => client.get<User>("/v1/me"),
       deleteAccount: (password: string) => client.delete<void>("/v1/me", { password }),
     },

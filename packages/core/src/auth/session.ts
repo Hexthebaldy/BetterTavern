@@ -3,6 +3,9 @@
  *
  * 访问令牌 15 分钟过期，提前一分钟刷新；刷新令牌每次使用都会轮换（服务端检测重放）。
  * 刷新时网络不通不算退出：抛出网络错误，会话保留，等网络恢复再试。
+ *
+ * App 自己保存刷新令牌；网页用 Cookie 模式，刷新令牌在浏览器的 HttpOnly Cookie 里，这里的 refreshToken 是 null，
+ * 刷新时由浏览器带上 Cookie（docs/api/auth.md 的“两种登录方式”）。
  */
 
 import { ApiError } from "../api/client.ts";
@@ -13,7 +16,8 @@ export type StoredSession = {
   accessToken: string;
   /** 访问令牌的过期时间（本机时钟，毫秒） */
   accessExpiresAt: number;
-  refreshToken: string;
+  /** null：刷新令牌在 Cookie 里（网页） */
+  refreshToken: string | null;
 };
 
 export interface SessionStorage {
@@ -26,15 +30,13 @@ export type SessionStatus = "restoring" | "signedIn" | "signedOut";
 
 export type SessionDeps = {
   storage: SessionStorage;
-  refresh: (refreshToken: string) => Promise<AuthResponse>;
+  refresh: (refreshToken: string | null) => Promise<AuthResponse>;
   now?: () => number;
   /** 离过期还有多久就提前刷新 */
   earlyRefreshMs?: number;
 };
 
 export function sessionFromAuth(auth: AuthResponse, now: number): StoredSession {
-  // 请求体模式（App）一定有刷新令牌；没有说明请求发错了模式
-  if (auth.refresh_token === null) throw new Error("响应里没有刷新令牌");
   return {
     user: auth.user,
     accessToken: auth.access_token,
@@ -123,7 +125,7 @@ export class SessionManager {
     }
   }
 
-  /** 本地退出。返回刷新令牌，调用方据此请服务端吊销（尽力而为）。 */
+  /** 本地退出。返回刷新令牌（网页是 null），调用方据此请服务端吊销（尽力而为）。 */
   async signOut(): Promise<string | null> {
     const token = this.session?.refreshToken ?? null;
     this.session = null;
@@ -154,7 +156,7 @@ export class SessionManager {
     const session = this.session;
     if (!session) return Promise.resolve(false);
     if (!this.refreshing) {
-      const attempt = this.doRefresh(session.refreshToken);
+      const attempt = this.doRefresh(session);
       this.refreshing = attempt;
       const clear = (): void => {
         if (this.refreshing === attempt) this.refreshing = null;
@@ -164,15 +166,15 @@ export class SessionManager {
     return this.refreshing;
   }
 
-  private async doRefresh(refreshToken: string): Promise<boolean> {
+  private async doRefresh(session: StoredSession): Promise<boolean> {
     try {
-      const auth = await this.deps.refresh(refreshToken);
-      if (this.session?.refreshToken !== refreshToken) return this.session !== null; // 期间已退出或重新登录
+      const auth = await this.deps.refresh(session.refreshToken);
+      if (this.session !== session) return this.session !== null; // 期间已退出或重新登录
       await this.signIn(auth);
       return true;
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        if (this.session?.refreshToken === refreshToken) await this.signOut();
+        if (this.session === session) await this.signOut();
         return false;
       }
       throw error;

@@ -36,7 +36,7 @@ class MemoryStorage implements SessionStorage {
 
 function manager(
   storage: SessionStorage,
-  refresh: (token: string) => Promise<AuthResponse>,
+  refresh: (token: string | null) => Promise<AuthResponse>,
   clock = { t: 0 },
 ) {
   return new SessionManager({ storage, refresh, now: () => clock.t });
@@ -65,7 +65,7 @@ describe("SessionManager", () => {
   it("快过期时刷新；并发请求只刷新一次，新令牌写回存储", async () => {
     const clock = { t: 0 };
     const storage = new MemoryStorage();
-    const seen: string[] = [];
+    const seen: (string | null)[] = [];
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -124,6 +124,31 @@ describe("SessionManager", () => {
     assert.equal(session.getStatus(), "signedOut");
     assert.equal(await session.accessToken(), null);
     assert.equal(storage.value, null);
+  });
+
+  it("网页：刷新令牌在 Cookie 里（null），刷新时传 null；刷新期间重新登录，旧的刷新结果不覆盖", async () => {
+    const cookie = (n: number, expiresIn = 900): AuthResponse => ({
+      ...auth(n, expiresIn),
+      refresh_token: null,
+    });
+    const seen: (string | null)[] = [];
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const session = manager(new MemoryStorage(), async (token) => {
+      seen.push(token);
+      await gate;
+      return cookie(9);
+    });
+    await session.signIn(cookie(1, 0));
+    const pending = session.refresh();
+    await session.signIn(cookie(2)); // 另一个标签页登录了别的账户之类
+    release();
+    assert.equal(await pending, true);
+    assert.deepEqual(seen, [null]);
+    assert.equal(await session.accessToken(), "access-2");
+    assert.equal(await session.signOut(), null);
   });
 
   it("存储里的数据形状不对就当没登录", () => {

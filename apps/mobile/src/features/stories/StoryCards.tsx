@@ -12,6 +12,7 @@ import type { ReactNode, Ref } from "react";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import type { Playthrough } from "@bettertavern/core/api/types";
+import { storyStatus } from "@bettertavern/core/play/storyStatus";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../components/Cover.tsx";
@@ -22,10 +23,9 @@ import { font, radius, size, space, usePalette } from "../../theme/index.ts";
 export const STORY_CARD_HEIGHT = 184;
 
 function Status({ story }: { story: Playthrough }) {
-  const writing = story.active_turn_id !== null;
-  const opening = story.head_turn_id === null;
-  if (writing) return <Pill tone="acc" dot label={opening ? "正在写开场" : "正在写下一段"} />;
-  if (opening && !story.head_excerpt) return <Pill tone="warn" icon="untested" label="开场还没有写好" />;
+  const status = storyStatus(story);
+  if (status?.kind === "writing") return <Pill tone="acc" dot label={status.label} />;
+  if (status?.kind === "noOpening") return <Pill tone="warn" icon="untested" label={status.label} />;
   return null;
 }
 

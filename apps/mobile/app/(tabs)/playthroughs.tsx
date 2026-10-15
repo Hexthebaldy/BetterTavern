@@ -24,6 +24,7 @@ import {
   type Insets,
   type SizeClass,
 } from "@bettertavern/design/layout";
+import { storyStatus } from "@bettertavern/core/play/storyStatus";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../src/components/Cover.tsx";
@@ -62,8 +63,7 @@ function StoryRow({
   onMenu: () => void;
 }) {
   const palette = usePalette();
-  const writing = story.active_turn_id !== null;
-  const opening = story.head_turn_id === null;
+  const status = storyStatus(story);
   return (
     <Pressable
       accessibilityRole="button"
@@ -89,13 +89,13 @@ function StoryRow({
           </Text>
           <Text style={[styles.time, { color: palette.mut }]}>{formatRelative(story.updated_at)}</Text>
         </View>
-        {writing ? <Pill tone="acc" dot label={opening ? "正在写开场" : "正在写下一段"} /> : null}
+        {status?.kind === "writing" ? <Pill tone="acc" dot label={status.label} /> : null}
         {story.head_excerpt ? (
           <Text numberOfLines={2} style={[styles.excerpt, { color: palette.ink2 }]}>
             {story.head_excerpt}
           </Text>
-        ) : opening && !writing ? (
-          <Pill tone="warn" icon="untested" label="开场还没有写好" />
+        ) : status?.kind === "noOpening" ? (
+          <Pill tone="warn" icon="untested" label={status.label} />
         ) : null}
       </View>
     </Pressable>
