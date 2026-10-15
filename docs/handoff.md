@@ -123,7 +123,7 @@ make dev
 
 出口标准（docs/README.md 第 3 节）：DeepSeek 与 Hugging Face 各完整玩 30 回合；断网续传用例通过。建议按下面的清单在 iOS 和 Android 真机上各走一遍。
 
-1. 注册 → 设置 → 模型 → 添加模型：选 DeepSeek、填 Key → 获取模型列表 → 选模型、勾“设为导演” → 保存；进入模型详情“测试这个模型”（会真的调用几次），能看到窗口和它的来源。
+1. 注册 → 设置 → 模型 → 添加模型：选 DeepSeek、填 Key（模型列表自动出来）→ 选模型、勾“设为导演” → 保存；进入模型详情“测试这个模型”（会真的调用几次），能看到窗口和它的来源。
    用户指定的测试模型是 DeepSeek V4.1 Flash，API 里的模型 ID 是 `deepseek-flash`（官方文档 2026-09-10 起）；`deepseek-v4-flash` 暂时也路由到它，
    `deepseek-chat`、`deepseek-reasoner` 已在 2026-07-24 停用。`capabilities.yaml` 里 `deepseek-*` 的规则（1M 窗口、384K 输出、thinking 开关）覆盖它。
 2. 剧本 → 导入一张 V2 的 PNG 卡和一张 V3 卡 → 剧本详情填主角名 → 开始故事：应先看到“正在根据角色卡搭建世界…”，再流式出开场。

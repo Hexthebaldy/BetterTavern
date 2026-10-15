@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { ModelInfo, ModelRoute, RouteWindow } from "../../api/types.ts";
-import { keyChoices, manualWindowChoice, modelTitle, needsManualWindow, windowNote } from "./labels.ts";
+import { manualWindowChoice, modelTitle, needsManualWindow, windowNote } from "./labels.ts";
 
 function route(id: string, provider: string, last4: string, shares: string[] = [], label = ""): ModelRoute {
   const window: RouteWindow = {
@@ -38,23 +38,6 @@ function route(id: string, provider: string, last4: string, shares: string[] = [
 }
 
 describe("添加模型", () => {
-  it("同一个服务商下每个不同的 Key 一个复用选项", () => {
-    const routes = [
-      route("a", "huggingface", "1111", ["b"], "Qwen"),
-      route("b", "huggingface", "1111", ["a"]),
-      route("c", "huggingface", "2222"),
-      route("d", "deepseek", "3333"),
-    ];
-    assert.deepEqual(
-      keyChoices(routes, "huggingface").map((c) => [c.routeId, c.last4, c.titles]),
-      [
-        ["a", "1111", ["Qwen", "model-b"]],
-        ["c", "2222", ["model-c"]],
-      ],
-    );
-    assert.deepEqual(keyChoices(routes, "custom_openai"), []);
-  });
-
   it("服务商列表或内置资料知道窗口时不用填", () => {
     const models: ModelInfo[] = [
       { id: "org/listed", context_window: 32768, window_source: "listed", owned_by: null },

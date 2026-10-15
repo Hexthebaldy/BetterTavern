@@ -1,10 +1,10 @@
 /**
- * 添加模型：服务商 → Key（新填，或者复用同一个服务商下已有的 Key）→ 端点 → 获取模型列表并选一个
+ * 添加模型：服务商 → 新的 Key → 端点 → 模型列表自动获取，选一个
  * （搜索框兼做手动输入）→ 上下文窗口（只有服务商列表和内置资料都不知道时才出现）→ 备注名、是否设为导演 → 保存。
  * Key、模型、窗口一次存好；之后换导演只是在模型列表里点一下。
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "../../api/client.ts";
@@ -13,11 +13,8 @@ import { KeyField, ProviderMark } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, SectionHeader, Segmented } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { space, usePalette } from "../../theme/index.ts";
-import { keyChoices, MANUAL_WINDOW_CHOICES, needsManualWindow, providerMark } from "./labels.ts";
+import { MANUAL_WINDOW_CHOICES, needsManualWindow, providerMark } from "./labels.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
-
-/** Key 从哪来：新填的，或者复用哪个模型的 */
-type KeySource = { kind: "new" } | { kind: "copy"; routeId: string };
 
 function ProviderTile({
   provider,
@@ -51,23 +48,6 @@ function ProviderTile({
   );
 }
 
-function Choice({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const palette = usePalette();
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[styles.choice, { backgroundColor: palette.card }]}
-    >
-      <CheckMark checked={selected} />
-      <Text numberOfLines={2} style={{ flex: 1, fontSize: 14.5, lineHeight: 20, color: palette.ink }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 export function AddModelForm({
   providers,
   routes,
@@ -80,7 +60,6 @@ export function AddModelForm({
   const { api } = useApp();
   const palette = usePalette();
   const [provider, setProvider] = useState(providers[0]?.id ?? "");
-  const [source, setSource] = useState<KeySource>({ kind: "new" });
   const [key, setKey] = useState("");
   const [official, setOfficial] = useState(true);
   const [baseUrl, setBaseUrl] = useState("");
@@ -99,23 +78,18 @@ export function AddModelForm({
   const selected = providers.find((p) => p.id === provider);
   const needsUrl = selected?.requires_base_url ?? false;
   const useOfficial = official && !needsUrl;
-  const reusable = keyChoices(routes, provider);
   const chosen = picked ?? query.trim();
   const askWindow = needsManualWindow(models, chosen);
 
-  // 换了服务商：Key、端点、列表都从头来；有这个服务商的 Key 时默认复用第一个
+  // 换了服务商：Key、端点、列表都从头来
   useEffect(() => {
-    const first = keyChoices(routes, provider)[0];
-    setSource(first ? { kind: "copy", routeId: first.routeId } : { kind: "new" });
-    setOfficial(first ? !first.baseUrl : true);
-    setBaseUrl(first?.baseUrl ?? "");
+    setOfficial(true);
+    setBaseUrl("");
     setKey("");
     setModels(null);
     setListError(null);
     setQuery("");
     setPicked(null);
-    // routes 变了（刚添加完一个）也只在换服务商时重置
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider]);
 
   useEffect(() => {
@@ -123,26 +97,42 @@ export function AddModelForm({
   }, [hasDirector]);
 
   const endpoint = (): string => (useOfficial ? "" : baseUrl.trim());
-  const keyReady = source.kind === "copy" || key.trim() !== "";
+  const keyReady = key.trim() !== "";
   const urlReady = useOfficial || baseUrl.trim() !== "";
 
+  // 每次获取编一个号；Key、端点改了以后，还没回来的旧请求作废，免得旧 Key 的列表盖掉新的
+  const requestSeq = useRef(0);
   const fetchModels = async (): Promise<void> => {
+    const seq = ++requestSeq.current;
     setListing(true);
     setListError(null);
     try {
-      const list = await api.models.preview(provider, {
-        ...(source.kind === "copy" ? { copy_key_from: source.routeId } : { api_key: key.trim() }),
-        base_url: endpoint(),
-      });
+      const list = await api.models.preview(provider, { api_key: key.trim(), base_url: endpoint() });
+      if (seq !== requestSeq.current) return;
       setModels(list);
       if (list.length === 0) setListError("服务商没有返回模型列表");
     } catch (e) {
+      if (seq !== requestSeq.current) return;
       setModels(null);
       setListError(describeError(e));
     } finally {
-      setListing(false);
+      if (seq === requestSeq.current) setListing(false);
     }
   };
+
+  // Key 和端点填好、停手一会儿就自动获取模型列表。
+  // 只在输入变了的时候获取：失败了不会反复重试，要手动点“重新获取”
+  const inputs = keyReady && urlReady ? JSON.stringify([provider, key.trim(), endpoint()]) : null;
+  useEffect(() => {
+    requestSeq.current += 1;
+    setListing(false);
+    setListError(null);
+    if (inputs === null) return;
+    const timer = setTimeout(() => void fetchModels(), 800);
+    return () => clearTimeout(timer);
+    // fetchModels 读的就是 inputs 里的这些值
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputs]);
 
   const onQuery = (text: string): void => {
     setQuery(text);
@@ -161,7 +151,7 @@ export function AddModelForm({
         provider,
         model: chosen,
         label: label.trim(),
-        ...(source.kind === "copy" ? { copy_key_from: source.routeId } : { api_key: key.trim() }),
+        api_key: key.trim(),
         base_url: endpoint(),
         manual_window: tokens,
         director,
@@ -198,46 +188,19 @@ export function AddModelForm({
 
         <View style={{ gap: space.s }}>
           <Text style={[styles.label, { color: palette.ink2 }]}>API Key</Text>
-          {reusable.length > 0 ? (
-            <View accessibilityRole="radiogroup" accessibilityLabel="API Key" style={{ gap: 6 }}>
-              {reusable.map((c) => (
-                <Choice
-                  key={c.routeId}
-                  label={`用已有的 Key（尾号 ${c.last4}，${c.titles.join("、")} 在用）`}
-                  selected={source.kind === "copy" && source.routeId === c.routeId}
-                  onPress={() => {
-                    setSource({ kind: "copy", routeId: c.routeId });
-                    setOfficial(!c.baseUrl);
-                    setBaseUrl(c.baseUrl ?? "");
-                    setModels(null);
-                  }}
-                />
-              ))}
-              <Choice
-                label="填一个新的 Key"
-                selected={source.kind === "new"}
-                onPress={() => {
-                  setSource({ kind: "new" });
-                  setModels(null);
-                }}
-              />
-            </View>
-          ) : null}
-          {source.kind === "new" ? (
-            <KeyField
-              label="API Key"
-              hideLabel
-              onGrey
-              value={key}
-              onChangeText={(text) => {
-                setKey(text);
-                setModels(null);
-              }}
-              placeholder="sk-…"
-              hint="只发送这一次，之后只显示后四位。"
-              hintIcon="lock"
-            />
-          ) : null}
+          <KeyField
+            label="API Key"
+            hideLabel
+            onGrey
+            value={key}
+            onChangeText={(text) => {
+              setKey(text);
+              setModels(null);
+            }}
+            placeholder="sk-…"
+            hint="只发送这一次，之后只显示后四位。"
+            hintIcon="lock"
+          />
         </View>
 
         <View style={{ gap: space.s }}>

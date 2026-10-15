@@ -89,26 +89,6 @@ export function needsManualWindow(models: ModelInfo[] | null, chosen: string): b
   return viaBase ? viaBase.context_window === null : true;
 }
 
-/** 添加模型时“复用已有的 Key”的选项：同一个服务商下每个不同的 Key 一项 */
-export type KeyChoice = { routeId: string; last4: string; titles: string[]; baseUrl: string | null };
-
-export function keyChoices(routes: ModelRoute[], provider: string): KeyChoice[] {
-  const seen = new Set<string>();
-  const out: KeyChoice[] = [];
-  for (const route of routes) {
-    if (route.provider !== provider || seen.has(route.id)) continue;
-    const group = [route, ...routes.filter((r) => route.shares_key_with.includes(r.id))];
-    for (const r of group) seen.add(r.id);
-    out.push({
-      routeId: route.id,
-      last4: route.key_last4,
-      titles: group.map(modelTitle),
-      baseUrl: route.base_url,
-    });
-  }
-  return out;
-}
-
 /** 窗口校验结果的说明 */
 export function describeWindow(window: RouteWindow): string[] {
   const lines = [

@@ -22,13 +22,12 @@ import type {
   WorldView,
 } from "./types.ts";
 
-/** 添加模型：api_key 和 copy_key_from（复用自己另一个模型的 Key）二选一 */
+/** 添加模型：每次都填一个新的 Key */
 export type NewModelRoute = {
   provider: string;
   model: string;
   label?: string;
-  api_key?: string;
-  copy_key_from?: string;
+  api_key: string;
   /** 空串表示服务商的默认地址 */
   base_url?: string | null;
   manual_window?: number | null;
@@ -50,7 +49,7 @@ export type ModelRoutePatch = {
   fallback_route_id?: string | null;
 };
 
-export type ModelListQuery = { api_key?: string; copy_key_from?: string; base_url?: string | null };
+export type ModelListQuery = { api_key: string; base_url?: string | null };
 
 export type NewPlaythrough = {
   scenario_id: string;

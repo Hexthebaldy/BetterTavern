@@ -103,7 +103,7 @@ export function ModelPicker({
           <Text style={[styles.footnote, { color: palette.mut }]}>正在获取模型列表…</Text>
         ) : listError ? null : (
           <Text style={[styles.footnote, { color: palette.mut }]}>
-            填好 Key 后获取模型列表，也可以直接在上面输入模型名。
+            填好 Key 后会自动获取模型列表，也可以直接在上面输入模型名。
           </Text>
         )}
       </View>
