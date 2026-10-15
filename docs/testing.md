@@ -213,8 +213,14 @@ make vis
 `integration` 与 `e2e/test_m1_flow.py`、`e2e/test_web_auth.py` 需要 `BT_TEST_DATABASE_URL`（`make test-integration`），没有设置时跳过。
 
 客户端（仓库根目录 `npm test`，主要在 `packages/core`）：`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
-`TURN_IN_PROGRESS` / `STALE_PARENT`、续传、轮询、失效登录）、`turnStream`（半截终止事件后的恢复）、`session`（单飞刷新）、`client`（401 重试、problem+json）。
-界面还没有自动化测试。
+`TURN_IN_PROGRESS` / `STALE_PARENT`、续传、轮询、失效登录）、`turnStream`（半截终止事件后的恢复）、`session`（单飞刷新、网页的 Cookie 模式）、`client`（401 重试、problem+json、
+Cookie 模式的请求头和请求体）。网页端（`apps/web`）自己的纯逻辑也在 `npm test` 里：桌面布局（`theme/layout.ts`：断点、阅读页让位、设置两栏、右键菜单和提示的位置、
+快捷键判断、标签页标题）、浏览器存储、界面偏好、最近故事分组、导入规则、跟随新文字、Enter 发送与输入法组字。App 的界面还没有自动化测试。
+
+网页端的端到端测试（`apps/web/e2e`，`make web-e2e`）：Playwright 自己起后端（开发数据库）、假模型服务（`tests/fakes/story_llm.py`）和 Vite，
+用本机的 Chrome 走一遍注册 → 刷新后仍登录（Cookie）→ 添加模型 → 导入角色卡 → 开局 → 按 A 选选项 → 按 / 自己写、Enter 发送 → 按 W 停靠世界状态 →
+把窗口拖到 1300、1100、390 看侧栏让位、世界滑出、没有横向滚动 → 按 ? → 删除账户。设 `E2E_ALL_BROWSERS=1` 时加跑 WebKit 和 Firefox
+（先 `npx playwright install webkit firefox`）。
 
 **M1 的出口验收**（需要真机和真实的 Key，自动化测试覆盖不了）：DeepSeek 与 Hugging Face 各完整玩 30 回合；
 游玩中途切到飞行模式再切回来，叙述接着出、不重复不缺字；生成中杀掉 App 再打开，能接上或看到可重试的失败。

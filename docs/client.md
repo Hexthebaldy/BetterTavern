@@ -265,41 +265,82 @@ apps/mobile/
 - 退出时先请服务端吊销并删掉 Cookie，再本地退出：服务端没收到时 Cookie 还在，刷新页面会重新登录上。
 - 网页和接口必须同源（开发时 Vite 转发，部署时反向代理），所以网页没有 App 登录页底部的“服务器”入口。
 
+### 页面
+
+| 地址 | 页面 |
+| --- | --- |
+| `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交；宽屏左边是插画区 |
+| `/playthroughs` | 故事（W03）：三列网格，最近一个故事放大成主卡（两列两行）；600–899 两列，手机一列 |
+| `/library` | 剧本库（W04）：网格按内容宽度 ÷ 240 取整（2–5 列）或限宽 640 的列表；导入按钮可以多选 |
+| `/scenario/:id` | 剧本详情（W05）：≥ 900 两栏各自滚动，右栏是开始新故事的五步，底部浮着摘要栏；更窄单栏 |
+| `/play/:id` | 阅读页（W06–W11）：书名页、故事流、选项（≥ 900 两列）、底部操作栏、世界状态（停靠 / 滑出）、更多 |
+| `/settings` 及子页 | 设置（W13–W17）：≥ 900 两栏，左栏是设置首页，右栏是子页（模型、模型详情、账户、连接测试）；更窄逐层进入 |
+
+和 App 不同的只是布局和输入方式：文案、状态、错误提示、接口调用都照 App 的页面写，纯逻辑直接用 `@bettertavern/core`。
+
 ### 布局
 
 - 断点只看窗口宽度：`src/theme/layout.ts`（设计稿的 `layout.ts`，平板的函数从 `@bettertavern/design/layout` 引入）。
-  拖动窗口时布局即时切换，页面不卸载。
-- 外壳 `src/shell/`：侧栏（三项导航、按“今天 / 本周 / 更早”分组的最近故事、账户）、导航条（最近四个故事的封面）、底部 Tab 栏。
+  拖动窗口时布局即时切换，页面不卸载：草稿、滚动位置、打开着的世界面板都不丢。
+- 外壳 `src/shell/`：≥ 1280 侧栏（三项导航、按“今天 / 本周 / 更早”分组的最近故事、账户），900–1279 导航条（最近四个故事的封面），
+  更窄是底部 Tab 栏（只在三个一级页上，进了阅读页、剧本详情、设置子页就收起，和 App 一样有返回）。
   侧栏收起存在浏览器里；窄于 1280 时“展开”打开的侧栏盖在内容上，点遮罩、按 Esc、点了里面的一项都会收回。
-  导航和故事行都是 `<a href>`，⌘ / Ctrl + 点击在新标签页打开。
+- 阅读页用 `readingLayout()`：窗口 − 导航 ≥ 1100 时世界停靠；侧栏展开放不下、收成导航条就放得下时，侧栏临时收成导航条（`useShell().setNavOverride`）；
+  其余从右侧滑出。页面整体滚动（浏览器的查找、滚动条都是原生的），停在底部时跟着新文字滚，往上翻就停下，操作栏中间多出“回到最新”。
+  已完成的回合用 `content-visibility: auto`，很长的故事也只排版看得见的部分。
+- 设置右栏是容器（`container-type: inline-size`），宽于 720 时模型详情、添加模型、连接测试分两栏。
 - 深色模式：`index.html` 里的一小段脚本在页面脚本加载前按外观设置设好 `data-scheme`，深色下打开不闪白。
+
+### 鼠标、键盘与浮层
+
+- 悬停只在 `(hover: hover) and (pointer: fine)` 下生效；键盘焦点是 2px 蓝环（`:focus-visible`）；按下缩到 0.98。都写在共用控件的样式里。
+- 卡片、侧栏的故事行、导航条的封面、设置左栏的每一项都是 `<a href>`，⌘ / Ctrl + 点击、中键在新标签页打开。
+  卡片和故事行悬停时出现“…”，右键（或 Shift + F10）打开同一个菜单：在新标签页打开、重命名、删除。正文和输入框保留浏览器自己的右键菜单。
+- 浮层在 `src/overlay/`：确认、输入、外观、快捷键、世界状态的滑出都用浏览器的 `<dialog>`（焦点进出、Esc、点遮罩关闭，删除类默认焦点在“取消”）；
+  菜单按 `contextMenuFrame` 定位，↑↓ 移动；“更多”贴着按钮弹出（`popoverFrame`）；提示浮条在内容区底部居中，4 秒，鼠标停留时不消失；
+  提示（tooltip）给图标按钮和导航条的封面，悬停 500ms 或键盘焦点到达时出现，有快捷键时带键帽。
+- 快捷键：A–D 选选项、/ 自己写、W 世界状态、End 回到最新（阅读页），[ 展开或收起侧栏、? 快捷键一览（任何地方）。
+  单键快捷键在输入、输入法组字、按着修饰键、对话框开着时不响应，可以在快捷键一览里关掉（存在浏览器里）。
+  输入框里 Enter 发送、Shift + Enter 换行，组字时的 Enter 不发送（`isComposing`，Safari 还要看 `keyCode === 229`）。
+- 拖放导入：文件拖进窗口时任何页面都接收，内容区盖上“松开就导入”；逐个上传，一张成功进剧本详情，多张汇总成一句浮条，失败的列在红色提示里。
+- 草稿每个故事一份存在浏览器里（`bt.draft.<故事 ID>`）；诊断日志存最近 500 条（`bt.diagnostics`），连接测试页可以导出、清空。
+- 标签页标题“页面名 · BetterTavern”，阅读页生成中在前面加“● ”。
 
 ### 目录
 
 ```
 apps/web/
-├── index.html  vite.config.ts  public/favicon.svg
+├── index.html  vite.config.ts  playwright.config.ts  public/favicon.svg
+├── e2e/                         # Playwright 端到端测试和测试用的角色卡
 └── src/
-    ├── main.tsx                 # 数据缓存 → 界面偏好 → 主题 → 登录状态 → 路由
-    ├── app/       router.tsx  guards.tsx        # 路由表；没登录去登录页、登录了不停在登录页
+    ├── main.tsx                 # 诊断日志 → 数据缓存 → 界面偏好 → 主题 → 登录状态 → 路由
+    ├── app/       router.tsx  guards.tsx        # 路由表（阅读页、剧本详情、设置按需加载）；没登录去登录页、登录了不停在登录页
     ├── state/     AppProvider.tsx  PrefsProvider.tsx  prefs.ts   # 接口、会话（Cookie 模式）；浏览器里的界面偏好
     ├── storage/   local.ts                      # localStorage：存不进去、读不出来都当作没存过
+    ├── observability/ setup.ts                 # 诊断日志接回、定时写入、页面报错
     ├── theme/     tokens.css  base.css  layout.ts  palette.ts  ThemeProvider.tsx
     ├── shell/     AppShell.tsx  Sidebar.tsx  Rail.tsx  TabBar.tsx  StoryRow.tsx  nav.ts  recent.ts
-    ├── components/ controls.tsx（按钮、图标按钮、输入框、提示条、胶囊）Icon.tsx  Logo.tsx  Cover.tsx
-    ├── data/      stories.ts                    # TanStack Query 的查询
-    └── pages/     auth/（登录、注册）  Splash.tsx  NotFound.tsx
+    ├── overlay/   OverlayProvider.tsx  Dialog.tsx  Menu.tsx  Tooltip.tsx  ShortcutsDialog.tsx  useContextMenu.ts
+    ├── import/    ImportProvider.tsx  DropZone.tsx  rules.ts   # 导入角色卡（按钮和拖放）
+    ├── components/ controls.tsx（按钮、输入框、提示条、胶囊、标签、勾选）Icon.tsx  Logo.tsx  Cover.tsx  PageHeader.tsx
+    ├── data/      stories.ts  scenarios.ts  models.ts  blobs.ts  storyActions.ts  scenarioActions.ts   # 查询和共用的操作
+    └── pages/     auth/  stories/  library/  scenario/  play/  settings/  Splash.tsx  NotFound.tsx
 ```
 
-纯逻辑（`layout.ts`、`palette.ts`、`storage/local.ts`、`state/prefs.ts`、`shell/nav.ts`、`shell/recent.ts`）用 `node --test` 测，在仓库根目录 `npm test` 时一起跑。
+纯逻辑（`theme/layout.ts`、`theme/palette.ts`、`storage/local.ts`、`state/prefs.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/play/reading.ts`）
+用 `node --test` 测，在仓库根目录 `npm test` 时一起跑；整条路的端到端测试见 [testing.md 第 3 节](testing.md)。
 
 ### 和设计稿不同的地方
 
 - 登录态：设计稿的“平台替代”建议把令牌放在 localStorage；按讨论的方案改成 HttpOnly Cookie（见上），服务端为此加了 Cookie 模式。
-- 没有“换服务器”：Cookie 只发给同一个网站，网页和接口同源部署，登录页不放服务器入口和服务器对话框（W02 的对话框不做）。
+- 没有“换服务器”：Cookie 只发给同一个网站，网页和接口同源部署，登录页不放服务器入口和服务器对话框（W02 的对话框不做）；连接测试只测这一个服务器。
 - 共用代码：设计稿建议用路径别名直接引用 `apps/mobile/src`；改成 npm 工作区的两个包，手机端也从包里引用。
 - 连不上服务器的提示：App 是“连不上服务器，检查地址或网络。”，网页没有地址可改，改成“连不上服务器，检查网络后再试。”
+- API Key 输入框：用圆点遮住，但不用 `type=password`（免得浏览器把它存成这个网站的密码）；网页里直接粘贴，没有 App 的“粘贴”按钮。
+- 诊断日志导出：设计稿写的是 `.json`；内容和 App 导出的一样（开头几行说明，后面每行一条 JSON，可以拖进 vis），所以文件名是 `.jsonl`。
+- 提示浮条停留 4 秒（设计稿的值）；App 是 3 秒，带操作的 5 秒。
 
 ### 还没做的
 
-故事、剧本库与导入、剧本详情、阅读页、设置几页现在只有标题；快捷键、右键菜单、提示、浮条在后面补上。
+- 在 Safari 和 Firefox 里过一遍验证清单（设计稿 README 最后一节）：本机只自动跑了 Chrome；`E2E_ALL_BROWSERS=1` 可以加跑 WebKit 和 Firefox。
+- 字体：叙述用系统的宋体（Songti SC、思源宋体），没有像 App 那样打包思源宋体子集；等宽字没有打包 IBM Plex Mono。

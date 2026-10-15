@@ -61,6 +61,14 @@ make web
 
 打开 http://localhost:5173 。开发服务器把 `/v1`、`/health`、`/ready` 转给 http://localhost:8000 的后端，网页和接口同源，
 不用配跨域，Cookie 登录也能用；后端在别的地址时设环境变量 `BT_API_URL`。设计和实现说明见 [client.md 第 4 节](client.md)。
+部署时 `make web-build` 生成 `apps/web/dist`，由反向代理和接口放在同一个域名下（见 `deploy/nginx.example.conf`）。
+
+没有模型 Key 也能从导入一路玩下去：起一个假模型服务，在“添加模型”里选“自定义兼容端点”，端点填 `http://127.0.0.1:8020/v1`，
+Key 随便填，模型选 `fake-model`（后端要设 `ALLOW_PRIVATE_ENDPOINTS=true`）：
+
+```bash
+cd apps/server && uv run python -m tests.fakes.story_llm --port 8020
+```
 
 排查问题时用日志查看器：`make vis-install` 装一次依赖，之后 `make vis`，打开 http://127.0.0.1:8100 。
 它把 `apps/server/.data/logs/` 下的日志和数据库里的回合画成时间线，用法见 [testing.md 第 1 节](testing.md)。
@@ -76,6 +84,7 @@ make web
 | `make lint` | ruff、pyright、import-linter |
 | `make js-test` | 客户端的纯逻辑（`packages/`、`apps/mobile`、`apps/web` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局、网页的存储和快捷键判断 |
 | `make js-typecheck` | 客户端和共用包的 TypeScript 类型检查 |
+| `make web-e2e` | 网页端的端到端测试（Playwright，用本机的 Chrome）：自己起后端、假模型服务和 Vite，从注册一路玩到删除账户；测试账号以 `e2e-` 开头，最后会删掉 |
 | `make vis-test` | 日志查看器的纯逻辑：中文目录、格式化、手机日志解析 |
 
 ## 合规率评测（M0 的 go / no-go）

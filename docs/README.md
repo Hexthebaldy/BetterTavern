@@ -80,11 +80,16 @@ BetterTavern/                           # Python 包名 bettertavern
 │       ├── mobile.yml                  # tsc、eslint、jest
 │       ├── contract.yml                # 重新生成 OpenAPI 与 TS 类型并比对
 │       └── release.yml                 # 镜像构建与 EAS 发布
+├── package.json                        # npm 工作区：apps/mobile、apps/web、packages/*
 ├── apps/
 │   ├── server/                         # Python 后端，见下
-│   └── mobile/                         # React Native 客户端，见下
+│   ├── mobile/                         # React Native 客户端，见下
+│   ├── web/                            # 电脑浏览器里的网页端（Vite + React，DOM 和 CSS），见 client.md 第 4 节
+│   └── vis/                            # 开发用的日志查看器
 ├── packages/
-│   └── api-contract/
+│   ├── core/                           # 手机端和网页端共用的纯逻辑：接口客户端、SSE、会话、回合状态机
+│   ├── design/                         # 共用的设计数据：色板、主题、尺寸、布局函数、图标、封面、标志
+│   └── api-contract/                   # （计划中）
 │       ├── openapi.json                # 由 FastAPI 导出并提交
 │       ├── events.schema.json          # SSE 事件的 JSON Schema
 │       └── scripts/generate.sh         # 生成 TS 类型与请求函数
@@ -92,7 +97,7 @@ BetterTavern/                           # Python 包名 bettertavern
 │   ├── docker-compose.yml              # api、worker、postgres、一次性的 migrate；redis 为可选 profile
 │   ├── docker-compose.dev.yml
 │   ├── Dockerfile.server
-│   ├── nginx.example.conf              # 反向代理示例（SSE 关闭缓冲）
+│   ├── nginx.example.conf              # 反向代理示例（网页和接口同源，SSE 关闭缓冲）
 │   └── k8s/                            # 可选
 ├── docs/
 │   ├── architecture/                   # 本文档的版本化副本与图
