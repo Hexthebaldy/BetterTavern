@@ -1,5 +1,6 @@
 /**
- * 密钥详情页的选模型：服务商返回的模型单选列表（最多显示 40 个），搜索框兼做手动输入，右边重新获取。
+ * 添加模型时的选模型：服务商返回的模型单选列表（最多显示 40 个），搜索框兼做手动输入，右边重新获取。
+ * 每个模型右边是它的上下文长度（服务商列表或内置资料给的）。
  */
 
 import { useMemo } from "react";
@@ -100,7 +101,11 @@ export function ModelPicker({
           </Text>
         ) : listing ? (
           <Text style={[styles.footnote, { color: palette.mut }]}>正在获取模型列表…</Text>
-        ) : null}
+        ) : listError ? null : (
+          <Text style={[styles.footnote, { color: palette.mut }]}>
+            填好 Key 后获取模型列表，也可以直接在上面输入模型名。
+          </Text>
+        )}
       </View>
     </View>
   );

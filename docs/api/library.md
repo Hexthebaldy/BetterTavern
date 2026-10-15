@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [凭据与模型路由](credentials.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 导入角色卡、管理剧本，以及读取头像文件。相关的表见 [数据模型：剧本库](../data-model/library.md)。
 

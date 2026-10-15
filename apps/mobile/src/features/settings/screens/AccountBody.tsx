@@ -22,7 +22,7 @@ import { useApp } from "../../../state/AppProvider.tsx";
 import { font, onColor, radius, space, usePalette } from "../../../theme/index.ts";
 import { formatDate } from "../../../utils/format.ts";
 
-type Counts = { stories: number; scenarios: number; keys: number };
+type Counts = { stories: number; scenarios: number; models: number };
 
 export function AccountBody() {
   const { api, user, signOut } = useApp();
@@ -42,9 +42,9 @@ export function AccountBody() {
     const next = !expanded;
     setExpanded(next);
     if (next && !counts) {
-      Promise.all([api.playthroughs.list(), api.scenarios.list(), api.credentials.list()])
-        .then(([stories, scenarios, keys]) =>
-          setCounts({ stories: stories.length, scenarios: scenarios.length, keys: keys.length }),
+      Promise.all([api.playthroughs.list(), api.scenarios.list(), api.models.list()])
+        .then(([stories, scenarios, models]) =>
+          setCounts({ stories: stories.length, scenarios: scenarios.length, models: models.length }),
         )
         .catch(() => undefined);
     }
@@ -53,7 +53,7 @@ export function AccountBody() {
   const confirmDelete = async (): Promise<void> => {
     const ok = await overlay.confirm({
       title: "删除账户？",
-      message: "所有故事、剧本和密钥都会被永久删除，无法恢复。",
+      message: "所有故事、剧本和模型（包括 Key）都会被永久删除，无法恢复。",
       confirmLabel: "删除账户",
       tone: "danger",
     });
@@ -132,12 +132,12 @@ export function AccountBody() {
               <View style={styles.stats}>
                 {stat("story", counts?.stories, "故事")}
                 {stat("library", counts?.scenarios, "剧本")}
-                {stat("key", counts?.keys, "密钥")}
+                {stat("key", counts?.models, "模型")}
               </View>
               <Text
                 style={{ fontSize: 14, lineHeight: 22, color: palette.ink2, paddingHorizontal: space.xs }}
               >
-                所有故事、剧本和密钥都会被永久删除，无法恢复。
+                所有故事、剧本和模型（包括 Key）都会被永久删除，无法恢复。
               </Text>
               {error ? <Notice message={error} /> : null}
               <Field

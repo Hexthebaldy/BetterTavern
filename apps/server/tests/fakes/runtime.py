@@ -33,6 +33,7 @@ from bettertavern.providers import (
     UsageEvent,
 )
 from bettertavern.providers.cancel import cancelled_error
+from bettertavern.providers.capabilities import CapabilityRule
 from bettertavern.providers.profile import ProviderProfile
 from bettertavern.providers.registry import ProviderRegistry
 from bettertavern.runtime.ports import (
@@ -65,6 +66,10 @@ class ScriptedAdapter:
         self.streams: deque[StreamScript] = deque()
         self.completions: deque[ChatResult | ProviderError] = deque()
         self.requests: list[ChatRequest] = []
+        # list_models 返回的列表；list_error 不为空时改为抛出它
+        self.models: list[ModelInfo] = [ModelInfo(id="fake-model", context_window=65536)]
+        self.list_error: ProviderError | None = None
+        self.list_calls = 0
 
     @property
     def profile(self) -> ProviderProfile:
@@ -119,7 +124,10 @@ class ScriptedAdapter:
         return item
 
     async def list_models(self, cred: ResolvedCredential) -> list[ModelInfo]:
-        return [ModelInfo(id="fake-model", context_window=65536)]
+        self.list_calls += 1
+        if self.list_error is not None:
+            raise self.list_error
+        return list(self.models)
 
 
 def result(text: str) -> ChatResult:
@@ -128,7 +136,9 @@ def result(text: str) -> ChatResult:
     )
 
 
-def scripted_hub(*provider_ids: str) -> tuple[ProviderHub, dict[str, ScriptedAdapter]]:
+def scripted_hub(
+    *provider_ids: str, rules: list[CapabilityRule] | None = None
+) -> tuple[ProviderHub, dict[str, ScriptedAdapter]]:
     registry = ProviderRegistry()
     adapters: dict[str, ScriptedAdapter] = {}
 
@@ -143,7 +153,7 @@ def scripted_hub(*provider_ids: str) -> tuple[ProviderHub, dict[str, ScriptedAda
         registry.register_provider(profile)
         adapters[pid] = ScriptedAdapter(profile)
     hub = ProviderHub(
-        policy=EndpointPolicy(), registry=registry, rules=[], client=httpx.AsyncClient()
+        policy=EndpointPolicy(), registry=registry, rules=rules or [], client=httpx.AsyncClient()
     )
     return hub, adapters
 
@@ -176,11 +186,17 @@ def make_route(
 class FakeRoutes:
     def __init__(self, routes: dict[RouteTask, ResolvedRoute] | None = None) -> None:
         self.routes = routes or {}
+        # note_window 记下的（route_id, window）
+        self.learned: list[tuple[str, int]] = []
 
     async def resolve(
         self, user_id: str, task: RouteTask, playthrough_id: str | None = None
     ) -> ResolvedRoute | None:
         return self.routes.get(task) or self.routes.get(RouteTask.DIRECTOR)
+
+    async def note_window(self, user_id: str, route_id: str, window: int) -> bool:
+        self.learned.append((route_id, window))
+        return True
 
 
 @dataclass

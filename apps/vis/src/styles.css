@@ -796,7 +796,7 @@ table.list tr.selected td {
 }
 
 .dot.c-account,
-.dot.c-credential,
+.dot.c-route,
 .dot.c-import {
   background: var(--c-world);
 }

@@ -16,6 +16,7 @@ import {
   plus,
   routeName,
   str,
+  WINDOW_SOURCES,
 } from "./catalogCodes.ts";
 
 export type EventInfo = { label: string; category: Category; say?: (f: Fields) => string };
@@ -53,32 +54,52 @@ export const EVENTS: Record<string, EventInfo> = {
   "auth.logout": { label: "退出登录", category: "account" },
   "account.deleted": { label: "删除账户", category: "account" },
   "account.delete_rejected": { label: "删除账户被拒绝", category: "account", say: () => "删除账户时密码不对" },
-  "credential.created": {
-    label: "添加密钥",
-    category: "credential",
-    say: (f) => `添加了 ${str(f.provider)} 的密钥（端点 ${str(f.endpoint_host)}）`,
+  "route.created": {
+    label: "添加模型",
+    category: "route",
+    say: (f) =>
+      plus(
+        `添加了 ${str(f.provider)} 的 ${str(f.model)}（端点 ${str(f.endpoint_host)}）`,
+        f.copied_key ? "复用了别的模型的 Key" : null,
+        f.window_source ? `窗口来自${WINDOW_SOURCES[str(f.window_source)] ?? str(f.window_source)}` : null,
+        f.director ? "设为导演" : null,
+      ),
   },
-  "credential.updated": {
-    label: "修改密钥",
-    category: "credential",
-    say: (f) => `修改了密钥：${Array.isArray(f.fields_changed) ? f.fields_changed.join("、") : ""}`,
+  "route.updated": {
+    label: "修改模型",
+    category: "route",
+    say: (f) =>
+      plus(
+        `修改了 ${str(f.model)}：${Array.isArray(f.fields_changed) ? f.fields_changed.join("、") : ""}`,
+        num(f.same_key_updated) ? `另外 ${str(f.same_key_updated)} 个模型一起换了 Key` : null,
+      ),
   },
-  "credential.deleted": { label: "删除密钥", category: "credential" },
-  "credential.unreadable": { label: "密钥解不开", category: "credential", say: () => "密钥无法解密，主密钥可能变了" },
-  "credential.probe": {
+  "route.deleted": { label: "删除模型", category: "route" },
+  "route.key_unreadable": { label: "Key 解不开", category: "route", say: () => "模型的 Key 无法解密，主密钥可能变了" },
+  "route.probe": {
     label: "测试模型",
-    category: "credential",
+    category: "route",
     say: (f) => plus(`测试 ${str(f.model)}：${f.ok ? "通过" : `没通过（${errorClass(f.fatal)}）`}`, ms(f.duration_ms)),
+  },
+  "route.window_learned": {
+    label: "纠正上下文窗口",
+    category: "route",
+    say: (f) => `服务商说这个模型最多 ${tokens(num(f.window))} token，以后按它算`,
   },
   "models.listed": {
     label: "拉取模型列表",
-    category: "credential",
+    category: "route",
     say: (f) => plus(`拿到 ${str(f.count)} 个模型`, ms(f.duration_ms)),
   },
   "models.list_failed": {
     label: "拉取模型列表失败",
-    category: "credential",
+    category: "route",
     say: (f) => plus(`拉取模型列表失败：${errorClass(f.error_class)}`, f.status ? `HTTP ${str(f.status)}` : null),
+  },
+  "models.list_skipped": {
+    label: "保存时没拉到模型列表",
+    category: "route",
+    say: (f) => `保存时没拉到模型列表（${errorClass(f.error_class)}），窗口先按别的来源算`,
   },
   "scenario.imported": {
     label: "导入角色卡",
@@ -133,7 +154,15 @@ export const EVENTS: Record<string, EventInfo> = {
         num(f.dropped_turns) ? `丢掉 ${str(f.dropped_turns)} 个旧回合` : null,
       ),
   },
-  "turn.context_overflow_retry": { label: "超窗重试", category: "model", say: () => "服务商说上下文超了，截短后重试" },
+  "turn.context_overflow_retry": {
+    label: "超窗重试",
+    category: "model",
+    say: (f) =>
+      num(f.learned_window)
+        ? `服务商说上下文超了，最多 ${tokens(num(f.learned_window))} token，按它重新装配后重试`
+        : "服务商说上下文超了，截短后重试",
+  },
+  "turn.window_note_failed": { label: "没记下学到的窗口", category: "model" },
   "turn.fallback": {
     label: "换备用模型",
     category: "model",
@@ -375,6 +404,7 @@ function guessCategory(event: string): Category {
   if (head === "job" || head === "queue" || head === "worker") return "job";
   if (head === "turn" || head === "world" || head === "director" || head === "options") return "turn";
   if (head === "http") return "request";
+  if (head === "route" || head === "models") return "route";
   return "app";
 }
 
@@ -397,7 +427,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   model: "模型",
   sse: "推送",
   account: "账户",
-  credential: "密钥",
+  route: "模型配置",
   import: "导入",
   job: "后台任务",
   app: "服务",

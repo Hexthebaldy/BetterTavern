@@ -114,6 +114,36 @@ async def test_error_before_text_switches_to_fallback_route() -> None:
     assert outcome.runs[0].result["fallback_used"] is True
 
 
+async def test_overflow_with_stated_limit_learns_the_window() -> None:
+    hub, adapters = scripted_hub("fake")
+    too_long = ProviderError(
+        ErrorClass.CONTEXT_OVERFLOW,
+        "This model's maximum context length is 32768 tokens. However, you requested 60000 tokens",
+        status=400,
+    )
+    adapters["fake"].streams.append(StreamScript(["x"], error=too_long, error_after=0))
+    adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
+    route = make_route(window=131072)
+    routes = FakeRoutes({RouteTask.DIRECTOR: route})
+    store = FakeStore()
+    await run_turn(store, routes, hub)
+    # 报错里写明的上限记到这个路由上，这一轮按 32K 重新装配后成功
+    assert routes.learned == [(route.route_id, 32768)]
+    assert store.committed and store.committed[0].narrative == "我推开门，雨声小了。"
+
+
+async def test_overflow_without_limit_retries_smaller_but_learns_nothing() -> None:
+    hub, adapters = scripted_hub("fake")
+    too_long = ProviderError(ErrorClass.CONTEXT_OVERFLOW, "context length exceeded", status=400)
+    adapters["fake"].streams.append(StreamScript(["x"], error=too_long, error_after=0))
+    adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
+    routes = FakeRoutes({RouteTask.DIRECTOR: make_route()})
+    store = FakeStore()
+    await run_turn(store, routes, hub)
+    assert routes.learned == []
+    assert store.committed
+
+
 async def test_interrupted_stream_keeps_partial_narrative() -> None:
     hub, adapters = scripted_hub("fake")
     broken = ProviderError(ErrorClass.STREAM_INTERRUPTED, "connection reset")

@@ -69,8 +69,7 @@ flowchart LR
 | 表 | 关键列 | 说明 |
 | --- | --- | --- |
 | `users` | id, email, password\_hash, locale, settings jsonb, created\_at | v1 邮箱加密码，短期访问令牌加刷新令牌（`refresh_tokens` 表） |
-| `credentials` | id, user\_id, provider（v1：deepseek / huggingface / custom\_openai；新厂商在注册表里加）, label, base\_url, api\_key\_enc, key\_id, extra\_headers\_enc, extra\_body jsonb, probed jsonb, status, last\_ok\_at | 密钥信封加密；`probed` 是能力探测结果（第 8 节）；`extra_body` / `extra_headers_enc` 用来给请求追加自定义字段和请求头（思路参考 ST 的 custom\_include\_body / custom\_include\_headers）；`base_url` 默认是厂商基址，可以改成自己的端点 |
-| `model_routes` | id, user\_id, playthrough\_id（可空）, task, credential\_id, model, params jsonb, caps\_override jsonb, fallback\_route\_id | task ∈ director / state\_keeper / outline / compactor / gate / world\_builder / repair。解析顺序：本 playthrough 覆盖 > 用户的该 task 路由 > 用户的 director 路由 |
+| `model_routes` | id, user\_id, label, provider（v1：deepseek / huggingface / custom\_openai；新厂商在注册表里加）, base\_url, api\_key\_enc, key\_id, extra\_headers\_enc, extra\_body jsonb, model, listed\_window, manual\_window, learned\_window, params jsonb, caps\_override jsonb, probe jsonb, status, is\_director, fallback\_route\_id | 一行是玩家配好的一个模型：Key、端点、模型名、窗口和写法设置放在一起，换导演时不用重新配。密钥信封加密；`probe` 是能力探测结果（第 8 节）；`extra_body` / `extra_headers_enc` 用来给请求追加自定义字段和请求头（思路参考 ST 的 custom\_include\_body / custom\_include\_headers）。每个用户最多一行是导演，其他 task 都用导演这一行（以后要给 StateKeeper 等单独配模型时再加按 task 的分配） |
 
 ### B 剧本库
 
@@ -473,7 +472,7 @@ class AgentSpec(Generic[In, Out]):
 
 class AgentRuntime:
     async def run(self, spec: AgentSpec[In, Out], inp: In, ctx: RunContext) -> RunResult[Out]:
-        # 1. 解析路由 -> 凭据、模型、能力（第 9 节）
+        # 1. 解析路由 -> Key、模型、能力（第 9 节）
         # 2. 渲染模板，计算 prompt_hash
         # 3. 调用 provider；分析类 agent 走结构化输出阶梯
         # 4. pydantic 校验；失败时带错误信息重试 1 次
@@ -664,7 +663,7 @@ Provider 层只做一件事：把与厂商无关的请求变成该厂商的 HTTP
 | ST 中的部分 | 做法 | 本项目对应 |
 | --- | --- | --- |
 | `src/endpoints/backends/chat-completions.js` 的 `sendDeepSeekRequest`：`thinking`、`reasoning_effort`、去掉空的 `required`、JSON schema 变通 | 参考思路，自行实现 | `providers/profiles/deepseek.py`；JSON schema 变通对应第 6 节的 `json_object` 阶梯 |
-| 自定义来源：`custom_url`、`custom_include_headers`、`custom_include_body`、`custom_exclude_body`（`mergeObjectWithYaml` / `excludeKeysByYaml`） | 参考思路，换格式 | `credentials.extra_body` 与 `extra_headers_enc`；body 里值为 null 的键表示删除，取代 exclude |
+| 自定义来源：`custom_url`、`custom_include_headers`、`custom_include_body`、`custom_exclude_body`（`mergeObjectWithYaml` / `excludeKeysByYaml`） | 参考思路，换格式 | `model_routes.extra_body` 与 `extra_headers_enc`；body 里值为 null 的键表示删除，取代 exclude |
 | `src/prompt-converters.js` 的 `postProcessPrompt`（merge / semi / strict / single 与 tools 标志） | 参考思路，自行实现 | `providers/message_transforms.py` |
 | `src/constants.js` 里写死的型号列表（如 `OPENAI_REASONING_EFFORT_MODELS`） | 不采用 | 能力表加运行时探测取代 |
 | `src/util.js` 的 `forwardFetchResponse`（原样转发上游字节流）和“客户端 socket 关闭即中止上游” | 不采用 | 我们自己解析 SSE 并发统一事件；上游中止由 `CancelToken` 控制 |
@@ -748,9 +747,11 @@ class ProviderAdapter(Protocol):
   caps: { context_window: 32768, max_output: 4096, structured: [], roles: { system: true, alternation: loose } }
 ```
 
-窗口大小的来源：路由里用户填写的值 > Hugging Face `/v1/models` 返回的上下文长度 > yaml > 兜底 32K。模型列表不带窗口的后端（自定义端点、以后新增的厂商），界面在保存路由时会请玩家确认窗口；校验规则见第 4 节“窗口校验”。
+窗口大小的来源：服务商 `/v1/models` 返回的上下文长度（Hugging Face、OpenRouter 叫 `context_length`，vLLM 叫 `max_model_len`）> yaml > 玩家手填 > 32K 估计。服务商列表最优先，因为不少推理服务为了省显存只开 32K，列表给的才是实际上限；
+Hugging Face 的一个模型有几家后端时，模型名指定了后端就用那一家的，否则取最小的。运行中服务商报超长并写明上限时，记到这个模型上，以后按它算（只会往小调）。
+列表和 yaml 都不知道窗口时，界面在添加模型时请玩家填写，不填就按 32K 估计并标明是估计值；校验规则见第 4 节“窗口校验”。
 
-`POST /v1/credentials/{id}/probe`（`providers/probe.py`）对指定模型发 4 到 5 个极小请求：普通流式聊天（验证基址、鉴权、SSE，以及 usage 字段是否出现）、`json_object`、`json_schema` strict、强制工具调用、推理开关。每个请求只有几十个 token。结果写入 `credentials.probed[model]` 并带时间戳，7 天有效，用户编辑凭据后清空。
+`POST /v1/model-routes/{id}/probe`（`providers/probe.py`）对这个模型发 4 到 5 个极小请求：普通流式聊天（验证基址、鉴权、SSE，以及 usage 字段是否出现）、`json_object`、`json_schema` strict、强制工具调用、推理开关。每个请求只有几十个 token。结果写入 `model_routes.probe` 并带时间戳，7 天有效，改了 Key、端点或模型名后清空。
 
 探测结果不是永久真相。线上请求因“不支持某能力”返回 400 时，把该能力写入负缓存 1 小时并降到下一档。这对 Hugging Face 尤其重要：路由后缀 `:fastest` 背后的 provider 会变，能力也会变。
 
@@ -773,7 +774,7 @@ class ProviderAdapter(Protocol):
 
 | 类别 | 典型信号 | 动作 |
 | --- | --- | --- |
-| auth | 401、403 | 不重试；凭据标 invalid，提示检查密钥 |
+| auth | 401、403 | 不重试；模型标 invalid，提示检查密钥 |
 | billing | 402、额度不足 | 不重试；走 fallback 路由；提示额度 |
 | rate\_limit | 429 | 退避（遵守 Retry-After）后重试，再走 fallback |
 | overloaded | 503、529、overloaded 字样 | 退避重试，再走 fallback |
@@ -797,12 +798,12 @@ class ProviderAdapter(Protocol):
 - 通过校验的 IP 被“钉住”：连接直接用该 IP，TLS 的 SNI 和 Host 仍用原域名，防止校验和连接之间 DNS 被改写（DNS rebinding）。
 - 不自动跟随重定向（对 POST 的 chat 请求，3xx 一律视为错误）。
 - 超时：连接 10 秒，两个 chunk 之间的读超时 60 秒，非流式总时长 120 秒；非流式响应上限 16MB，SSE 单行上限 1MB。
-- 同一套校验在两个时机各做一次：创建或修改凭据时（早失败、给清楚的错误 `ENDPOINT_NOT_ALLOWED`），以及每次请求时（DNS 可能变）。
+- 同一套校验在两个时机各做一次：添加或修改模型时（早失败、给清楚的错误 `ENDPOINT_NOT_ALLOWED`），以及每次请求时（DNS 可能变）。
 - 用户的 `extra_headers` 不能覆盖 `Authorization`、`Host`、`Content-Length`；`extra_body` 不能覆盖 `messages`、`stream`、`stream_options`。
 
 ### 并发限流（`providers/limiter.py`）
 
-`CredentialLimiter` 给每个凭据一个信号量（默认 4 个并发），其中 1 个槽位留给交互请求（导演），后台任务（StateKeeper、压缩、门控）只能用共享的那部分，排队超时就推迟。收到 429 时记录该凭据的冷却时间，期间新请求先等。v1 是进程内的；多个 api / worker 进程共用同一把密钥时，可选用 Redis 做分布式信号量。这个限流器的目的是保护用户自己的额度和避免自己的后台任务挤占交互请求，不是为了顶住厂商上限。
+`CredentialLimiter` 给每个 Key 一个信号量（默认 4 个并发；几个模型用同一个 Key 时共用，按 Key 的指纹分组），其中 1 个槽位留给交互请求（导演），后台任务（StateKeeper、压缩、门控）只能用共享的那部分，排队超时就推迟。收到 429 时记录该 Key 的冷却时间，期间新请求先等。v1 是进程内的；多个 api / worker 进程共用同一把密钥时，可选用 Redis 做分布式信号量。这个限流器的目的是保护用户自己的额度和避免自己的后台任务挤占交互请求，不是为了顶住厂商上限。
 
 ### 用量记录
 
@@ -828,9 +829,8 @@ class ProviderAdapter(Protocol):
 | --- | --- | --- |
 | 认证 | `POST /auth/register`、`/auth/login`、`/auth/refresh`、`/auth/logout` | 刷新令牌每次轮换，复用旧令牌视为被盗并吊销整族 |
 | 账户 | `GET /me/export`、`DELETE /me` | 导出全部数据（JSON）；异步硬删除账户与全部数据 |
-| 凭据 | `GET/POST /credentials`、`PATCH/DELETE /credentials/{id}` | 创建时做 SSRF 校验，响应里只回密钥后四位 |
-| 凭据 | `POST /credentials/{id}/probe`、`GET /credentials/{id}/models` | 能力探测（第 8 节）；列出厂商的模型，Hugging Face 带上下文长度 |
-| 路由 | `GET/PUT /model-routes`、`PUT /playthroughs/{id}/model-routes` | 用户级的各 task 路由；单局覆盖。保存时检查窗口设置能否被模型满足（第 4 节） |
+| 模型 | `GET/POST /model-routes`、`GET/PATCH/DELETE /model-routes/{id}` | 玩家配好的模型（Key、端点、模型名、窗口、写法设置），其中一个是导演。创建时做 SSRF 校验，响应里只回密钥后四位；保存时检查窗口设置能否被模型满足（第 4 节） |
+| 模型 | `POST /providers/{provider}/models`、`GET /model-routes/{id}/models`、`POST /model-routes/{id}/probe` | 用还没保存的 Key 或已存的 Key 列出厂商的模型（带上下文长度）；能力探测（第 8 节） |
 | 剧本库 | `POST /scenarios/import` | multipart 上传角色卡（PNG 或 JSON），服务端解析并返回预览 |
 | 剧本库 | `GET /scenarios`、`GET/PATCH/DELETE /scenarios/{id}` |  |
 | 游玩 | `POST /playthroughs` | 选剧本、主角、设置；202，后台跑 WorldBuilder 与开场 |
@@ -955,14 +955,14 @@ apps/server/
 │   │   ├── request_context.py          # 请求单号、访问日志、未处理的异常
 │   │   ├── sse.py                      # SSE 响应封装、Last-Event-ID 续传
 │   │   ├── schemas/                    # 对外契约（pydantic）
-│   │   │   ├── auth.py  credentials.py  routes.py  scenarios.py
+│   │   │   ├── auth.py  routes.py  scenarios.py
 │   │   │   └── playthroughs.py  turns.py  world.py  events.py  common.py
 │   │   └── v1/
-│   │       ├── auth.py  me.py  credentials.py  model_routes.py  scenarios.py
+│   │       ├── auth.py  me.py  routes.py  scenarios.py
 │   │       └── playthroughs.py  turns.py  timeline.py  world.py  events.py  health.py
 │   │
 │   ├── services/                       # 用例层：事务边界、权限，实现 runtime 的 ports
-│   │   ├── auth_service.py  credential_service.py  route_service.py
+│   │   ├── auth_service.py  route_service.py（门面）  route_codec.py  route_models.py ...
 │   │   ├── scenario_service.py  playthrough_service.py
 │   │   ├── turn_service.py             # 创建回合、租约、幂等，启动 TurnRunner
 │   │   ├── timeline_service.py         # 回退与重新生成（第 8 节）
@@ -1045,7 +1045,7 @@ apps/server/
 
 1. 依赖方向：`api` → `services` → `runtime` → `domain`。上层可以 import 下层，反过来禁止。
 2. `domain` 不 import 本项目的任何其他包，只用标准库和 pydantic，所以能脱离 FastAPI、数据库、LangGraph 单测。
-3. `providers` 不 import 本项目的任何其他包；只有 `runtime` 和凭据探测（`credential_service`）可以使用它。
+3. `providers` 不 import 本项目的任何其他包；只有 `runtime` 和 `services`（模型列表和探测在 `route_service`）可以使用它。
 4. `infra` 是叶子：可以 import `domain` 来映射对象，不能 import `runtime`、`services`、`api`。
 5. `runtime` 不直接访问数据库：它通过 `runtime/ports.py` 里的接口读写，具体实现由 `services` 和 `infra` 提供，在 `entrypoints/` 里注入。这是为了让 LangGraph 节点和 agent 能用内存假实现测试。
 6. `api` 不 import `infra.db.models`，只通过 `services` 访问数据。
@@ -1106,7 +1106,7 @@ apps/server/
 
 ## 12 M1 的实现状态与偏差
 
-M1（热路径）已经实现：账户与令牌、凭据与探测、模型路由与窗口校验、角色卡导入、WorldBuilder（最小 Seed）、
+M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型一次配好）与探测、窗口校验、角色卡导入、WorldBuilder（最小 Seed）、
 开场与每轮的流式生成、选项修复阶梯、幂等与租约、SSE 续传，以及租约过期清理。下面记录与前面各节不同、或者还没做的地方，
 后续里程碑按设计补齐。实际的表结构见 [data-model/](data-model/README.md)，实际的接口见 [api/](api/README.md)。
 
@@ -1132,8 +1132,8 @@ M1（热路径）已经实现：账户与令牌、凭据与探测、模型路由
 | --- | --- |
 | `GET /v1/me` | 当前用户 |
 | `GET /v1/providers` | 可选的服务商：DeepSeek、Hugging Face、自定义 OpenAI 兼容端点（`requires_base_url`） |
-| `GET /v1/credentials/{id}` | 单个凭据，含测试过的模型 |
-| `PUT /v1/model-routes/{task}`、`DELETE /v1/model-routes/{task}` | 按 task 保存或删除用户级路由（设计里是整体 `PUT /model-routes`）。响应带窗口校验结果 `window`：`model_window`、`working_cap`、`max_tokens`、`effective_window`、`warnings`（`WINDOW_CLAMPED`） |
+| `/v1/model-routes*` | 设计里密钥（`/credentials`）和按 task 的路由（`PUT /model-routes`）分开；实现里合成一行一个模型，Key 和模型一次配好，所有 task 用导演那一行。响应带窗口校验结果 `window`：`model_window`、`source`（窗口从哪来）、`working_cap`、`max_tokens`、`effective_window`、`warnings`（`WINDOW_CLAMPED`） |
+| `POST /v1/providers/{provider}/models` | 用还没保存的 Key 拉模型列表，添加模型的表单在保存前用 |
 | `GET /v1/blobs/{id}` | 头像 |
 | 还没有 | `GET /me/export`、单局路由覆盖、`/options/regenerate`、`/regenerate`、`/rollback`、`/summary`、`/outline`、会话通道、`/metrics` |
 
@@ -1149,7 +1149,7 @@ M1（热路径）已经实现：账户与令牌、凭据与探测、模型路由
 | `EMAIL_TAKEN` | 409 | 邮箱已注册 |
 | `INVALID_CREDENTIALS` | 401 / 403 | 登录时邮箱或密码不对（401）；删除账户时密码不对（403） |
 | `REFRESH_INVALID`、`REFRESH_REUSED` | 401 | 刷新令牌无效或过期；用过的令牌超过 30 秒宽限期后又出现，整族吊销 |
-| `CREDENTIAL_UNREADABLE` | 409 | 凭据无法解密（主密钥换了却没保留旧的），需要重新填写 |
+| `CREDENTIAL_UNREADABLE` | 409 | 模型的 Key 无法解密（主密钥换了却没保留旧的），需要重新填写 |
 | `CARD_INVALID` | 422 | 角色卡无法解析 |
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体超过限制 |
 

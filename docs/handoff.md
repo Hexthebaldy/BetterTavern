@@ -87,7 +87,7 @@ make dev
 ### 已经做过的
 
 - 后端：357 个测试全部通过，包括单元、真实 Postgres 16 的集成测试（`tests/integration`）和端到端流程（`tests/e2e/test_m1_flow.py`：uvicorn 里的真实 api 加假模型服务，
-  走完注册 → 凭据 → 路由 → 导入 → 开局 → 多回合 → 断开后续传）。ruff、ruff format、pyright 0 错误，分层规则 0 违规。
+  走完注册 → 添加模型 → 导入 → 开局 → 多回合 → 断开后续传）。ruff、ruff format、pyright 0 错误，分层规则 0 违规。
 - 客户端：74 个 `node --test` 全部通过；用用户 Mac 上实际的 `node_modules` 跑了 `tsc`（含 expo-router 生成的 typed routes），0 错误。
 - 一个独立的 agent 审查了 M1 的全部代码，找到 10 个问题，已全部修复并加了回归测试（第 8 节）。
 
@@ -123,7 +123,7 @@ make dev
 
 出口标准（docs/README.md 第 3 节）：DeepSeek 与 Hugging Face 各完整玩 30 回合；断网续传用例通过。建议按下面的清单在 iOS 和 Android 真机上各走一遍。
 
-1. 注册 → 设置 → 密钥与端点：添加 DeepSeek 的 Key → 获取模型列表 → 选模型“测试这个模型”（会真的调用几次）→“设为导演模型”。导演模型页能看到窗口校验结果。
+1. 注册 → 设置 → 模型 → 添加模型：选 DeepSeek、填 Key → 获取模型列表 → 选模型、勾“设为导演” → 保存；进入模型详情“测试这个模型”（会真的调用几次），能看到窗口和它的来源。
    用户指定的测试模型是 DeepSeek V4.1 Flash，API 里的模型 ID 是 `deepseek-flash`（官方文档 2026-09-10 起）；`deepseek-v4-flash` 暂时也路由到它，
    `deepseek-chat`、`deepseek-reasoner` 已在 2026-07-24 停用。`capabilities.yaml` 里 `deepseek-*` 的规则（1M 窗口、384K 输出、thinking 开关）覆盖它。
 2. 剧本 → 导入一张 V2 的 PNG 卡和一张 V3 卡 → 剧本详情填主角名 → 开始故事：应先看到“正在根据角色卡搭建世界…”，再流式出开场。
@@ -161,13 +161,13 @@ make dev
 
 | 目录 | M1 的内容 |
 | --- | --- |
-| `api/` | `v1/{auth,credentials,scenarios,playthroughs,health}.py` 路由；`schemas/` 请求与响应模型；`errors.py`（problem+json）；`deps.py`（当前用户、限流）；`ratelimit.py`（进程内）；`body_limit.py`（请求体 1 MB，角色卡 16 MB）；`sse.py`；`probe_app.py`（M0 探针，只能读自己建的流） |
-| `services/` | `auth_service`、`credential_service`（含 SSRF 校验、探测、模型列表）、`route_service`（窗口校验）、`scenario_service`、`playthrough_service`（创建时插入开场回合并领租约）、`turn_service`（提交、幂等、租约、历史、取消、事件流）、`turn_store`（实现 runtime 的 `TurnStore` 端口）、`maintenance`（每 15 秒清过期租约，定期清幂等键和刷新令牌）、`container.py`（组装） |
+| `api/` | `v1/{auth,routes,scenarios,playthroughs,health}.py` 路由；`schemas/` 请求与响应模型；`errors.py`（problem+json）；`deps.py`（当前用户、限流）；`ratelimit.py`（进程内）；`body_limit.py`（请求体 1 MB，角色卡 16 MB）；`sse.py`；`probe_app.py`（M0 探针，只能读自己建的流） |
+| `services/` | `auth_service`、`route_service`（玩家配好的模型：SSRF 校验、探测、模型列表、窗口校验；门面加 `route_inputs`、`route_codec`、`route_models`、`route_views`）、`scenario_service`、`playthrough_service`（创建时插入开场回合并领租约）、`turn_service`（提交、幂等、租约、历史、取消、事件流）、`turn_store`（实现 runtime 的 `TurnStore` 端口）、`maintenance`（每 15 秒清过期租约，定期清幂等键和刷新令牌）、`container.py`（组装） |
 | `runtime/` | `runner.py`（`TurnRunner`、`TurnRunnerPool`）；`agents/{director,world_builder,options_repair}.py`；`context/{assembler,state_block,tokens,fences}.py`；`protocol/{director_parser,repair,structured,json_extract}.py`；`events/buffer.py`；`prompts/zh/*.j2`；`routing.py` |
 | `domain/` | `story/turn.py`（行动解析、选项）、`scenario/card.py`、`world/{seed,plan,views,names}.py`、`routing.py`（`RouteTask`、`RouteParams`）、`memory/thresholds.py` |
 | `importers/character_card/` | `png.py`（只读 chara / ccv3 文本块，限制块数、单块与总解压量）、`parse.py`（V1/V2/V3 规范化） |
-| `infra/` | `crypto/{envelope,keyring,passwords,tokens}.py`；`db/repositories/{accounts,credentials,library,story,world,runs}.py`（SQLAlchemy Core 写 SQL）；`db/engine.py`（`hide_parameters=True`） |
-| `migrations/versions/20261014_0002_core.py` | M1 的全部表：users、refresh_tokens、credentials、blobs、scenarios、playthroughs、turns、model_routes、entities、entity_links、facts、agent_runs、idempotency_keys |
+| `infra/` | `crypto/{envelope,keyring,passwords,tokens}.py`；`db/repositories/{accounts,routes,library,story,world,runs}.py`（SQLAlchemy Core 写 SQL）；`db/engine.py`（`hide_parameters=True`） |
+| `migrations/versions/` | `0002_core`：M1 的全部表（users、refresh_tokens、credentials、blobs、scenarios、playthroughs、turns、model_routes、entities、entity_links、facts、agent_runs、idempotency_keys）；`0003_model_routes`：credentials 并进 model_routes，一行一个配好的模型 |
 
 一轮的生命周期：
 
@@ -194,7 +194,7 @@ make dev
 | `src/features/play/turnMachine.ts` | 纯 reducer：`loading / load_failed / idle / submitting / streaming / reconnecting / polling / syncing / failed` |
 | `src/features/play/playSession.ts` | `PlaySession`：加载、提交（网络错误用同一个幂等键退避重试）、409 处理、接事件流、轮询降级、回到前台立即重连 |
 | `src/features/play/usePlaySession.ts`、`StoryFeed.tsx`、`ActionBar.tsx`、`ActionParts.tsx` | hook（每帧最多渲染一次）、故事流、底部行动面板（选项、输入、生成状态，右下角是世界状态和“更多”按钮） |
-| `app/` | 路由：`(auth)/login`、`(auth)/register`、`(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings`、`scenario/[id]`、`play/[id]`、`settings/credentials`、`settings/credential/[id]`、`settings/routes`、`settings/account`、`dev/probe`；`_layout.tsx` 用 `Stack.Protected` 按登录状态切换 |
+| `app/` | 路由：`(auth)/login`、`(auth)/register`、`(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings`、`scenario/[id]`、`play/[id]`、`settings/models`、`settings/model/[id]`、`settings/account`、`dev/probe`；`_layout.tsx` 用 `Stack.Protected` 按登录状态切换 |
 | `src/theme/index.ts`、`src/components/ui.tsx` | UI v2 柔和圆角版「白 / 柔线 / 大圆角」的设计 token 与部件（设计稿 `docs/design/ui-v2-soft/`，行为规则仍看 `docs/design/ui-v2/`）。`ui.tsx` 是门面，部件分在同目录的 primitives、feedback、controls、bars、overlay、dialog、icons 里；页头、标签栏、对话框、底部面板都是自己画的，原生导航栏不显示 |
 
 ## 7 不能破坏的约束
@@ -234,7 +234,7 @@ make dev
 
 写参考文档时对照代码发现的小问题（都还没修，严重度低；[data-model/](data-model/README.md)、[api/](api/README.md) 按现状描述）：
 
-- `\u0000`：只有导入角色卡和给剧本改名时会去掉。玩家的自由输入、主角设定、标题、凭据字段、模型输出里含 `\u0000` 时，Postgres 拒绝写入，接口返回 500，或者回合以 `INTERNAL_ERROR` 失败。
+- `\u0000`：只有导入角色卡和给剧本改名时会去掉。玩家的自由输入、主角设定、标题、模型路由的字段、模型输出里含 `\u0000` 时，Postgres 拒绝写入，接口返回 500，或者回合以 `INTERNAL_ERROR` 失败。
 - 生成中途续租失败（租约已被清理任务收走）时，runner 通过取消令牌停止，推给客户端的 `turn.failed` 是 `CANCELLED`，库里是 `RUNNER_LOST`。
   提交被围栏拒绝的情况已经统一成 `RUNNER_LOST`（第 8 节），这里也应该一样。
 - 同一个 `Idempotency-Key` 同时用在两局上：后插入的违反主键，返回 500，应该是 422 `IDEMPOTENCY_KEY_REUSED`。

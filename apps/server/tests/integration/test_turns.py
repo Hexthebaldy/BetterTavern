@@ -20,9 +20,9 @@ from bettertavern.providers import EndpointPolicy
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.services.container import Services, build_services
-from bettertavern.services.credential_service import CredentialInput
 from bettertavern.services.errors import AppError, NotFound
 from bettertavern.services.playthrough_service import NewPlaythrough
+from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.turn_service import ActionInput
 from tests.fakes.runtime import ScriptedAdapter, StreamScript, result, scripted_hub
 from tests.support.pg import database_url, schema_engine
@@ -90,17 +90,11 @@ async def world(tmp_path: Path) -> AsyncIterator[World]:
             instance_id="test",
         )
         user, _ = await services.auth.register("lin@example.com", "correct horse")
-        cred = await services.credentials.create(
-            user.id, CredentialInput(provider="fake", label="假", api_key="sk-test-123456")
-        )
-        await services.routes.put(
+        await services.routes.create(
             user.id,
-            "director",
-            credential_id=cred.id,
-            model="fake-model",
-            params={},
-            caps_override={},
-            fallback_route_id=None,
+            RouteInput(
+                provider="fake", model="fake-model", api_key="sk-test-123456", director=True
+            ),
         )
         scenario = await services.scenarios.import_file(user.id, json.dumps(CARD).encode())
         adapter = adapters["fake"]

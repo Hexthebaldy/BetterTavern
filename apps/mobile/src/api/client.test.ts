@@ -76,7 +76,7 @@ describe("ApiClient", () => {
       problem(401, "UNAUTHENTICATED", "登录已过期"),
       { status: 200, body: [] },
     ]);
-    assert.deepEqual(await client(fetch, tokens).get("/v1/credentials"), []);
+    assert.deepEqual(await client(fetch, tokens).get("/v1/model-routes"), []);
     assert.equal(tokens.refreshes, 1);
     assert.deepEqual(
       calls.map((c) => c.init.headers.Authorization),

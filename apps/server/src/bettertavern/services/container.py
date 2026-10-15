@@ -14,7 +14,6 @@ from bettertavern.runtime.prompts import PromptLibrary
 from bettertavern.runtime.runner import RunnerConfig, TurnRunner, TurnRunnerPool
 
 from .auth_service import AuthService
-from .credential_service import CredentialService
 from .maintenance import Maintenance
 from .playthrough_service import PlaythroughService
 from .route_service import RouteService
@@ -30,7 +29,6 @@ class Services:
     buffers: EventBufferRegistry
     runners: TurnRunnerPool
     auth: AuthService
-    credentials: CredentialService
     routes: RouteService
     scenarios: ScenarioService
     playthroughs: PlaythroughService
@@ -57,8 +55,7 @@ def build_services(
 ) -> Services:
     prompts = prompts or PromptLibrary("zh")
     signer = AccessTokenSigner(secrets.auth_secret, ttl_s=access_ttl_s)
-    credentials = CredentialService(engine, secrets.keyring, hub, policy)
-    routes = RouteService(engine, credentials)
+    routes = RouteService(engine, secrets.keyring, hub, policy)
     store = PgTurnStore(engine)
     runner = TurnRunner(store=store, routes=routes, hub=hub, prompts=prompts, config=runner_config)
     runners = TurnRunnerPool(runner, buffers)
@@ -68,7 +65,6 @@ def build_services(
         buffers=buffers,
         runners=runners,
         auth=AuthService(engine, signer, refresh_ttl_s=refresh_ttl_s),
-        credentials=credentials,
         routes=routes,
         scenarios=ScenarioService(engine),
         playthroughs=PlaythroughService(

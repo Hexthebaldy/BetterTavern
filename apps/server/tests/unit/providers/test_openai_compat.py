@@ -436,6 +436,21 @@ async def test_list_models_hugging_face_windows(fake_llm: RunningFakeLLM) -> Non
         hf = OpenAICompatAdapter(HUGGINGFACE, client)
         models = await hf.list_models(cred(fake_llm))
     assert [(m.id, m.context_window) for m in models] == [("a-model", 131072), ("b-model", 8192)]
+    # 指定了后端就用那一家的窗口；策略后缀或不带后缀可能分到任何一家，取最小的
+    assert HUGGINGFACE.window_of(models, "b-model:x") == 32768
+    assert HUGGINGFACE.window_of(models, "b-model:fastest") == 8192
+    assert HUGGINGFACE.window_of(models, "b-model") == 8192
+    assert HUGGINGFACE.window_of(models, "b-model:unknown-backend") == 8192
+    assert HUGGINGFACE.window_of(models, "c-model") is None
+
+
+async def test_list_models_reads_vllm_window(fake_llm: RunningFakeLLM) -> None:
+    fake_llm.app.models = [{"id": "local", "max_model_len": 16384}, {"id": "other"}]
+    async with build_http_client(EndpointPolicy(allow_private=True)) as client:
+        adapter = OpenAICompatAdapter(CUSTOM_OPENAI, client)
+        models = await adapter.list_models(cred(fake_llm))
+    assert CUSTOM_OPENAI.window_of(models, "local") == 16384
+    assert CUSTOM_OPENAI.window_of(models, "other") is None
 
 
 async def test_custom_endpoint_requires_base_url() -> None:

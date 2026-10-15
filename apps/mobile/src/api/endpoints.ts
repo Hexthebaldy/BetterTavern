@@ -5,7 +5,6 @@
 import type { ApiClient } from "./client.ts";
 import type {
   AuthResponse,
-  Credential,
   ModelInfo,
   ModelRoute,
   NewAction,
@@ -23,22 +22,35 @@ import type {
   WorldView,
 } from "./types.ts";
 
-export type NewCredential = {
+/** 添加模型：api_key 和 copy_key_from（复用自己另一个模型的 Key）二选一 */
+export type NewModelRoute = {
   provider: string;
+  model: string;
   label?: string;
-  api_key: string;
+  api_key?: string;
+  copy_key_from?: string;
+  /** 空串表示服务商的默认地址 */
   base_url?: string | null;
+  manual_window?: number | null;
+  params?: RouteParams;
+  director?: boolean;
 };
 
-export type CredentialPatch = { label?: string; api_key?: string; base_url?: string };
-
-export type RouteInput = {
-  credential_id: string;
-  model: string;
+/** 只改给出的字段；manual_window、fallback_route_id 传 null 表示清空 */
+export type ModelRoutePatch = {
+  label?: string;
+  model?: string;
+  api_key?: string;
+  apply_to_same_key?: boolean;
+  /** 空串表示恢复服务商的默认地址 */
+  base_url?: string;
+  manual_window?: number | null;
   params?: RouteParams;
-  caps_override?: Record<string, unknown>;
+  director?: boolean;
   fallback_route_id?: string | null;
 };
+
+export type ModelListQuery = { api_key?: string; copy_key_from?: string; base_url?: string | null };
 
 export type NewPlaythrough = {
   scenario_id: string;
@@ -67,24 +79,24 @@ export function createApi(client: ApiClient) {
       me: () => client.get<User>("/v1/me"),
       deleteAccount: (password: string) => client.delete<void>("/v1/me", { password }),
     },
-    credentials: {
+    models: {
       providers: () => client.get<Provider[]>("/v1/providers"),
-      list: () => client.get<Credential[]>("/v1/credentials"),
-      get: (id: string) => client.get<Credential>(`/v1/credentials/${enc(id)}`),
-      create: (body: NewCredential) => client.post<Credential>("/v1/credentials", body),
-      update: (id: string, body: CredentialPatch) =>
-        client.patch<Credential>(`/v1/credentials/${enc(id)}`, body),
-      remove: (id: string) => client.delete<void>(`/v1/credentials/${enc(id)}`),
-      // 探测会真的调一次模型，给足时间
-      probe: (id: string, model: string) =>
-        client.post<ProbeReport>(`/v1/credentials/${enc(id)}/probe`, { model }, { timeoutMs: 90_000 }),
-      models: (id: string) =>
-        client.get<ModelInfo[]>(`/v1/credentials/${enc(id)}/models`, { timeoutMs: 30_000 }),
-    },
-    routes: {
+      /** 用还没保存的 Key 拉模型列表（添加模型的表单用） */
+      preview: (provider: string, body: ModelListQuery) =>
+        client.post<ModelInfo[]>(`/v1/providers/${enc(provider)}/models`, body, { timeoutMs: 30_000 }),
       list: () => client.get<ModelRoute[]>("/v1/model-routes"),
-      put: (task: string, body: RouteInput) => client.put<ModelRoute>(`/v1/model-routes/${enc(task)}`, body),
-      remove: (task: string) => client.delete<void>(`/v1/model-routes/${enc(task)}`),
+      get: (id: string) => client.get<ModelRoute>(`/v1/model-routes/${enc(id)}`),
+      // 保存时服务端可能要拉一次模型列表来确定窗口（最多 15 秒）
+      create: (body: NewModelRoute) =>
+        client.post<ModelRoute>("/v1/model-routes", body, { timeoutMs: 30_000 }),
+      update: (id: string, body: ModelRoutePatch) =>
+        client.patch<ModelRoute>(`/v1/model-routes/${enc(id)}`, body, { timeoutMs: 30_000 }),
+      remove: (id: string) => client.delete<void>(`/v1/model-routes/${enc(id)}`),
+      // 测试会真的调几次模型，给足时间
+      probe: (id: string) =>
+        client.post<ProbeReport>(`/v1/model-routes/${enc(id)}/probe`, undefined, { timeoutMs: 90_000 }),
+      listModels: (id: string) =>
+        client.get<ModelInfo[]>(`/v1/model-routes/${enc(id)}/models`, { timeoutMs: 30_000 }),
     },
     scenarios: {
       importFile: (file: Blob) => {

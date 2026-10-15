@@ -74,7 +74,8 @@ def test_builtin_rules_load_and_cover_v1_providers() -> None:
     assert hf.structured == ()  # HF 上的 deepseek 模型不能套用 DeepSeek 官方的能力
     assert hf.reasoning.control == "none"
     custom = resolve_capabilities("custom_openai", "qwen2.5", rules)
-    assert custom.context_window == 32768
+    # 没有规则知道窗口时不编一个数，由路由按 32K 估计并标明是估计值
+    assert custom.context_window is None
 
 
 def test_negative_cache_expires() -> None:

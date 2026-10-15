@@ -152,3 +152,7 @@ class RouteResolver(Protocol):
     async def resolve(
         self, user_id: str, task: RouteTask, playthrough_id: str | None = None
     ) -> ResolvedRoute | None: ...
+
+    async def note_window(self, user_id: str, route_id: str, window: int) -> bool:
+        """服务商报超长时写明了模型的真实上限：记到这个路由上（只会往小调）。返回是否改了。"""
+        ...

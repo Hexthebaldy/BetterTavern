@@ -23,9 +23,9 @@ from bettertavern.api.probe_app import create_probe_app
 from bettertavern.api.ratelimit import RateLimiter
 from bettertavern.api.request_context import RequestContext
 from bettertavern.api.v1.auth import router as auth_router
-from bettertavern.api.v1.credentials import router as credentials_router
 from bettertavern.api.v1.health import router as health_router
 from bettertavern.api.v1.playthroughs import router as playthroughs_router
+from bettertavern.api.v1.routes import router as routes_router
 from bettertavern.api.v1.scenarios import router as scenarios_router
 from bettertavern.importers.character_card import MAX_UPLOAD_BYTES
 from bettertavern.infra.crypto.keyring import load_secrets
@@ -169,7 +169,7 @@ def create_app(
     app.add_middleware(RequestContext)
     app.include_router(health_router)
     app.include_router(auth_router)
-    app.include_router(credentials_router)
+    app.include_router(routes_router)
     app.include_router(scenarios_router)
     app.include_router(playthroughs_router)
     if settings.probe_endpoints_enabled:

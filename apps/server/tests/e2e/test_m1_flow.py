@@ -209,28 +209,35 @@ async def setup_account(client: httpx.AsyncClient, fake: RunningFakeLLM) -> dict
     assert r.status_code == 201, r.text
     token = r.json()["access_token"]
     auth = {"Authorization": f"Bearer {token}"}
+    # 添加模型的表单：先用还没保存的 Key 拉模型列表，再连同 Key 一次保存并设为导演
     r = await client.post(
-        "/v1/credentials",
+        "/v1/providers/custom_openai/models",
+        headers=auth,
+        json={"api_key": "sk-test-0000-abcd", "base_url": fake.base_url},
+    )
+    assert r.status_code == 200, r.text
+    assert [m["id"] for m in r.json()] == ["fake-model"]
+    r = await client.post(
+        "/v1/model-routes",
         headers=auth,
         json={
             "provider": "custom_openai",
             "label": "本地假服务",
             "api_key": "sk-test-0000-abcd",
             "base_url": fake.base_url,
+            "model": "fake-model",
+            "director": True,
         },
     )
     assert r.status_code == 201, r.text
-    credential = r.json()
-    assert credential["key_last4"] == "abcd"
-    assert "api_key" not in credential
-    r = await client.put(
-        "/v1/model-routes/director",
-        headers=auth,
-        json={"credential_id": credential["id"], "model": "fake-model"},
-    )
-    assert r.status_code == 200, r.text
-    assert r.json()["window"]["effective_window"] >= 16_000
-    return {"token": token, "credential_id": credential["id"]}
+    route = r.json()
+    assert route["key_last4"] == "abcd" and route["is_director"] is True
+    assert "api_key" not in route
+    # 假服务的列表没给窗口，能力表也不知道：按 32K 估计
+    assert route["window"]["source"] == "default"
+    assert route["window"]["model_window"] == 32768
+    assert route["window"]["effective_window"] >= 16_000
+    return {"token": token, "route_id": route["id"]}
 
 
 async def test_full_m1_flow(running: Running) -> None:
@@ -367,11 +374,21 @@ async def test_auth_and_isolation(running: Running) -> None:
             "/v1/auth/register", json={"email": "other@example.com", "password": "another pass 2"}
         )
         other = {"Authorization": f"Bearer {r.json()['access_token']}"}
-        # 别人的凭据：404，不泄露存在性
-        r = await client.get(f"/v1/credentials/{account['credential_id']}", headers=other)
+        # 别人的模型：404，不泄露存在性；也不能复用别人的 Key
+        r = await client.get(f"/v1/model-routes/{account['route_id']}", headers=other)
         assert r.status_code == 404 and r.json()["code"] == "NOT_FOUND"
-        r = await client.get("/v1/credentials", headers=other)
+        r = await client.get("/v1/model-routes", headers=other)
         assert r.json() == []
+        r = await client.post(
+            "/v1/model-routes",
+            headers=other,
+            json={
+                "provider": "custom_openai",
+                "copy_key_from": account["route_id"],
+                "model": "fake-model",
+            },
+        )
+        assert r.status_code == 404
         # 没带令牌、令牌乱写
         assert (await client.get("/v1/me")).status_code == 401
         assert (
@@ -384,27 +401,18 @@ async def test_route_window_validation(running: Running) -> None:
     async with httpx.AsyncClient(base_url=running.base_url, timeout=30) as client:
         account = await setup_account(client, running.fake)
         auth = {"Authorization": f"Bearer {account['token']}"}
-        r = await client.put(
-            "/v1/model-routes/director",
-            headers=auth,
-            json={
-                "credential_id": account["credential_id"],
-                "model": "fake-model",
-                "params": {"working_window": 8000},
-            },
-        )
+        url = f"/v1/model-routes/{account['route_id']}"
+        r = await client.patch(url, headers=auth, json={"params": {"working_window": 8000}})
         assert r.status_code == 422
         problem: dict[str, Any] = r.json()
         assert problem["code"] == "WINDOW_TOO_SMALL"
         assert problem["effective_window"] < 16_000
-        r = await client.put(
-            "/v1/model-routes/director",
-            headers=auth,
-            json={
-                "credential_id": account["credential_id"],
-                "model": "fake-model",
-                "params": {"working_window": 1_000_000},
-            },
-        )
+        r = await client.patch(url, headers=auth, json={"params": {"working_window": 1_000_000}})
         assert r.status_code == 200
         assert r.json()["window"]["warnings"] == ["WINDOW_CLAMPED"]
+        # 手填窗口：列表和能力表都不知道时才用；传 null 清掉
+        r = await client.patch(url, headers=auth, json={"manual_window": 131072})
+        assert r.json()["window"]["model_window"] == 131072
+        assert r.json()["window"]["source"] == "manual"
+        r = await client.patch(url, headers=auth, json={"manual_window": None})
+        assert r.json()["window"]["source"] == "default"

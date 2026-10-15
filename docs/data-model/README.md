@@ -2,9 +2,9 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [凭据与模型路由](credentials.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
 
-这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001`、`0002`）。
+这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0003`）。
 设计意图和还没建的表见 [backend.md 第 2 节](../backend.md)。
 
 表按领域分文件。每个领域文件写这个领域的表（列、类型、约束、索引）、JSON 列的结构和状态变化；本页写各领域共用的约定、
@@ -13,7 +13,7 @@
 | 文件 | 领域 | 表 |
 | --- | --- | --- |
 | [accounts.md](accounts.md) | 账户与令牌 | `users`、`refresh_tokens` |
-| [credentials.md](credentials.md) | 凭据与模型路由 | `credentials`、`model_routes` |
+| [models.md](models.md) | 模型路由（玩家配好的模型，含 Key 和端点） | `model_routes` |
 | [library.md](library.md) | 剧本库 | `blobs`、`scenarios` |
 | [story.md](story.md) | 游玩与回合，以及热路径的并发控制 | `playthroughs`、`turns`、`idempotency_keys` |
 | [world.md](world.md) | 世界状态 | `entities`、`entity_links`、`facts` |
@@ -26,12 +26,12 @@
 
 - 数据库是 PostgreSQL 16（`deploy/docker-compose.yml` 用的镜像）。`gen_random_uuid()` 从 13 版起内置，不需要装扩展。
 - 主键默认是数据库生成的 UUID，例外有这几个：
-  - `credentials.id` 由应用生成。加密时要把行 ID 绑进附加数据，所以插入前就得知道 ID。
+  - `model_routes.id` 由应用生成。加密时要把行 ID 绑进附加数据，所以插入前就得知道 ID。
   - `jobs.id` 是 `BIGSERIAL`，因为队列要按 id 排序。
   - `entity_links`、`idempotency_keys` 用组合主键。
 - 时间列一律用 `timestamptz`，默认 `now()`。`updated_at` 没有触发器，由仓储层在 UPDATE 语句里写 `now()`。
 - 结构化数据用 `jsonb`。Postgres 的 jsonb 和 text 都不接受 `\u0000`。导入角色卡、给剧本改名时会去掉它；
-  其他写入（玩家的自由输入、主角设定、标题、凭据的字段、模型的输出）还没有处理，含 `\u0000` 时数据库会报错（已知问题，见 [handoff.md 第 9 节](../handoff.md)）。
+  其他写入（玩家的自由输入、主角设定、标题、模型路由的字段、模型的输出）还没有处理，含 `\u0000` 时数据库会报错（已知问题，见 [handoff.md 第 9 节](../handoff.md)）。
 - 枚举用 `text` 加 `CHECK`，不用 Postgres 的 ENUM 类型，这样增加取值只需要改约束。
 - 租户隔离靠仓储层：按 ID 读写用户数据的 SQL 都带 `user_id` 条件，子表通过 `playthroughs.user_id` 确定归属。
   查不到就当作不存在，接口返回 404。没有启用行级安全策略。
@@ -44,18 +44,15 @@
 ```mermaid
 erDiagram
     users ||--o{ refresh_tokens : "user_id"
-    users ||--o{ credentials : "user_id"
     users ||--o{ model_routes : "user_id"
     users ||--o{ blobs : "user_id"
     users ||--o{ scenarios : "user_id"
     users ||--o{ playthroughs : "user_id"
     users ||--o{ agent_runs : "user_id"
     users ||--o{ idempotency_keys : "user_id"
-    credentials ||--o{ model_routes : "credential_id"
     model_routes |o--o{ model_routes : "fallback_route_id"
     blobs |o--o{ scenarios : "avatar_blob_id"
     scenarios |o--o{ playthroughs : "scenario_id"
-    playthroughs |o--o{ model_routes : "playthrough_id"
     playthroughs ||--o{ turns : "playthrough_id"
     playthroughs ||--o{ entities : "playthrough_id"
     playthroughs ||--o{ entity_links : "playthrough_id"
@@ -89,10 +86,10 @@ erDiagram
 
 | 操作 | 连带删除或修改 |
 | --- | --- |
-| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`credentials`、`model_routes`、`blobs`、`scenarios`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`、`idempotency_keys` |
-| 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts`、这一局的路由覆盖和 `agent_runs`。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
+| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`scenarios`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`、`idempotency_keys` |
+| 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts` 和 `agent_runs`。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 在同一个事务里删除它的头像（`blobs`）；`playthroughs.scenario_id` 置空 |
-| 删除凭据 | 级联删除用到它的路由；把这些路由当作备用路由的其他路由，`fallback_route_id` 置空 |
+| 删除模型路由 | 把它当作备用模型的其他行，`fallback_route_id` 置空。删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING` |
 | 删除实体（M2） | 级联删除相关的 `entity_links`；`facts.entity_ids` 里的 ID 不会自动清理 |
 
 定期清理（`services/maintenance.py`，在 api 进程里运行）：

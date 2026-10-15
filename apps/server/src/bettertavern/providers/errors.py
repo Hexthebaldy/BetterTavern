@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import email.utils
 import json
+import re
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -108,6 +109,13 @@ class ProviderError(Exception):
     def retryable(self) -> bool:
         return self.policy.retryable and not self.partial
 
+    @property
+    def context_limit(self) -> int | None:
+        """上下文超长时，服务商在报错里写的真实上限；没写就是 None。"""
+        if self.error_class is not ErrorClass.CONTEXT_OVERFLOW:
+            return None
+        return context_limit_from(self.message)
+
     def __repr__(self) -> str:
         return (
             f"ProviderError({self.error_class.value!r}, {self.message!r}, status={self.status!r}, "
@@ -137,6 +145,7 @@ _CONTEXT_PATTERNS = (
     "input length",
     "token limit",
     "tokens exceed",
+    "`max_new_tokens` must be",  # TGI
 )
 _MODEL_PATTERNS = (
     "model not found",
@@ -198,6 +207,33 @@ _CAPABILITY_HINTS = (
     ("stream_options", "stream_usage"),
     ("system", "system_role"),
 )
+
+
+# 各家“上下文超长”报错里写上限的方式，例如
+#   vLLM / OpenAI：This model's maximum context length is 32768 tokens. However, you requested ...
+#   TGI：`inputs` tokens + `max_new_tokens` must be <= 8192
+#   其他：context window of 131072 tokens、limit of 65536 tokens
+_CONTEXT_LIMIT_PATTERNS = (
+    re.compile(r"maximum context length (?:is|of) (\d[\d,]*)"),
+    re.compile(r"context (?:length|window) (?:is|of) (\d[\d,]*)"),
+    re.compile(r"max_new_tokens`? must be <= ?(\d[\d,]*)"),
+    re.compile(r"(?:limit|maximum) of (\d[\d,]*) tokens"),
+)
+_MIN_CONTEXT_LIMIT = 1024
+_MAX_CONTEXT_LIMIT = 10_000_000
+
+
+def context_limit_from(text: str) -> int | None:
+    """从超长报错的文字里找出模型的上下文上限；找不到或数值不合理时返回 None。"""
+    lowered = text.lower()
+    for pattern in _CONTEXT_LIMIT_PATTERNS:
+        match = pattern.search(lowered)
+        if match is None:
+            continue
+        value = int(match.group(1).replace(",", ""))
+        if _MIN_CONTEXT_LIMIT <= value <= _MAX_CONTEXT_LIMIT:
+            return value
+    return None
 
 
 def _contains(text: str, patterns: tuple[str, ...]) -> bool:

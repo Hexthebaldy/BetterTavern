@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [凭据与模型路由](credentials.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 开局、游玩列表与详情、世界状态的只读视图、历史回合、提交行动、停止生成，以及订阅回合的事件流。
 事件流的格式见 [events.md](events.md)；相关的表见 [数据模型：游玩与回合](../data-model/story.md)、[世界状态](../data-model/world.md)。
@@ -26,8 +26,8 @@
 | --- | --- | --- |
 | 422 | `VALIDATION_ERROR` | 主角名整理后为空（`field: "protagonist_name"`） |
 | 404 | `NOT_FOUND` | 剧本不存在 |
-| 409 | `ROUTE_MISSING` | 还没有配置导演用的模型 |
-| 409 | `CREDENTIAL_UNREADABLE` | 导演路由（或它的备用路由）用的凭据无法解密 |
+| 409 | `ROUTE_MISSING` | 还没有设置导演模型 |
+| 409 | `CREDENTIAL_UNREADABLE` | 导演模型（或它的备用模型）的 Key 无法解密 |
 | 429 | `RATE_LIMITED` | 每分钟超过 30 次（和提交行动合计） |
 | 503 | `UNAVAILABLE` | 服务正在重启，带 `Retry-After: 5` |
 
@@ -148,14 +148,14 @@
 - 重试一个失败的回合：用同样的 `parent_turn_id` 和同样的行动再提交一次，但要换一个新的 `Idempotency-Key`（用原来的值会原样返回那个失败的回合）。
   新回合的 `seq` 相同，`attempt` 加 1。
 
-检查的顺序：服务是否在重启 → 限流 → 路径和参数的格式 → 幂等键重放 → 游玩的归属 → 导演路由 → 锁住游玩 → 是否有正在生成的回合（租约已过期的，先把它标为失败）
+检查的顺序：服务是否在重启 → 限流 → 路径和参数的格式 → 幂等键重放 → 游玩的归属 → 导演模型 → 锁住游玩 → 是否有正在生成的回合（租约已过期的，先把它标为失败）
 → `parent_turn_id` 是不是当前头部 → 行动本身。
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 游玩不存在 |
-| 409 | `ROUTE_MISSING` | 还没有配置导演用的模型 |
-| 409 | `CREDENTIAL_UNREADABLE` | 导演路由（或它的备用路由）用的凭据无法解密 |
+| 409 | `ROUTE_MISSING` | 还没有设置导演模型 |
+| 409 | `CREDENTIAL_UNREADABLE` | 导演模型（或它的备用模型）的 Key 无法解密 |
 | 409 | `TURN_IN_PROGRESS` | 上一轮还在生成，带 `active_turn_id`；客户端可以直接订阅它的事件流 |
 | 409 | `STALE_PARENT` | `parent_turn_id` 不是当前头部（故事在别处更新过），带最新的 `head_turn_id`。已经有开场时提交 `opening` 并且 `parent_turn_id` 为 null，得到的也是这个码 |
 | 409 | `OPENING_PENDING` | 开场还没完成，就提交了 `option` 或 `text` 行动 |

@@ -5,7 +5,7 @@
 
 import { duration } from "./format.ts";
 
-export type Category = "request" | "turn" | "model" | "sse" | "account" | "credential" | "import" | "job" | "app";
+export type Category = "request" | "turn" | "model" | "sse" | "account" | "route" | "import" | "job" | "app";
 
 export type Fields = Record<string, unknown>;
 
@@ -102,16 +102,14 @@ const ROUTES: Record<string, string> = {
   "DELETE /v1/scenarios/{scenario_id}": "删除剧本",
   "GET /v1/blobs/{blob_id}": "下载图片",
   "GET /v1/providers": "服务商列表",
-  "GET /v1/credentials": "密钥列表",
-  "POST /v1/credentials": "添加密钥",
-  "GET /v1/credentials/{credential_id}": "密钥详情",
-  "PATCH /v1/credentials/{credential_id}": "修改密钥",
-  "DELETE /v1/credentials/{credential_id}": "删除密钥",
-  "POST /v1/credentials/{credential_id}/probe": "测试模型",
-  "GET /v1/credentials/{credential_id}/models": "拉取模型列表",
-  "GET /v1/model-routes": "模型路由",
-  "PUT /v1/model-routes/{task}": "设置模型路由",
-  "DELETE /v1/model-routes/{task}": "取消模型路由",
+  "POST /v1/providers/{provider}/models": "用新 Key 拉模型列表",
+  "GET /v1/model-routes": "模型列表",
+  "POST /v1/model-routes": "添加模型",
+  "GET /v1/model-routes/{route_id}": "模型详情",
+  "PATCH /v1/model-routes/{route_id}": "修改模型",
+  "DELETE /v1/model-routes/{route_id}": "删除模型",
+  "POST /v1/model-routes/{route_id}/probe": "测试模型",
+  "GET /v1/model-routes/{route_id}/models": "拉取模型列表",
   "POST /v1/playthroughs": "开局",
   "GET /v1/playthroughs": "故事列表",
   "GET /v1/playthroughs/{playthrough_id}": "打开故事",
@@ -140,6 +138,15 @@ export const PARSE_STAGES: Record<string, string> = {
   repaired: "另调模型补了选项",
   fallback: "用了兜底选项",
   narrative_missing: "没写出叙述",
+};
+
+/** 模型上下文窗口的来源（RouteOut.window.source） */
+export const WINDOW_SOURCES: Record<string, string> = {
+  listed: "服务商的模型列表",
+  table: "内置能力表",
+  manual: "手填",
+  learned: "服务商报错时写明的上限",
+  default: "32K 估计",
 };
 
 export const OPTION_SOURCES: Record<string, string> = { model: "模型", repaired: "补选项", fallback: "兜底文案" };

@@ -77,8 +77,8 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 | `play/[id]/world` | 世界 | 按类型分页浏览实体；角色私有的秘密默认隐藏 |
 | `play/[id]/timeline` | 时间线 | 回合列表带 digest，标出回退下限，回退入口 |
 | `play/[id]/outline` | 大纲 | 打开剧透开关才显示 |
-| `settings/credentials` | 密钥与端点 | 新增 Key、端点、探测、模型列表 |
-| `settings/routes` | 模型分配 | 各 task 选模型，窗口上限（显示当前模型能否满足）与思考开关 |
+| `settings/models` | 模型 | 配好的模型列表；添加模型时 Key、端点、模型名、窗口一次填完 |
+| `settings/model/[id]` | 模型详情 | 测试、设为导演、窗口上限（显示当前模型能否满足）与思考开关、更换 Key |
 | `settings/account` | 账户 | 导出数据、删除账户 |
 
 **发布**：EAS Build 出包，EAS Update 推 JS 补丁；补丁与服务端的兼容性靠 `X-Client-Version` 加服务端的最低版本检查兜住（[backend.md 第 9 节](backend.md)）。
@@ -94,7 +94,7 @@ apps/mobile/
 │   ├── (tabs)/  _layout.tsx  library.tsx  playthroughs.tsx  settings.tsx
 │   ├── scenario/[id].tsx
 │   ├── play/[id]/  index.tsx  world.tsx  timeline.tsx  outline.tsx
-│   └── settings/  credentials.tsx  routes.tsx  account.tsx
+│   └── settings/  models.tsx  model/[id].tsx  account.tsx
 ├── src/
 │   ├── api/
 │   │   ├── client.ts  sse.ts           # openapi-fetch 客户端；SseClient
@@ -148,9 +148,9 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 故事列表（左滑或长按：重命名、删除）、剧本库（网格 / 列表，导入角色卡，长按或左滑：重命名、删除）、设置首页（导演模型卡片） |
 | `scenario/[id]` | 剧本详情：封面、概要、原卡开场白；“开始新的故事”五步表单（名字建议、身份底稿、篇幅、文风标签、不想看到的勾选清单），拼回原来的字段 |
 | `play/[id]` | 阅读主屏；行动面板右下角（“自己写…”右边，生成中在“停止”左边）是世界状态面板（人物与地点、关系图、事实，揭示秘密前确认）和“更多”（阅读设置：宋体 / 黑体、字号；重命名、删除故事），导航栏只有返回和标题 |
-| `settings/credentials`、`settings/credential/[id]` | 密钥列表与添加（服务商图块、粘贴、使用官方地址）；单个密钥：进入时自动拉取模型列表、搜索兼手动输入、测试模型、设为导演模型、编辑备注名和端点、更换 Key、删除 |
-| `settings/routes` | 导演模型：“能记住多少”格子图、工作窗口上限、深度思考、取消导演模型 |
-| `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、密钥数，输入密码确认） |
+| `settings/models` | 模型列表（导演那一行带标记）和添加模型：服务商图块 → Key（新填并可粘贴，或复用同一个服务商下已有的 Key）→ 端点（使用官方地址）→ 获取模型列表、搜索兼手动输入 → 上下文窗口（只有服务商列表和内置资料都不知道时才让填，不知道就按 32K 估计）→ 备注名、是否设为导演 → 保存。一个 Key 配几个模型时每个模型一行 |
+| `settings/model/[id]` | 模型详情：服务商、Key、模型名、端点；测试这个模型（结果存在模型上）、设为导演；“能记住多少”格子图，标出窗口的来源（服务商提供、内置资料、你填的、按服务商报错纠正、估计值），估计值和手填的可以改；工作窗口上限、深度思考；编辑备注名、模型名和端点；更换 Key（别的模型也用这个 Key 时可以一起换）；取消导演；删除 |
+| `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、模型数，输入密码确认） |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
 
 界面按 [design/ui-v2-soft/](design/ui-v2-soft/README.md) 的设计稿实现（柔和圆角版“白 / 柔线 / 大圆角”；页面结构和交互规则沿用 [design/ui-v2/](design/ui-v2/README.md)）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `src/theme/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，阅读页的行动面板离开屏幕边缘浮在故事上：两者都按安全区摆放，列表和故事流的底部按浮层高度留白（`useTabBarSpace()`、`ActionBar` 的 `onHeight`）。和设计稿不同：世界状态和“更多”两个按钮从导航栏右侧挪到了行动面板右下角，离拇指近。没做的：世界状态的“新”标记和按钮上的变化提示（服务端还没有世界状态的变更记录）、导入进度条（上传没有进度事件，用来回扫动的线代替）、改昵称（没有接口）。
@@ -192,8 +192,9 @@ apps/mobile/
     │   ├── stories/  StoryCards.tsx                   # 平板的故事卡片（网格小卡、主卡）
     │   ├── library/  LibraryParts.tsx                 # 剧本库的卡片、列表行、空状态
     │   ├── scenario/ StartForm.tsx  startForm.ts      # 开始新故事的表单与内置选项
-    │   ├── settings/ labels.ts  servers.ts  window.ts  ModelPicker.tsx  CredentialSheets.tsx  ProbeResults.tsx
-    │   │             nav.tsx  SettingsPane.tsx  screens/（导演模型、密钥与端点、密钥详情、账户的页面主体）
+    │   ├── settings/ labels.ts  servers.ts  window.ts  AddModelForm.tsx  ModelPicker.tsx  ModelSheets.tsx
+    │   │             MemoryBlocks.tsx  ProbeResults.tsx  nav.tsx  SettingsPane.tsx
+    │   │             screens/（模型列表、模型详情、账户的页面主体）
     │   └── probe/    probeSession.ts  DiagnosticsCard.tsx  ProbeBody.tsx   # 连接测试；诊断日志的导出和清空
     ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  sheet  overlay  dialog  icons
     │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx  AuthLayout.tsx

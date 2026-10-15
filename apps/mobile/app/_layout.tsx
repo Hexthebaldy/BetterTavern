@@ -88,9 +88,8 @@ function RootNavigator() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="scenario/[id]" />
           <Stack.Screen name="play/[id]/index" />
-          <Stack.Screen name="settings/credentials" />
-          <Stack.Screen name="settings/credential/[id]" />
-          <Stack.Screen name="settings/routes" />
+          <Stack.Screen name="settings/models" />
+          <Stack.Screen name="settings/model/[id]" />
           <Stack.Screen name="settings/account" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>

@@ -134,3 +134,29 @@ def test_classify_exception() -> None:
         is ErrorClass.STREAM_INTERRUPTED
     )
     assert classify_exception(ValueError("x")).error_class is ErrorClass.UNKNOWN
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        (
+            "This model's maximum context length is 32768 tokens. However, you requested "
+            "40000 tokens (36000 in the messages, 4000 in the completion).",
+            32768,
+        ),
+        ("Input validation error: `inputs` tokens + `max_new_tokens` must be <= 8192.", 8192),
+        ("prompt exceeds the context window of 131,072 tokens", 131072),
+        ("prompt is too long: exceeds the limit of 65536 tokens", 65536),
+        ("context length exceeded", None),
+        ("maximum context length is 12 tokens", None),
+    ],
+)
+def test_context_limit_from_overflow_messages(message: str, expected: int | None) -> None:
+    error = classify_http_error(400, {"error": {"message": message}})
+    assert error.error_class is ErrorClass.CONTEXT_OVERFLOW
+    assert error.context_limit == expected
+
+
+def test_context_limit_only_for_overflow() -> None:
+    error = classify_http_error(429, {"error": {"message": "limit of 65536 tokens per minute"}})
+    assert error.context_limit is None

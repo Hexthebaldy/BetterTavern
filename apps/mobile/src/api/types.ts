@@ -40,29 +40,6 @@ export type Provider = {
 
 export type ProbeCheck = { name: string; ok: boolean | null; detail: string; latency_ms: number | null };
 
-export type ProbedModel = {
-  model: string;
-  probed_at: string;
-  ok: boolean;
-  fatal_error: string | null;
-  checks: ProbeCheck[];
-};
-
-export type Credential = {
-  id: string;
-  provider: string;
-  label: string;
-  base_url: string | null;
-  key_last4: string;
-  extra_header_names: string[];
-  extra_body: Record<string, unknown>;
-  status: "unverified" | "ok" | "invalid";
-  last_ok_at: string | null;
-  probed_models: ProbedModel[];
-  created_at: string;
-  updated_at: string;
-};
-
 export type ProbeReport = {
   provider: string;
   model: string;
@@ -72,7 +49,14 @@ export type ProbeReport = {
   caps_overlay: Record<string, unknown>;
 };
 
-export type ModelInfo = { id: string; context_window: number | null; owned_by: string | null };
+/** 服务商模型列表里的一项 */
+export type ModelInfo = {
+  id: string;
+  context_window: number | null;
+  /** context_window 从哪来：listed 服务商的列表，table 内置能力表；null 表示都不知道 */
+  window_source: "listed" | "table" | null;
+  owned_by: string | null;
+};
 
 export type RouteParams = {
   temperature?: number;
@@ -82,25 +66,40 @@ export type RouteParams = {
   working_window?: number;
 };
 
+/** 模型窗口从哪来：服务商列表、内置能力表、手填、运行中学到的、32K 估计 */
+export type WindowSource = "listed" | "table" | "manual" | "learned" | "default";
+
 export type RouteWindow = {
   model_window: number;
+  source: WindowSource;
   working_cap: number;
   max_tokens: number;
   effective_window: number;
   warnings: string[];
 };
 
+/** 玩家配好的一个模型：Key、端点、模型名、窗口和写法设置，其中一个是导演 */
 export type ModelRoute = {
   id: string;
-  task: string;
-  credential_id: string;
+  label: string;
   provider: string;
-  credential_label: string;
   model: string;
+  base_url: string | null;
+  key_last4: string;
+  extra_header_names: string[];
+  extra_body: Record<string, unknown>;
+  manual_window: number | null;
   params: RouteParams;
   caps_override: Record<string, unknown>;
+  status: "unverified" | "ok" | "invalid";
+  last_ok_at: string | null;
+  last_probe: ProbeReport | null;
+  is_director: boolean;
   fallback_route_id: string | null;
+  /** 和它用同一个 Key 的其他模型 */
+  shares_key_with: string[];
   window: RouteWindow;
+  created_at: string;
   updated_at: string;
 };
 

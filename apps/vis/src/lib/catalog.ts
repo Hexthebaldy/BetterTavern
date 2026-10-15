@@ -63,6 +63,16 @@ export const FIELD_LABELS: Record<string, string> = {
   text_chars: "文字长度",
   idempotent: "带幂等键",
   streamed_chars: "已推送字数",
+  // 模型配置
+  route_id: "模型编号",
+  endpoint_host: "端点主机",
+  fields_changed: "改了哪些",
+  window_source: "窗口来源",
+  learned_window: "学到的窗口",
+  copied_key: "复用了 Key",
+  same_key_updated: "一起换 Key 的模型数",
+  director: "设为导演",
+  reset: "要重新确认",
   // 下面是手机日志里的字段
   server: "服务器",
   detail: "细节",

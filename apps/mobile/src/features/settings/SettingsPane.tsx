@@ -2,7 +2,7 @@
  * 宽屏设置两栏的右栏（设计稿 T13、T14）：从左栏右边 24 开始，到屏幕右边留 16，上下各留 16，圆角 32，底色 bg2，
  * 里面的卡片是白色（RaisedSurface 把这一片的色板换成“灰底白卡”）。
  *
- * 左栏点哪一项，右栏就从那一项开始；右栏里再往下一层（密钥列表 → 密钥详情）时压进一个小栈，
+ * 左栏点哪一项，右栏就从那一项开始；右栏里再往下一层（模型列表 → 模型详情）时压进一个小栈，
  * 顶上显示“‹ 上一层名字”胶囊，左栏不动。页面主体和路由页面是同一份（screens/、../probe/ProbeBody.tsx），
  * 跳转经 SettingsNavProvider 换成这个栈。
  */
@@ -17,22 +17,19 @@ import { gutter, settingsDetailLeft } from "../../theme/layout.ts";
 import { ProbeBody } from "../probe/ProbeBody.tsx";
 import { SettingsNavProvider, TARGET_TITLES, type SettingsNav, type SettingsTarget } from "./nav.tsx";
 import { AccountBody } from "./screens/AccountBody.tsx";
-import { CredentialBody } from "./screens/CredentialBody.tsx";
-import { CredentialsBody } from "./screens/CredentialsBody.tsx";
-import { RoutesBody } from "./screens/RoutesBody.tsx";
+import { ModelBody } from "./screens/ModelBody.tsx";
+import { ModelsBody } from "./screens/ModelsBody.tsx";
 
 function keyOf(target: SettingsTarget): string {
-  return target.screen === "credential" ? `credential:${target.id}` : target.screen;
+  return target.screen === "model" ? `model:${target.id}` : target.screen;
 }
 
 function Body({ target }: { target: SettingsTarget }) {
   switch (target.screen) {
-    case "routes":
-      return <RoutesBody />;
-    case "credentials":
-      return <CredentialsBody />;
-    case "credential":
-      return <CredentialBody id={target.id} />;
+    case "models":
+      return <ModelsBody />;
+    case "model":
+      return <ModelBody id={target.id} />;
     case "account":
       return <AccountBody />;
     case "probe":

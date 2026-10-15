@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -65,10 +65,25 @@ class ProviderProfile:
         model_id = item.get("id")
         if not isinstance(model_id, str) or not model_id:
             return None
-        window = item.get("context_length", item.get("context_window"))
+        # OpenRouter、Hugging Face 叫 context_length，vLLM 叫 max_model_len
+        window = next(
+            (
+                item[key]
+                for key in ("context_length", "context_window", "max_model_len")
+                if isinstance(item.get(key), int) and item[key] > 0
+            ),
+            None,
+        )
         owned_by = item.get("owned_by")
         return ModelInfo(
             id=model_id,
             context_window=window if isinstance(window, int) and window > 0 else None,
             owned_by=owned_by if isinstance(owned_by, str) else None,
         )
+
+    def window_of(self, models: Sequence[ModelInfo], model: str) -> int | None:
+        """模型列表里这个模型的上下文长度；列表里没有或没给长度时为 None。"""
+        for info in models:
+            if info.id == model:
+                return info.context_window
+        return None

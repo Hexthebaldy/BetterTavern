@@ -253,7 +253,7 @@ export default function PlayScreen() {
           <ActionBar
             state={state}
             controls={controls}
-            onOpenSettings={() => router.push("/settings/routes")}
+            onOpenSettings={() => router.push("/settings/models")}
             onOpenWorld={toggleWorld}
             onOpenMore={() => setMoreOpen(true)}
             onHeight={onPanelHeight}

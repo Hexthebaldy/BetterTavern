@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [凭据与模型路由](credentials.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 这个目录说明服务端**已经实现**的全部接口（M1），内容以代码为准。完整的接口设计（包括还没做的回退、重新生成、会话通道）见 [backend.md 第 9 节](../backend.md)，
 实现与设计的差异见 [backend.md 第 12 节](../backend.md)。非生产环境下，服务端在 `/docs` 提供交互式文档，OpenAPI 在 `/openapi.json`。
@@ -12,7 +12,7 @@
 | 文件 | 领域 | 路径 |
 | --- | --- | --- |
 | [auth.md](auth.md) | 认证与账户 | `/v1/auth/*`、`/v1/me` |
-| [credentials.md](credentials.md) | 服务商、凭据与模型路由 | `/v1/providers`、`/v1/credentials*`、`/v1/model-routes*` |
+| [models.md](models.md) | 服务商与模型路由（玩家配好的模型，含 Key 和端点） | `/v1/providers*`、`/v1/model-routes*` |
 | [library.md](library.md) | 剧本库 | `/v1/scenarios*`、`/v1/blobs/*` |
 | [play.md](play.md) | 游玩与回合 | `/v1/playthroughs*`、`/v1/turns/*` |
 | [events.md](events.md) | 回合事件流（SSE）的格式 | `/v1/turns/{turn_id}/events` 推送的内容（接口本身在 play.md） |
@@ -84,7 +84,7 @@
 | --- | --- | --- |
 | 客户端 IP | 5（`RATE_LIMIT_AUTH_PER_MIN`），注册和登录分开计数 | `POST /v1/auth/register`、`POST /v1/auth/login` |
 | 用户 | 30（`RATE_LIMIT_TURNS_PER_MIN`），两个接口共用一个计数 | `POST /v1/playthroughs`、`POST /v1/playthroughs/{playthrough_id}/turns` |
-| 用户 | 5（`RATE_LIMIT_PROBE_PER_MIN`） | `POST /v1/credentials/{credential_id}/probe` |
+| 用户 | 5（`RATE_LIMIT_PROBE_PER_MIN`），两个接口各自计数 | `POST /v1/model-routes/{route_id}/probe`、`POST /v1/providers/{provider}/models` |
 
 客户端 IP 取的是连接的对端地址。服务部署在反向代理后面时，要把代理的地址加进环境变量 `FORWARDED_ALLOW_IPS`，让 uvicorn 采用 `X-Forwarded-For`，
 否则所有玩家会共用代理的 IP 计数。
@@ -102,9 +102,9 @@
 ## 一次完整的流程
 
 1. `POST /v1/auth/register` 注册，拿到访问令牌和刷新令牌。（[auth.md](auth.md)）
-2. `GET /v1/providers` 列出服务商，`POST /v1/credentials` 添加 API Key。（[credentials.md](credentials.md)）
-3. `GET /v1/credentials/{credential_id}/models` 获取模型列表；可以再用 `POST /v1/credentials/{credential_id}/probe` 测一下选中的模型。
-4. `PUT /v1/model-routes/director` 设置导演用的模型。没有导演路由就不能开局。
+2. `GET /v1/providers` 列出服务商，`POST /v1/providers/{provider}/models` 用刚填的 API Key 获取模型列表。（[models.md](models.md)）
+3. `POST /v1/model-routes` 把 Key、端点、模型名一次保存，带 `"director": true` 设为导演。没有导演就不能开局。
+4. 可以用 `POST /v1/model-routes/{route_id}/probe` 测一下这个模型；以后换导演用 `PATCH /v1/model-routes/{route_id}` 传 `"director": true`。
 5. `POST /v1/scenarios/import` 上传角色卡（PNG 或 JSON）。（[library.md](library.md)）
 6. `POST /v1/playthroughs` 开局，返回 202、游玩和开场回合。（[play.md](play.md)）
 7. `GET /v1/turns/{turn_id}/events` 订阅开场回合的事件流：先是搭建世界的事件，然后是叙述增量、选项，最后是 `turn.completed`。（[events.md](events.md)）
@@ -125,8 +125,8 @@
 | `NOT_FOUND` | 404 | 资源不存在，或者不属于你；路径不存在也是这个码 |  |
 | `METHOD_NOT_ALLOWED` | 405 | 路径存在，但不支持这个方法 |  |
 | `EMAIL_TAKEN` | 409 | 邮箱已经注册过 |  |
-| `CREDENTIAL_UNREADABLE` | 409 | 凭据无法解密，需要重新填写 Key（探测、获取模型列表，以及开局、提交行动时解析导演路由都可能遇到） |  |
-| `ROUTE_MISSING` | 409 | 还没有配置导演用的模型 |  |
+| `CREDENTIAL_UNREADABLE` | 409 | 模型的 Key 无法解密，需要重新填写 Key（测试、获取模型列表、复用 Key，以及开局、提交行动时解析导演都可能遇到） |  |
+| `ROUTE_MISSING` | 409 | 还没有设置导演模型 |  |
 | `TURN_IN_PROGRESS` | 409 | 上一轮还在生成 | `active_turn_id` |
 | `STALE_PARENT` | 409 | `parent_turn_id` 不是当前头部 | `head_turn_id` |
 | `OPENING_PENDING` | 409 | 开场还没完成就提交了行动 |  |
@@ -134,7 +134,7 @@
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体或文件超过限制 |  |
 | `VALIDATION_ERROR` | 422 | 参数不符合要求 | `errors`（模型校验）或 `field`（业务校验）；行动本身的校验错误两个都不带；探针接口用 `detail` |
 | `ENDPOINT_NOT_ALLOWED` | 422 | 接口地址没有通过 SSRF 校验 | `reason` |
-| `WINDOW_TOO_SMALL` | 422 | 路由的有效窗口小于 16000 | `model_window`、`cap`、`max_tokens`、`effective_window` |
+| `WINDOW_TOO_SMALL` | 422 | 模型的有效窗口小于 16000 | `model_window`、`cap`、`max_tokens`、`effective_window` |
 | `CARD_INVALID` | 422 | 角色卡无法解析 |  |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | 同一个 `Idempotency-Key` 对应了不同的请求内容 |  |
 | `OPENING_EXISTS` | 422 | `parent_turn_id` 是当前头部（已经有开场）时又请求生成开场 |  |
@@ -158,7 +158,7 @@
 | `CONTENT_BLOCKED` | 否 | 被服务商的内容策略拦截 |
 | `ENDPOINT_NOT_ALLOWED` | 否 | 接口地址在请求时没有通过 SSRF 校验 |
 | `CONTEXT_TOO_LARGE` | 否 | 上下文装不进有效窗口（截断后重试也不行），建议换更大窗口的模型 |
-| `ROUTE_MISSING` | 否 | 生成时发现导演路由已经被删除 |
+| `ROUTE_MISSING` | 否 | 生成时发现导演模型已经被删除或取消 |
 | `NARRATIVE_MISSING` | 是 | 模型这次没有写出叙述 |
 | `CANCELLED` | 是 | 玩家停止了生成，或者服务在重启。生成中途租约丢失时，事件流里也是这个码，但库里记的是 `RUNNER_LOST`（已知问题） |
 | `RUNNER_LOST` | 是 | 生成进程意外中止（租约过期后被清理），或者提交时发现租约已经被收回 |

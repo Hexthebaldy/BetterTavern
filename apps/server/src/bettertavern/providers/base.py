@@ -168,6 +168,8 @@ class ModelInfo:
     id: str
     context_window: int | None = None
     owned_by: str | None = None
+    # 同一个模型由多家后端提供、窗口各不相同时（Hugging Face），每家后端的窗口
+    backend_windows: Mapping[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

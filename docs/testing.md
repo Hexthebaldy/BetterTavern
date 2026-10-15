@@ -57,9 +57,9 @@ App 报错时显示这个单号，拿它去日志里一搜：搜不到说明请�
 | --- | --- | --- |
 | 请求 | `http.request`、`http.error` | 方法、路径、路由模板、状态码、耗时、客户端版本、`error_code`（业务错误码，由错误处理绑定） |
 | 账户 | `auth.registered`、`auth.login`、`auth.login_failed`、`auth.refresh`、`auth.refresh_invalid`、`auth.refresh_reused`（疑似令牌被盗，整族吊销）、`auth.logout`、`account.deleted`、`account.delete_rejected` | 失败原因（`unknown_email` / `wrong_password` / `expired`……）；不记邮箱和密码 |
-| 密钥 | `credential.created` / `updated` / `deleted`、`credential.unreadable`、`credential.probe`、`models.listed`、`models.list_failed` | 服务商、端点主机名、改了哪些字段、探测结果、模型数量、错误类别 |
+| 模型 | `route.created` / `updated` / `deleted`、`route.key_unreadable`、`route.probe`、`route.window_learned`、`models.listed`、`models.list_failed`、`models.list_skipped` | 服务商、模型名、端点主机名、改了哪些字段、窗口从哪来、是否复用或一起换了 Key、探测结果、模型数量、错误类别 |
 | 导入 | `scenario.imported`、`scenario.import_failed`、`scenario.deleted` | 字节数、卡片规范、世界书条目数、开场白数、被截断的字段名、是否重复导入 |
-| 回合 | `turn.submitted`、`turn.replayed`（幂等重放）、`turn.started`、`world.build.started` / `done`、`turn.barrier_waited`、`context.assembled`、`turn.context_overflow_retry`、`turn.fallback`、`director.parse`、`options.repair` / `repair_failed`、`turn.committed`、`turn.commit_rejected`、`turn.failed`、`turn.cancel_requested`、`turn.lease_expired`、`turn.crashed` | 行动来源和文字长度、预算与占用比例、提示词指纹、解析走到哪一级、选项来源、失败码与取消原因、总耗时 |
+| 回合 | `turn.submitted`、`turn.replayed`（幂等重放）、`turn.started`、`world.build.started` / `done`、`turn.barrier_waited`、`context.assembled`、`turn.context_overflow_retry`（服务商写明了上限时带 `learned_window`）、`turn.window_note_failed`、`turn.fallback`、`director.parse`、`options.repair` / `repair_failed`、`turn.committed`、`turn.commit_rejected`、`turn.failed`、`turn.cancel_requested`、`turn.lease_expired`、`turn.crashed` | 行动来源和文字长度、预算与占用比例、提示词指纹、解析走到哪一级、选项来源、失败码与取消原因、总耗时 |
 | 模型调用 | `provider.request`、`provider.slot_wait` / `slot_timeout`、`provider.retry`、`provider.first_token`、`provider.response`、`provider.failed` | 服务商、模型、第几次尝试、错误类别与 HTTP 状态、重试等待、首字延迟、各类 token 数、结束原因 |
 | 推送 | `sse.subscribe`（实时 / 回合结束后一次给全，续传要补发几条）、`sse.open`、`sse.close` | 从第几条续传、结束原因（`completed` / `client_gone` / `shutdown`）、发出几条、持续多久 |
 | 后台任务 | `job.started` / `done` / `failed` / `released` / `lock_lost` / `renew_failed` / `reaped`、`job.claim_failed`、`queue.listen_*`、`worker.*` | 任务类型、第几次尝试、会不会重试、多久后重试 |
@@ -205,8 +205,9 @@ make vis
 | `unit/api/test_api_doc.py` | [docs/api/](api/README.md) 与 OpenAPI 一致（目录里的文件合在一起检查，每个接口和模型只能写一次）：接口齐全、鉴权与成功状态码、查询参数与请求头、每个请求和响应模型的字段与必填项 |
 | `integration/test_data_model_doc.py` | [docs/data-model/](data-model/README.md) 与迁移建出的表一致（同上）：表、列名、类型、可空、索引名 |
 | `integration/test_accounts.py` | 注册登录、刷新令牌轮换、宽限期与盗用检测、退出吊销整族、删除账户 |
+| `integration/test_routes.py` | 模型路由：窗口的来源顺序（服务商列表 > 能力表 > 手填 > 32K）、保存时复用表单拉过的列表、复用 Key 与一起换 Key、只有一个导演且所有用途都用它、备用模型、学到的窗口只往小调、跨用户 404 |
 | `integration/test_turns.py` | 同一个幂等键并发提交只建一个回合、生成中再提交得到 `TURN_IN_PROGRESS`、租约过期清理后迟到的结果作废、跨用户 404、过期父回合与选项校验 |
-| `e2e/test_m1_flow.py` | uvicorn 里的真实 api 加假模型服务：注册 → 凭据 → 路由 → 导入 → 开局 → 多回合（幂等重放、并发提交、过期父回合）→ 中途断开再续传，拼接结果等于最终叙述；鉴权与隔离；窗口校验 |
+| `e2e/test_m1_flow.py` | uvicorn 里的真实 api 加假模型服务：注册 → 拉模型列表并添加模型 → 导入 → 开局 → 多回合（幂等重放、并发提交、过期父回合）→ 中途断开再续传，拼接结果等于最终叙述；鉴权与隔离；窗口校验 |
 
 `integration` 与 `e2e/test_m1_flow.py` 需要 `BT_TEST_DATABASE_URL`（`make test-integration`），没有设置时跳过。
 

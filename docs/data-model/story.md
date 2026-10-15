@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [凭据与模型路由](credentials.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
 
 一局游玩的时间线：游玩本身、回合，以及提交行动用的幂等键。热路径的并发控制（租约、带围栏的提交、加锁顺序）也写在这里。
 对应的接口见 [api/play.md](../api/play.md)，回合的事件流见 [api/events.md](../api/events.md)。

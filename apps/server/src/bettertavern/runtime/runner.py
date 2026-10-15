@@ -53,7 +53,7 @@ from .prompts import PromptLibrary
 from .protocol.director_parser import ParseStage
 from .protocol.repair import NarrativeMissing, finalize_director_output
 from .protocol.structured import StructuredOutputError
-from .routing import ResolvedRoute
+from .routing import ResolvedRoute, with_model_window
 from .runner_pool import TurnRunnerPool
 from .turn_stream import (
     DirectorStreamer,
@@ -365,6 +365,13 @@ class TurnRunner:
     def _elapsed_ms(self, started: float) -> int:
         return int((self._clock() - started) * 1000)
 
+    async def _learn_window(self, header: TurnHeader, route: ResolvedRoute, window: int) -> None:
+        """记下学到的窗口；记不下来（数据库出错）也不影响这一轮用它重试。"""
+        try:
+            await self._routes.note_window(header.user_id, route.route_id, window)
+        except Exception as exc:  # 只是少记一次，不该让回合失败
+            log.warning("turn.window_note_failed", error=type(exc).__name__)
+
     async def _generate(
         self,
         header: TurnHeader,
@@ -399,11 +406,22 @@ class TurnRunner:
                     raise TurnFailed(failure_from_provider(error, failed.streamed)) from error
                 if error.error_class is ErrorClass.CONTEXT_OVERFLOW and not overflow_retried:
                     overflow_retried = True
+                    limit = error.context_limit
+                    learned = limit is not None and limit < attempt_route.window.model_window
+                    if learned and limit is not None:
+                        # 服务商写明了真实上限（常见于只开 32K 的推理服务）：
+                        # 记下来，这一轮按它重新装配
+                        await self._learn_window(header, attempt_route, limit)
+                        attempt_route = with_model_window(attempt_route, limit)
                     window = attempt_route.window.effective_window
-                    log.warning("turn.context_overflow_retry", window=window)
+                    log.warning(
+                        "turn.context_overflow_retry",
+                        window=window,
+                        learned_window=limit if learned else None,
+                    )
                     try:
                         context = self._assembler.assemble(
-                            ctx, window, budget=overflow_retry_budget(window)
+                            ctx, window, budget=None if learned else overflow_retry_budget(window)
                         )
                     except ContextTooLarge as exc:
                         raise TurnFailed(failure_from_provider(error)) from exc

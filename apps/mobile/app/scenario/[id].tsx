@@ -320,7 +320,7 @@ export default function ScenarioScreen() {
     <Notice
       message={routeMissing ? "没有可用模型" : describeError(startError)}
       actionLabel={routeMissing ? "去设置" : undefined}
-      onAction={routeMissing ? () => router.push("/settings/routes") : undefined}
+      onAction={routeMissing ? () => router.push("/settings/models") : undefined}
     />
   ) : null;
   const pills = (

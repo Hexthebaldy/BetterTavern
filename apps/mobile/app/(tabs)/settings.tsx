@@ -4,14 +4,14 @@
  *
  * 平板（theme/layout.ts）：中屏单栏，宽 640，居中，逐层进入，和手机一样；
  * 宽屏两栏（设计稿 T13、T14）：左栏宽 340 就是这一页，右栏是详情区（features/settings/SettingsPane.tsx），
- * 左栏里打开着的那一项白底加 2px 蓝色内描边，导演模型卡片换成浅灰的。默认打开导演模型，没有时打开密钥与端点。
+ * 左栏里打开着的那一项白底加 2px 蓝色内描边，导演模型卡片换成浅灰的。默认打开导演模型的详情，没有导演时打开模型列表。
  */
 
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "../../src/api/client.ts";
-import type { Credential, ModelRoute } from "../../src/api/types.ts";
+import type { ModelRoute } from "../../src/api/types.ts";
 import {
   Button,
   Group,
@@ -27,7 +27,7 @@ import {
 } from "../../src/components/ui.tsx";
 import { CLIENT_VERSION } from "../../src/config.ts";
 import { AppearanceSheet } from "../../src/features/settings/AppearanceSheet.tsx";
-import { CREDENTIAL_STATUS } from "../../src/features/settings/labels.ts";
+import { MODEL_STATUS, WINDOW_SOURCE } from "../../src/features/settings/labels.ts";
 import { useSettingsNav, type SettingsTarget } from "../../src/features/settings/nav.tsx";
 import { displayServer } from "../../src/features/settings/servers.ts";
 import { SettingsPane } from "../../src/features/settings/SettingsPane.tsx";
@@ -44,13 +44,11 @@ import { formatTokens } from "../../src/utils/format.ts";
  */
 function DirectorCard({
   route,
-  credential,
   onPress,
   light,
   selected,
 }: {
   route: ModelRoute;
-  credential: Credential | undefined;
   onPress: () => void;
   light?: boolean;
   selected?: boolean;
@@ -64,11 +62,11 @@ function DirectorCard({
   const faint = light ? { color: palette.mut } : { color: palette.bg, opacity: 0.65 };
   const soft = light ? palette.bg3 : palette.arrowBg;
   const statusDot =
-    credential?.status === "ok"
+    route.status === "ok"
       ? light
         ? palette.ok
         : palette.okOnInk
-      : credential?.status === "invalid"
+      : route.status === "invalid"
         ? palette.err
         : palette.warn;
   const background = light ? (selected ? palette.card : palette.bg2) : palette.ink;
@@ -89,12 +87,10 @@ function DirectorCard({
     >
       <View style={styles.cardTop}>
         <Text style={[{ fontSize: 13 }, faint]}>导演模型</Text>
-        {credential ? (
-          <View style={[styles.cardStatus, { backgroundColor: light ? palette.bg3 : palette.arrowBg }]}>
-            <View style={[styles.dot, { backgroundColor: statusDot }]} />
-            <Text style={{ fontSize: 12, color: fg }}>{CREDENTIAL_STATUS[credential.status]}</Text>
-          </View>
-        ) : null}
+        <View style={[styles.cardStatus, { backgroundColor: light ? palette.bg3 : palette.arrowBg }]}>
+          <View style={[styles.dot, { backgroundColor: statusDot }]} />
+          <Text style={{ fontSize: 12, color: fg }}>{MODEL_STATUS[route.status]}</Text>
+        </View>
       </View>
       <View style={styles.cardMain}>
         <View style={[styles.cardIcon, { backgroundColor: light ? palette.card : palette.arrowBg }]}>
@@ -105,8 +101,7 @@ function DirectorCard({
             {route.model}
           </Text>
           <Text numberOfLines={1} style={[{ fontSize: 12.5, lineHeight: 18 }, faint]}>
-            {route.credential_label || route.provider}
-            {credential ? ` · 尾号 ${credential.key_last4}` : ""}
+            {route.label || route.provider} · 尾号 {route.key_last4}
           </Text>
         </View>
         {light ? null : <Icon name="chevronRight" size={18} color={fg} />}
@@ -126,14 +121,17 @@ function DirectorCard({
         </View>
         <View style={styles.cardTop}>
           <Text style={[styles.small, faint]}>工作窗口 {formatTokens(used)}</Text>
-          <Text style={[styles.small, faint]}>上下文 {formatTokens(total)}</Text>
+          <Text style={[styles.small, faint]}>
+            上下文 {formatTokens(total)}
+            {route.window.source === "default" ? `（${WINDOW_SOURCE.default}）` : ""}
+          </Text>
         </View>
       </View>
     </Pressable>
   );
 }
 
-function SetupCard({ hasKey, onPress }: { hasKey: boolean; onPress: () => void }) {
+function SetupCard({ hasModels, onPress }: { hasModels: boolean; onPress: () => void }) {
   const palette = usePalette();
   const step = (n: number, label: string, current: boolean, done: boolean) => (
     <View style={[styles.step, current ? { backgroundColor: palette.card } : null]}>
@@ -161,11 +159,11 @@ function SetupCard({ hasKey, onPress }: { hasKey: boolean; onPress: () => void }
         设置导演模型
       </Text>
       <View style={{ gap: 6 }}>
-        {step(1, "添加一个密钥", !hasKey, hasKey)}
-        {step(2, "从里面挑一个模型", hasKey, false)}
+        {step(1, "添加模型（Key 和模型一起配）", !hasModels, hasModels)}
+        {step(2, "选一个当导演", hasModels, false)}
       </View>
       <Button
-        label={hasKey ? "挑一个模型" : "添加密钥"}
+        label={hasModels ? "选一个当导演" : "添加模型"}
         trailingIcon="arrowRight"
         between
         onPress={onPress}
@@ -184,24 +182,24 @@ export default function SettingsScreen() {
   // 宽屏两栏：右栏打开着哪一项（没点过就按有没有导演模型决定）
   const [picked, setPicked] = useState<SettingsTarget | null>(null);
   const { data, error, refreshing, refresh, reload } = useAsync(async () => {
-    const [routes, credentials] = await Promise.all([api.routes.list(), api.credentials.list()]);
-    return { director: routes.find((r) => r.task === "director") ?? null, credentials };
+    const routes = await api.models.list();
+    return { director: routes.find((r) => r.is_director) ?? null, routes };
   }, [api]);
   const reloadQuietly = useCallback(() => void refresh(), [refresh]);
 
   const { bottom: bottomSpace } = useTabBarSpace();
   const director = data?.director ?? null;
-  const credentials = data?.credentials ?? [];
+  const routes = data?.routes ?? [];
   const name = user?.display_name || user?.email || "账户";
   const paneRoot: SettingsTarget | null =
-    picked ?? (data ? { screen: director ? "routes" : "credentials" } : null);
+    picked ?? (data ? (director ? { screen: "model", id: director.id } : { screen: "models" }) : null);
   const open = (target: SettingsTarget): void => {
     if (!expanded) {
       nav.open(target);
       return;
     }
     setPicked(target);
-    // 手机上回到设置首页时会重新取数据；两栏时左栏一直在，换一项时取一次（右栏里可能刚改过密钥状态）
+    // 手机上回到设置首页时会重新取数据；两栏时左栏一直在，换一项时取一次（右栏里可能刚换了导演）
     void refresh();
   };
   const isOpen = (screen: SettingsTarget["screen"]): boolean => expanded && paneRoot?.screen === screen;
@@ -239,16 +237,12 @@ export default function SettingsScreen() {
       {director ? (
         <DirectorCard
           route={director}
-          credential={credentials.find((c) => c.id === director.credential_id)}
-          onPress={() => open({ screen: "routes" })}
+          onPress={() => open({ screen: "model", id: director.id })}
           light={expanded}
-          selected={isOpen("routes")}
+          selected={isOpen("model")}
         />
       ) : data ? (
-        <SetupCard
-          hasKey={credentials.length > 0}
-          onPress={() => open({ screen: credentials.length > 0 ? "routes" : "credentials" })}
-        />
+        <SetupCard hasModels={routes.length > 0} onPress={() => open({ screen: "models" })} />
       ) : null}
 
       <GroupLabel style={styles.label}>配置</GroupLabel>
@@ -260,20 +254,20 @@ export default function SettingsScreen() {
             subtitle="还没有设置"
             subtitleColor={palette.warn}
             leading={<RowIcon name="director" />}
-            onPress={() => open({ screen: "routes" })}
-            selected={isOpen("routes")}
+            onPress={() => open({ screen: "models" })}
           />
         ) : null}
         <ListRow
-          key="keys"
-          title="密钥与端点"
+          key="models"
+          title="模型"
+          subtitle="Key、端点和模型"
           leading={<RowIcon name="key" />}
           trailing={
             data ? (
-              credentials.length > 0 ? (
+              routes.length > 0 ? (
                 <View style={[styles.count, { backgroundColor: palette.card }]}>
                   <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.ink }}>
-                    {credentials.length}
+                    {routes.length}
                   </Text>
                 </View>
               ) : (
@@ -281,8 +275,8 @@ export default function SettingsScreen() {
               )
             ) : null
           }
-          onPress={() => open({ screen: "credentials" })}
-          selected={isOpen("credentials")}
+          onPress={() => open({ screen: "models" })}
+          selected={isOpen("models")}
         />
         <ListRow
           key="account"

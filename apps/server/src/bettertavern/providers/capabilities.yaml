@@ -1,6 +1,6 @@
 # providers/capabilities.yaml：provider 加模型通配，特异度高的规则优先；新增厂商时在这里加一条规则
 # 特异度：指定了 provider 的规则高于没指定的；同一层里模型通配的字面字符越多越优先；再相同则后写的优先。
-# 这里的值是保守的起点，探测结果（POST /v1/credentials/{id}/probe）和路由的 caps_override 会覆盖它们。
+# 这里的值是保守的起点，探测结果（POST /v1/model-routes/{route_id}/probe）和路由的 caps_override 会覆盖它们。
 
 - match: { provider: deepseek, model: 'deepseek-*' }
   caps:
@@ -21,5 +21,5 @@
     structured: []                         # 自定义端点能力全靠探测
     roles: { system: true, alternation: loose }
 
-- match: {}                                 # 兜底
-  caps: { context_window: 32768, max_output: 4096, structured: [], roles: { system: true, alternation: loose } }
+- match: {}                                 # 兜底；不写 context_window，没人知道窗口时由路由按 32K 估计
+  caps: { max_output: 4096, structured: [], roles: { system: true, alternation: loose } }

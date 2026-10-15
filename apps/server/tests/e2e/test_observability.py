@@ -172,15 +172,16 @@ async def play_two_turns(base_url: str, fake_llm: RunningFakeLLM) -> Played:
         token = r.json()["access_token"]
         user_id = r.json()["user"]["id"]
         auth = {"Authorization": f"Bearer {token}"}
-        r = await client.post(
-            "/v1/credentials",
+        await client.post(
+            "/v1/model-routes",
             headers=auth,
-            json={"provider": "custom_openai", "api_key": API_KEY, "base_url": fake_llm.base_url},
-        )
-        await client.put(
-            "/v1/model-routes/director",
-            headers=auth,
-            json={"credential_id": r.json()["id"], "model": "fake-model"},
+            json={
+                "provider": "custom_openai",
+                "api_key": API_KEY,
+                "base_url": fake_llm.base_url,
+                "model": "fake-model",
+                "director": True,
+            },
         )
         files = {"file": ("card.json", json.dumps(CARD, ensure_ascii=False).encode(), "text/json")}
         scenario = (await client.post("/v1/scenarios/import", headers=auth, files=files)).json()
