@@ -53,6 +53,15 @@ cp apps/mobile/.env.example apps/mobile/.env
 然后在 App 里：注册 → 设置 → 模型 → 添加模型（填 Key、选模型、设为导演）→ 剧本里导入角色卡 → 开始故事。
 手机连不上服务器时的排查，以及在真机上运行的细节，见 [apps/mobile/README.md](../apps/mobile/README.md)。
 
+网页端（`apps/web`）和手机端是同一个 npm 工作区，`make js-install` 装过依赖后：
+
+```bash
+make web
+```
+
+打开 http://localhost:5173 。开发服务器把 `/v1`、`/health`、`/ready` 转给 http://localhost:8000 的后端，网页和接口同源，
+不用配跨域，Cookie 登录也能用；后端在别的地址时设环境变量 `BT_API_URL`。设计和实现说明见 [client.md 第 4 节](client.md)。
+
 排查问题时用日志查看器：`make vis-install` 装一次依赖，之后 `make vis`，打开 http://127.0.0.1:8100 。
 它把 `apps/server/.data/logs/` 下的日志和数据库里的回合画成时间线，用法见 [testing.md 第 1 节](testing.md)。
 
@@ -65,7 +74,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 | `make test` | 后端单测与端到端测试（不需要数据库） |
 | `make test-integration` | 需要数据库；会建临时 schema，测完删除（队列、账户、回合的并发与租约） |
 | `make lint` | ruff、pyright、import-linter |
-| `make js-test` | 客户端的纯逻辑（`packages/` 和 `apps/mobile` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局 |
+| `make js-test` | 客户端的纯逻辑（`packages/`、`apps/mobile`、`apps/web` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局、网页的存储和快捷键判断 |
 | `make js-typecheck` | 客户端和共用包的 TypeScript 类型检查 |
 | `make vis-test` | 日志查看器的纯逻辑：中文目录、格式化、手机日志解析 |
 

@@ -1,0 +1,32 @@
+/* 一级页的通用框架：内容离导航和窗口右边 40，最宽 1200，多出来的居中（theme/layout.ts 的 pageFrame） */
+
+.page {
+  max-width: calc(var(--content-max) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: 40px var(--gutter) 48px;
+}
+@media (max-width: 899px) {
+  .page {
+    max-width: calc(var(--readable) + 2 * 24px);
+    padding: 28px 24px 36px;
+  }
+}
+.display {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.lead {
+  margin-top: 12px;
+  color: var(--mut);
+}
+.lead a {
+  color: var(--acc);
+}
+.splash {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

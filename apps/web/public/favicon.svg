@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="9.35 2.66 99.55 99.55">
+  <style>.l{stroke:#1A1A1A}.c{fill:#2F55F4}@media (prefers-color-scheme:dark){.l{stroke:#F2F2F0}.c{fill:#8597FF}}</style>
+  <g class="l" fill="none" stroke-linejoin="miter" stroke-miterlimit="4">
+    <path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" stroke-width="4.8"/>
+    <path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" stroke-width="4.8"/>
+    <path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" stroke-width="5.2"/>
+  </g>
+  <path class="c" d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z"/>
+</svg>

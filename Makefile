@@ -1,10 +1,11 @@
 SERVER := apps/server
 MOBILE := apps/mobile
+WEB := apps/web
 VIS := apps/vis
 COMPOSE := docker compose -f deploy/docker-compose.dev.yml
 TEST_DB := postgresql://bettertavern:bettertavern@localhost:5432/bettertavern
 
-.PHONY: install dev worker migrate db-up db-down test test-integration lint fmt js-install js-test js-typecheck mobile-install vis-install vis vis-test eval-director
+.PHONY: install dev worker migrate db-up db-down test test-integration lint fmt js-install js-test js-typecheck mobile-install web vis-install vis vis-test eval-director
 
 install:
 	cd $(SERVER) && uv sync
@@ -36,7 +37,7 @@ lint:
 fmt:
 	cd $(SERVER) && uv run ruff format . && uv run ruff check --fix .
 
-# 前端是一个 npm 工作区（根目录 package.json）：apps/mobile 和 packages/*，依赖装在根目录
+# 前端是一个 npm 工作区（根目录 package.json）：apps/mobile、apps/web 和 packages/*，依赖装在根目录
 js-install:
 	npm install
 
@@ -48,6 +49,10 @@ js-typecheck:
 
 mobile-install: js-install
 	cd $(MOBILE) && npm run setup
+
+# 网页端的开发服务器（http://localhost:5173），接口转给 http://localhost:8000
+web:
+	cd $(WEB) && npm run dev
 
 vis-install:
 	cd $(VIS) && npm install

@@ -237,3 +237,69 @@ apps/mobile/
 
 **字体**：界面用系统黑体，不打包；等宽字用 `@expo-google-fonts/ibm-plex-mono`；叙述用思源宋体的 GB2312 子集（`assets/fonts/NotoSerifSC-Regular.ttf`，约 3.2 MB，OFL 许可）。
 子集的字符表由 `scripts/font-subset-chars.py` 生成，再用 fonttools 的 `pyftsubset` 从完整字体裁出；GB2312 以外的生僻字退回系统字体显示。
+
+## 4 网页端（`apps/web`）
+
+电脑浏览器里的客户端，按 [design/ui/web/](design/ui/web/README.md) 的设计稿做：窗口 ≥ 1280 时左边是常驻侧栏，
+900–1279 是导航条，更窄时沿用平板中屏和手机的布局（底部胶囊 Tab 栏）。设计稿只管外观和交互；文案、状态和错误提示以 App 现有代码为准。
+
+### 技术栈
+
+| 层 | 选型 | 说明 |
+| --- | --- | --- |
+| 构建 | Vite + TypeScript（strict） | 开发和预览服务器把 `/v1`、`/health`、`/ready` 转给后端（默认 `http://localhost:8000`，`BT_API_URL` 可以改） |
+| 界面 | React 19，浏览器的 DOM 和 CSS | 不用 react-native-web：链接、表单自动填充、`:focus-visible`、悬停、右键菜单、拖放、选中复制都是浏览器原生的 |
+| 路由 | react-router 7 | 地址和 App 的 expo-router 一一对应：`/login`、`/register`、`/playthroughs`、`/library`、`/scenario/:id`、`/play/:id`、`/settings`、`/settings/models`、`/settings/model/:id`、`/settings/account`、`/dev/probe` |
+| 服务端数据 | TanStack Query | 没有下拉刷新：回到标签页、窗口回到前台时自动刷新 |
+| 样式 | CSS Modules + CSS 变量 | 变量名同 `docs/design/ui/web/tokens.css`；色板由 `ThemeProvider` 从 `@bettertavern/design` 写到 `<html>` 上 |
+| 共用 | `@bettertavern/core`、`@bettertavern/design` | 接口客户端、SSE、会话、回合状态机、色板、布局函数、图标和封面的数据，和 App 是同一份代码（见第 3 节的“目录”） |
+
+### 登录：Cookie 模式
+
+网页的刷新令牌放在 HttpOnly Cookie 里，页面脚本读不到，访问令牌只在内存中（[api/auth.md 的“两种登录方式”](api/auth.md#两种登录方式)）：
+
+- 登录、注册的请求带 `X-Auth-Mode: cookie`，服务端把刷新令牌写进 Cookie `bt_refresh`（`Path=/v1/auth`、`SameSite=Strict`），响应体里的 `refresh_token` 是 `null`。
+- 打开页面时凭 Cookie 刷新一次，拿到访问令牌和账户就是已登录；没有 Cookie 或被拒就去登录页（登录后回到原来要去的地址）。
+  `SessionManager` 和 App 是同一个，网页传给它的“存储”就是这次刷新，刷新令牌是 `null`。
+- 访问令牌快过期时照常刷新，浏览器自动带上 Cookie；几个标签页各自刷新，Cookie 是共用的。
+- 退出时先请服务端吊销并删掉 Cookie，再本地退出：服务端没收到时 Cookie 还在，刷新页面会重新登录上。
+- 网页和接口必须同源（开发时 Vite 转发，部署时反向代理），所以网页没有 App 登录页底部的“服务器”入口。
+
+### 布局
+
+- 断点只看窗口宽度：`src/theme/layout.ts`（设计稿的 `layout.ts`，平板的函数从 `@bettertavern/design/layout` 引入）。
+  拖动窗口时布局即时切换，页面不卸载。
+- 外壳 `src/shell/`：侧栏（三项导航、按“今天 / 本周 / 更早”分组的最近故事、账户）、导航条（最近四个故事的封面）、底部 Tab 栏。
+  侧栏收起存在浏览器里；窄于 1280 时“展开”打开的侧栏盖在内容上，点遮罩、按 Esc、点了里面的一项都会收回。
+  导航和故事行都是 `<a href>`，⌘ / Ctrl + 点击在新标签页打开。
+- 深色模式：`index.html` 里的一小段脚本在页面脚本加载前按外观设置设好 `data-scheme`，深色下打开不闪白。
+
+### 目录
+
+```
+apps/web/
+├── index.html  vite.config.ts  public/favicon.svg
+└── src/
+    ├── main.tsx                 # 数据缓存 → 界面偏好 → 主题 → 登录状态 → 路由
+    ├── app/       router.tsx  guards.tsx        # 路由表；没登录去登录页、登录了不停在登录页
+    ├── state/     AppProvider.tsx  PrefsProvider.tsx  prefs.ts   # 接口、会话（Cookie 模式）；浏览器里的界面偏好
+    ├── storage/   local.ts                      # localStorage：存不进去、读不出来都当作没存过
+    ├── theme/     tokens.css  base.css  layout.ts  palette.ts  ThemeProvider.tsx
+    ├── shell/     AppShell.tsx  Sidebar.tsx  Rail.tsx  TabBar.tsx  StoryRow.tsx  nav.ts  recent.ts
+    ├── components/ controls.tsx（按钮、图标按钮、输入框、提示条、胶囊）Icon.tsx  Logo.tsx  Cover.tsx
+    ├── data/      stories.ts                    # TanStack Query 的查询
+    └── pages/     auth/（登录、注册）  Splash.tsx  NotFound.tsx
+```
+
+纯逻辑（`layout.ts`、`palette.ts`、`storage/local.ts`、`state/prefs.ts`、`shell/nav.ts`、`shell/recent.ts`）用 `node --test` 测，在仓库根目录 `npm test` 时一起跑。
+
+### 和设计稿不同的地方
+
+- 登录态：设计稿的“平台替代”建议把令牌放在 localStorage；按讨论的方案改成 HttpOnly Cookie（见上），服务端为此加了 Cookie 模式。
+- 没有“换服务器”：Cookie 只发给同一个网站，网页和接口同源部署，登录页不放服务器入口和服务器对话框（W02 的对话框不做）。
+- 共用代码：设计稿建议用路径别名直接引用 `apps/mobile/src`；改成 npm 工作区的两个包，手机端也从包里引用。
+- 连不上服务器的提示：App 是“连不上服务器，检查地址或网络。”，网页没有地址可改，改成“连不上服务器，检查网络后再试。”
+
+### 还没做的
+
+故事、剧本库与导入、剧本详情、阅读页、设置几页现在只有标题；快捷键、右键菜单、提示、浮条在后面补上。
