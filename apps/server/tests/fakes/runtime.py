@@ -70,6 +70,9 @@ class ScriptedAdapter:
         self.models: list[ModelInfo] = [ModelInfo(id="fake-model", context_window=65536)]
         self.list_error: ProviderError | None = None
         self.list_calls = 0
+        # 一共发出了多少个片段、有几次流被关掉了（提前停下时应该马上关，不等垃圾回收）
+        self.yielded = 0
+        self.closed = 0
 
     @property
     def profile(self) -> ProviderProfile:
@@ -95,19 +98,23 @@ class ScriptedAdapter:
     ) -> AsyncIterator[ChatEvent]:
         self.requests.append(req)
         script = self.streams.popleft()
-        for index, piece in enumerate(script.pieces):
-            if script.error is not None and index == script.error_after:
+        try:
+            for index, piece in enumerate(script.pieces):
+                if script.error is not None and index == script.error_after:
+                    raise script.error
+                if cancel is not None and cancel.cancelled:
+                    raise cancelled_error(cancel)
+                if script.delay:
+                    await asyncio.sleep(script.delay)
+                self.yielded += 1
+                yield TextDelta(piece)
+            if script.error is not None and script.error_after >= len(script.pieces):
                 raise script.error
-            if cancel is not None and cancel.cancelled:
-                raise cancelled_error(cancel)
-            if script.delay:
-                await asyncio.sleep(script.delay)
-            yield TextDelta(piece)
-        if script.error is not None and script.error_after >= len(script.pieces):
-            raise script.error
-        if script.usage is not None:
-            yield UsageEvent(script.usage)
-        yield Done("stop")
+            if script.usage is not None:
+                yield UsageEvent(script.usage)
+            yield Done("stop")
+        finally:
+            self.closed += 1
 
     async def complete(
         self,
@@ -165,8 +172,9 @@ def make_route(
     window: int = 65536,
     fallback: ResolvedRoute | None = None,
     caps: Capabilities | None = None,
+    params: RouteParams | None = None,
 ) -> ResolvedRoute:
-    params = RouteParams()
+    params = params or RouteParams()
     caps = caps or Capabilities(context_window=window)
     return ResolvedRoute(
         route_id=f"route-{provider}-{task.value}",

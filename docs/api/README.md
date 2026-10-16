@@ -88,8 +88,9 @@
 | 用户 | 30（`RATE_LIMIT_TURNS_PER_MIN`），两个接口共用一个计数 | `POST /v1/playthroughs`、`POST /v1/playthroughs/{playthrough_id}/turns` |
 | 用户 | 5（`RATE_LIMIT_PROBE_PER_MIN`），两个接口各自计数 | `POST /v1/model-routes/{route_id}/probe`、`POST /v1/providers/{provider}/models` |
 
-客户端 IP 取的是连接的对端地址。服务部署在反向代理后面时，要把代理的地址加进环境变量 `FORWARDED_ALLOW_IPS`，让 uvicorn 采用 `X-Forwarded-For`，
-否则所有玩家会共用代理的 IP 计数。
+客户端 IP 取的是连接的对端地址；对端在 `FORWARDED_ALLOW_IPS`（默认 `127.0.0.1,::1`，可以写网段）里时，改用它带来的 `X-Forwarded-For`
+里最后一个不受信任的地址，也就是代理看到的真实 IP。服务部署在反向代理后面时，要把代理的地址加进这个变量，否则所有玩家会共用代理的 IP 计数。
+`deploy/docker-compose.yml` 已经加上了 Docker 的内网段（宿主机上的代理经 Docker 网关连进容器），见 [bugs/2026-10-16-login-rate-limit-behind-proxy.md](../bugs/2026-10-16-login-rate-limit-behind-proxy.md)。
 
 ### 请求体大小
 
@@ -163,6 +164,8 @@
 | `CONTEXT_TOO_LARGE` | 否 | 上下文装不进有效窗口（截断后重试也不行），建议换更大窗口的模型 |
 | `ROUTE_MISSING` | 否 | 生成时发现导演模型已经被删除或取消 |
 | `NARRATIVE_MISSING` | 是 | 模型这次没有写出叙述 |
+| `GENERATION_TIMEOUT` | 是 | 导演这一段写的总时长超过上限（`DIRECTOR_TIMEOUT_S`，默认 600 秒），主动停下；已写出的部分存成草稿（`partial`） |
+| `OUTPUT_TOO_LONG` | 是 | 导演写的正文超过字数上限（`max_tokens` × 8 个字符），说明模型没有按 `max_tokens` 停下，主动停下；已写出的部分存成草稿 |
 | `CANCELLED` | 是 | 玩家停止了生成，或者服务在重启。生成中途租约丢失时，事件流里也是这个码，但库里记的是 `RUNNER_LOST`（已知问题） |
 | `RUNNER_LOST` | 是 | 生成进程意外中止（租约过期后被清理），或者提交时发现租约已经被收回 |
 | `INTERNAL_ERROR` | 是 | 服务端出错 |

@@ -11,6 +11,7 @@ BetterTavern 是一个服务端生成式互动小说应用：Python 后端运行
 | [client.md](client.md) | React Native 技术栈、SSE 客户端、回合状态机、页面、客户端目录 |
 | [testing.md](testing.md) | 可观测性、测试分层、回放评估 |
 | [development.md](development.md) | 开发者指南：当前进度、本地开发、测试、评测、仓库目录 |
+| [bugs/](bugs/README.md) | 问题记录：修过的重要 bug，每份写清现象、原因、影响范围、修复、验证和遗留 |
 | [data-model/](data-model/README.md) | 参考：数据库里实际存在的每张表（列、类型、约束、索引）、JSON 列的结构、状态机、并发控制、删除与清理。按领域分文件：账户、模型路由、剧本库、游玩与回合、世界状态、运行基础设施 |
 | [api/](api/README.md) | 参考：已实现的每个接口（请求、响应、状态码、错误码）、SSE 事件与续传、限流与请求体大小。按领域分文件：认证与账户、模型路由、剧本库、游玩与回合、事件流、运维 |
 

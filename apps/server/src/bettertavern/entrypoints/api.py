@@ -93,6 +93,7 @@ def build_app_services(
             barrier_timeout_s=settings.state_barrier_timeout_s,
             world_builder_timeout_s=settings.world_builder_timeout_s,
             options_repair_timeout_s=settings.options_repair_timeout_s,
+            director_timeout_s=settings.director_timeout_s,
         ),
         instance_id=instance_id(),
     )

@@ -58,6 +58,7 @@ from .runner_pool import TurnRunnerPool
 from .turn_stream import (
     DirectorStreamer,
     Generation,
+    GenerationLimitHit,
     StreamFailed,
     failure_from_provider,
     usage_json,
@@ -84,6 +85,8 @@ class RunnerConfig:
     options_repair_timeout_s: float = 5.0
     delta_batch_s: float = 0.04
     limiter_timeout_s: float = 30.0
+    # 导演写一段的总时长上限（从开流算起）；总字数上限按 max_tokens 换算，见 turn_stream.py
+    director_timeout_s: float = 600.0
 
 
 # 与清理任务写进库里的错误一致（infra 的 RUNNER_LOST_ERROR）
@@ -119,6 +122,7 @@ class TurnRunner:
             clock=clock,
             delta_batch_s=self.config.delta_batch_s,
             limiter_timeout_s=self.config.limiter_timeout_s,
+            max_duration_s=self.config.director_timeout_s,
         )
 
     # ---- 入口 ---------------------------------------------------------------------------
@@ -400,6 +404,8 @@ class TurnRunner:
                 )
                 generation.fallback_used = fallback_used
                 return generation
+            except GenerationLimitHit as hit:
+                raise TurnFailed(hit.failure) from hit
             except StreamFailed as failed:
                 error = failed.error
                 if failed.streamed:

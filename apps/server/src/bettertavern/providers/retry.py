@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 
 from .base import ChatEvent, TextDelta, ToolCallDelta
@@ -101,7 +101,7 @@ async def stream_with_retry(
     *,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     on_retry: OnRetry | None = None,
-) -> AsyncIterator[ChatEvent]:
+) -> AsyncGenerator[ChatEvent, None]:
     """包一层流式调用：首个可见内容之前出错就退避重试，之后出错原样抛出（partial=True）。"""
     retries = 0
     while True:

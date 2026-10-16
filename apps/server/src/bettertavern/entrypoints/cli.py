@@ -15,6 +15,7 @@ def _serve(args: argparse.Namespace) -> None:
     import uvicorn
 
     from bettertavern.entrypoints.logging_setup import setup_logging
+    from bettertavern.entrypoints.server import proxy_options
     from bettertavern.settings import Settings
 
     settings = Settings()
@@ -34,6 +35,7 @@ def _serve(args: argparse.Namespace) -> None:
             log_level=settings.log_level.lower(),
             log_config=None,
             access_log=False,
+            **proxy_options(settings),
         )
         return
 
@@ -52,6 +54,7 @@ def _serve(args: argparse.Namespace) -> None:
         log_config=None,
         access_log=False,
         timeout_graceful_shutdown=int(settings.shutdown_grace_s),
+        **proxy_options(settings),
     )
     GracefulServer(config, shutdown).run()
 

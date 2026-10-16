@@ -216,6 +216,18 @@ export const EVENTS: Record<string, EventInfo> = {
         f.partial ? "已经写了一部分" : null,
       ),
   },
+  "provider.limit_hit": {
+    label: "碰到上限，主动停下",
+    category: "model",
+    say: (f) => {
+      const seconds = num(f.max_duration_s);
+      const what =
+        str(f.reason) === "timeout"
+          ? `写了太久，超过总时长上限${seconds === null ? "" : `（${ms(seconds * 1000)}）`}，主动停下`
+          : `写个不停，超过字数上限（${str(f.max_chars)} 字），主动停下`;
+      return plus(what, num(f.streamed_chars) ? `已经写了 ${str(f.streamed_chars)} 字` : null);
+    },
+  },
   "director.parse": {
     label: "检查格式",
     category: "turn",

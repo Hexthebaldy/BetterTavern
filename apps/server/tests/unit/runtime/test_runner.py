@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.routing import RouteParams, RouteTask
 from bettertavern.domain.scenario.card import CharacterCard
 from bettertavern.infra.db.repositories.story import RUNNER_LOST_ERROR
 from bettertavern.providers import CancelToken, ProviderError, ProviderHub
@@ -155,6 +155,49 @@ async def test_interrupted_stream_keeps_partial_narrative() -> None:
     streamed = "".join(str(d["text"]) for e, d in events if e == "narrative.delta")
     assert failure.narrative == streamed and streamed
     assert events[-1][0] == "turn.failed" and events[-1][1]["partial"] is True
+    assert not store.committed
+
+
+async def test_endless_output_is_cut_at_the_length_cap() -> None:
+    # 不守规矩的接口：max_tokens 只有 64，却一直往回写（这里准备了 1 万段，远超上限）
+    hub, adapters = scripted_hub("fake")
+    endless = ["<narrative>\n"] + ["雨还在下，" * 4] * 10_000
+    adapters["fake"].streams.append(StreamScript(endless))
+    route = make_route(params=RouteParams(max_tokens=64))
+    store = FakeStore()
+    events = await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: route}), hub)
+    failure = store.failed[0]
+    assert failure.code == "OUTPUT_TOO_LONG" and failure.retryable and failure.partial
+    streamed = "".join(str(d["text"]) for e, d in events if e == "narrative.delta")
+    assert failure.narrative == streamed and 0 < len(streamed) <= 64 * 8
+    assert events[-1][0] == "turn.failed" and events[-1][1]["code"] == "OUTPUT_TOO_LONG"
+    # 碰到上限就停：没有把 1 万段都读完，流也当场关掉了，没有重试
+    assert adapters["fake"].yielded < 100
+    assert adapters["fake"].closed == 1 and len(adapters["fake"].requests) == 1
+    assert not store.committed
+
+
+async def test_slow_endless_stream_is_cut_at_the_time_limit() -> None:
+    # 一直在写、但永远写不完：每段之间不超时，只有总时长上限能停下它
+    hub, adapters = scripted_hub("fake")
+    adapters["fake"].streams.append(StreamScript(["<narrative>\n"] + ["雾"] * 10_000, delay=0.01))
+    store = FakeStore()
+    runner = TurnRunner(
+        store=store,
+        routes=FakeRoutes({RouteTask.DIRECTOR: make_route()}),
+        hub=hub,
+        prompts=PromptLibrary("zh"),
+        config=RunnerConfig(delta_batch_s=0.0, lease_renew_s=0.05, director_timeout_s=0.3),
+    )
+    stream = EventStream("turn-1")
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    await runner.run(header(), stream, CancelToken())
+    assert loop.time() - started < 2
+    failure = store.failed[0]
+    assert failure.code == "GENERATION_TIMEOUT" and failure.retryable and failure.partial
+    assert "0.3 秒" in failure.message and failure.narrative.startswith("雾")
+    assert adapters["fake"].closed == 1
     assert not store.committed
 
 

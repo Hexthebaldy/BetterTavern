@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     env: Literal["dev", "test", "prod"] = "dev"
     host: str = "0.0.0.0"
     port: int = 8000
+    # 反向代理的地址（逗号隔开，可以写网段）：只有来自这些地址的请求，
+    # 才采信 X-Forwarded-For 里的真实 IP。注册、登录的限流按真实 IP 计数，
+    # 这里漏了代理的地址，所有人会被算成同一个 IP、共用一份次数。
+    # 默认只信本机；deploy/docker-compose.yml 另外加上了 Docker 的内网段
+    forwarded_allow_ips: str = "127.0.0.1,::1"
     log_level: str = "INFO"
     # 终端里的日志格式：auto 在终端里是带颜色的单行、否则是 JSON；也可以固定成 console 或 json
     log_format: Literal["auto", "console", "json"] = "auto"
@@ -56,6 +61,8 @@ class Settings(BaseSettings):
     state_barrier_timeout_s: float = Field(default=8.0, ge=0)
     world_builder_timeout_s: float = Field(default=30.0, gt=0)
     options_repair_timeout_s: float = Field(default=5.0, gt=0)
+    # 导演写一段的总时长上限，超过就停下、这一轮按失败结束（防止模型一直写不停）
+    director_timeout_s: float = Field(default=600.0, gt=0)
 
     # 收到 SIGTERM 后等进行中的回合与任务的上限；容器的停止宽限期要比它长
     shutdown_grace_s: float = Field(default=60.0, ge=0)

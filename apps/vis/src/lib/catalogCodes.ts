@@ -52,6 +52,8 @@ export const ERROR_CODES: Record<string, string> = {
   NARRATIVE_MISSING: "模型这次没写出叙述",
   CANCELLED: "被停止（玩家停止或服务重启）",
   RUNNER_LOST: "生成进程意外中止",
+  GENERATION_TIMEOUT: "写了太久，超过总时长上限",
+  OUTPUT_TOO_LONG: "写个不停，超过字数上限",
   TURN_ARCHIVED: "这一轮已被回退",
   NETWORK: "连不上服务器",
   TIMEOUT: "服务器响应超时",

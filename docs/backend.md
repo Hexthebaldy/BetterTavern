@@ -798,6 +798,9 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 - 通过校验的 IP 被“钉住”：连接直接用该 IP，TLS 的 SNI 和 Host 仍用原域名，防止校验和连接之间 DNS 被改写（DNS rebinding）。
 - 不自动跟随重定向（对 POST 的 chat 请求，3xx 一律视为错误）。
 - 超时：连接 10 秒，两个 chunk 之间的读超时 60 秒，非流式总时长 120 秒；非流式响应上限 16MB，SSE 单行上限 1MB。
+- 导演的流式调用另有两道总量上限（`runtime/turn_stream.py`）：从开流算起最多 10 分钟（`DIRECTOR_TIMEOUT_S`），正文最多 `max_tokens` × 8 个字符。
+  碰到任何一条就主动停下，这一轮以 `GENERATION_TIMEOUT` / `OUTPUT_TOO_LONG` 失败，已写出的部分存成草稿。
+  防的是不按 `max_tokens` 停下的接口（玩家可以填任意地址）一直写下去，拖住回合、占满内存，见 [bugs/2026-10-16-generation-without-limits.md](bugs/2026-10-16-generation-without-limits.md)。
 - 同一套校验在两个时机各做一次：添加或修改模型时（早失败、给清楚的错误 `ENDPOINT_NOT_ALLOWED`），以及每次请求时（DNS 可能变）。
 - 用户的 `extra_headers` 不能覆盖 `Authorization`、`Host`、`Content-Length`；`extra_body` 不能覆盖 `messages`、`stream`、`stream_options`。
 
