@@ -13,6 +13,7 @@ import { useStories } from "../data/stories.ts";
 import { useStoryActions } from "../data/storyActions.ts";
 import { useApp } from "../state/AppProvider.tsx";
 import { Avatar } from "./Avatar.tsx";
+import { useGlass } from "./glass.tsx";
 import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
 import { recentGroups } from "./recent.ts";
 import styles from "./shell.module.css";
@@ -25,6 +26,7 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
   const avatarOf = useAvatars();
   const actions = useStoryActions();
   const current = openStoryId(pathname);
+  const { ref, glass } = useGlass(NAV_ITEMS.find((item) => isActive(item, pathname))?.to ?? null);
   const groups = recentGroups(stories.data ?? []);
   return (
     <nav
@@ -45,11 +47,13 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
         />
       </div>
       <div className={styles.navList}>
+        {glass}
         {NAV_ITEMS.map((item) => {
           const active = isActive(item, pathname);
           return (
             <Link
               key={item.to}
+              ref={ref(item.to)}
               to={item.to}
               className={cx(styles.navItem, active && styles.navItemOn)}
               aria-current={active ? "page" : undefined}

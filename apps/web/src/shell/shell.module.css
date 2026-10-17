@@ -71,6 +71,7 @@
   letter-spacing: -0.01em;
 }
 .navList {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -78,6 +79,7 @@
   flex: none;
 }
 .navItem {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -86,11 +88,13 @@
   border-radius: 22px;
   font-size: 15px;
   color: var(--ink2);
-  transition: background-color var(--dur-fast) var(--ease);
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur) var(--ease);
 }
+/* 选中项：底下是滑过来的玻璃框（glass.tsx），自己没有底色，图标和文字是蓝色 */
 .navItemOn {
-  background: var(--ink);
-  color: var(--bg);
+  color: var(--tab-on);
   font-weight: 500;
 }
 .recentLabel {
@@ -265,6 +269,7 @@
   margin: 8px 0 6px;
 }
 .railItem {
+  position: relative;
   width: 60px;
   height: 60px;
   border-radius: 30px;
@@ -277,11 +282,12 @@
   font-size: 11px;
   line-height: 14px;
   flex: none;
-  transition: background-color var(--dur-fast) var(--ease);
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur) var(--ease);
 }
 .railItemOn {
-  background: var(--ink);
-  color: var(--bg);
+  color: var(--tab-on);
   font-weight: 500;
 }
 .railRule {
@@ -346,6 +352,7 @@
   }
 }
 .tab {
+  position: relative;
   flex: 1;
   height: 64px;
   display: flex;
@@ -356,6 +363,7 @@
   font-size: 11px;
   line-height: 14px;
   color: var(--mut);
+  transition: color var(--dur) var(--ease);
 }
 .tabOn {
   flex-direction: row;
@@ -364,15 +372,25 @@
   height: 48px;
   padding: 0 20px;
   border-radius: 24px;
-  background: var(--ink);
-  color: var(--bg);
+  color: var(--tab-on);
   font-size: 14px;
   font-weight: 500;
-  animation: tabIn var(--dur) var(--ease);
 }
-@keyframes tabIn {
-  from {
-    transform: scale(0.92);
-    opacity: 0;
-  }
+
+/* 滑动的玻璃框（glass.tsx）：没有底色，一圈半透明蓝色描边、内侧高光和淡蓝投影；换选中项时滑过去 */
+.glass {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--tab-glass-edge);
+  border-radius: 999px;
+  box-shadow: var(--tab-glass-shadow);
+  pointer-events: none;
+}
+.glassSlide {
+  transition:
+    transform var(--dur) var(--ease),
+    width var(--dur) var(--ease),
+    height var(--dur) var(--ease);
 }

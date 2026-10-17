@@ -59,6 +59,14 @@ export type Palette = {
   shadowButton: string;
   /** 墨色的浮起按钮（“回到最新”） */
   shadowStrong: string;
+  /** 导航选中项的图标和文字（两种模式同一个蓝） */
+  tabOn: string;
+  /** 导航里滑动的玻璃框：没有底色，只有一圈半透明描边 */
+  tabGlassEdge: string;
+  /** 玻璃框的内侧高光和外侧淡蓝投影（网页） */
+  tabGlassShadow: string;
+  /** 没有液态玻璃时（Android、iOS 26 以前）选中框的灰色投影，描边不带光晕 */
+  tabCapsuleShadow: string;
 };
 
 export const lightPalette: Palette = {
@@ -94,6 +102,10 @@ export const lightPalette: Palette = {
   shadowKnob: "0 1px 4px rgba(0,0,0,0.3)",
   shadowButton: "0 2px 8px rgba(20,20,20,0.08)",
   shadowStrong: "0 6px 20px rgba(20,20,20,0.22)",
+  tabOn: "#5B7CFF",
+  tabGlassEdge: "rgba(91,124,255,0.45)",
+  tabGlassShadow: "inset 0 1px 0 rgba(255,255,255,0.7), 0 2px 10px rgba(91,124,255,0.16)",
+  tabCapsuleShadow: "0 2px 8px rgba(20,20,20,0.14)",
 };
 
 export const darkPalette: Palette = {
@@ -129,4 +141,8 @@ export const darkPalette: Palette = {
   shadowKnob: "0 1px 4px rgba(0,0,0,0.3)",
   shadowButton: "0 2px 8px rgba(20,20,20,0.08)",
   shadowStrong: "0 6px 20px rgba(20,20,20,0.22)",
+  tabOn: "#5B7CFF",
+  tabGlassEdge: "rgba(91,124,255,0.5)",
+  tabGlassShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 12px rgba(91,124,255,0.22)",
+  tabCapsuleShadow: "0 2px 8px rgba(0,0,0,0.5)",
 };

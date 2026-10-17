@@ -19,6 +19,7 @@ import type { MenuPlace } from "../overlay/Menu.tsx";
 import { useContextMenu } from "../overlay/useContextMenu.ts";
 import { useApp } from "../state/AppProvider.tsx";
 import { Avatar } from "./Avatar.tsx";
+import { useGlass } from "./glass.tsx";
 import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
 import { byRecent } from "./recent.ts";
 import styles from "./shell.module.css";
@@ -31,6 +32,7 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
   const actions = useStoryActions();
   const current = openStoryId(pathname);
   const recent = byRecent(stories.data ?? []).slice(0, 4);
+  const { ref, glass } = useGlass(NAV_ITEMS.find((item) => isActive(item, pathname))?.to ?? null);
   return (
     <nav aria-label="主导航" className={cx(styles.rail, "surface-panel")}>
       <Logo size={28} />
@@ -43,11 +45,13 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
         className={styles.railExpand}
         onClick={onExpand}
       />
+      {glass}
       {NAV_ITEMS.map((item) => {
         const active = isActive(item, pathname);
         return (
           <Link
             key={item.to}
+            ref={ref(item.to)}
             to={item.to}
             className={cx(styles.railItem, active && styles.railItemOn)}
             aria-current={active ? "page" : undefined}

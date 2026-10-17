@@ -158,7 +158,11 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、模型数，输入密码确认） |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
 
-界面按 [design/ui/](design/ui/README.md) 的设计稿实现（“白 / 柔线 / 大圆角”，第一版正式界面；交互规则也在那份 README 里）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `packages/design/src/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）。和设计稿不同：
+界面按 [design/ui/](design/ui/README.md) 的设计稿实现（“白 / 柔线 / 大圆角”，第一版正式界面；交互规则也在那份 README 里）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `packages/design/src/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）。
+选中标签的图标和文字是 `#5B7CFF`（色板的 `tabOn`），底下是一块选中框，切换时滑到新标签（宽屏的竖向导航栏上下滑）：
+iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）——整条标签栏是一块玻璃，页面内容从下面透出来，选中框是另一块透明玻璃；
+没有液态玻璃时（Android、更早的 iOS）标签栏是白卡，选中框没有底色，一圈蓝色细描边加灰色投影（`tabCapsuleShadow`）。
+玻璃和它的上层都不能改透明度（改了玻璃不画），选中框只改位置。网页的侧栏、导航条、底部 Tab 栏是透明玻璃框加蓝色描边和高光（`shell/glass.tsx`）。和设计稿不同：
 阅读页的选项不再放在固定于底部的行动面板里（它在手机上长期盖住小半屏正文），而是接在故事流末尾（`TurnActions.tsx`），跟着正文滚动；
 底部只留一条贴边的操作栏（`BottomBar.tsx`，iPhone 上连同安全区约 80pt，故事流的底部按它的高度留白）：左边世界状态，右边“更多”，
 中间按状态换成“自己写…”（点了原地展开成输入框，跟着键盘浮起）、生成中的状态和“停止”、同步中的提示；
@@ -339,7 +343,7 @@ apps/web/
     ├── storage/   local.ts                      # localStorage：存不进去、读不出来都当作没存过
     ├── observability/ setup.ts                 # 诊断日志接回、定时写入、页面报错
     ├── theme/     tokens.css  base.css  layout.ts  palette.ts  ThemeProvider.tsx
-    ├── shell/     AppShell.tsx  Sidebar.tsx  Rail.tsx  TabBar.tsx  StoryRow.tsx  nav.ts  recent.ts
+    ├── shell/     AppShell.tsx  Sidebar.tsx  Rail.tsx  TabBar.tsx  StoryRow.tsx  glass.tsx  nav.ts  recent.ts
     ├── overlay/   OverlayProvider.tsx  Dialog.tsx  Menu.tsx  Tooltip.tsx  ShortcutsDialog.tsx  useContextMenu.ts
     ├── import/    ImportProvider.tsx  DropZone.tsx  rules.ts   # 导入角色卡（按钮和拖放）
     ├── components/ controls.tsx（按钮、输入框、提示条、胶囊、标签、勾选）Icon.tsx  Logo.tsx  Cover.tsx  PageHeader.tsx

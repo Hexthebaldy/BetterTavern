@@ -7,15 +7,19 @@
  * useTabBarSpace() 留出它的位置，提示浮条贴在它上方（tabBarTop）。
  *
  * 平板（断点见 theme/layout.ts）：中屏的胶囊固定宽 392、水平居中；宽屏改成左侧竖着的浮动导航栏
- * （Logo 加三个标签，选中项是 60×64 的墨色块），一级页的内容从 x = 124 开始，底部不再留标签栏的位置。
+ * （Logo 加三个标签，选中项是 60×64 的玻璃框），一级页的内容从 x = 124 开始，底部不再留标签栏的位置。
+ * 选中项是一块滑动的框，图标和文字是 tabOn 蓝；切换时框滑过去。
+ * iOS 26 起有系统的液态玻璃（expo-glass-effect）：整条标签栏是一块玻璃（页面内容从下面透出来），选中框是另一块
+ * 透明玻璃。没有液态玻璃时（Android、更早的 iOS）标签栏是白卡，选中框没有底色，一圈蓝色细描边加灰色投影。
  */
 
 import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -24,11 +28,12 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from "expo-glass-effect";
 
 import { bottomBar, rail, tabInsets, type Insets } from "@bettertavern/design/layout";
 
 import { useLayout } from "../hooks/useLayout.ts";
-import { font, size, space, type, usePalette } from "../theme/index.ts";
+import { font, size, space, type, useIsDark, usePalette } from "../theme/index.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { Logo } from "./Logo.tsx";
 import { IconButton } from "./primitives.tsx";
@@ -162,10 +167,29 @@ const TAB_ICONS: Record<string, IconName> = {
 /** 切换标签时淡入淡出的时长：标签栏的胶囊和页面（app/(tabs)/_layout.tsx）共用 */
 export const TAB_FADE_MS = 220;
 
+/** 选中项的玻璃框滑到新位置的时长：和页面交叉淡入淡出同时长 */
+const SLIDE_MS = TAB_FADE_MS;
+
 /**
- * 标签栏的一格：未选中的样子（图标在上、文字在下）和选中的黑色胶囊叠在一起，
- * 切换时一个淡出、一个淡入，胶囊同时从 92% 放大到原大。
- * 竖着的导航栏（宽屏）里选中项是 60×64 的墨色圆角块，图标仍在上、文字在下。
+ * 能不能用系统的液态玻璃：只有 iOS 26 起才有；某些 iOS 26 测试版没有这个接口，原生模块缺失时也当作没有。
+ * 注意玻璃（GlassView）和它的上层都不能改 opacity，否则玻璃不画；这里玻璃框只改位置。
+ */
+const LIQUID_GLASS = ((): boolean => {
+  if (Platform.OS !== "ios") return false;
+  try {
+    return isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+  } catch {
+    return false;
+  }
+})();
+
+type SlotBox = { x: number; y: number; width: number; height: number };
+
+/**
+ * 标签栏的一格：未选中的样子（灰色，图标在上、文字在下）和选中的样子（蓝色 tabOn，图标和文字横排）叠在一起，
+ * 切换时一个淡出、一个淡入，选中的样子同时从 92% 放大到原大。玻璃框不在这里画，由 TabBar 统一画一块滑过去。
+ * 竖着的导航栏（宽屏）里选中的样子图标仍在上、文字在下。
+ * onSlot 报这一格在标签栏里的位置，onActiveWidth 报选中样子的宽度（横着时玻璃框按它的宽度）。
  */
 function TabItem({
   label,
@@ -173,12 +197,16 @@ function TabItem({
   focused,
   onPress,
   vertical,
+  onSlot,
+  onActiveWidth,
 }: {
   label: string;
   icon: IconName;
   focused: boolean;
   onPress: () => void;
   vertical?: boolean;
+  onSlot: (box: SlotBox) => void;
+  onActiveWidth: (width: number) => void;
 }) {
   const palette = usePalette();
   const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
@@ -196,6 +224,7 @@ function TabItem({
       accessibilityState={{ selected: focused }}
       accessibilityLabel={label}
       onPress={onPress}
+      onLayout={(e) => onSlot(e.nativeEvent.layout)}
       style={vertical ? styles.railSlot : styles.tabSlot}
     >
       <Animated.View
@@ -209,21 +238,21 @@ function TabItem({
       </Animated.View>
       <Animated.View
         pointerEvents="none"
+        onLayout={(e) => onActiveWidth(e.nativeEvent.layout.width)}
         style={[
           vertical ? styles.railActive : styles.tabActive,
           {
-            backgroundColor: palette.ink,
             opacity: progress,
             transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
           },
         ]}
       >
-        <Icon name={icon} size={22} color={palette.bg} />
+        <Icon name={icon} size={22} color={palette.tabOn} />
         <Text
           style={
             vertical
-              ? [styles.railText, { fontWeight: "500", color: palette.bg }]
-              : { fontSize: 14, fontWeight: "500", color: palette.bg }
+              ? [styles.railText, { fontWeight: "500", color: palette.tabOn }]
+              : { fontSize: 14, fontWeight: "500", color: palette.tabOn }
           }
         >
           {label}
@@ -234,32 +263,135 @@ function TabItem({
 }
 
 /**
- * 浮动的胶囊标签栏：选中项展开成黑色小胶囊，图标和文字横排；未选中项图标在上、文字在下。
- * 中屏固定宽 392 水平居中；宽屏改成左侧竖着的导航栏，顶上是 Logo，高度随内容。
+ * 滑动的选中框：有液态玻璃时是一块透明玻璃；没有时没有底色，一圈蓝色细描边加灰色投影（tabGlassEdge、tabCapsuleShadow）。
+ * 记下每一格的位置和选中样子的宽度，选中项变了就从原来的位置滑过去（横着沿 x，竖着沿 y）；
+ * 第一次量到位置、或者屏幕转动后位置变了，就直接放到位，不滑。
+ */
+function useGlass(index: number, vertical: boolean) {
+  const slots = useRef<(SlotBox | undefined)[]>([]);
+  const widths = useRef<(number | undefined)[]>([]);
+  const offset = useRef(new Animated.Value(0)).current;
+  // 玻璃框现在放在哪一格、横着还是竖着；还没放过是 null
+  const shown = useRef<{ index: number; vertical: boolean } | null>(null);
+  const [box, setBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+
+  const place = (animated: boolean): void => {
+    const slot = slots.current[index];
+    const width = vertical ? rail.item.width : widths.current[index];
+    if (!slot || !width) return;
+    const to = vertical ? slot.y : slot.x + (slot.width - width) / 2;
+    const next = vertical
+      ? { left: slot.x, top: 0, width, height: rail.item.height }
+      : { left: 0, top: (size.tabBar - size.tabActive) / 2, width, height: size.tabActive };
+    setBox((b) =>
+      b && b.left === next.left && b.top === next.top && b.width === next.width && b.height === next.height
+        ? b
+        : next,
+    );
+    if (!animated || shown.current?.vertical !== vertical) {
+      offset.stopAnimation();
+      offset.setValue(to);
+    } else {
+      Animated.timing(offset, {
+        toValue: to,
+        duration: SLIDE_MS,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+    shown.current = { index, vertical };
+  };
+
+  // 选中项变了：滑过去（横竖刚切换过就直接放到位，见 place）
+  useEffect(() => {
+    if (shown.current && shown.current.index !== index) place(true);
+  });
+
+  const glass = box ? <GlassBox box={box} offset={offset} vertical={vertical} /> : null;
+  return {
+    glass,
+    onSlot: (i: number) => (layout: SlotBox) => {
+      slots.current[i] = layout;
+      if (i === index) place(false);
+    },
+    onActiveWidth: (i: number) => (width: number) => {
+      widths.current[i] = width;
+      if (i === index) place(false);
+    },
+  };
+}
+
+function GlassBox({
+  box,
+  offset,
+  vertical,
+}: {
+  box: { left: number; top: number; width: number; height: number };
+  offset: Animated.Value;
+  vertical: boolean;
+}) {
+  const palette = usePalette();
+  const dark = useIsDark();
+  const radius = Math.min(box.width, box.height) / 2;
+  const place = {
+    left: box.left,
+    top: box.top,
+    width: box.width,
+    height: box.height,
+    borderRadius: radius,
+    transform: [vertical ? { translateY: offset } : { translateX: offset }],
+  };
+  if (LIQUID_GLASS) {
+    return (
+      <Animated.View pointerEvents="none" style={[styles.glassSlot, place]}>
+        <GlassView
+          glassEffectStyle="clear"
+          colorScheme={dark ? "dark" : "light"}
+          style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
+        />
+      </Animated.View>
+    );
+  }
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.glass,
+        place,
+        { borderColor: palette.tabGlassEdge, boxShadow: palette.tabCapsuleShadow },
+      ]}
+    />
+  );
+}
+
+/**
+ * 浮动的胶囊标签栏：选中项是一块透明的玻璃框，图标和文字变成蓝色横排；未选中项灰色，图标在上、文字在下。
+ * 切换时玻璃框从原来的标签滑到新的标签。
+ * 中屏固定宽 392 水平居中；宽屏改成左侧竖着的导航栏，顶上是 Logo，高度随内容，玻璃框上下滑。
  */
 export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
   const palette = usePalette();
-  const { size, width } = useLayout();
-  const vertical = size === "expanded";
+  const dark = useIsDark();
+  const { size: sizeClass, width } = useLayout();
+  const vertical = sizeClass === "expanded";
+  const { glass, onSlot, onActiveWidth } = useGlass(state.index, vertical);
   const place: StyleProp<ViewStyle> = vertical
     ? [styles.rail, { top: Math.max(rail.top, insets.top + space.s) }]
     : [
         styles.tabs,
         { bottom: tabBarBottom(insets.bottom) },
-        size === "medium"
+        sizeClass === "medium"
           ? { left: (width - bottomBar.width) / 2, right: undefined, width: bottomBar.width }
           : null,
       ];
-  return (
-    <View
-      accessibilityRole="tablist"
-      style={[place, { backgroundColor: palette.card, boxShadow: palette.shadowFloat }]}
-    >
+  const items = (
+    <>
       {vertical ? (
         <View style={styles.railLogo}>
           <Logo size={40} />
         </View>
       ) : null}
+      {glass}
       {state.routes.map((route, index) => {
         const focused = state.index === index;
         const options = descriptors[route.key]?.options;
@@ -277,9 +409,32 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
             focused={focused}
             onPress={onPress}
             vertical={vertical}
+            onSlot={onSlot(index)}
+            onActiveWidth={onActiveWidth(index)}
           />
         );
       })}
+    </>
+  );
+  // 液态玻璃：整条栏是一块玻璃，页面内容从下面透出来；系统自己画边缘和投影
+  if (LIQUID_GLASS) {
+    return (
+      <GlassView
+        accessibilityRole="tablist"
+        glassEffectStyle="regular"
+        colorScheme={dark ? "dark" : "light"}
+        style={place}
+      >
+        {items}
+      </GlassView>
+    );
+  }
+  return (
+    <View
+      accessibilityRole="tablist"
+      style={[place, { backgroundColor: palette.card, boxShadow: palette.shadowFloat }]}
+    >
+      {items}
     </View>
   );
 }
@@ -344,6 +499,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  glass: { position: "absolute", borderWidth: 1, backgroundColor: "transparent" },
+  glassSlot: { position: "absolute" },
   railActive: {
     position: "absolute",
     top: 0,
