@@ -9,7 +9,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelInfo, ModelRoute, Provider } from "@bettertavern/core/api/types";
-import { MANUAL_WINDOW_CHOICES, needsManualWindow, providerMark } from "@bettertavern/core/settings/labels";
+import { MANUAL_WINDOW_CHOICES, needsManualWindow } from "@bettertavern/core/settings/labels";
 
 import { KeyField, ProviderMark } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, SectionHeader, Segmented } from "../../components/ui.tsx";
@@ -21,10 +21,13 @@ function ProviderTile({
   provider,
   selected,
   onPress,
+  width,
 }: {
   provider: Provider;
   selected: boolean;
   onPress: () => void;
+  /** 一行三块，宽度由外面量出来算好 */
+  width: number | undefined;
 }) {
   const palette = usePalette();
   return (
@@ -35,13 +38,14 @@ function ProviderTile({
       onPress={onPress}
       style={({ pressed }) => [
         styles.tile,
+        width ? { width } : { flex: 1 },
         selected
           ? { backgroundColor: palette.accBg, boxShadow: `inset 0 0 0 2px ${palette.acc}` }
           : { backgroundColor: palette.card },
         { transform: [{ scale: pressed ? 0.97 : 1 }] },
       ]}
     >
-      <ProviderMark mark={providerMark(provider.id)} size={36} tone={selected ? "acc" : "grey"} />
+      <ProviderMark provider={provider.id} size={36} tone={selected ? "acc" : "grey"} />
       <Text style={{ fontSize: 13.5, lineHeight: 18, color: palette.ink }}>
         {provider.requires_base_url ? "自定义兼容端点" : provider.display_name}
       </Text>
@@ -61,6 +65,7 @@ export function AddModelForm({
   const { api } = useApp();
   const palette = usePalette();
   const [provider, setProvider] = useState(providers[0]?.id ?? "");
+  const [tilesWidth, setTilesWidth] = useState<number | null>(null);
   const [key, setKey] = useState("");
   const [official, setOfficial] = useState(true);
   const [baseUrl, setBaseUrl] = useState("");
@@ -175,13 +180,19 @@ export function AddModelForm({
       <View style={[styles.form, { backgroundColor: palette.bg2 }]}>
         <View style={{ gap: space.s }}>
           <Text style={[styles.label, { color: palette.ink2 }]}>服务商</Text>
-          <View style={styles.tiles} accessibilityRole="radiogroup" accessibilityLabel="服务商">
+          <View
+            style={styles.tiles}
+            accessibilityRole="radiogroup"
+            accessibilityLabel="服务商"
+            onLayout={(e) => setTilesWidth(e.nativeEvent.layout.width)}
+          >
             {providers.map((p) => (
               <ProviderTile
                 key={p.id}
                 provider={p}
                 selected={p.id === provider}
                 onPress={() => setProvider(p.id)}
+                width={tilesWidth ? (tilesWidth - TILE_GAP * 2) / 3 : undefined}
               />
             ))}
           </View>
@@ -316,6 +327,9 @@ export function AddModelForm({
   );
 }
 
+/** 服务商图块之间的间距；一行三块 */
+const TILE_GAP = 6;
+
 const styles = StyleSheet.create({
   form: {
     marginHorizontal: space.list,
@@ -325,9 +339,8 @@ const styles = StyleSheet.create({
     gap: 22,
   },
   label: { fontSize: 13, lineHeight: 18, fontWeight: "500", paddingLeft: space.xs },
-  tiles: { flexDirection: "row", gap: 6 },
+  tiles: { flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP },
   tile: {
-    flex: 1,
     minHeight: 112,
     padding: 14,
     borderRadius: 22,

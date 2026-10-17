@@ -11,7 +11,7 @@ flowchart LR
   client["RN 客户端<br/>阅读剧情、点选项或自由输入"] -- "REST 提交行动 / SSE 接收事件" --> api["api 进程（FastAPI）<br/>鉴权、读接口、热路径导演生成、SSE 推流"]
   api <--> pg[("PostgreSQL（唯一事实来源）<br/>回合、世界状态、摘要、大纲<br/>任务队列 SKIP LOCKED、LISTEN/NOTIFY")]
   worker["worker 进程<br/>post_turn_graph：state / summary / outline 三条车道"] <--> pg
-  api --> llm["模型服务商（用户自带密钥）<br/>DeepSeek、Hugging Face、自定义 OpenAI 兼容端点"]
+  api --> llm["模型服务商（用户自带密钥）<br/>DeepSeek、OpenAI、Grok、Hugging Face、自定义 OpenAI 兼容端点"]
   worker --> llm
   api -. 可选 .-> redis[("Redis<br/>多实例时缓冲 token 流")]
 ```
@@ -69,7 +69,7 @@ flowchart LR
 | 表 | 关键列 | 说明 |
 | --- | --- | --- |
 | `users` | id, email, password\_hash, locale, settings jsonb, created\_at | v1 邮箱加密码，短期访问令牌加刷新令牌（`refresh_tokens` 表） |
-| `model_routes` | id, user\_id, label, provider（v1：deepseek / huggingface / custom\_openai；新厂商在注册表里加）, base\_url, api\_key\_enc, key\_id, extra\_headers\_enc, extra\_body jsonb, model, listed\_window, manual\_window, learned\_window, params jsonb, caps\_override jsonb, probe jsonb, status, is\_director, fallback\_route\_id | 一行是玩家配好的一个模型：Key、端点、模型名、窗口和写法设置放在一起，换导演时不用重新配。密钥信封加密；`probe` 是能力探测结果（第 8 节）；`extra_body` / `extra_headers_enc` 用来给请求追加自定义字段和请求头（思路参考 ST 的 custom\_include\_body / custom\_include\_headers）。每个用户最多一行是导演，其他 task 都用导演这一行（以后要给 StateKeeper 等单独配模型时再加按 task 的分配） |
+| `model_routes` | id, user\_id, label, provider（deepseek / openai / xai / huggingface / custom\_openai；新厂商在注册表里加）, base\_url, api\_key\_enc, key\_id, extra\_headers\_enc, extra\_body jsonb, model, listed\_window, manual\_window, learned\_window, params jsonb, caps\_override jsonb, probe jsonb, status, is\_director, fallback\_route\_id | 一行是玩家配好的一个模型：Key、端点、模型名、窗口和写法设置放在一起，换导演时不用重新配。密钥信封加密；`probe` 是能力探测结果（第 8 节）；`extra_body` / `extra_headers_enc` 用来给请求追加自定义字段和请求头（思路参考 ST 的 custom\_include\_body / custom\_include\_headers）。每个用户最多一行是导演，其他 task 都用导演这一行（以后要给 StateKeeper 等单独配模型时再加按 task 的分配） |
 
 ### B 剧本库
 
@@ -725,6 +725,20 @@ class ProviderAdapter(Protocol):
 | 用量字段 | `prompt_cache_hit_tokens`、`prompt_cache_miss_tokens`、`completion_tokens_details.reasoning_tokens`；`stream_options.include_usage` 须配合 stream | 取决于后端 |
 | 需要注意 | 带工具时此前所有 `reasoning_content` 必须回传，否则 400；`max_tokens` 默认非思考 8K、思考 64K；文档列出的并发上限为 flash 2500、pro 500 | 官方建议固定 provider 与模型；同一个 `:fastest` 可能随时间路由到不同后端 |
 
+### OpenAI 与 Grok（xAI）的差异
+
+以下事实来自 2026-10 读取的官方文档（developers.openai.com 的模型页、推理指南、Chat Completions 参考；docs.x.ai 的模型页、推理指南）。
+两家都走 OpenAI 兼容的 Chat Completions，差异在各自的 profile（`profiles/openai.py`、`profiles/xai.py`）和能力表里。
+
+| 项 | OpenAI | Grok（xAI） |
+| --- | --- | --- |
+| 基址 | `https://api.openai.com/v1` | `https://api.x.ai/v1`（要带 `/v1`） |
+| 模型 | GPT-6（astra / 6.1-sol / sol / luna）、gpt-5.6 / 5.5 / 5.4：1.05M，最大输出 128K；5.4-mini、5.2、5：400K；o3：200K；gpt-4.1、gpt-4o 已标为废弃。`*-pro` 只支持 Responses 接口，不列 | grok-4.7 / 4.6 / 4.5：500K；grok-4.3、grok-4.20 系列：1M；grok-build-0.1：256K。多智能体模型不支持 Chat Completions，不列 |
+| 列表 | `/models` 不给窗口；里面还有嵌入、语音、图片等模型，只留 gpt-* / o* / chatgpt-* 的对话模型 | 不给窗口；去掉 grok-imagine-*、grok-voice-* |
+| 输出上限 | `max_tokens` 已废弃、o 系列不认，profile 一律改成 `max_completion_tokens` | `max_tokens` |
+| 推理控制 | `reasoning_effort`，各模型取值不同（能力表里逐个列）；有 `none` 的模型在“深度思考”关掉时发 `none`；推理开着时去掉 `temperature`、`top_p` | 推理关不掉；只有 4.5 / 4.6 / 4.7 收 `reasoning_effort`（low / medium / high / xhigh，4.5 没有 xhigh）；推理模型不收 `stop`、`presence_penalty`、`frequency_penalty`，profile 去掉 |
+| 结构化输出 | json\_schema（官方支持；线上失败按负缓存降级） | 同左 |
+
 ### 能力表与探测
 
 能力不靠型号正则猜（ST 里 `OPENAI_REASONING_EFFORT_MODELS` 就是一个越写越长的硬编码列表），而是四层叠加，优先级从高到低：路由的 `caps_override` > 探测结果 > `capabilities.yaml` 里最具体的规则 > 保守默认值。
@@ -1008,7 +1022,7 @@ apps/server/
 │   │
 │   ├── providers/                      # 模型服务适配，第 9 节
 │   │   ├── base.py  profile.py  registry.py  hub.py  openai_compat.py  cancel.py
-│   │   ├── profiles/  deepseek.py  huggingface.py  custom_openai.py   # 以后每家厂商一个文件
+│   │   ├── profiles/  deepseek.py  openai.py  xai.py  huggingface.py  custom_openai.py   # 每家厂商一个文件
 │   │   ├── capabilities.py  capabilities.yaml  probe.py
 │   │   ├── message_transforms.py  sse_parser.py  errors.py  retry.py
 │   │   ├── transport.py  limiter.py  usage.py
@@ -1134,7 +1148,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | 方法与路径 | 说明 |
 | --- | --- |
 | `GET /v1/me` | 当前用户 |
-| `GET /v1/providers` | 可选的服务商：DeepSeek、Hugging Face、自定义 OpenAI 兼容端点（`requires_base_url`） |
+| `GET /v1/providers` | 可选的服务商：DeepSeek、OpenAI、Grok（xAI）、Hugging Face、自定义 OpenAI 兼容端点（`requires_base_url`） |
 | `/v1/model-routes*` | 设计里密钥（`/credentials`）和按 task 的路由（`PUT /model-routes`）分开；实现里合成一行一个模型，Key 和模型一次配好，所有 task 用导演那一行。响应带窗口校验结果 `window`：`model_window`、`source`（窗口从哪来）、`working_cap`、`max_tokens`、`effective_window`、`warnings`（`WINDOW_CLAMPED`） |
 | `POST /v1/providers/{provider}/models` | 用还没保存的 Key 拉模型列表，添加模型的表单在保存前用 |
 | `GET /v1/blobs/{id}` | 头像 |

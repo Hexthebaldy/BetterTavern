@@ -8,7 +8,7 @@ import { Link, useNavigate } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
-import { MODEL_STATUS, modelTitle, providerMark, statusKind } from "@bettertavern/core/settings/labels";
+import { MODEL_STATUS, modelTitle, statusKind } from "@bettertavern/core/settings/labels";
 import { formatTokens } from "@bettertavern/core/utils/format";
 
 import { cx, Notice, Pill } from "../../components/controls.tsx";
@@ -28,7 +28,7 @@ function ModelRow({ route }: { route: ModelRoute }) {
       className={styles.modelRow}
       aria-label={`${modelTitle(route)}${route.is_director ? "，导演" : ""}`}
     >
-      <ProviderMark mark={providerMark(route.provider)} tone={route.is_director ? "ink" : "card"} />
+      <ProviderMark provider={route.provider} tone={route.is_director ? "ink" : "card"} />
       <span className={styles.rowText}>
         <span className={cx(styles.modelName, !route.label && styles.mono)}>{modelTitle(route)}</span>
         <span className={styles.modelMeta}>

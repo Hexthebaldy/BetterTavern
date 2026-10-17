@@ -706,12 +706,13 @@
   font-weight: 500;
   color: var(--ink2);
 }
+/* 服务商图块：一行三块 */
 .providerTiles {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 .providerTile {
-  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;

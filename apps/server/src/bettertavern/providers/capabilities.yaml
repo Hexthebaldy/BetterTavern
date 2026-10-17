@@ -11,6 +11,114 @@
     sampling: { temperature_when_thinking: false }
     echo_reasoning_with_tools: true
 
+# OpenAI：窗口、最大输出、推理强度取自 https://developers.openai.com/api/docs/models 各模型页（2026-10）。
+# 推理开着时 temperature / top_p 由 profile 去掉；结构化输出官方支持，线上失败会负缓存降级。
+- match: { provider: openai }
+  caps:
+    structured: [json_schema]
+    roles: { system: true, alternation: loose }
+
+- match: { provider: openai, model: 'gpt-6*' }
+  caps:
+    context_window: 1050000
+    max_output: 128000
+    reasoning: { control: effort, efforts: [none, low, medium, high, xhigh, max] }
+
+- match: { provider: openai, model: 'gpt-6-astra*' }      # 推理关不掉（none 会 400）
+  caps: { reasoning: { control: effort, efforts: [low, medium, high, xhigh, max] } }
+
+- match: { provider: openai, model: 'gpt-6.1*' }
+  caps: { reasoning: { control: effort, efforts: [low, medium, high, xhigh, max] } }
+
+- match: { provider: openai, model: 'gpt-5.6*' }
+  caps:
+    context_window: 1050000
+    max_output: 128000
+    reasoning: { control: effort, efforts: [none, low, medium, high, xhigh, max] }
+
+- match: { provider: openai, model: 'gpt-5.5*' }
+  caps:
+    context_window: 1050000
+    max_output: 128000
+    reasoning: { control: effort, efforts: [none, low, medium, high, xhigh] }
+
+- match: { provider: openai, model: 'gpt-5.4*' }
+  caps:
+    context_window: 1050000
+    max_output: 128000
+    reasoning: { control: effort, efforts: [none, low, medium, high, xhigh] }
+
+- match: { provider: openai, model: 'gpt-5.4-mini*' }
+  caps: { context_window: 400000 }
+
+- match: { provider: openai, model: 'gpt-5.2*' }
+  caps:
+    context_window: 400000
+    max_output: 128000
+    reasoning: { control: effort, efforts: [none, low, medium, high, xhigh] }
+
+- match: { provider: openai, model: 'gpt-5' }
+  caps:
+    context_window: 400000
+    max_output: 128000
+    reasoning: { control: effort, efforts: [minimal, low, medium, high] }
+
+- match: { provider: openai, model: 'gpt-5-*' }           # gpt-5-mini、gpt-5-nano、带日期的快照
+  caps:
+    context_window: 400000
+    max_output: 128000
+    reasoning: { control: effort, efforts: [minimal, low, medium, high] }
+
+- match: { provider: openai, model: 'o3*' }
+  caps:
+    context_window: 200000
+    max_output: 100000
+    reasoning: { control: effort, efforts: [low, medium, high] }
+
+- match: { provider: openai, model: 'o4-mini*' }
+  caps:
+    context_window: 200000
+    max_output: 100000
+    reasoning: { control: effort, efforts: [low, medium, high] }
+
+- match: { provider: openai, model: 'gpt-4.1*' }          # 非推理模型
+  caps: { context_window: 1047576, max_output: 32768 }
+
+- match: { provider: openai, model: 'gpt-4o*' }
+  caps: { context_window: 128000, max_output: 16384 }
+
+# xAI（Grok）：窗口和推理强度取自 https://docs.x.ai/docs/models、/docs/guides/reasoning（2026-10）。
+# 推理关不掉；只有 4.5 / 4.6 / 4.7 收 reasoning_effort（4.5 把 xhigh 当 high）。结构化输出官方支持，线上失败会负缓存降级。
+# 规则按特异度从低到高合并，下面按模型的几条只写和整家不同的部分。
+- match: { provider: xai }
+  caps:
+    structured: [json_schema]
+    roles: { system: true, alternation: loose }
+
+- match: { provider: xai, model: 'grok-4.7*' }
+  caps:
+    context_window: 500000
+    reasoning: { control: effort, efforts: [low, medium, high, xhigh], field: reasoning_content }
+
+- match: { provider: xai, model: 'grok-4.6*' }
+  caps:
+    context_window: 500000
+    reasoning: { control: effort, efforts: [low, medium, high, xhigh], field: reasoning_content }
+
+- match: { provider: xai, model: 'grok-4.5*' }
+  caps:
+    context_window: 500000
+    reasoning: { control: effort, efforts: [low, medium, high], field: reasoning_content }
+
+- match: { provider: xai, model: 'grok-4.3*' }
+  caps: { context_window: 1000000 }
+
+- match: { provider: xai, model: 'grok-4.20*' }
+  caps: { context_window: 1000000 }
+
+- match: { provider: xai, model: 'grok-build-*' }
+  caps: { context_window: 256000 }
+
 - match: { provider: huggingface }
   caps:
     structured: []                         # 保守：只走 prompt_json，探测通过再升级

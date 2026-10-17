@@ -14,13 +14,6 @@ export function statusKind(status: ModelRoute["status"]): "ok" | "untested" | "i
   return status === "ok" ? "ok" : status === "invalid" ? "invalid" : "untested";
 }
 
-/** 服务商的两字母标记，自定义端点用 { } */
-export function providerMark(id: string): string {
-  if (id === "deepseek") return "DS";
-  if (id === "huggingface") return "HF";
-  return "{ }";
-}
-
 export function providerName(id: string, providers: Provider[] | undefined): string {
   return providers?.find((p) => p.id === id)?.display_name ?? id;
 }

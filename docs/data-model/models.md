@@ -19,7 +19,7 @@
 | `id` | uuid | 否 |  | 主键，由应用生成（加密要把行 ID 绑进附加数据） |
 | `user_id` | uuid | 否 |  | → `users.id`，级联删除 |
 | `label` | text | 否 | `''` | 显示名，最多 60 字；为空时界面显示模型名 |
-| `provider` | text | 否 |  | 服务商：`deepseek`、`huggingface`、`custom_openai`。没有 CHECK，合法值由服务商注册表（`providers/profiles/`）决定，新增厂商不用改表 |
+| `provider` | text | 否 |  | 服务商：`deepseek`、`openai`、`xai`（Grok）、`huggingface`、`custom_openai`。没有 CHECK，合法值由服务商注册表（`providers/profiles/`）决定，新增厂商不用改表 |
 | `base_url` | text | 是 |  | 自定义的接口地址（去掉末尾的 `/`）；为空表示使用服务商的默认地址，`custom_openai` 必须填写。写入前做 SSRF 校验 |
 | `api_key_enc` | text | 否 |  | 加密后的 API Key，加密格式见本节末尾 |
 | `key_id` | text | 否 |  | 加密 `api_key_enc` 时用的主密钥编号（`MASTER_KEYS` 里的 kid），留给以后的重新加密工具定位用。只改 Key 时 `extra_headers_enc` 不会重新加密，所以它可能还在用旧的 kid |

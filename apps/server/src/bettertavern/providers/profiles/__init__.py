@@ -6,7 +6,10 @@ from ..profile import ProviderProfile
 from .custom_openai import PROFILE as CUSTOM_OPENAI
 from .deepseek import PROFILE as DEEPSEEK
 from .huggingface import PROFILE as HUGGINGFACE
+from .openai import PROFILE as OPENAI
+from .xai import PROFILE as XAI
 
-BUILTIN_PROFILES: tuple[ProviderProfile, ...] = (DEEPSEEK, HUGGINGFACE, CUSTOM_OPENAI)
+# 顺序就是“添加模型”里服务商图块的顺序
+BUILTIN_PROFILES: tuple[ProviderProfile, ...] = (DEEPSEEK, OPENAI, XAI, HUGGINGFACE, CUSTOM_OPENAI)
 
-__all__ = ["BUILTIN_PROFILES", "CUSTOM_OPENAI", "DEEPSEEK", "HUGGINGFACE"]
+__all__ = ["BUILTIN_PROFILES", "CUSTOM_OPENAI", "DEEPSEEK", "HUGGINGFACE", "OPENAI", "XAI"]

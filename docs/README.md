@@ -25,7 +25,7 @@ v1 交付一个服务端 agent runtime 加一个 React Native 客户端：玩家
 
 - 第一人称互动小说：导演每轮回复后立即给出 2 个选项，同时保留自由输入框，尽量减少打字。
 - 长篇一致性：结构化世界状态、渐进式披露、滚动摘要、长程大纲四者配合，而不是把所有设定拼成一个大 prompt。
-- 用户自带 API Key 并自选端点；v1 适配 DeepSeek、Hugging Face 和玩家自定义的 OpenAI 兼容端点（三者都走 OpenAI 兼容接口），厂商适配按“配置加通用适配器”设计，以后可以接入大量厂商。
+- 用户自带 API Key 并自选端点；适配 DeepSeek、OpenAI、Grok（xAI）、Hugging Face 和玩家自定义的 OpenAI 兼容端点（都走 OpenAI 兼容接口），厂商适配按“配置加通用适配器”设计，以后可以接入大量厂商。
 - 支持回退与重新生成。
 - 代码开源，服务端可自托管，一条 `docker compose up` 起全套。
 

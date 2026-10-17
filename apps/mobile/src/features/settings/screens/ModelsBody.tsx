@@ -9,7 +9,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
 import { formatTokens } from "@bettertavern/core/utils/format";
-import { MODEL_STATUS, modelTitle, providerMark, statusKind } from "@bettertavern/core/settings/labels";
+import { MODEL_STATUS, modelTitle, statusKind } from "@bettertavern/core/settings/labels";
 
 import { ProviderMark } from "../../../components/KeyParts.tsx";
 import {
@@ -38,7 +38,7 @@ function ModelRow({ route, onPress }: { route: ModelRoute; onPress: () => void }
       onPress={onPress}
       style={({ pressed }) => [styles.row, { backgroundColor: pressed ? palette.bg3 : "transparent" }]}
     >
-      <ProviderMark mark={providerMark(route.provider)} tone={route.is_director ? "ink" : "card"} />
+      <ProviderMark provider={route.provider} tone={route.is_director ? "ink" : "card"} />
       <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <Text
           numberOfLines={1}

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelInfo, ModelRoute, Provider } from "@bettertavern/core/api/types";
-import { MANUAL_WINDOW_CHOICES, needsManualWindow, providerMark } from "@bettertavern/core/settings/labels";
+import { MANUAL_WINDOW_CHOICES, needsManualWindow } from "@bettertavern/core/settings/labels";
 
 import { Button, Checkbox, cx, Field, Notice } from "../../components/controls.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
@@ -34,7 +34,7 @@ function ProviderTile({
       className={cx(styles.providerTile, selected && styles.providerOn)}
       onClick={onSelect}
     >
-      <ProviderMark mark={providerMark(provider.id)} size={36} tone={selected ? "acc" : "grey"} />
+      <ProviderMark provider={provider.id} size={36} tone={selected ? "acc" : "grey"} />
       {provider.requires_base_url ? "自定义兼容端点" : provider.display_name}
     </button>
   );
