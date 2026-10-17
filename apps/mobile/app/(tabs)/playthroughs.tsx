@@ -90,6 +90,7 @@ function StoryRow({
           <Text style={[styles.time, { color: palette.mut }]}>{formatRelative(story.updated_at)}</Text>
         </View>
         {status?.kind === "writing" ? <Pill tone="acc" dot label={status.label} /> : null}
+        {status?.kind === "ended" ? <Pill tone="card" icon="flag" label={status.label} /> : null}
         {story.head_excerpt ? (
           <Text numberOfLines={2} style={[styles.excerpt, { color: palette.ink2 }]}>
             {story.head_excerpt}

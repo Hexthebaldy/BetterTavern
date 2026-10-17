@@ -3,7 +3,7 @@
 消息摆放（docs/backend.md 第 4 节）：
 1. system：规则 + 故事设定（取自开局 Seed，开局后基本不变，放最前面命中前缀缓存）；
 2. 近期原文：按顺序交替的 user / assistant，导演回合只保留叙述，不带历史选项；
-3. 最后一条 user：状态块在前、玩家行动在后（或开场简报），离生成点最近。
+3. 最后一条 user：状态块在前、玩家行动在后（或开场简报、结局要求），离生成点最近。
 
 M1 还没有摘要与压缩（M3），近期原文就是全部历史；超过有效窗口 95% 时只截断发送视图，
 从最旧的回合开始丢，至少保留最近 2 个回合，直到不超过 90%。
@@ -115,6 +115,10 @@ class ContextAssembler:
                     hook="",
                     reference_opening="",
                 ).text
+            elif turn.action.source == "ending":
+                user = self._prompts.render(
+                    "director.ending", world_state="", wish=sanitize_for_fence(turn.action.text)
+                ).text
             else:
                 user = self._prompts.render(
                     "director.turn", action=sanitize_for_fence(turn.action.text)
@@ -141,6 +145,8 @@ class ContextAssembler:
             )
         action_chars = max(math.floor(window * ACTION_RATIO), 200)
         action = clip_middle(sanitize_for_fence(ctx.action.text), action_chars)
+        if ctx.action.source == "ending":
+            return self._prompts.render("director.ending", wish=action, world_state=world_state)
         return self._prompts.render("director.turn", action=action, world_state=world_state)
 
     def assemble(

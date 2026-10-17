@@ -2,6 +2,8 @@
  * 对话框：居中的圆角卡片，上方一个圆形图标写清后果，下面并排“取消 / 确认”两个胶囊按钮。
  * 删除用红色，揭示秘密之类的提醒用琥珀色。一般经 useOverlay() 弹出（overlay.tsx），不直接用。
  * 平板上宽不超过 480，居中。
+ * 非 inline 时自己带一个 Modal，什么时候挂上、拿掉由 useGatedModal 决定（gatedModal.ts）：
+ * iOS 上等别的 Modal 被收回才挂上；关闭时 visible 先变 false（淡出），等 iOS 确认收回才拿掉。
  */
 
 import type { ReactNode } from "react";
@@ -10,6 +12,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, Vie
 import { pane } from "@bettertavern/design/layout";
 
 import { onColor, radius, space, type, usePalette } from "../theme/index.ts";
+import { useGatedModal } from "./gatedModal.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { MODAL_ORIENTATIONS } from "./sheet.tsx";
 
@@ -37,6 +40,7 @@ type DialogProps = {
 
 export function Dialog({ visible, inline, onCancel, ...card }: DialogProps) {
   const palette = usePalette();
+  const modal = useGatedModal(visible && !inline, "dialog");
   const body = (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -46,12 +50,14 @@ export function Dialog({ visible, inline, onCancel, ...card }: DialogProps) {
     </KeyboardAvoidingView>
   );
   if (inline) return visible ? <View style={StyleSheet.absoluteFill}>{body}</View> : null;
+  if (!modal.mounted) return null;
   return (
     <Modal
       transparent
-      visible={visible}
+      visible={modal.visible}
       animationType="fade"
       onRequestClose={onCancel}
+      onDismiss={modal.onDismiss}
       statusBarTranslucent
       supportedOrientations={MODAL_ORIENTATIONS}
     >

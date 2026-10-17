@@ -123,7 +123,12 @@ export type Scenario = {
 
 export type TurnOption = { id: string; text: string };
 
-export type TurnAction = { source: "option" | "text" | "opening"; text: string; option_id?: string };
+/** 写结局时 source 是 ending，text 是玩家写的结局方向（没写时是空串） */
+export type TurnAction = {
+  source: "option" | "text" | "opening" | "ending";
+  text: string;
+  option_id?: string;
+};
 
 export type TurnError = { code: string; message: string; retryable: boolean; partial?: boolean };
 
@@ -150,7 +155,8 @@ export type Preferences = { length: "short" | "medium" | "long"; style: string; 
 export type Playthrough = {
   id: string;
   title: string;
-  status: "building" | "active";
+  /** ended：已经写完结局，不能再提交行动 */
+  status: "building" | "active" | "ended";
   scenario_id: string | null;
   protagonist_name: string;
   preferences: Partial<Preferences>;
@@ -204,7 +210,8 @@ export type WorldView = {
 export type NewAction =
   | { source: "option"; option_id: string }
   | { source: "text"; text: string }
-  | { source: "opening" };
+  | { source: "opening" }
+  | { source: "ending"; text?: string };
 
 /** 回合事件流里的事件（data 已解析） */
 export type TurnEvent =
@@ -214,7 +221,8 @@ export type TurnEvent =
   | { event: "turn.waiting_state"; data: { waited_ms: number; done?: boolean; lag?: boolean } }
   | { event: "narrative.delta"; data: { text: string } }
   | { event: "narrative.done"; data: { chars: number; rewritten?: boolean } }
-  | { event: "options.ready"; data: { options: TurnOption[]; source: string } }
+  /** 结局那一轮 options 是空的、source 是 null */
+  | { event: "options.ready"; data: { options: TurnOption[]; source: string | null } }
   | {
       event: "turn.completed";
       data: {

@@ -17,7 +17,7 @@ import { useNavigate, useParams } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { readableColumn } from "@bettertavern/design/layout";
-import { headTurn, isLive, canAct } from "@bettertavern/core/play/turnMachine";
+import { headTurn, isEnded, isLive, canAct } from "@bettertavern/core/play/turnMachine";
 
 import { Button, IconButton } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -223,6 +223,21 @@ function PlayPage({ id }: { id: string }) {
     if (action === "delete") {
       await actions.remove({ id, title: shownTitle });
     }
+    if (action === "end") {
+      // 确认框里可以填想要的方向，也可以不填；写完就不能再继续，也没有撤销
+      const wish = await overlay.prompt({
+        title: "给这个故事写结局？",
+        message: "导演会接着目前的剧情，写一大段作为结局。写完后故事就结束了，不能撤销，也不能再往下写。",
+        label: "结局方向",
+        placeholder: "想要怎样的结局（可不填）",
+        maxLength: 2000,
+        confirmLabel: "写结局",
+        optional: true,
+      });
+      if (wish === null) return;
+      controls.submit({ source: "ending", text: wish });
+      jumpToLatest();
+    }
     if (action === "rename") {
       const next = await overlay.prompt({
         title: "重命名故事",
@@ -369,6 +384,7 @@ function PlayPage({ id }: { id: string }) {
       {moreOpen && moreButton.current ? (
         <MorePopover
           anchor={moreButton.current}
+          ending={isEnded(state) ? "ended" : canAct(state) ? "ready" : "busy"}
           onClose={() => setMoreOpen(false)}
           onAction={(a) => void onMore(a)}
         />

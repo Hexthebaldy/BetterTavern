@@ -434,6 +434,11 @@
   color: var(--ink);
   font-weight: 400;
 }
+.pill-card {
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 400;
+}
 
 /* ---- 加载中的三个点 ---- */
 .dots {

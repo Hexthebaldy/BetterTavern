@@ -1,5 +1,6 @@
 /**
- * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号），重命名故事、世界状态、删除故事。
+ * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号），重命名故事、世界状态、写结局、删除故事。
+ * “写结局”只在能行动时可点（开场写完、没在生成、没有失败等着重试），故事写完结局后不再显示。
  * 阅读设置存在设备上，所有故事共用。
  * 手机上是底部面板；平板上贴着操作栏的“更多”按钮弹出（宽 340，右边缘和按钮对齐，底边在按钮上方 8，不加遮罩）。
  */
@@ -165,6 +166,8 @@ export function MoreSheet({
   onClose,
   onRename,
   onWorld,
+  onEnd,
+  ending,
   onDelete,
   anchor,
   above,
@@ -173,6 +176,9 @@ export function MoreSheet({
   onClose: () => void;
   onRename: () => void;
   onWorld: () => void;
+  onEnd: () => void;
+  /** 写结局：ready 可以写；busy 暂时不能（生成中、开场没写好、失败等着重试）；ended 已经写完了，不显示 */
+  ending: "ready" | "busy" | "ended";
   onDelete: () => void;
   /** 平板：菜单贴着这个按钮弹出；传了 above 时底边放在它的顶边上方 */
   anchor?: RefObject<View | null>;
@@ -188,6 +194,9 @@ export function MoreSheet({
         <MenuGroup style={{ marginTop: space.xs }}>
           <MenuItem icon="write" label="重命名故事" onPress={onRename} />
           <MenuItem icon="world" label="世界状态" onPress={onWorld} />
+          {ending !== "ended" ? (
+            <MenuItem icon="flag" label="写结局" disabled={ending === "busy"} onPress={onEnd} />
+          ) : null}
           <MenuItem icon="trash" label="删除故事" danger onPress={onDelete} />
         </MenuGroup>
       </View>

@@ -117,11 +117,17 @@ def test_resolve_action() -> None:
     assert picked == PlayerAction(source="option", text="坐下", option_id="o2")
     typed = resolve_action("text", text="  我推门  ", option_id=None, parent_options=options)
     assert typed.text == "我推门"
+    # 结局的方向可以不填
+    ending = resolve_action("ending", text="  和阿苓离开  ", option_id=None, parent_options=[])
+    assert ending == PlayerAction(source="ending", text="和阿苓离开")
+    blank = resolve_action("ending", text=None, option_id=None, parent_options=[])
+    assert blank == PlayerAction(source="ending", text="")
     for source, text, option_id, code in [
         ("option", None, "o9", "OPTION_NOT_FOUND"),
         ("option", None, None, "VALIDATION_ERROR"),
         ("text", "   ", None, "VALIDATION_ERROR"),
         ("text", "字" * 2001, None, "VALIDATION_ERROR"),
+        ("ending", "字" * 2001, None, "VALIDATION_ERROR"),
         ("magic", "x", None, "VALIDATION_ERROR"),
     ]:
         with pytest.raises(ActionError) as info:

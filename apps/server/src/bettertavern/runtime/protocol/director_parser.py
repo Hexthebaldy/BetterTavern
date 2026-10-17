@@ -50,6 +50,10 @@ NUMBERED_OPTION = re.compile(r"^\s*+[12１２]\s*+[.．、)）:：]\s*+(\S(?:.*\
 _ANY_LIST_MARK = re.compile(r"^\s*+(?:[-*•·]|\d++\s*+[.．、)）:：])\s*+")
 
 
+# 结局那一轮本来就不该有选项，这条修补说明在结局里不算问题
+MISSING_OPTIONS = "缺少 <options> 标签"
+
+
 class ParseStage(StrEnum):
     OK = "ok"  # 完全合规
     SALVAGED = "salvaged"  # 标签有缺损，叙述和选项由解析器抢救出来
@@ -282,7 +286,7 @@ class DirectorStreamParser:
                 repairs.append("选项混在叙述里")
         elif self._narrative_closed and not self._options_opened:
             options = extract_numbered_options("".join(self._between))
-            repairs.append("缺少 <options> 标签")
+            repairs.append(MISSING_OPTIONS)
         else:
             if "".join(self._preamble).strip():
                 notes.append("<narrative> 之前有多余文字")

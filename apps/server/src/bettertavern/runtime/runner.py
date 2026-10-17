@@ -2,6 +2,7 @@
 
 步骤：（开场且世界未建好时）WorldBuilder → 状态屏障 → 装配上下文 → 导演流式生成（边收边解析，
 叙述增量合并成至少 40 毫秒一批发出）→ 修复阶梯 → 一个事务提交 → options.ready、turn.completed。
+结局那一轮（行动来源 ending）只要叙述：不走修复阶梯，模型写了选项也丢掉，提交时把这局标为已完结。
 
 - 生成期间每 30 秒续租；续租失败（租约被清理或发生了回退）就取消生成，不再写库；
 - 首个可见内容之前出错：同一路由退避重试，再试 fallback 路由；之后出错不重试，半截叙述存为草稿；
@@ -50,7 +51,7 @@ from .ports import (
     TurnStore,
 )
 from .prompts import PromptLibrary
-from .protocol.director_parser import ParseStage
+from .protocol.director_parser import MISSING_OPTIONS, ParseStage
 from .protocol.repair import NarrativeMissing, finalize_director_output
 from .protocol.structured import StructuredOutputError
 from .routing import ResolvedRoute, with_model_window
@@ -158,6 +159,9 @@ class TurnRunner:
                 options_source=outcome.options_source,
                 state_lag=outcome.state_lag,
             )
+            if outcome.ends_story:
+                # 只记字数，不记结局的内容
+                log.info("playthrough.ended", narrative_chars=len(outcome.narrative))
             await self._publish(
                 stream,
                 "options.ready",
@@ -296,6 +300,8 @@ class TurnRunner:
                 )
             )
         generation = await self._generate(header, ctx, route, stream, cancel)
+        if ctx.action.source == "ending":
+            return self._finalize_ending(generation, state_lag)
         return await self._finalize(header, generation, state_lag)
 
     async def _build_world(
@@ -500,18 +506,7 @@ class TurnRunner:
                 timeout=self.config.options_repair_timeout_s,
             )
         except NarrativeMissing as exc:
-            log.warning("director.parse", stage="narrative_missing")
-            run = self._director_run(generation, status="failed", error_class="narrative_missing")
-            raise TurnFailed(
-                TurnFailure(
-                    code="NARRATIVE_MISSING",
-                    message="导演这次没有写出内容，请重试",
-                    retryable=True,
-                    narrative=generation.streamed,
-                    partial=bool(generation.streamed),
-                    runs=[run],
-                )
-            ) from exc
+            raise self._narrative_missing(generation) from exc
         # stage：ok 直接合格；salvaged / repaired 修补后合格；fallback 用了兜底选项
         log.info(
             "director.parse",
@@ -537,6 +532,50 @@ class TurnRunner:
             usage=generation.usage,
             state_lag=state_lag,
             runs=[run],
+        )
+
+    def _finalize_ending(self, generation: Generation, state_lag: bool) -> TurnOutcome:
+        """结局：只要叙述，不补选项；模型照习惯写了选项也丢掉。"""
+        parse = generation.parse
+        if parse.stage is ParseStage.FAILED or not parse.narrative.strip():
+            raise self._narrative_missing(generation)
+        repairs = [r for r in parse.repairs if r != MISSING_OPTIONS]
+        log.info(
+            "director.parse",
+            stage="ending",
+            options=0,
+            dropped_options=len(parse.options),
+            repairs=repairs,
+            notes=list(parse.notes)[:10],
+            rewritten=parse.rewritten,
+        )
+        run = self._director_run(
+            generation,
+            status="ok",
+            extra={"stage": "ending", "repairs": repairs, "notes": list(parse.notes)[:10]},
+        )
+        return TurnOutcome(
+            narrative=parse.narrative,
+            options=[],
+            options_source=None,
+            usage=generation.usage,
+            state_lag=state_lag,
+            runs=[run],
+            ends_story=True,
+        )
+
+    def _narrative_missing(self, generation: Generation) -> TurnFailed:
+        log.warning("director.parse", stage="narrative_missing")
+        run = self._director_run(generation, status="failed", error_class="narrative_missing")
+        return TurnFailed(
+            TurnFailure(
+                code="NARRATIVE_MISSING",
+                message="导演这次没有写出内容，请重试",
+                retryable=True,
+                narrative=generation.streamed,
+                partial=bool(generation.streamed),
+                runs=[run],
+            )
         )
 
     def _log_context(self, context: AssembledContext, route: ResolvedRoute) -> None:

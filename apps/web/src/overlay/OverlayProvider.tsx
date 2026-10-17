@@ -46,6 +46,8 @@ export type PromptOptions = {
   placeholder?: string;
   maxLength?: number;
   confirmLabel?: string;
+  /** 可以不填：空着也能确认，这时返回空串 */
+  optional?: boolean;
 };
 
 export type MenuOptions = { label: string; items: MenuItem[]; place: MenuPlace };
@@ -54,7 +56,7 @@ export type ToastOptions = { icon?: IconName; actionLabel?: string; onAction?: (
 
 export type Overlay = {
   confirm: (options: ConfirmOptions) => Promise<boolean>;
-  /** 输入一行文字；取消或没填返回 null */
+  /** 输入一行文字；取消返回 null。必填时没填不能确认，optional 时没填返回空串 */
   prompt: (options: PromptOptions) => Promise<string | null>;
   /** 返回选中项的 key；点外面、按 Esc 返回 null */
   menu: (options: MenuOptions) => Promise<string | null>;
@@ -224,22 +226,23 @@ function PromptDialog({
   const [draft, setDraft] = useState(options.initial ?? "");
   const input = useRef<HTMLInputElement>(null);
   const text = draft.trim();
+  const ready = text.length > 0 || options.optional === true;
   useEffect(() => input.current?.select(), []);
   return (
     <Dialog label={options.title} onClose={() => onSettle(null)} initialFocus={input}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (text) onSettle(text);
+          if (ready) onSettle(text);
         }}
       >
         <DialogCard
           title={options.title}
           message={options.message}
           confirmLabel={options.confirmLabel ?? "保存"}
-          confirmDisabled={text.length === 0}
+          confirmDisabled={!ready}
           onCancel={() => onSettle(null)}
-          onConfirm={() => text && onSettle(text)}
+          onConfirm={() => ready && onSettle(text)}
         >
           <input
             ref={input}

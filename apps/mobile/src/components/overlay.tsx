@@ -2,7 +2,8 @@
  * 浮层：对话框、墨色浮条、菜单，以及给页面用的 useOverlay()（确认、输入、菜单、浮条）。面板本身在 sheet.tsx。
  *
  * 对话框是居中的白色圆角卡片（宽 ≤ 480），上方一个圆形图标写清后果；删除用红色，揭示秘密之类的提醒用琥珀色。
- * 有面板开着时，对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）。
+ * 有面板开着时，对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）；
+ * 没有面板开着时，对话框、平板的卡片菜单自己带 Modal，经 useGatedModal 等别的 Modal 被 iOS 收回才挂上（gatedModal.ts）。
  * 墨色胶囊浮条贴着标签栏上方浮起，3 秒后自动消失（带操作的多留一会儿）；平板上宽 ≤ 480，
  * 中屏在底部 Tab 栏上方居中，宽屏在内容区（x ≥ 124）底部居中。
  * 菜单在手机上是底部面板；平板上长按卡片时，卡片抬起（放大 3%，白底加投影），下方弹出宽 240 的菜单，背景加浅遮罩。
@@ -19,7 +20,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Animated, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Animated, Keyboard, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { cardMenuFrame, toastFrame } from "@bettertavern/design/layout";
@@ -28,16 +29,9 @@ import { useLayout } from "../hooks/useLayout.ts";
 import { BaseSurface, radius, space, useIsDark, usePalette } from "../theme/index.ts";
 import { tabBarTop } from "./bars.tsx";
 import { Dialog, type DialogTone } from "./dialog.tsx";
+import { useGatedModal } from "./gatedModal.ts";
 import { Icon, type IconName } from "./icons.tsx";
-import {
-  MenuGroup,
-  MenuItem,
-  MODAL_ORIENTATIONS,
-  OutletContext,
-  Sheet,
-  sheetCloseWait,
-  type Outlets,
-} from "./sheet.tsx";
+import { MenuGroup, MenuItem, MODAL_ORIENTATIONS, OutletContext, Sheet, type Outlets } from "./sheet.tsx";
 
 // ---- useOverlay -------------------------------------------------------------------------
 
@@ -58,6 +52,8 @@ export type PromptOptions = {
   placeholder?: string;
   maxLength?: number;
   confirmLabel?: string;
+  /** 可以不填：空着也能确认，这时返回空串 */
+  optional?: boolean;
 };
 
 export type MenuOptions = {
@@ -79,7 +75,7 @@ export type ToastOptions = {
 
 type Overlay = {
   confirm: (options: ConfirmOptions) => Promise<boolean>;
-  /** 输入一行文字；取消或没填返回 null */
+  /** 输入一行文字；取消返回 null。必填时没填不能确认，optional 时没填返回空串 */
   prompt: (options: PromptOptions) => Promise<string | null>;
   /** 底部菜单（长按列表行、详情页的“更多”）；返回选中项的 key */
   menu: (options: MenuOptions) => Promise<string | null>;
@@ -121,12 +117,14 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const open = useCallback(
     (next: Request) => {
       settle(null); // 同时只有一个：新的请求把旧的当作取消
-      const wait = next.kind === "menu" ? 0 : sheetCloseWait();
+      // 调用方常常先关面板（setXxxOpen(false)）再紧接着弹对话框：先让出一轮，让这次点击里的关闭先生效，
+      // 面板撤销登记（top 变成 null），对话框就不会画进正在关的面板里。
+      // 什么时候真正挂上 Modal 由 Dialog、卡片菜单、MenuSheet 自己经 useGatedModal 决定，这里不用等
       setTimeout(() => {
         current.current = next;
         if (next.kind === "prompt") setDraft(next.options.initial ?? "");
         setRequest(next);
-      }, wait);
+      }, 0);
     },
     [settle],
   );
@@ -153,27 +151,35 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const confirmRequest = request?.kind === "confirm" ? request.options : null;
   const promptRequest = request?.kind === "prompt" ? request.options : null;
   const menuRequest = request?.kind === "menu" ? request.options : null;
+  // 关闭后保留最后一次的内容：自己带 Modal 的对话框要等 iOS 收回才拿掉，收回（淡出）期间还得有内容可画
+  const lastConfirm = useRef<ConfirmOptions | null>(null);
+  const lastPrompt = useRef<PromptOptions | null>(null);
+  if (confirmRequest) lastConfirm.current = confirmRequest;
+  if (promptRequest) lastPrompt.current = promptRequest;
+  const confirmShown = confirmRequest ?? lastConfirm.current;
+  const promptShown = promptRequest ?? lastPrompt.current;
 
   const renderDialog = useCallback(
     (inline: boolean): ReactNode => (
       <>
-        {confirmRequest ? (
+        {confirmShown ? (
           <Dialog
-            visible
+            visible={confirmRequest !== null}
             inline={inline}
-            tone={confirmRequest.tone}
-            icon={confirmRequest.icon}
-            title={confirmRequest.title}
-            message={confirmRequest.message}
-            cancelLabel={confirmRequest.cancelLabel}
-            confirmLabel={confirmRequest.confirmLabel}
+            tone={confirmShown.tone}
+            icon={confirmShown.icon}
+            title={confirmShown.title}
+            message={confirmShown.message}
+            cancelLabel={confirmShown.cancelLabel}
+            confirmLabel={confirmShown.confirmLabel}
             onCancel={() => settle(false)}
             onConfirm={() => settle(true)}
           />
         ) : null}
-        {promptRequest ? (
+        {promptShown ? (
           <PromptDialog
-            options={promptRequest}
+            visible={promptRequest !== null}
+            options={promptShown}
             inline={inline}
             draft={draft}
             onDraft={setDraft}
@@ -182,7 +188,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
         ) : null}
       </>
     ),
-    [confirmRequest, promptRequest, draft, settle],
+    [confirmRequest, promptRequest, confirmShown, promptShown, draft, settle],
   );
 
   const register = useCallback((id: number) => setOutletStack((stack) => [...stack, id]), []);
@@ -218,12 +224,14 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
 }
 
 function PromptDialog({
+  visible,
   options,
   inline,
   draft,
   onDraft,
   onSettle,
 }: {
+  visible: boolean;
   options: PromptOptions;
   inline: boolean;
   draft: string;
@@ -232,16 +240,21 @@ function PromptDialog({
 }) {
   const palette = usePalette();
   const text = draft.trim();
+  // 先收起键盘再关对话框：输入框带着焦点被拿掉的话，iOS 会把键盘留在屏幕上，页面上又没有输入框能让它收回去
+  const finish = (value: string | null): void => {
+    Keyboard.dismiss();
+    onSettle(value);
+  };
   return (
     <Dialog
-      visible
+      visible={visible}
       inline={inline}
       title={options.title}
       message={options.message}
       confirmLabel={options.confirmLabel ?? "保存"}
-      confirmDisabled={text.length === 0}
-      onCancel={() => onSettle(null)}
-      onConfirm={() => onSettle(text)}
+      confirmDisabled={!options.optional && text.length === 0}
+      onCancel={() => finish(null)}
+      onConfirm={() => finish(text)}
     >
       <TextInput
         value={draft}
@@ -252,7 +265,7 @@ function PromptDialog({
         placeholderTextColor={palette.mut}
         accessibilityLabel={options.label}
         returnKeyType="done"
-        onSubmitEditing={() => text && onSettle(text)}
+        onSubmitEditing={() => (text || options.optional) && finish(text)}
         style={[
           styles.promptInput,
           { color: palette.ink, backgroundColor: palette.bg2, boxShadow: `inset 0 0 0 2px ${palette.acc}` },
@@ -276,10 +289,24 @@ function Menu({
   useEffect(() => {
     if (options) setUnplaceable(false);
   }, [options]);
-  if (!compact && options?.anchor && !unplaceable) {
-    return <CardMenu options={options} onSettle={onSettle} onUnplaceable={() => setUnplaceable(true)} />;
-  }
-  return <MenuSheet options={options} onSettle={onSettle} />;
+  // 关闭后保留最后一次的菜单：卡片菜单要等 iOS 收回它的 Modal 才拿掉
+  const last = useRef<MenuOptions | null>(null);
+  if (options) last.current = options;
+  const shown = options ?? last.current;
+  const card = !compact && !!shown?.anchor && !unplaceable;
+  return (
+    <>
+      {card && shown ? (
+        <CardMenu
+          open={options !== null}
+          options={shown}
+          onSettle={onSettle}
+          onUnplaceable={() => setUnplaceable(true)}
+        />
+      ) : null}
+      <MenuSheet options={card ? null : options} onSettle={onSettle} />
+    </>
+  );
 }
 
 type Rect = { x: number; y: number; width: number; height: number };
@@ -288,10 +315,12 @@ const CARD_MENU_ITEM = 52;
 
 /** 平板上长按卡片：卡片抬起（放大 3%，白底加投影），下方弹出宽 240 的菜单，背景加浅遮罩；点外面关闭 */
 function CardMenu({
+  open,
   options,
   onSettle,
   onUnplaceable,
 }: {
+  open: boolean;
   options: MenuOptions;
   onSettle: (key: string | null) => void;
   onUnplaceable: () => void;
@@ -300,10 +329,12 @@ function CardMenu({
   const dark = useIsDark();
   const insets = useSafeAreaInsets();
   const { width, height } = useLayout();
-  const [card, setCard] = useState<Rect | null>(null);
+  // 量出的卡片位置，连同是为哪一次的菜单量的：换了菜单要重新量，量好之前不挂 Modal
+  const [placed, setPlaced] = useState<{ options: MenuOptions; rect: Rect } | null>(null);
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!open) return;
     const node = options.anchor?.current;
     if (!node) {
       onUnplaceable();
@@ -311,25 +342,31 @@ function CardMenu({
     }
     node.measureInWindow((x, y, w, h) => {
       if (w <= 0 || h <= 0) onUnplaceable();
-      else setCard({ x, y, width: w, height: h });
+      else setPlaced({ options, rect: { x, y, width: w, height: h } });
     });
     // 只在打开时量一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options]);
+  }, [open, options]);
+
+  const modal = useGatedModal(open && placed?.options === options, "card-menu");
 
   useEffect(() => {
-    if (card) Animated.timing(progress, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-  }, [card, progress]);
+    if (!modal.shown) return;
+    progress.setValue(0);
+    Animated.timing(progress, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+  }, [modal.shown, progress]);
 
-  if (!card) return null;
+  if (!modal.mounted || !placed) return null;
+  const card = placed.rect;
   const menuHeight = options.items.length * CARD_MENU_ITEM + space.s * 2;
   const frame = cardMenuFrame(card, { width, height }, menuHeight, insets.bottom);
   return (
     <Modal
       transparent
-      visible
+      visible={modal.visible}
       animationType="none"
       onRequestClose={() => onSettle(null)}
+      onDismiss={modal.onDismiss}
       statusBarTranslucent
       supportedOrientations={MODAL_ORIENTATIONS}
     >

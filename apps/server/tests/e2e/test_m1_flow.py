@@ -369,6 +369,68 @@ async def test_full_m1_flow(running: Running) -> None:
         assert running.story.director_calls == 2
 
 
+async def test_ending_closes_the_story(running: Running) -> None:
+    async with httpx.AsyncClient(base_url=running.base_url, timeout=30) as client:
+        account = await setup_account(client, running.fake)
+        token = account["token"]
+        auth = {"Authorization": f"Bearer {token}"}
+        files = {"file": ("card.json", json.dumps(CARD).encode(), "application/json")}
+        scenario = (await client.post("/v1/scenarios/import", headers=auth, files=files)).json()
+        r = await client.post(
+            "/v1/playthroughs",
+            headers=auth,
+            json={"scenario_id": scenario["id"], "protagonist": {"name": "林川"}},
+        )
+        created = r.json()
+        playthrough_id = created["playthrough"]["id"]
+        opening = json.loads((await read_events(client, created["events_url"], token))[-1].data)
+        head_id = opening["turn"]["id"]
+        turns_url = f"/v1/playthroughs/{playthrough_id}/turns"
+
+        # 写结局，带上想要的方向
+        r = await client.post(
+            turns_url,
+            headers=auth,
+            json={
+                "parent_turn_id": head_id,
+                "action": {"source": "ending", "text": "  和阿苓一起离开小镇  "},
+            },
+        )
+        assert r.status_code == 201, r.text
+        ending = r.json()
+        assert ending["turn"]["action"] == {"source": "ending", "text": "和阿苓一起离开小镇"}
+        events = await read_events(client, ending["events_url"], token)
+        assert [e.event for e in events][-2:] == ["options.ready", "turn.completed"]
+        assert json.loads(events[-2].data) == {"options": [], "source": None}
+        final = json.loads(events[-1].data)["turn"]
+        # 假服务照常写了选项：结局只留叙述
+        assert final["narrative"].startswith("第2段") and final["options"] == []
+        last = [r for r in running.fake.app.chat_requests if r.body.get("stream")][-1]
+        prompt = last.body["messages"][-1]["content"]
+        assert "<ending-wish>" in prompt and "和阿苓一起离开小镇" in prompt
+
+        # 这局标成已完结，头部是结局那一轮
+        detail = (await client.get(f"/v1/playthroughs/{playthrough_id}", headers=auth)).json()
+        assert detail["playthrough"]["status"] == "ended"
+        assert detail["head"]["id"] == final["id"] and detail["head"]["options_source"] is None
+        listed = (await client.get("/v1/playthroughs", headers=auth)).json()
+        assert [p["status"] for p in listed] == ["ended"]
+
+        # 之后什么都不能再提交，结局也不能再写一次
+        for action in ({"source": "text", "text": "我回头看"}, {"source": "ending"}):
+            r = await client.post(
+                turns_url, headers=auth, json={"parent_turn_id": final["id"], "action": action}
+            )
+            assert r.status_code == 409 and r.json()["code"] == "STORY_ENDED"
+        # 已完结的故事照常能改名、看世界状态
+        r = await client.patch(
+            f"/v1/playthroughs/{playthrough_id}", headers=auth, json={"title": "雨夜（完）"}
+        )
+        assert r.status_code == 200 and r.json()["status"] == "ended"
+        r = await client.get(f"/v1/playthroughs/{playthrough_id}/world", headers=auth)
+        assert r.status_code == 200
+
+
 async def test_auth_and_isolation(running: Running) -> None:
     async with httpx.AsyncClient(base_url=running.base_url, timeout=30) as client:
         account = await setup_account(client, running.fake)

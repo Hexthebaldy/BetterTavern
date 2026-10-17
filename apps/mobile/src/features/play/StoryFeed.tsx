@@ -5,6 +5,7 @@
  * “我的行动”和叙述是同一种字（阅读设置里的宋体或黑体、字号），颜色浅一档，左边一道竖线，
  * 不画卡片，读起来是故事的一部分而不是聊天气泡。叙述左右页边距 24，段落之间空 16，两端对齐。
  * 流式光标是 3×20 的蓝色圆头竖条，不闪烁。
+ * 写完结局的故事，最后一段下面居中一行“—END—”（叙述的字，浅一档），没有选项也没有别的按钮。
  *
  * 底部固定着操作栏（BottomBar.tsx）：内容底部按 bottomInset 留白。正在发送、正在构思、重连这些状态也在操作栏里，正文这里不重复。
  * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 时经 onAwayChange 告诉页面，
@@ -45,7 +46,14 @@ import {
   readingSize,
   type ReadingPrefs,
 } from "@bettertavern/core/play/reading";
-import type { PendingTurn, Phase, PlayState, StoryTurn } from "@bettertavern/core/play/turnMachine";
+import {
+  actionNote,
+  isEnded,
+  type PendingTurn,
+  type Phase,
+  type PlayState,
+  type StoryTurn,
+} from "@bettertavern/core/play/turnMachine";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Icon, Pill } from "../../components/ui.tsx";
@@ -208,10 +216,10 @@ function Narrative({
 }
 
 const TurnBlock = memo(function TurnBlock({ turn, narr }: { turn: StoryTurn; narr: Narr }) {
-  const showAction = turn.action.source !== "opening" && turn.action.text.length > 0;
+  const note = actionNote(turn.action);
   return (
     <View style={styles.turn}>
-      {showAction ? <ActionNote text={turn.action.text} narr={narr} /> : null}
+      {note ? <ActionNote text={note} narr={narr} /> : null}
       <Narrative text={turn.narrative} narr={narr} />
     </View>
   );
@@ -261,7 +269,7 @@ function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: P
   const palette = usePalette();
   const failed = phase === "failed";
   const opening = pending.action?.source === "opening";
-  const showAction = pending.action && !opening && pending.action.text.length > 0;
+  const note = actionNote(pending.action);
   const caret =
     failed || phase === "submitting"
       ? undefined
@@ -273,7 +281,7 @@ function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: P
   }
   return (
     <View style={styles.turn}>
-      {showAction && pending.action ? <ActionNote text={pending.action.text} narr={narr} /> : null}
+      {note ? <ActionNote text={note} narr={narr} /> : null}
       <Narrative
         text={pending.narrative}
         narr={narr}
@@ -282,6 +290,21 @@ function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: P
         interrupted={failed && pending.narrative.length > 0}
       />
     </View>
+  );
+}
+
+/** 写完结局：最后一段下面的结束标记 */
+function EndMark({ narr }: { narr: Narr }) {
+  const palette = usePalette();
+  return (
+    <Text
+      accessibilityLabel="全文完"
+      allowFontScaling={narr.scale}
+      maxFontSizeMultiplier={narr.maxScale}
+      style={[narr.style, styles.end, { color: palette.mut }]}
+    >
+      —END—
+    </Text>
   );
 }
 
@@ -405,6 +428,7 @@ export function StoryFeed({
   );
 
   const missingOpening = state.turns.length === 0 && state.phase === "idle";
+  const ended = isEnded(state);
   return (
     <View style={{ flex: 1, opacity: dimmed ? 0.4 : 1 }}>
       <FlatList
@@ -419,6 +443,7 @@ export function StoryFeed({
         ListFooterComponent={
           <>
             {missingOpening ? <OpeningMissing /> : null}
+            {ended ? <EndMark narr={narr} /> : null}
             {footer}
             <View style={{ height: bottomSpace }} />
           </>
@@ -505,5 +530,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.read,
     paddingTop: space.s,
   },
+  end: { textAlign: "center", paddingHorizontal: space.read, paddingTop: space.s, letterSpacing: 2 },
   missingIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
 });

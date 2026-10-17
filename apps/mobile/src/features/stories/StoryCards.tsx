@@ -26,6 +26,7 @@ function Status({ story }: { story: Playthrough }) {
   const status = storyStatus(story);
   if (status?.kind === "writing") return <Pill tone="acc" dot label={status.label} />;
   if (status?.kind === "noOpening") return <Pill tone="warn" icon="untested" label={status.label} />;
+  if (status?.kind === "ended") return <Pill tone="card" icon="flag" label={status.label} />;
   return null;
 }
 

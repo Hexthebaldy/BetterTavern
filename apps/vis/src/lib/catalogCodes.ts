@@ -32,6 +32,7 @@ export const ERROR_CODES: Record<string, string> = {
   TURN_IN_PROGRESS: "上一轮还在生成",
   STALE_PARENT: "故事已经更新，需要先刷新",
   OPENING_PENDING: "开场还没写完就提交了行动",
+  STORY_ENDED: "故事已经写完结局，不能再提交",
   TURN_NOT_LOCAL: "要停止的回合不在这个服务实例上",
   PAYLOAD_TOO_LARGE: "请求体或文件太大",
   VALIDATION_ERROR: "参数不符合要求",
@@ -80,6 +81,7 @@ export const ERROR_CLASSES: Record<string, string> = {
   invalid_response: "服务商返回的内容看不懂",
   cancelled: "被取消",
   unknown: "未知错误",
+  ending: "结局，只要叙述",
   narrative_missing: "没写出叙述",
   StructuredOutputError: "结构化输出失败",
   LimiterTimeout: "等并发槽位超时",
@@ -139,6 +141,7 @@ export const PARSE_STAGES: Record<string, string> = {
   salvaged: "小修补后合格",
   repaired: "另调模型补了选项",
   fallback: "用了兜底选项",
+  ending: "结局，只要叙述",
   narrative_missing: "没写出叙述",
 };
 
@@ -163,4 +166,9 @@ export const TURN_STATUS: Record<string, string> = {
   archived: "已回退",
 };
 
-export const ACTION_SOURCES: Record<string, string> = { option: "选项", text: "自己写", opening: "开场" };
+export const ACTION_SOURCES: Record<string, string> = {
+  option: "选项",
+  text: "自己写",
+  opening: "开场",
+  ending: "写结局",
+};

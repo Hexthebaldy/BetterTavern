@@ -1,4 +1,4 @@
-"""TurnRunner 的行为：事件顺序、修复阶梯、重试与 fallback、半截失败、取消、租约与开局构建。"""
+"""TurnRunner 的行为：事件顺序、修复阶梯、结局、重试与 fallback、半截失败、取消、租约与开局构建。"""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import pytest
 
 from bettertavern.domain.routing import RouteParams, RouteTask
 from bettertavern.domain.scenario.card import CharacterCard
+from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.infra.db.repositories.story import RUNNER_LOST_ERROR
 from bettertavern.providers import CancelToken, ProviderError, ProviderHub
 from bettertavern.providers.errors import ErrorClass
@@ -99,6 +100,59 @@ async def test_repair_failure_falls_back_to_default_options() -> None:
     await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
     assert store.committed[0].options_source == "fallback"
     assert len(store.committed[0].options) == 2
+
+
+async def test_ending_keeps_only_the_narrative_and_ends_the_story() -> None:
+    hub, adapters = scripted_hub("fake")
+    # 模型照习惯写了选项：结局不要，丢掉，也不另调模型补
+    adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
+    store = FakeStore(action=PlayerAction("ending", "和阿苓一起离开小镇"))
+    events = await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
+    outcome = store.committed[0]
+    assert outcome.ends_story is True
+    assert outcome.narrative == "我推开门，雨声小了。"
+    assert outcome.options == [] and outcome.options_source is None
+    assert len(adapters["fake"].requests) == 1
+    assert events[-2] == ("options.ready", {"options": [], "source": None})
+    completed = events[-1][1]["turn"]
+    assert isinstance(completed, dict) and completed["options"] == []
+    # 发给导演的最后一条消息是结局要求，带着玩家写的方向
+    final_prompt = adapters["fake"].requests[0].messages[-1].content
+    assert "<ending-wish>" in final_prompt and "和阿苓一起离开小镇" in final_prompt
+    assert "<player-action>" not in final_prompt
+
+
+async def test_ending_without_options_is_not_counted_as_a_repair() -> None:
+    hub, adapters = scripted_hub("fake")
+    adapters["fake"].streams.append(
+        StreamScript(pieces("<narrative>\n雨停了。全文完。\n</narrative>"))
+    )
+    store = FakeStore(action=PlayerAction("ending", ""))
+    await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
+    outcome = store.committed[0]
+    assert outcome.narrative == "雨停了。全文完。" and outcome.ends_story is True
+    assert outcome.runs[0].result["stage"] == "ending"
+    assert outcome.runs[0].result["repairs"] == []
+    # 玩家没写方向：提示词里没有空的方向块
+    assert "<ending-wish>" not in adapters["fake"].requests[0].messages[-1].content
+
+
+async def test_failed_ending_does_not_end_the_story() -> None:
+    hub, adapters = scripted_hub("fake")
+    adapters["fake"].streams.append(StreamScript(pieces("<options>\n1. 甲\n2. 乙\n</options>")))
+    store = FakeStore(action=PlayerAction("ending", ""))
+    events = await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
+    assert store.committed == []
+    assert store.failed[0].code == "NARRATIVE_MISSING" and store.failed[0].retryable
+    assert events[-1][0] == "turn.failed"
+
+
+async def test_ordinary_turns_do_not_end_the_story() -> None:
+    hub, adapters = scripted_hub("fake")
+    adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
+    store = FakeStore()
+    await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
+    assert store.committed[0].ends_story is False
 
 
 async def test_error_before_text_switches_to_fallback_route() -> None:
@@ -271,7 +325,6 @@ async def test_opening_builds_world_and_falls_back_to_minimal_seed() -> None:
             card=card, protagonist_name="林川", protagonist_summary="", preferences=Preferences()
         )
     )
-    from bettertavern.domain.story.turn import PlayerAction
 
     store.action = PlayerAction("opening", "")
     events = await run_turn(

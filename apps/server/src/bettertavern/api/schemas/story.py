@@ -105,7 +105,7 @@ class PlaythroughCreatedOut(BaseModel):
 
 
 class ActionIn(BaseModel):
-    source: Literal["option", "text", "opening"]
+    source: Literal["option", "text", "opening", "ending"]
     text: str | None = Field(default=None, max_length=4000)
     option_id: str | None = Field(default=None, max_length=8)
 

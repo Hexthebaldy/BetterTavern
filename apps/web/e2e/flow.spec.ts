@@ -1,6 +1,6 @@
 /**
  * 一条完整的路：注册 → 刷新后还登录着（Cookie）→ 添加假模型 → 导入角色卡 → 开局 → 按 A 选选项 →
- * 按 / 自己写、Enter 发送 → 按 W 停靠世界状态 → 拖窄窗口看让位和滑出 → 按 ? 看快捷键 → 删除账户。
+ * 按 / 自己写、Enter 发送 → 按 W 停靠世界状态 → 拖窄窗口看让位和滑出 → 按 ? 看快捷键 → 写结局 → 删除账户。
  * 假模型每次的回复不一样（按调用次数轮换），所以断言只看“选了什么就出现什么”，不写死叙述的内容。
  */
 
@@ -16,7 +16,7 @@ async function noHorizontalScroll(page: Page): Promise<void> {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
-test("从注册到玩下去，最后删除账户", async ({ page }) => {
+test("从注册到玩下去、写结局，最后删除账户", async ({ page }) => {
   // ---- 注册，刷新后仍然登录着 ----
   await page.goto("/register");
   await expect(page.getByLabel("邮箱")).toBeFocused();
@@ -102,6 +102,20 @@ test("从注册到玩下去，最后删除账户", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "键盘快捷键" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "键盘快捷键" })).toHaveCount(0);
+
+  // ---- 更多 → 写结局：填一个方向；写完后最后一段下面是 —END—，没有选项，不能再写 ----
+  await page.getByRole("button", { name: /^更多/ }).click();
+  await page.getByRole("button", { name: "写结局", exact: true }).click();
+  const ending = page.getByRole("dialog", { name: "给这个故事写结局？" });
+  await ending.getByLabel("结局方向").fill("和她一起离开");
+  await ending.getByRole("button", { name: "写结局", exact: true }).click();
+  await expect(page.locator("p", { hasText: "我的行动：写结局：和她一起离开" })).toBeVisible();
+  await expect(page.getByText("—END—")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("故事已完结")).toBeVisible();
+  await expect(optionA).toHaveCount(0);
+  await page.getByRole("button", { name: /^更多/ }).click();
+  await expect(page.getByRole("button", { name: "写结局", exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
 
   // ---- 删除账户：输入密码，再确认 ----
   await page.goto("/settings/account");

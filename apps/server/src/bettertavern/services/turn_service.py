@@ -1,7 +1,7 @@
 """回合：提交行动（幂等、租约）、详情、历史、取消，以及回合事件流（实时缓冲或快照）。
 
-提交行动在一个事务里完成：锁 playthroughs 行 → 幂等键 → 租约 → 父回合校验 → 解析行动
-→ 插入回合并领租约。到这里就返回 201，生成交给后台的 TurnRunner，与客户端连接无关。
+提交行动在一个事务里完成：锁 playthroughs 行 → 幂等键 → 故事是否已完结 → 租约 → 父回合校验
+→ 解析行动 → 插入回合并领租约。到这里就返回 201，生成交给后台的 TurnRunner，与客户端连接无关。
 """
 
 from __future__ import annotations
@@ -61,9 +61,14 @@ def header_for(pt: repo.PlaythroughRow, turn: repo.TurnRow, user_id: str) -> Tur
         attempt=turn.attempt,
         epoch=turn.timeline_epoch,
         status=turn.status,
-        world_ready=pt.status == "active",
+        world_ready=pt.status != "building",
         language=pt.language,
     )
+
+
+def ensure_not_ended(pt: repo.PlaythroughRow) -> None:
+    if pt.status == "ended":
+        raise Conflict("这个故事已经写完结局，不能再继续了", code="STORY_ENDED")
 
 
 def request_hash(playthrough_id: str, parent_turn_id: str | None, action: ActionInput) -> str:
@@ -129,8 +134,10 @@ class TurnService:
                 return existing, False
         # 先确认归属再查路由：别人的游玩记录一律 404，不暴露“没配模型”之类的状态
         async with self._engine.connect() as conn:
-            if await repo.get_playthrough(conn, user_id, playthrough_id) is None:
-                raise NotFound("游玩记录不存在")
+            found_pt = await repo.get_playthrough(conn, user_id, playthrough_id)
+        if found_pt is None:
+            raise NotFound("游玩记录不存在")
+        ensure_not_ended(found_pt)
         if await self._routes.resolve(user_id, RouteTask.DIRECTOR, playthrough_id) is None:
             raise AppError(
                 "还没有配置导演用的模型，请先在设置里添加密钥并选择模型",
@@ -153,6 +160,8 @@ class TurnService:
                     if turn is not None:
                         log.info("turn.replayed", turn_id=turn.id, seq=turn.seq)
                         return TurnView.of(turn), False
+            # 加锁之前看过一次；这里再看一次，防止另一台设备刚好写完结局
+            ensure_not_ended(pt)
             if pt.active_turn_id is not None:
                 if await repo.lease_alive(conn, pt.id):
                     raise Conflict(

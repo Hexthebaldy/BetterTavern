@@ -5,6 +5,7 @@
 
 import { bytes, percent, shortPath, tokens } from "./format.ts";
 import {
+  ACTION_SOURCES,
   type Category,
   errorClass,
   errorCode,
@@ -121,7 +122,7 @@ export const EVENTS: Record<string, EventInfo> = {
     category: "turn",
     say: (f) =>
       plus(
-        `收到提交：${f.source === "option" ? "点选项" : f.source === "opening" ? "开场" : "自己写"}`,
+        `收到提交：${f.source === "option" ? "点选项" : (ACTION_SOURCES[str(f.source)] ?? str(f.source))}`,
         num(f.text_chars) ? `${str(f.text_chars)} 字` : null,
       ),
   },
@@ -249,7 +250,13 @@ export const EVENTS: Record<string, EventInfo> = {
         f.options_source ? `选项来自${OPTION_SOURCES[str(f.options_source)] ?? str(f.options_source)}` : null,
       ),
   },
-  "turn.commit_rejected": { label: "保存被拒绝", category: "turn", say: () => "保存时租约已经被收回，结果作废" },
+  "playthrough.ended": {
+    label: "故事完结",
+    category: "turn",
+    say: (f) =>
+      plus("结局写完，这个故事结束了", num(f.narrative_chars) ? `结局 ${str(f.narrative_chars)} 字` : null),
+  },
+    "turn.commit_rejected": { label: "保存被拒绝", category: "turn", say: () => "保存时租约已经被收回，结果作废" },
   "turn.failed": {
     label: "回合失败",
     category: "turn",
@@ -382,6 +389,11 @@ export const PHONE_EVENTS: Record<string, EventInfo> = {
   },
   "session.status": { label: "登录状态", category: "account", say: (f) => `登录状态：${str(f.from)} → ${str(f.to)}` },
   "server.changed": { label: "换服务器", category: "app", say: (f) => `服务器从 ${str(f.from)} 换成 ${str(f.to)}` },
+  "modal.dismiss_timeout": {
+    label: "浮层收回超时",
+    category: "app",
+    say: (f) => plus(`浮层 ${str(f.modal)} 关闭后一直没收到 iOS 的“已收回”，按已收回处理`, ms(f.waited_ms)),
+  },
 };
 
 /** 一条记录的人话，按来源（服务端 / 手机）选目录 */

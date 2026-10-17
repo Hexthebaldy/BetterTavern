@@ -113,6 +113,7 @@
 7. `GET /v1/turns/{turn_id}/events` 订阅开场回合的事件流：先是搭建世界的事件，然后是叙述增量、选项，最后是 `turn.completed`。（[events.md](events.md)）
 8. 玩家选了一个选项（或自由输入）后，`POST /v1/playthroughs/{playthrough_id}/turns` 提交行动，带 `Idempotency-Key`，`parent_turn_id` 填当前的头部回合，返回 201；然后像第 7 步一样订阅事件流。
 9. 重新打开 App 时，先调 `GET /v1/playthroughs/{playthrough_id}`：`active_turn` 不为空就订阅它的事件流，`last_failed` 不为空就显示“重试”，否则显示 `head` 的选项。历史回合用 `GET /v1/playthroughs/{playthrough_id}/turns` 分页读取。
+10. 玩家想结束故事时，提交 `{"source": "ending", "text": "结局方向（可以不填）"}`。结局写完后游玩的 `status` 变成 `ended`，之后再提交行动返回 409 `STORY_ENDED`。
 
 ## 错误码
 
@@ -134,6 +135,7 @@
 | `TURN_IN_PROGRESS` | 409 | 上一轮还在生成 | `active_turn_id` |
 | `STALE_PARENT` | 409 | `parent_turn_id` 不是当前头部 | `head_turn_id` |
 | `OPENING_PENDING` | 409 | 开场还没完成就提交了行动 |  |
+| `STORY_ENDED` | 409 | 这局已经写完结局，不能再提交行动 |  |
 | `TURN_NOT_LOCAL` | 409 | 要停止的回合不在当前实例上 |  |
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体或文件超过限制 |  |
 | `VALIDATION_ERROR` | 422 | 参数不符合要求 | `errors`（模型校验）或 `field`（业务校验）；行动本身的校验错误两个都不带；探针接口用 `detail` |

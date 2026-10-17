@@ -432,7 +432,8 @@ export function Notice({
   );
 }
 
-export type PillTone = "acc" | "warn" | "ok" | "err" | "grey";
+/** card：灰卡上的白底胶囊（灰底的 grey 在灰卡上看不见） */
+export type PillTone = "acc" | "warn" | "ok" | "err" | "grey" | "card";
 
 /** 胶囊标签：状态、“我”、“导演”。dot 是前面的小圆点（“正在写下一段”） */
 export function Pill({

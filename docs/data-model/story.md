@@ -19,7 +19,7 @@
 | `user_id` | uuid | 否 |  | → `users.id`，级联删除 |
 | `scenario_id` | uuid | 是 |  | → `scenarios.id`，被删除时置空 |
 | `title` | text | 否 |  | 标题，默认用剧本名，最多 80 字 |
-| `status` | text | 否 | `'building'` | `building` 表示世界还没建好，`active` 表示开局构建已完成（见下文“状态”） |
+| `status` | text | 否 | `'building'` | `building` 表示世界还没建好，`active` 表示开局构建已完成，`ended` 表示已经写完结局（见下文“状态”） |
 | `language` | text | 否 | `'zh'` | 提示词的语言；M1 固定为 `zh` |
 | `settings` | jsonb | 否 | `'{}'` | 主角和偏好设置，结构见下文“JSON 列” |
 | `seed` | jsonb | 是 |  | 开局设定（WorldBuilder 或最小 Seed 的输出），结构见下文“JSON 列”；世界建好时写入 |
@@ -132,11 +132,12 @@
 { "source": "option", "option_id": "o1", "text": "走向柜台，问老周认不认识火漆" }
 { "source": "text", "text": "我先检查窗框上的划痕" }  // 去掉首尾空白，最多 2000 字
 { "source": "opening", "text": "" }
+{ "source": "ending", "text": "和阿苓一起离开小镇" }  // 写结局；text 是结局方向，可以是空串，最多 2000 字
 ```
 
 ### `turns.options`
 
-固定两项，`id` 是 `o1`、`o2`。生成中和失败的回合是 `[]`。
+固定两项，`id` 是 `o1`、`o2`。生成中、失败的回合和结局那一轮是 `[]`（结局那一轮的 `options_source` 也是空）。
 
 ```json
 [{ "id": "o1", "text": "走向柜台" }, { "id": "o2", "text": "在角落坐下" }]
@@ -177,8 +178,12 @@ stateDiagram-v2
 - 失败的回合保留在表里；重试时插入同一个 `seq` 的新回合（`attempt + 1`）。
 - 屏障只在父回合变成 `committed`（或 `archived`）后放行，所以 M1 里不会等待。
 
-`playthroughs.status`：`building` → `active`。开场回合的 runner 建好世界后，在同一个事务里写入 `entities`、`entity_links`、`facts`、`seed`、`seed_source`，并把状态改为 `active`（条件是仍为 `building`）。
-如果开场在建好世界之前就失败了（例如被取消），状态停在 `building`，重试开场时会重新构建。
+`playthroughs.status`：`building` → `active` → `ended`。
+
+- 开场回合的 runner 建好世界后，在同一个事务里写入 `entities`、`entity_links`、`facts`、`seed`、`seed_source`，并把状态改为 `active`（条件是仍为 `building`）。
+  如果开场在建好世界之前就失败了（例如被取消），状态停在 `building`，重试开场时会重新构建。
+- 玩家提交了写结局（`user_action.source` 是 `ending`），结局写完提交时，推进头部的那条带围栏的 UPDATE 同时把状态改为 `ended`。
+  结局这一轮失败或被取消时状态不变。`ended` 之后提交行动的接口在锁住游玩行之后检查状态，返回 409 `STORY_ENDED`；没有回到 `active` 的路径。
 
 ## 并发控制
 
@@ -199,7 +204,8 @@ stateDiagram-v2
 
 ```sql
 UPDATE playthroughs
-SET head_turn_id = :turn, active_turn_id = NULL, lease_expires_at = NULL, lease_owner = NULL, updated_at = now()
+SET head_turn_id = :turn, active_turn_id = NULL, lease_expires_at = NULL, lease_owner = NULL, updated_at = now(),
+    status = CASE WHEN :end THEN 'ended' ELSE status END  -- 结局那一轮 :end 为真
 WHERE id = :id AND active_turn_id = :turn AND timeline_epoch = :epoch
 ```
 

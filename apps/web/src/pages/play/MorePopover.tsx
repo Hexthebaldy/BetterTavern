@@ -1,6 +1,7 @@
 /**
  * 阅读页的“更多”（W09，同平板）：贴着操作栏的“更多”按钮弹出，宽 340，右边缘和按钮对齐，底边在按钮上方 8，不加遮罩。
- * 内容：阅读设置（宋体 / 黑体、字号），重命名故事、世界状态、键盘快捷键（网页才有）、删除故事。
+ * 内容：阅读设置（宋体 / 黑体、字号），重命名故事、世界状态、写结局、键盘快捷键（网页才有）、删除故事。
+ * “写结局”只在能行动时可点（开场写完、没在生成、没有失败等着重试），故事写完结局后不再显示。
  * 点外面、按 Esc 关闭，焦点回到“更多”按钮。阅读设置存在浏览器里，所有故事共用。
  */
 
@@ -99,14 +100,17 @@ function SizeControl() {
   );
 }
 
-export type MoreAction = "rename" | "world" | "shortcuts" | "delete";
+export type MoreAction = "rename" | "world" | "end" | "shortcuts" | "delete";
 
 export function MorePopover({
   anchor,
+  ending,
   onClose,
   onAction,
 }: {
   anchor: HTMLElement;
+  /** 写结局：ready 可以写；busy 暂时不能（生成中、开场没写好、失败等着重试）；ended 已经写完了，不显示 */
+  ending: "ready" | "busy" | "ended";
   onClose: () => void;
   onAction: (action: MoreAction) => void;
 }) {
@@ -155,10 +159,18 @@ export function MorePopover({
     }
   };
 
-  const item = (action: MoreAction, icon: IconName, label: string, kbd?: string, danger?: boolean) => (
+  const item = (
+    action: MoreAction,
+    icon: IconName,
+    label: string,
+    kbd?: string,
+    danger?: boolean,
+    disabled?: boolean,
+  ) => (
     <button
       type="button"
       className={cx(styles.menuItem, danger && styles.menuDanger)}
+      disabled={disabled}
       onClick={() => onAction(action)}
     >
       <Icon name={icon} size={20} />
@@ -182,6 +194,7 @@ export function MorePopover({
       <div className={styles.menuGroup}>
         {item("rename", "write", "重命名故事")}
         {item("world", "world", "世界状态", "W")}
+        {ending !== "ended" ? item("end", "flag", "写结局", undefined, false, ending === "busy") : null}
         {item("shortcuts", "grid", "键盘快捷键", "?")}
         {item("delete", "trash", "删除故事", undefined, true)}
       </div>

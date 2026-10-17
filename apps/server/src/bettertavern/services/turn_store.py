@@ -168,7 +168,7 @@ class PgTurnStore:
             attempt=turn.attempt,
             epoch=turn.timeline_epoch,
             status=turn.status,
-            world_ready=pt.status == "active",
+            world_ready=pt.status != "building",
             language=pt.language,
         )
 
@@ -240,7 +240,7 @@ class PgTurnStore:
         self, conn: AsyncConnection, header: TurnHeader, outcome: TurnOutcome
     ) -> None:
         advanced = await story_repo.release_lease_and_advance_head(
-            conn, header.playthrough_id, header.turn_id, epoch=header.epoch
+            conn, header.playthrough_id, header.turn_id, epoch=header.epoch, end=outcome.ends_story
         )
         if not advanced:
             raise _Stale

@@ -205,18 +205,20 @@ async def renew_lease(
 
 
 async def release_lease_and_advance_head(
-    conn: AsyncConnection, playthrough_id: str, turn_id: str, *, epoch: int
+    conn: AsyncConnection, playthrough_id: str, turn_id: str, *, epoch: int, end: bool = False
 ) -> bool:
-    """回合成功：头部指向它并清除租约。条件不满足（租约已丢、发生了回退）返回 False。"""
+    """回合成功：头部指向它并清除租约；end 为真（写完了结局）时同时把这局标为 ended。
+    条件不满足（租约已丢、发生了回退）返回 False。"""
     count = await execute(
         conn,
         """
         UPDATE playthroughs
         SET head_turn_id = :turn, active_turn_id = NULL, lease_expires_at = NULL,
-            lease_owner = NULL, updated_at = now()
+            lease_owner = NULL, updated_at = now(),
+            status = CASE WHEN :end THEN 'ended' ELSE status END
         WHERE id = :id AND active_turn_id = :turn AND timeline_epoch = :epoch
         """,
-        {"id": playthrough_id, "turn": turn_id, "epoch": epoch},
+        {"id": playthrough_id, "turn": turn_id, "epoch": epoch, "end": end},
     )
     return count == 1
 
@@ -446,7 +448,7 @@ async def complete_turn(
     status: str,
     narrative: str,
     options: list[dict[str, Any]],
-    options_source: str,
+    options_source: str | None,
     usage: dict[str, Any] | None,
     state_lag: bool,
     director_run_id: str | None,

@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import type { TurnEvent } from "../api/types.ts";
 import { makeTurn, opts } from "./testing.ts";
 import {
+  actionNote,
   canAct,
   canRetry,
   canSubmit,
@@ -11,6 +12,7 @@ import {
   headTurn,
   initialPlayState,
   isBusy,
+  isEnded,
   needsOpening,
   playReducer,
   retryAction,
@@ -337,5 +339,82 @@ describe("turnMachine", () => {
       text: "甲3",
       option_id: "o1",
     });
+  });
+
+  it("写结局：先显示“写结局”，完成后故事结束，不能再提交任何行动", () => {
+    const action = { source: "ending" as const, text: "  和阿苓离开  " };
+    let state = playReducer(idleWithTwoTurns(), {
+      type: "submit",
+      submission: { key: "k-end", parentTurnId: "t1", action },
+      display: displayAction(action, []),
+    });
+    assert.deepEqual(state.pending?.action, { source: "ending", text: "和阿苓离开" });
+    assert.equal(actionNote(state.pending?.action ?? null), "写结局：和阿苓离开");
+    const turn = makeTurn(2, {
+      status: "generating",
+      narrative: "",
+      options: [],
+      action: { source: "ending", text: "和阿苓离开" },
+    });
+    state = run(
+      [
+        { type: "submitted", turn },
+        stream({ event: "narrative.delta", data: { text: "雨停了。" } }),
+        stream({ event: "options.ready", data: { options: [], source: null } }),
+        stream({
+          event: "turn.completed",
+          data: {
+            turn: {
+              id: turn.id,
+              seq: 2,
+              attempt: 1,
+              status: "committed",
+              narrative: "雨停了。",
+              options: [],
+              options_source: null,
+              state_lag: false,
+            },
+            usage: null,
+          },
+        }),
+      ],
+      state,
+    );
+    assert.equal(state.phase, "idle");
+    assert.deepEqual(headTurn(state)?.options, []);
+    assert.ok(isEnded(state));
+    assert.ok(!canAct(state) && !canSubmit(state));
+  });
+
+  it("重新打开已完结的故事：最新一段是结局", () => {
+    const ending = makeTurn(2, { options: [], options_source: null, action: { source: "ending", text: "" } });
+    const state = run([
+      { type: "loaded", turns: [makeTurn(0), makeTurn(1), ending], active: null, lastFailed: null },
+    ]);
+    assert.ok(isEnded(state) && !canAct(state));
+    assert.ok(!isEnded(idleWithTwoTurns()));
+  });
+
+  it("结局写失败：故事没有结束，重试仍是写结局，也可以换个行动", () => {
+    const failed = makeTurn(2, {
+      status: "failed",
+      narrative: "",
+      options: [],
+      action: { source: "ending", text: "圆满" },
+      error: { code: "PROVIDER_ERROR", message: "模型服务暂时繁忙", retryable: true },
+    });
+    const state = run([
+      { type: "loaded", turns: [makeTurn(0), makeTurn(1)], active: null, lastFailed: failed },
+    ]);
+    assert.ok(!isEnded(state));
+    assert.deepEqual(retryAction(state), { source: "ending", text: "圆满" });
+    assert.ok(canRetry(state) && canSubmit(state));
+  });
+
+  it("“我的行动”那一行：开场没有，结局没写方向时只写“写结局”", () => {
+    assert.equal(actionNote({ source: "opening", text: "" }), null);
+    assert.equal(actionNote({ source: "ending", text: "" }), "写结局");
+    assert.equal(actionNote({ source: "text", text: "我坐下" }), "我坐下");
+    assert.equal(actionNote(null), null);
   });
 });

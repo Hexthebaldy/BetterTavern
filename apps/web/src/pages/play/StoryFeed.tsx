@@ -5,11 +5,19 @@
  * “我的行动”和叙述是同一种字、浅一档的颜色，左边一道竖线，读起来是故事的一部分。叙述左右页边距 24，段落之间空 16，
  * 两端对齐；正文可以选中复制，用浏览器自己的右键菜单。流式光标是 3×20 的蓝色圆头竖条，不闪烁。
  * 已完成的回合用 content-visibility: auto：很长的故事也只排版看得见的部分，浏览器的“查找”照样能找到。
+ * 写完结局的故事，最后一段下面居中一行“—END—”（叙述的字，浅一档），没有选项也没有别的按钮。
  */
 
 import { memo, type CSSProperties, type ReactNode } from "react";
 
-import type { PendingTurn, Phase, PlayState, StoryTurn } from "@bettertavern/core/play/turnMachine";
+import {
+  actionNote,
+  isEnded,
+  type PendingTurn,
+  type Phase,
+  type PlayState,
+  type StoryTurn,
+} from "@bettertavern/core/play/turnMachine";
 import { lineHeightFor, readingSize, type ReadingPrefs } from "@bettertavern/core/play/reading";
 
 import { Cover } from "../../components/Cover.tsx";
@@ -112,10 +120,10 @@ function Narrative({
 }
 
 const TurnBlock = memo(function TurnBlock({ turn }: { turn: StoryTurn }) {
-  const showAction = turn.action.source !== "opening" && turn.action.text.length > 0;
+  const note = actionNote(turn.action);
   return (
     <section className={cx(styles.turn, styles.settled)}>
-      {showAction ? <ActionNote text={turn.action.text} /> : null}
+      {note ? <ActionNote text={note} /> : null}
       <Narrative text={turn.narrative} />
     </section>
   );
@@ -146,7 +154,7 @@ function OpeningSteps({ building }: { building: boolean }) {
 function PendingBlock({ pending, phase }: { pending: PendingTurn; phase: Phase }) {
   const failed = phase === "failed";
   const opening = pending.action?.source === "opening";
-  const showAction = pending.action && !opening && pending.action.text.length > 0;
+  const note = actionNote(pending.action);
   const caret =
     failed || phase === "submitting"
       ? undefined
@@ -157,7 +165,7 @@ function PendingBlock({ pending, phase }: { pending: PendingTurn; phase: Phase }
     return <OpeningSteps building={pending.buildingWorld} />;
   return (
     <section className={styles.turn}>
-      {showAction && pending.action ? <ActionNote text={pending.action.text} /> : null}
+      {note ? <ActionNote text={note} /> : null}
       <Narrative
         text={pending.narrative}
         dim={failed}
@@ -199,6 +207,11 @@ export function StoryFeed({
       ))}
       {state.pending ? <PendingBlock pending={state.pending} phase={state.phase} /> : null}
       {missingOpening ? <OpeningMissing /> : null}
+      {isEnded(state) ? (
+        <p className={styles.end} aria-label="全文完">
+          —END—
+        </p>
+      ) : null}
       {footer}
     </>
   );

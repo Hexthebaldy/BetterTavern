@@ -9,10 +9,13 @@
  * - full（世界状态）→ 从右侧滑出：宽 400，上、下、右各留 8，圆角 32，有遮罩。
  * 面板里有输入框时，键盘弹出后面板跟着浮到键盘上方（useKeyboardLift），输入框不会被盖住。
  * 有面板开着时，useOverlay() 的对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）。
+ * 面板的 Modal 什么时候挂上、拿掉由 useGatedModal 决定（gatedModal.ts）：iOS 上要等别的 Modal 被收回才挂上，
+ * 关闭时播完收起动画、等 iOS 确认收回才拿掉。
  */
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -40,6 +43,7 @@ import { overlayPresentation, pane, popoverFrame, type OverlayKind } from "@bett
 import { useKeyboardLift } from "../hooks/useKeyboardLift.ts";
 import { useLayout } from "../hooks/useLayout.ts";
 import { BaseSurface, radius, space, useIsDark, usePalette } from "../theme/index.ts";
+import { useGatedModal } from "./gatedModal.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { IconButton } from "./primitives.tsx";
 
@@ -54,14 +58,8 @@ export const MODAL_ORIENTATIONS: ModalProps["supportedOrientations"] = [
 
 // ---- 面板里画对话框的位置 ------------------------------------------------------------------
 
-/** 最近一次面板开始收起的时间：iOS 上一个 Modal 还没收完就弹下一个会弹不出来，对话框要等它收完 */
-let sheetClosingAt = 0;
+const SHEET_OPEN_MS = 220;
 const SHEET_CLOSE_MS = 180;
-
-/** 现在弹对话框之前还要等多久（毫秒） */
-export function sheetCloseWait(): number {
-  return Math.max(0, sheetClosingAt + SHEET_CLOSE_MS + 120 - Date.now());
-}
 
 /** 打开着的面板（最上面的那个）里画对话框的位置；由 overlay.tsx 的 OverlayProvider 提供 */
 export type Outlets = {
@@ -74,7 +72,7 @@ export type Outlets = {
 export const OutletContext = createContext<Outlets | null>(null);
 let nextOutletId = 1;
 
-/** 面板打开时登记自己；对话框弹在最上面那个打开着的面板里 */
+/** 面板打开时登记自己；对话框弹在最上面那个打开着的面板里（面板一开始关就撤销，也不再画对话框） */
 function OverlayOutlet({ active }: { active: boolean }) {
   const outlets = useContext(OutletContext);
   const [id] = useState(() => nextOutletId++);
@@ -85,7 +83,7 @@ function OverlayOutlet({ active }: { active: boolean }) {
     register(id);
     return () => unregister(id);
   }, [active, id, register, unregister]);
-  return outlets && outlets.top === id ? <>{outlets.renderDialog(true)}</> : null;
+  return outlets && active && outlets.top === id ? <>{outlets.renderDialog(true)}</> : null;
 }
 
 // ---- 面板 -------------------------------------------------------------------------------
@@ -148,10 +146,8 @@ export function Sheet({
   const palette = usePalette();
   const insets = useSafeAreaInsets();
   const { size, width: windowWidth, height: windowHeight } = useLayout();
-  const [mounted, setMounted] = useState(visible);
   const progress = useRef(new Animated.Value(0)).current;
   const drag = useRef(new Animated.Value(0)).current;
-  const shown = useRef(false);
   const { height: keyboardHeight, lift } = useKeyboardLift();
   // 弹出菜单贴着的按钮：undefined 还在量，null 量不到（退回对话框）
   const [placed, setPlaced] = useState<Anchored | null | undefined>(undefined);
@@ -160,22 +156,22 @@ export function Sheet({
   const wanted: Presentation = size === "compact" ? "sheet" : full ? "side" : overlayPresentation(kind, size);
   const presentation: Presentation = wanted === "popover" && placed === null ? "dialog" : wanted;
 
+  const animateOut = useCallback(
+    (done: () => void) =>
+      Animated.timing(progress, { toValue: 0, duration: SHEET_CLOSE_MS, useNativeDriver: true }).start(() =>
+        done(),
+      ),
+    [progress],
+  );
+  const modal = useGatedModal(visible, "sheet", animateOut);
+
+  // Modal 挂上之后才播进场动画（iOS 上可能要先等别的 Modal 被收回）
   useEffect(() => {
-    if (visible) {
-      shown.current = true;
-      setMounted(true);
-      drag.setValue(0);
-      Animated.timing(progress, { toValue: 1, duration: 220, useNativeDriver: true }).start();
-    } else if (shown.current) {
-      shown.current = false;
-      sheetClosingAt = Date.now();
-      Animated.timing(progress, { toValue: 0, duration: SHEET_CLOSE_MS, useNativeDriver: true }).start(
-        ({ finished }) => {
-          if (finished) setMounted(false);
-        },
-      );
-    }
-  }, [visible, progress, drag]);
+    if (!modal.shown) return;
+    drag.setValue(0);
+    progress.setValue(0);
+    Animated.timing(progress, { toValue: 1, duration: SHEET_OPEN_MS, useNativeDriver: true }).start();
+  }, [modal.shown, progress, drag]);
 
   // 打开时、窗口尺寸变了时重新量按钮的位置
   useEffect(() => {
@@ -211,7 +207,7 @@ export function Sheet({
     [drag],
   );
 
-  if (!mounted) return null;
+  if (!modal.mounted) return null;
 
   const titleRow = title ? (
     <View style={styles.sheetTitleRow}>
@@ -367,9 +363,10 @@ export function Sheet({
   return (
     <Modal
       transparent
-      visible
+      visible={modal.visible}
       animationType="none"
       onRequestClose={onClose}
+      onDismiss={modal.onDismiss}
       statusBarTranslucent
       supportedOrientations={MODAL_ORIENTATIONS}
     >
@@ -441,23 +438,29 @@ export function MenuItem({
   label,
   onPress,
   danger,
+  disabled,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
   danger?: boolean;
+  /** 暂时不能用：变淡，点了没反应 */
+  disabled?: boolean;
 }) {
   const palette = usePalette();
   const color = danger ? palette.err : palette.ink;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.menuItem,
         {
           backgroundColor: pressed ? palette.bg3 : "transparent",
           transform: [{ scale: pressed ? 0.98 : 1 }],
+          opacity: disabled ? 0.4 : 1,
         },
       ]}
     >

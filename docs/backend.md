@@ -1146,6 +1146,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | --- | --- | --- |
 | `ROUTE_MISSING` | 409 | 还没有配置导演模型（创建游玩、提交行动时检查；生成时如果路由被删掉，也会以这个码结束回合） |
 | `OPENING_PENDING` | 409 | 开场还没有完成就提交了行动 |
+| `STORY_ENDED` | 409 | 这局已经写完结局，不能再提交行动 |
 | `OPENING_EXISTS` | 422 | 已经有开场了，又请求生成开场 |
 | `OPTION_NOT_FOUND` | 422 | `option_id` 不在父回合的选项里 |
 | `TURN_NOT_LOCAL` | 409 | 要取消的回合不在当前实例上；租约到期后会自动结束 |
@@ -1156,6 +1157,18 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | `CREDENTIAL_UNREADABLE` | 409 | 模型的 Key 无法解密（主密钥换了却没保留旧的），需要重新填写 |
 | `CARD_INVALID` | 422 | 角色卡无法解析 |
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体超过限制 |
+
+### 新增：玩家主动写结局
+
+设计里故事没有终点（长程大纲写完一轮节拍就改写出新的一轮）。M1 加了一个玩家主动收尾的入口，阅读页“更多”菜单里的“写结局”：
+
+- 提交行动时 `source` 为 `ending`，`text` 是玩家希望的结局方向（可以不填）。接口见 [api/play.md](api/play.md)。
+- 导演的系统提示词不变（前缀缓存照常命中），最后一条 user 换成 `prompts/zh/director.ending.j2`：写整个故事的最后一段，收束主线和悬念，
+  篇幅约为平时的两到三倍，只输出 `<narrative>`。玩家的方向过 `sanitize_for_fence()` 后放在 `<ending-wish>` 里。
+- runner 收尾时不走选项的修复阶梯：只要叙述，模型照习惯写了选项也丢掉；没写出叙述照常按 `NARRATIVE_MISSING` 失败。
+  日志 `director.parse` 的 `stage` 是 `ending`，结局里缺 `<options>` 不算修补。
+- 提交时推进头部的那条带围栏的 UPDATE 同时把 `playthroughs.status` 改成 `ended`（[data-model/story.md](data-model/story.md)），写一条 `playthrough.ended` 日志（只记字数）。
+- `ended` 之后不能再提交任何行动（409 `STORY_ENDED`），没有撤销。M2 的回退做好后，可以考虑让“退回到结局之前”把状态改回 `active`。
 
 `turn.failed` 里新增的 code：`RUNNER_LOST`（租约过期被清理，或者提交时发现租约已被收回；可以重试）、`CANCELLED`（玩家停止或服务重启）、
 `NARRATIVE_MISSING`（模型没有写出叙述）、`INTERNAL_ERROR`。

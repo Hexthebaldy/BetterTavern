@@ -3,9 +3,10 @@
  *
  * 中间那一格：
  * - 空闲：“自己写…”（有草稿时显示草稿），点一下原地展开成输入框，跟着键盘浮起；发送或收起后缩回来；
- * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段）和“停止”；重连、等结果时是琥珀色。
+ * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色。
  *   这些状态只在这里显示，正文里不重复；
- * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）。
+ * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）；
+ * - 写完结局：旗子和灰字“故事已完结”，不能再写。
  * 往上翻离开了最新位置（超过 80pt）时，中间这一格的右端滑出一个下箭头圆按钮（灰底，和世界、更多一样），“自己写…”跟着变窄；
  * 点它回到最新，生成中带一个蓝点表示有新内容。
  *
@@ -19,7 +20,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-nativ
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { actionPanelFrame } from "@bettertavern/design/layout";
-import { canAct, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
+import { canAct, isEnded, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
 
 import { Icon, IconButton, PageSurfaces, useSheetSurfaces, type IconName } from "../../components/ui.tsx";
 import { useKeyboardLift } from "../../hooks/useKeyboardLift.ts";
@@ -117,6 +118,15 @@ function Bar({
         </Text>
       </View>
     );
+  } else if (isEnded(state)) {
+    middle = (
+      <View style={styles.status}>
+        <Icon name="flag" size={18} color={palette.mut} />
+        <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, color: palette.mut }}>
+          故事已完结
+        </Text>
+      </View>
+    );
   } else if (needsOpening(state) || state.turns.length === 0) {
     middle = <View style={{ flex: 1 }} />;
   } else {
@@ -163,7 +173,7 @@ function Bar({
             <ToolButton
               ref={moreRef}
               icon="more"
-              label="更多：阅读设置、重命名、删除"
+              label="更多：阅读设置、重命名、写结局、删除"
               active={moreActive}
               onPress={onOpenMore}
             />
@@ -234,7 +244,7 @@ function WriteButton({ draft, enabled, onPress }: { draft: string; enabled: bool
 function LiveStatus({ state }: { state: PlayState }) {
   const palette = usePalette();
   const warn = state.phase === "reconnecting" || state.phase === "polling";
-  const opening = state.pending?.action?.source === "opening";
+  const source = state.pending?.action?.source;
   const pending = state.pending;
   const label =
     state.phase === "reconnecting"
@@ -247,9 +257,11 @@ function LiveStatus({ state }: { state: PlayState }) {
             ? "世界还在更新…"
             : pending?.narrative === ""
               ? "正在构思…"
-              : opening
+              : source === "opening"
                 ? "正在写开场"
-                : "正在写下一段";
+                : source === "ending"
+                  ? "正在写结局"
+                  : "正在写下一段";
   return (
     <View style={styles.status} accessibilityLiveRegion="polite">
       <View

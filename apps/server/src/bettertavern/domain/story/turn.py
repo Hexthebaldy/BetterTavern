@@ -2,6 +2,7 @@
 
 一个 turn = 玩家一次行动加导演一次回复，seq=0 是开场。点选项时客户端只发 option_id，
 选项文字由服务端按已落库的选项解析，客户端不能伪造选项内容。
+玩家选“写结局”时行动来源是 ending：导演写最后一段、不给选项，写完这局就结束了。
 """
 
 from __future__ import annotations
@@ -14,7 +15,8 @@ from typing import Any, Literal
 MAX_FREE_TEXT_CHARS = 2000
 OPTION_IDS = ("o1", "o2")
 
-ActionSource = Literal["option", "text", "opening"]
+ActionSource = Literal["option", "text", "opening", "ending"]
+ACTION_SOURCES: tuple[ActionSource, ...] = ("option", "text", "opening", "ending")
 
 
 class TurnStatus(StrEnum):
@@ -86,7 +88,7 @@ class PlayerAction:
     @classmethod
     def from_json(cls, data: Mapping[str, Any]) -> PlayerAction:
         source = data.get("source")
-        if source not in ("option", "text", "opening"):
+        if source not in ACTION_SOURCES:
             raise ActionError("VALIDATION_ERROR", f"未知的行动来源：{source!r}")
         option_id = data.get("option_id")
         return cls(
@@ -120,6 +122,12 @@ def resolve_action(
         return PlayerAction(source="text", text=cleaned)
     if source == "opening":
         return PlayerAction(source="opening", text="")
+    if source == "ending":
+        # 结局的方向可以不填
+        cleaned = (text or "").strip()
+        if len(cleaned) > MAX_FREE_TEXT_CHARS:
+            raise ActionError("VALIDATION_ERROR", f"结局方向最多 {MAX_FREE_TEXT_CHARS} 字")
+        return PlayerAction(source="ending", text=cleaned)
     raise ActionError("VALIDATION_ERROR", f"未知的行动来源：{source!r}")
 
 

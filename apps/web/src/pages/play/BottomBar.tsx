@@ -2,15 +2,16 @@
  * 阅读页底部固定的操作栏（同 App 的 BottomBar.tsx）：左边“世界”，右边“更多”，中间一格按状态换内容。
  *
  * - 空闲：“自己写…”（有草稿时显示草稿，桌面上右端有键帽 /），点一下原地展开成输入框（W08）；
- * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段）和“停止”；重连、等结果时是琥珀色；
- * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）。
+ * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色；
+ * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）；
+ * - 写完结局：旗子和灰字“故事已完结”，不能再写。
  * 离开了最新位置时，中间这一格右端展开一个下箭头圆按钮（灰底，生成中带蓝点），“自己写…”跟着变窄。
  * 贴着窗口底边，页面底色加顶上一条细线；内容宽 672，和阅读栏同一条中线。
  */
 
 import { useEffect, useRef, type Ref } from "react";
 
-import { canAct, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
+import { canAct, isEnded, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
 
 import { cx, IconButton } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -22,7 +23,7 @@ const MAX_TEXT = 2000;
 
 function LiveStatus({ state }: { state: PlayState }) {
   const warn = state.phase === "reconnecting" || state.phase === "polling";
-  const opening = state.pending?.action?.source === "opening";
+  const source = state.pending?.action?.source;
   const pending = state.pending;
   const label =
     state.phase === "reconnecting"
@@ -35,9 +36,11 @@ function LiveStatus({ state }: { state: PlayState }) {
             ? "世界还在更新…"
             : pending?.narrative === ""
               ? "正在构思…"
-              : opening
+              : source === "opening"
                 ? "正在写开场"
-                : "正在写下一段";
+                : source === "ending"
+                  ? "正在写结局"
+                  : "正在写下一段";
   return (
     <div className={cx(styles.status, warn && styles.statusWarn)} aria-live="polite">
       <span className={styles.liveDot} />
@@ -172,6 +175,13 @@ export function BottomBar({
         <span className={styles.statusText}>同步完成前暂时不能行动</span>
       </div>
     );
+  } else if (isEnded(state)) {
+    middle = (
+      <div className={cx(styles.status, styles.statusMuted)}>
+        <Icon name="flag" size={18} />
+        <span className={styles.statusText}>故事已完结</span>
+      </div>
+    );
   } else if (needsOpening(state) || state.turns.length === 0) {
     middle = <span className={styles.flex} />;
   } else {
@@ -231,7 +241,7 @@ export function BottomBar({
             <IconButton
               ref={moreRef}
               icon="more"
-              label="更多：阅读设置、重命名、删除"
+              label="更多：阅读设置、重命名、写结局、删除"
               aria-haspopup="dialog"
               aria-expanded={moreActive}
               diameter={44}

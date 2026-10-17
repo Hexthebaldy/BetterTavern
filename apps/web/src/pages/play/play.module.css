@@ -204,6 +204,17 @@
   line-height: 20px;
   color: var(--mut);
 }
+/* 写完结局：最后一段下面的结束标记，叙述的字、浅一档 */
+.end {
+  margin: 0;
+  padding: 8px 24px 0;
+  font-family: var(--narr-font, var(--font-serif));
+  font-size: var(--narr-size);
+  line-height: var(--narr-leading);
+  letter-spacing: 2px;
+  color: var(--mut);
+  text-align: center;
+}
 .missing {
   display: flex;
   align-items: center;
@@ -801,8 +812,13 @@
 .menuDanger {
   color: var(--err);
 }
+/* 写结局在生成中等时候暂时不能用 */
+.menuItem:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 @media (hover: hover) and (pointer: fine) {
-  .menuItem:hover {
+  .menuItem:hover:not(:disabled) {
     background: var(--raised);
   }
 }

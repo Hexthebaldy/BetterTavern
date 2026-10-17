@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
-import { headTurn } from "@bettertavern/core/play/turnMachine";
+import { canAct, headTurn, isEnded } from "@bettertavern/core/play/turnMachine";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
 
 import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
@@ -195,6 +195,23 @@ export default function PlayScreen() {
     }
   };
 
+  // 写结局：确认框里可以填想要的方向，也可以不填；写完就不能再继续，也没有撤销
+  const end = async (): Promise<void> => {
+    setMoreOpen(false);
+    const wish = await overlay.prompt({
+      title: "给这个故事写结局？",
+      message: "导演会接着目前的剧情，写一大段作为结局。写完后故事就结束了，不能撤销，也不能再往下写。",
+      label: "结局方向",
+      placeholder: "想要怎样的结局（可不填）",
+      maxLength: 2000,
+      confirmLabel: "写结局",
+      optional: true,
+    });
+    if (wish === null) return;
+    controls.submit({ source: "ending", text: wish });
+    feed.current?.jumpToLatest();
+  };
+
   const remove = async (): Promise<void> => {
     setMoreOpen(false);
     const ok = await overlay.confirm({
@@ -310,10 +327,13 @@ export default function PlayScreen() {
         onRename={() => void rename()}
         onWorld={() => {
           setMoreOpen(false);
-          // 停靠时直接展开，不用等面板收起
+          // 停靠时世界状态是页面的一部分，直接展开；否则打开世界状态面板，
+          // 它会等“更多”面板被 iOS 收回再挂上（useGatedModal）
           if (worldMode === "dock") toggleWorld();
-          else setTimeout(() => setWorldOpen(true), 260);
+          else setWorldOpen(true);
         }}
+        onEnd={() => void end()}
+        ending={isEnded(state) ? "ended" : canAct(state) ? "ready" : "busy"}
         onDelete={() => void remove()}
       />
     </View>

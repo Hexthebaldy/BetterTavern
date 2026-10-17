@@ -3,6 +3,7 @@
  *
  * 状态：loading → idle ⇄ submitting → streaming（→ reconnecting / polling）→ idle 或 failed；
  * 故事被别的设备推进时进入 syncing，由调用方重新拉取后回到 idle；加载失败是 load_failed。
+ * 最新一段是结局（行动来源 ending）时故事已经结束：仍是 idle，但不能再提交任何行动（isEnded）。
  * 见 docs/client.md 第 1 节。
  */
 
@@ -262,14 +263,19 @@ export function headTurn(state: PlayState): StoryTurn | null {
   return state.turns.length > 0 ? (state.turns[state.turns.length - 1] ?? null) : null;
 }
 
-/** 可以点选项或自由输入了 */
+/** 最新一段是结局：故事已经结束，不能再提交任何行动 */
+export function isEnded(state: PlayState): boolean {
+  return headTurn(state)?.action.source === "ending";
+}
+
+/** 可以点选项、自由输入或写结局了 */
 export function canAct(state: PlayState): boolean {
-  return state.phase === "idle" && headTurn(state) !== null;
+  return state.phase === "idle" && headTurn(state) !== null && !isEnded(state);
 }
 
 /** 可以提交新的行动（空闲，或上一轮失败后换一个行动） */
 export function canSubmit(state: PlayState): boolean {
-  return state.phase === "idle" || state.phase === "failed";
+  return (state.phase === "idle" || state.phase === "failed") && !isEnded(state);
 }
 
 /** 还没有开场，也没有失败的开场可以重试：显示“生成开场” */
@@ -301,6 +307,7 @@ export function retryAction(state: PlayState): NewAction | null {
   if (state.phase !== "failed" || !state.pending?.action) return null;
   const action = state.pending.action;
   if (action.source === "opening") return { source: "opening" };
+  if (action.source === "ending") return { source: "ending", text: action.text };
   if (action.source === "option" && action.option_id)
     return { source: "option", option_id: action.option_id };
   return { source: "text", text: action.text };
@@ -309,7 +316,15 @@ export function retryAction(state: PlayState): NewAction | null {
 /** 提交前在界面上先显示玩家的行动（选项按 id 找文字） */
 export function displayAction(action: NewAction, options: TurnOption[]): TurnAction | null {
   if (action.source === "opening") return { source: "opening", text: "" };
+  if (action.source === "ending") return { source: "ending", text: action.text?.trim() ?? "" };
   if (action.source === "text") return { source: "text", text: action.text };
   const option = options.find((o) => o.id === action.option_id);
   return { source: "option", text: option?.text ?? "", option_id: action.option_id };
+}
+
+/** 故事流里“我的行动”那一行的文字：开场没有；写结局是“写结局”，写了方向时带上方向 */
+export function actionNote(action: TurnAction | null): string | null {
+  if (!action || action.source === "opening") return null;
+  if (action.source === "ending") return action.text ? `写结局：${action.text}` : "写结局";
+  return action.text.length > 0 ? action.text : null;
 }

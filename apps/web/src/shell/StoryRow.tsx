@@ -51,7 +51,13 @@ export function StoryRow({
         <span className={styles.storyText}>
           <span className={styles.storyTitle}>{story.title}</span>
           {status ? (
-            <span className={cx(styles.storyStatus, status.kind === "writing" ? styles.live : styles.warn)}>
+            <span
+              className={cx(
+                styles.storyStatus,
+                status.kind === "writing" && styles.live,
+                status.kind === "noOpening" && styles.warn,
+              )}
+            >
               {status.kind === "writing" ? <span className={styles.liveDot} /> : null}
               {status.label}
             </span>

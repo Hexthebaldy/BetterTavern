@@ -298,7 +298,7 @@ def build_timeline(entries: list[Entry], *, running: bool = False) -> Timeline:
             stage = e.get("stage")
             status = (
                 "ok"
-                if stage in ("ok", "salvaged")
+                if stage in ("ok", "salvaged", "ending")
                 else ("error" if stage == "narrative_missing" else "warn")
             )
             markers.append(

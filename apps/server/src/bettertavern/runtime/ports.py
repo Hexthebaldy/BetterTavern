@@ -90,10 +90,11 @@ class AgentRunRecord:
 class TurnOutcome:
     narrative: str
     options: list[TurnOption]
-    options_source: str
+    options_source: str | None  # 结局那一轮没有选项，是 None
     usage: Usage | None
     state_lag: bool
     runs: list[AgentRunRecord]
+    ends_story: bool = False  # 结局写完了：提交时把这局标为 ended
 
 
 @dataclass(frozen=True)
@@ -134,7 +135,8 @@ class TurnStore(Protocol):
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool: ...
 
     async def commit_turn(self, header: TurnHeader, outcome: TurnOutcome) -> bool:
-        """一个事务：回合落库、头部前移、清租约、写账本。围栏不满足返回 False。"""
+        """一个事务：回合落库、头部前移、清租约、写账本（结局还要标记这局已完结）。
+        围栏不满足返回 False。"""
         ...
 
     async def fail_turn(self, header: TurnHeader, failure: TurnFailure) -> bool: ...
