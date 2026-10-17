@@ -1,0 +1,34 @@
+{
+  "preamble": "This is the current world state (reference material, not new input from the player). The narration must stay consistent with it.",
+  "section": "[{title}]",
+  "sections": {
+    "scene": "Scene",
+    "hero": "Protagonist (me)",
+    "present": "Present",
+    "roster": "Other people and places (roster)",
+    "known": "Facts the player knows",
+    "secret": "Director only (private to characters; never state directly)"
+  },
+  "scene": {
+    "location": "Location: {value}",
+    "time": "Time: {value}",
+    "goal": "Protagonist's current goal: {value}"
+  },
+  "items": "Carrying: {value}",
+  "details": {
+    "goal": "goal: {value}",
+    "attitude": "attitude toward me: {value}",
+    "speech_style": "way of speaking: {value}"
+  },
+  "kinds": {
+    "character": "person",
+    "item": "item",
+    "location": "place",
+    "organization": "group",
+    "world": "world"
+  },
+  "kind": " ({kind})",
+  "describe": ": {value}",
+  "join_details": "; ",
+  "join_names": ", "
+}

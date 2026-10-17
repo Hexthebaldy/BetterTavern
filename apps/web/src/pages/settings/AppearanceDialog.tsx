@@ -4,25 +4,22 @@
  */
 
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Palette } from "@bettertavern/design/palettes";
-import { SYSTEM_SETTING, THEME_ORDER, THEMES, type ThemeSetting } from "@bettertavern/design/themes";
+import { THEME_ORDER, THEMES, type ThemeSetting } from "@bettertavern/design/themes";
 
 import { Button, cx } from "../../components/controls.tsx";
 import { Dialog } from "../../overlay/Dialog.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
 import styles from "./settings.module.css";
 
-type Option = { value: ThemeSetting; label: string; note: string; previews: Palette[] };
+type Option = { value: ThemeSetting; previews: Palette[] };
 
+/** 名字和说明在 i18n 资源里：appearance.<id>、appearance.<id>Note */
 const OPTIONS: Option[] = [
-  { value: "system", ...SYSTEM_SETTING, previews: [THEMES.light.palette, THEMES.night.palette] },
-  ...THEME_ORDER.map((id) => ({
-    value: id,
-    label: THEMES[id].label,
-    note: THEMES[id].note,
-    previews: [THEMES[id].palette],
-  })),
+  { value: "system", previews: [THEMES.light.palette, THEMES.night.palette] },
+  ...THEME_ORDER.map((id) => ({ value: id, previews: [THEMES[id].palette] })),
 ];
 
 /** 配色预览：页面底色上一条灰卡，下面一个墨色点和一个强调色点 */
@@ -43,12 +40,13 @@ function Swatch({ previews }: { previews: Palette[] }) {
 }
 
 export function AppearanceDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const { theme, setTheme } = usePrefs();
   const first = useRef<HTMLButtonElement>(null);
   return (
-    <Dialog label="外观" onClose={onClose} initialFocus={first}>
-      <h2 className={styles.dialogTitle}>外观</h2>
-      <div className={styles.themes} role="radiogroup" aria-label="外观">
+    <Dialog label={t("appearance.title")} onClose={onClose} initialFocus={first}>
+      <h2 className={styles.dialogTitle}>{t("appearance.title")}</h2>
+      <div className={styles.themes} role="radiogroup" aria-label={t("appearance.title")}>
         {OPTIONS.map((option, i) => {
           const on = theme === option.value;
           return (
@@ -63,15 +61,15 @@ export function AppearanceDialog({ onClose }: { onClose: () => void }) {
             >
               <span className={cx(styles.radio, on && styles.radioOn)} />
               <span className={styles.rowText}>
-                <span className={styles.themeLabel}>{option.label}</span>
-                <span className={styles.rowSub}>{option.note}</span>
+                <span className={styles.themeLabel}>{t(`appearance.${option.value}`)}</span>
+                <span className={styles.rowSub}>{t(`appearance.${option.value}Note`)}</span>
               </span>
               <Swatch previews={option.previews} />
             </button>
           );
         })}
       </div>
-      <Button label="完成" variant="secondary" size="lg" onClick={onClose} />
+      <Button label={t("common.done")} variant="secondary" size="lg" onClick={onClose} />
     </Dialog>
   );
 }

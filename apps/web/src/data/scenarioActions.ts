@@ -3,6 +3,7 @@
  */
 
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
@@ -23,6 +24,7 @@ export function useScenarioActions() {
   const queries = useQueryClient();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { t } = useTranslation();
 
   const patchList = (change: (list: Scenario[]) => Scenario[]): void => {
     queries.setQueryData<Scenario[]>(scenariosKey, (list) => (list ? change(list) : list));
@@ -30,8 +32,8 @@ export function useScenarioActions() {
 
   const rename = async (scenario: Scenario): Promise<void> => {
     const name = await overlay.prompt({
-      title: "重命名剧本",
-      label: "剧本名",
+      title: t("library.renameTitle"),
+      label: t("library.nameLabel"),
       initial: scenario.name,
       maxLength: 80,
     });
@@ -41,15 +43,15 @@ export function useScenarioActions() {
       patchList((list) => list.map((s) => (s.id === scenario.id ? updated : s)));
       queries.setQueryData(["scenario", scenario.id], updated);
     } catch (e) {
-      overlay.toast(`重命名失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.renameFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
   const remove = async (scenario: Scenario): Promise<void> => {
     const ok = await overlay.confirm({
-      title: `删除剧本“${scenario.name}”？`,
-      message: "已有的存档不受影响。",
-      confirmLabel: "删除",
+      title: t("library.deleteConfirm", { name: scenario.name }),
+      message: t("library.deleteMessage"),
+      confirmLabel: t("common.delete"),
       tone: "danger",
     });
     if (!ok) return;
@@ -58,9 +60,9 @@ export function useScenarioActions() {
       patchList((list) => list.filter((s) => s.id !== scenario.id));
       queries.removeQueries({ queryKey: ["scenario", scenario.id] });
       if (pathname === scenarioPath(scenario)) navigate("/library", { replace: true });
-      overlay.toast(`已删除“${scenario.name}”`);
+      overlay.toast(t("common.deleted", { name: scenario.name }));
     } catch (e) {
-      overlay.toast(`删除失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.deleteFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
@@ -69,9 +71,9 @@ export function useScenarioActions() {
       label: scenario.name,
       place,
       items: [
-        { key: "newTab", label: "在新标签页打开", icon: "newTab" },
-        { key: "rename", label: "重命名", icon: "write" },
-        { key: "delete", label: "删除", icon: "trash", danger: true, separated: true },
+        { key: "newTab", label: t("common.openInNewTab"), icon: "newTab" },
+        { key: "rename", label: t("common.rename"), icon: "write" },
+        { key: "delete", label: t("common.delete"), icon: "trash", danger: true, separated: true },
       ],
     });
     if (key === "newTab") window.open(scenarioPath(scenario), "_blank", "noopener");

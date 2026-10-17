@@ -58,7 +58,7 @@ class PgNotifyListener:
             raw = await conn.get_raw_connection()
             driver = raw.driver_connection
             if driver is None:
-                raise RuntimeError("拿不到底层的 asyncpg 连接")
+                raise RuntimeError("Can't get the underlying asyncpg connection")
             await driver.add_listener(self._channel, self._on_notify)
         except BaseException:
             with contextlib.suppress(Exception):

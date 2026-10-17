@@ -51,7 +51,7 @@ _ANY_LIST_MARK = re.compile(r"^\s*+(?:[-*•·]|\d++\s*+[.．、)）:：])\s*+")
 
 
 # 结局那一轮本来就不该有选项，这条修补说明在结局里不算问题
-MISSING_OPTIONS = "缺少 <options> 标签"
+MISSING_OPTIONS = "missing <options> tag"
 
 
 class ParseStage(StrEnum):
@@ -135,7 +135,7 @@ class DirectorStreamParser:
     def feed(self, chunk: str) -> list[str]:
         """喂入一段模型输出，返回可以立即推给玩家的叙述片段。"""
         if self._finished:
-            raise RuntimeError("解析器已经结束")
+            raise RuntimeError("parser already finished")
         self._buf += chunk
         out: list[str] = []
         self._advance(out, final=False)
@@ -144,7 +144,7 @@ class DirectorStreamParser:
     def finish(self) -> tuple[list[str], DirectorParse]:
         """流结束：返回最后的叙述片段和解析结果。"""
         if self._finished:
-            raise RuntimeError("解析器已经结束")
+            raise RuntimeError("parser already finished")
         out: list[str] = []
         self._advance(out, final=True)
         self._finished = True
@@ -202,7 +202,7 @@ class DirectorStreamParser:
                     self._narrative_closed = True
                     self._state = _State.SEEK_OPTIONS
                 else:
-                    self._repairs.append("<narrative> 没有闭合就开始了 <options>")
+                    self._repairs.append("<options> started before <narrative> was closed")
                     self._options_opened = True
                     self._state = _State.IN_OPTIONS
             elif state is _State.SEEK_OPTIONS:
@@ -263,41 +263,41 @@ class DirectorStreamParser:
             else:
                 lines = [_ANY_LIST_MARK.sub("", line) for line in raw.splitlines()]
                 options = [line for line in lines if line.strip()]
-                repairs.append("<options> 里的选项没有按 1. 2. 编号")
+                repairs.append("choices in <options> were not numbered 1. 2.")
             if not self._options_closed:
-                repairs.append("<options> 没有闭合")
+                repairs.append("<options> was not closed")
         if not self._narrative_opened:
             # 没有 <narrative> 标签：前面的文字一个字都没推给玩家，这里整段抢救出来
             text = "".join(self._preamble)
             if not self._options_opened:
                 text, options = self._split_trailing_options(text)
-            repairs.append("缺少 <narrative> 标签")
+            repairs.append("missing <narrative> tag")
             salvaged = text.strip()
             if salvaged:
                 out.append(salvaged)
             narrative = salvaged
         elif not self._narrative_closed and not self._options_opened:
-            repairs.append("<narrative> 没有闭合，流已结束")
+            repairs.append("<narrative> was not closed before the stream ended")
             body, trailing = self._split_trailing_options(narrative)
             if len(normalize_options(trailing)) >= 2:
                 narrative = body.strip()
                 options = trailing
                 rewritten = True
-                repairs.append("选项混在叙述里")
+                repairs.append("choices were mixed into the narrative")
         elif self._narrative_closed and not self._options_opened:
             options = extract_numbered_options("".join(self._between))
             repairs.append(MISSING_OPTIONS)
         else:
             if "".join(self._preamble).strip():
-                notes.append("<narrative> 之前有多余文字")
+                notes.append("extra text before <narrative>")
             if "".join(self._between).strip():
-                notes.append("</narrative> 与 <options> 之间有多余文字")
+                notes.append("extra text between </narrative> and <options>")
             if "".join(self._trailing).strip():
-                notes.append("</options> 之后有多余文字")
+                notes.append("extra text after </options>")
 
         cleaned = normalize_options(options)
         if len(cleaned) > 2:
-            notes.append(f"给出了 {len(cleaned)} 个选项，只取前 2 个")
+            notes.append(f"{len(cleaned)} choices given, kept the first 2")
         if not narrative.strip():
             stage = ParseStage.FAILED
         elif (

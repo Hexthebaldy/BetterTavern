@@ -75,17 +75,17 @@ export function scrubText(text: string, limit = VALUE_MAX_CHARS): string {
   let out = text;
   for (const [pattern, replacement] of SECRET_PATTERNS) out = out.replace(pattern, replacement);
   out = out.replace(EMAIL, "$1***@$2");
-  return out.length > limit ? `${out.slice(0, limit)}…（截断，原长 ${out.length} 字）` : out;
+  return out.length > limit ? `${out.slice(0, limit)}…(truncated, ${out.length} chars)` : out;
 }
 
 function scrubValue(value: unknown, depth: number): unknown {
   if (typeof value === "string") return scrubText(value);
   if (value === null || value === undefined || typeof value === "number" || typeof value === "boolean")
     return value;
-  if (depth >= MAX_DEPTH) return "[REDACTED:太深]";
+  if (depth >= MAX_DEPTH) return "[REDACTED:too deep]";
   if (Array.isArray(value)) {
     const items = value.slice(0, LIST_MAX_ITEMS).map((v) => scrubValue(v, depth + 1));
-    if (value.length > LIST_MAX_ITEMS) items.push(`…（另有 ${value.length - LIST_MAX_ITEMS} 项）`);
+    if (value.length > LIST_MAX_ITEMS) items.push(`…(${value.length - LIST_MAX_ITEMS} more)`);
     return items;
   }
   if (value instanceof Error) return scrubText(`${value.name}: ${value.message}`);
@@ -213,13 +213,13 @@ export class DiagnosticsLog {
 
 export type ExportInfo = { clientVersion: string; platform: string; server: string };
 
-/** 导出成文字：开头几行说明，后面每行一条 JSON，可以直接拖进 vis 和服务端日志合在一起看 */
+/** 导出成文字：开头几行说明（英文，和服务端日志一样），后面每行一条 JSON，可以直接拖进 vis 和服务端日志合在一起看 */
 export function exportText(entries: readonly LogEntry[], info: ExportInfo, now: Date = new Date()): string {
   const header = [
-    "# BetterTavern 诊断日志",
-    `# 导出时间 ${localIso(now)}`,
-    `# App 版本 ${info.clientVersion} · ${info.platform} · 服务器 ${scrubText(info.server)}`,
-    `# 共 ${entries.length} 条；不含故事内容和密钥`,
+    "# BetterTavern diagnostics",
+    `# Exported ${localIso(now)}`,
+    `# App ${info.clientVersion} · ${info.platform} · server ${scrubText(info.server)}`,
+    `# ${entries.length} entries; no story text or keys`,
   ];
   return [...header, ...entries.map((e) => JSON.stringify(e))].join("\n");
 }

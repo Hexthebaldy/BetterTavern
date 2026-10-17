@@ -5,7 +5,9 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
+import { i18n } from "@bettertavern/core/i18n/index";
 import { moveEntry, newEntry, type EntryDraft } from "@bettertavern/core/scenario/cardEdit";
 
 import { Button, cx, Field, IconButton, Pill, TextArea, Toggle } from "../../components/controls.tsx";
@@ -16,7 +18,7 @@ function entryTitle(entry: EntryDraft): string {
   const name = entry.name.trim();
   if (name) return name;
   const first = entry.content.trim().split("\n")[0] ?? "";
-  return first ? (first.length > 30 ? `${first.slice(0, 30)}…` : first) : "（空条目）";
+  return first ? (first.length > 30 ? `${first.slice(0, 30)}…` : first) : i18n.t("cardEdit.emptyEntry");
 }
 
 function Switch({
@@ -47,6 +49,7 @@ export function BookEditor({
   errorFor: (field: string) => string | null;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const update = (index: number, patch: Partial<EntryDraft>): void =>
     onChange(book.map((e, i) => (i === index ? { ...e, ...patch } : e)));
@@ -71,64 +74,74 @@ export function BookEditor({
               className={styles.entryHead}
               aria-expanded={expanded}
               aria-controls={expanded ? bodyId : undefined}
-              aria-label={`第 ${i + 1} 条：${entryTitle(entry)}`}
+              aria-label={t("cardEdit.entryLabel", { n: i + 1, title: entryTitle(entry) })}
               onClick={() => setOpen(expanded ? null : entry.key)}
             >
               <span className={styles.entryIndex}>{i + 1}</span>
               <span className={cx(styles.entryTitle, !entry.enabled && styles.entryOff)}>
                 {entryTitle(entry)}
               </span>
-              {errors.some(Boolean) ? <Pill tone="err" label="有问题" className={styles.entryPill} /> : null}
-              {entry.constant ? <Pill tone="acc" label="常驻" className={styles.entryPill} /> : null}
-              {!entry.enabled ? <Pill tone="card" label="未启用" className={styles.entryPill} /> : null}
+              {errors.some(Boolean) ? (
+                <Pill tone="err" label={t("cardEdit.broken")} className={styles.entryPill} />
+              ) : null}
+              {entry.constant ? (
+                <Pill tone="acc" label={t("cardEdit.constant")} className={styles.entryPill} />
+              ) : null}
+              {!entry.enabled ? (
+                <Pill tone="card" label={t("cardEdit.disabled")} className={styles.entryPill} />
+              ) : null}
               <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} />
             </button>
             {expanded ? (
               <div id={bodyId} className={styles.entryBody}>
                 <Field
-                  label="名称"
+                  label={t("cardEdit.entryName")}
                   optional
                   value={entry.name}
                   onChange={(e) => update(i, { name: e.target.value })}
                   error={errors[0]}
                 />
                 <Field
-                  label="关键词"
+                  label={t("cardEdit.keywords")}
                   optional
                   value={entry.keys}
                   onChange={(e) => update(i, { keys: e.target.value })}
-                  hint="用逗号或顿号分开"
+                  hint={t("cardEdit.hints.list")}
                   error={errors[1]}
                 />
                 <TextArea
-                  label="内容"
+                  label={t("cardEdit.content")}
                   height={140}
                   value={entry.content}
                   onChange={(e) => update(i, { content: e.target.value })}
                   error={errors[2]}
                 />
-                <Switch label="启用" value={entry.enabled} onChange={(enabled) => update(i, { enabled })} />
                 <Switch
-                  label="常驻（开局时优先使用）"
+                  label={t("cardEdit.enabled")}
+                  value={entry.enabled}
+                  onChange={(enabled) => update(i, { enabled })}
+                />
+                <Switch
+                  label={t("cardEdit.constantLabel")}
                   value={entry.constant}
                   onChange={(constant) => update(i, { constant })}
                 />
                 <div className={styles.entryActions}>
                   <IconButton
                     icon="chevronUp"
-                    label="上移"
+                    label={t("cardEdit.moveUp")}
                     disabled={i === 0}
                     onClick={() => onChange(moveEntry(book, i, -1))}
                   />
                   <IconButton
                     icon="chevronDown"
-                    label="下移"
+                    label={t("cardEdit.moveDown")}
                     disabled={i === book.length - 1}
                     onClick={() => onChange(moveEntry(book, i, 1))}
                   />
                   <span className={styles.spacer} />
                   <Button
-                    label="删除这条"
+                    label={t("cardEdit.removeEntry")}
                     icon="trash"
                     variant="danger"
                     size="sm"
@@ -143,7 +156,7 @@ export function BookEditor({
           </div>
         );
       })}
-      <Button label="添加条目" icon="plus" variant="secondary" onClick={add} />
+      <Button label={t("cardEdit.addEntry")} icon="plus" variant="secondary" onClick={add} />
     </div>
   );
 }

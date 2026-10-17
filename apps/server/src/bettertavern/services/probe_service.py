@@ -62,7 +62,7 @@ class ProbeConfig:
         data = data or {}
         unknown = set(data) - {"duration_s", "events_per_second", "chars_per_event"}
         if unknown:
-            raise ProbeConfigError(f"未知字段：{sorted(unknown)}")
+            raise ProbeConfigError(f"Unknown fields: {sorted(unknown)}")
         defaults = cls()
         try:
             config = cls(
@@ -73,14 +73,15 @@ class ProbeConfig:
         except (TypeError, ValueError) as exc:
             raise ProbeConfigError(str(exc)) from exc
         if not 1 <= config.duration_s <= 1800:
-            raise ProbeConfigError("duration_s 取值 1 到 1800")
+            raise ProbeConfigError("duration_s must be between 1 and 1800")
         if not 0.5 <= config.events_per_second <= 200:
-            raise ProbeConfigError("events_per_second 取值 0.5 到 200")
+            raise ProbeConfigError("events_per_second must be between 0.5 and 200")
         if not 1 <= config.chars_per_event <= 200:
-            raise ProbeConfigError("chars_per_event 取值 1 到 200")
+            raise ProbeConfigError("chars_per_event must be between 1 and 200")
         if config.total_chars > MAX_TOTAL_CHARS:
             raise ProbeConfigError(
-                f"总字数 {config.total_chars} 超过上限 {MAX_TOTAL_CHARS}，请缩短时长或降低速率"
+                f"Total characters {config.total_chars} exceed the limit {MAX_TOTAL_CHARS}; "
+                "shorten the duration or lower the rate"
             )
         return config
 
@@ -155,7 +156,7 @@ class ProbeService:
     async def start(self, config: ProbeConfig) -> ProbeRecord:
         self._evict()
         if len(self._tasks) >= self._max_running:
-            raise ProbeConfigError(f"同时运行的探针不能超过 {self._max_running} 个")
+            raise ProbeConfigError(f"At most {self._max_running} probes can run at once")
         stream_id = "probe_" + secrets.token_hex(8)
         text = probe_text(config.total_chars)
         record = ProbeRecord(

@@ -135,7 +135,7 @@ class StoryScript:
         prompt = "\n".join(str(m.get("content", "")) for m in body.get("messages", []))
         if "<character-card>" in prompt:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
-        if "接下来可以采取的行动" in prompt:
+        if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:
             return JsonReply(completion('{"options": ["看看四周", "继续等待"]}'))
         error = {"error": {"message": "fake story server: unexpected request"}}
         return JsonReply(error, status=400)

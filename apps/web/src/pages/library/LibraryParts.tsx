@@ -4,9 +4,11 @@
  */
 
 import { useRef, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import type { Scenario } from "@bettertavern/core/api/types";
+import { i18n } from "@bettertavern/core/i18n/index";
 import { formatBytes } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../components/Cover.tsx";
@@ -20,7 +22,11 @@ import type { LibraryView } from "../../state/prefs.ts";
 import styles from "./library.module.css";
 
 export function summary(s: Scenario): string {
-  return s.description_preview || s.first_mes_preview || (s.creator ? `作者：${s.creator}` : "");
+  return (
+    s.description_preview ||
+    s.first_mes_preview ||
+    (s.creator ? i18n.t("library.byCreator", { creator: s.creator }) : "")
+  );
 }
 
 /** 封面的宽高比：96 × 76 */
@@ -42,6 +48,7 @@ export function HeaderControls({
   /** 宽屏：导入按钮是带文字的胶囊 */
   labelled: boolean;
 }) {
+  const { t } = useTranslation();
   const option = (value: LibraryView, icon: IconName, label: string) => (
     <button
       type="button"
@@ -56,13 +63,13 @@ export function HeaderControls({
   );
   return (
     <>
-      <div role="radiogroup" aria-label="视图" className={styles.seg}>
-        {option("grid", "grid", "网格")}
-        {option("list", "list", "列表")}
+      <div role="radiogroup" aria-label={t("library.view")} className={styles.seg}>
+        {option("grid", "grid", t("library.grid"))}
+        {option("list", "list", t("library.list"))}
       </div>
       {labelled ? (
         <Button
-          label="导入角色卡"
+          label={t("library.import")}
           icon="plus"
           busy={importing}
           onClick={onImport}
@@ -71,7 +78,7 @@ export function HeaderControls({
       ) : (
         <IconButton
           icon="plus"
-          label={importing ? "正在导入" : "导入角色卡"}
+          label={importing ? t("library.importing") : t("library.import")}
           disabled={importing}
           className={styles.add}
           onClick={onImport}
@@ -97,6 +104,7 @@ function Frame({
 }) {
   const more = useRef<HTMLButtonElement>(null);
   const context = useContextMenu((place) => onMenu(scenario, place));
+  const { t } = useTranslation();
   return (
     <div className={styles.cell}>
       <Link to={scenarioPath(scenario)} className={className} {...context}>
@@ -105,7 +113,7 @@ function Frame({
       <IconButton
         ref={more}
         icon="more"
-        label={`“${scenario.name}”的更多操作`}
+        label={t("nav.moreFor", { title: scenario.name })}
         tone="card"
         diameter={36}
         iconSize={20}
@@ -185,14 +193,19 @@ function progressText(file: ImportProgress): string {
 
 /** 网格里“正在导入”的那一格：当前这一张，多张时带“2 / 3” */
 export function ImportingTile({ file, width }: { file: ImportProgress; width: number }) {
+  const { t } = useTranslation();
   const coverWidth = Math.max(0, width - 16);
   return (
-    <div role="progressbar" aria-label={`正在导入 ${file.name}`} className={styles.tile}>
+    <div
+      role="progressbar"
+      aria-label={t("library.importingFile", { name: file.name })}
+      className={styles.tile}
+    >
       <span className={styles.importCover} style={{ height: coverHeight(coverWidth) }}>
         <Spinner />
       </span>
       <span className={styles.tileMeta}>
-        <span className={cx(styles.name, styles.muted)}>正在导入</span>
+        <span className={cx(styles.name, styles.muted)}>{t("library.importing")}</span>
         <span className={cx(styles.summary, styles.mono)}>{progressText(file)}</span>
       </span>
     </div>
@@ -201,11 +214,16 @@ export function ImportingTile({ file, width }: { file: ImportProgress; width: nu
 
 /** 列表视图里“正在导入”的那一行 */
 export function ImportingRow({ file }: { file: ImportProgress }) {
+  const { t } = useTranslation();
   return (
-    <div role="progressbar" aria-label={`正在导入 ${file.name}`} className={cx(styles.row, styles.importRow)}>
+    <div
+      role="progressbar"
+      aria-label={t("library.importingFile", { name: file.name })}
+      className={cx(styles.row, styles.importRow)}
+    >
       <Spinner size={32} />
       <span className={styles.muted}>
-        正在导入 {file.name}
+        {t("library.importingFile", { name: file.name })}
         {file.total > 1 ? ` · ${file.index} / ${file.total}` : ""}
       </span>
     </div>
@@ -229,6 +247,7 @@ function Doc({ children }: { children: ReactNode }) {
 }
 
 export function Empty({ onImport, importing }: { onImport: () => void; importing: boolean }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.emptyWrap}>
       <div className={styles.kinds}>
@@ -239,7 +258,7 @@ export function Empty({ onImport, importing }: { onImport: () => void; importing
           </Doc>
           <div>
             <div className={styles.kindName}>PNG</div>
-            <div className={styles.kindText}>卡面图片里带数据</div>
+            <div className={styles.kindText}>{t("library.pngNote")}</div>
           </div>
         </div>
         <div className={styles.kind}>
@@ -255,13 +274,13 @@ export function Empty({ onImport, importing }: { onImport: () => void; importing
           </Doc>
           <div>
             <div className={styles.kindName}>JSON</div>
-            <div className={styles.kindText}>纯文本角色卡</div>
+            <div className={styles.kindText}>{t("library.jsonNote")}</div>
           </div>
         </div>
       </div>
       <div className={styles.emptyBody}>
-        <h2 className={styles.emptyTitle}>导入第一张角色卡</h2>
-        <div className={styles.specs} aria-label="支持 SillyTavern V1、V2、V3">
+        <h2 className={styles.emptyTitle}>{t("library.emptyTitle")}</h2>
+        <div className={styles.specs} aria-label={t("library.supports")}>
           {["SillyTavern", "V1", "V2", "V3"].map((label, i) => (
             <span key={label} className={cx(styles.spec, i === 0 && styles.specFirst)}>
               {label}
@@ -272,10 +291,16 @@ export function Empty({ onImport, importing }: { onImport: () => void; importing
           <span className={styles.noteIcon}>
             <Icon name="world" size={18} />
           </span>
-          <span>卡里附带的世界书，会转成故事的世界状态。</span>
+          <span>{t("library.bookNote")}</span>
         </div>
-        <Button label="导入角色卡" trailingIcon="import" between busy={importing} onClick={onImport} />
-        <div className={styles.limits}>.PNG / .JSON · ≤ 16 MB · 也可以直接把文件拖进窗口</div>
+        <Button
+          label={t("library.import")}
+          trailingIcon="import"
+          between
+          busy={importing}
+          onClick={onImport}
+        />
+        <div className={styles.limits}>{t("library.limitsDrop")}</div>
       </div>
     </div>
   );

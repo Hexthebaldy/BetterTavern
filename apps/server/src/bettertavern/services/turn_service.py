@@ -68,7 +68,7 @@ def header_for(pt: repo.PlaythroughRow, turn: repo.TurnRow, user_id: str) -> Tur
 
 def ensure_not_ended(pt: repo.PlaythroughRow) -> None:
     if pt.status == "ended":
-        raise Conflict("这个故事已经写完结局，不能再继续了", code="STORY_ENDED")
+        raise Conflict("This story has ended and can't continue", code="STORY_ENDED")
 
 
 def request_hash(playthrough_id: str, parent_turn_id: str | None, action: ActionInput) -> str:
@@ -118,12 +118,12 @@ class TurnService:
     ) -> tuple[TurnView, bool]:
         """返回 (回合, 是否新建)。同一个幂等键且请求相同时返回已有回合。"""
         if not is_uuid(playthrough_id):
-            raise NotFound("游玩记录不存在")
+            raise NotFound("Playthrough not found")
         structlog.contextvars.bind_contextvars(playthrough_id=playthrough_id)
         if parent_turn_id is not None and not is_uuid(parent_turn_id):
-            raise Invalid("parent_turn_id 格式不对", field="parent_turn_id")
+            raise Invalid("Invalid parent_turn_id", field="parent_turn_id")
         if idempotency_key is not None and not (0 < len(idempotency_key) <= MAX_IDEMPOTENCY_KEY):
-            raise Invalid("Idempotency-Key 长度不对", field="Idempotency-Key")
+            raise Invalid("Invalid Idempotency-Key length", field="Idempotency-Key")
         digest = request_hash(playthrough_id, parent_turn_id, action)
         # 先看是否重复提交，免得为一次重放去解密凭据
         if idempotency_key is not None:
@@ -136,24 +136,24 @@ class TurnService:
         async with self._engine.connect() as conn:
             found_pt = await repo.get_playthrough(conn, user_id, playthrough_id)
         if found_pt is None:
-            raise NotFound("游玩记录不存在")
+            raise NotFound("Playthrough not found")
         ensure_not_ended(found_pt)
         if await self._routes.resolve(user_id, RouteTask.DIRECTOR, playthrough_id) is None:
             raise AppError(
-                "还没有配置导演用的模型，请先在设置里添加密钥并选择模型",
+                "No director model is set up yet. Add a key and choose a model in Settings",
                 code="ROUTE_MISSING",
                 status=409,
             )
         async with self._engine.begin() as conn:
             pt = await repo.get_playthrough(conn, user_id, playthrough_id, lock=True)
             if pt is None:
-                raise NotFound("游玩记录不存在")
+                raise NotFound("Playthrough not found")
             if idempotency_key is not None:
                 found = await repo.get_idempotency_key(conn, user_id, idempotency_key)
                 if found is not None:  # 与另一个并发请求撞上了：它已经提交
                     if found[0] != digest:
                         raise Invalid(
-                            "同一个 Idempotency-Key 对应了不同的请求内容",
+                            "The same Idempotency-Key was used with a different request",
                             code="IDEMPOTENCY_KEY_REUSED",
                         )
                     turn = await repo.get_turn(conn, found[1])
@@ -165,7 +165,7 @@ class TurnService:
             if pt.active_turn_id is not None:
                 if await repo.lease_alive(conn, pt.id):
                     raise Conflict(
-                        "上一轮还在生成中",
+                        "The previous turn is still being written",
                         code="TURN_IN_PROGRESS",
                         active_turn_id=pt.active_turn_id,
                     )
@@ -177,18 +177,21 @@ class TurnService:
                 await repo.release_lease(conn, pt.id, pt.active_turn_id)
             if pt.head_turn_id != parent_turn_id:
                 raise Conflict(
-                    "故事已经更新，请先刷新",
+                    "The story has moved on; refresh first",
                     code="STALE_PARENT",
                     head_turn_id=pt.head_turn_id,
                 )
             parent = await repo.get_turn(conn, parent_turn_id) if parent_turn_id else None
             if action.source == "opening":
                 if parent is not None:
-                    raise Invalid("只有还没有开场时才能重新生成开场", code="OPENING_EXISTS")
+                    raise Invalid(
+                        "The opening can only be regenerated before there is one",
+                        code="OPENING_EXISTS",
+                    )
                 seq = 0
             else:
                 if parent is None:
-                    raise Conflict("开场还没有完成", code="OPENING_PENDING")
+                    raise Conflict("The opening isn't finished yet", code="OPENING_PENDING")
                 seq = parent.seq + 1
             try:
                 resolved = resolve_action(
@@ -232,7 +235,8 @@ class TurnService:
                 return None
             if found[0] != digest:
                 raise Invalid(
-                    "同一个 Idempotency-Key 对应了不同的请求内容", code="IDEMPOTENCY_KEY_REUSED"
+                    "The same Idempotency-Key was used with a different request",
+                    code="IDEMPOTENCY_KEY_REUSED",
                 )
             turn = await repo.get_turn(conn, found[1])
         return TurnView.of(turn) if turn is not None else None
@@ -240,22 +244,22 @@ class TurnService:
     # ---- 读取 ---------------------------------------------------------------------------
     async def get(self, user_id: str, turn_id: str) -> TurnView:
         if not is_uuid(turn_id):
-            raise NotFound("回合不存在")
+            raise NotFound("Turn not found")
         async with self._engine.connect() as conn:
             turn = await repo.get_user_turn(conn, user_id, turn_id)
         if turn is None:
-            raise NotFound("回合不存在")
+            raise NotFound("Turn not found")
         return TurnView.of(turn)
 
     async def history(
         self, user_id: str, playthrough_id: str, *, after_seq: int, limit: int
     ) -> list[TurnView]:
         if not is_uuid(playthrough_id):
-            raise NotFound("游玩记录不存在")
+            raise NotFound("Playthrough not found")
         async with self._engine.connect() as conn:
             pt = await repo.get_playthrough(conn, user_id, playthrough_id)
             if pt is None:
-                raise NotFound("游玩记录不存在")
+                raise NotFound("Playthrough not found")
             rows = await repo.list_chain(conn, pt.id, after_seq=after_seq, limit=limit)
         return [TurnView.of(r) for r in rows]
 
@@ -266,7 +270,10 @@ class TurnService:
             return turn
         if not self._runners.cancel(turn_id, "user"):
             # 不在本进程（进程重启后）：租约到期后由清理任务标记失败
-            raise Conflict("这一轮不在当前服务实例上，稍后会自动结束", code="TURN_NOT_LOCAL")
+            raise Conflict(
+                "This turn is running on another server instance and will stop on its own shortly",
+                code="TURN_NOT_LOCAL",
+            )
         return turn
 
     # ---- 事件流 -------------------------------------------------------------------------
@@ -329,11 +336,17 @@ class TurnService:
             return
         error = turn.error or {
             "code": "RUNNER_LOST",
-            "message": "生成进程意外中止，请重试",
+            "message": "Generation stopped unexpectedly, please try again",
             "retryable": True,
+            "reason": None,
         }
         if turn.status == TurnStatus.ARCHIVED.value:
-            error = {"code": "TURN_ARCHIVED", "message": "这一轮已被回退", "retryable": False}
+            error = {
+                "code": "TURN_ARCHIVED",
+                "message": "This turn was rolled back",
+                "retryable": False,
+                "reason": None,
+            }
         if turn.narrative:
             yield event("snapshot", {"narrative": turn.narrative, "options": [], "source": None})
         yield event(

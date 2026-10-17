@@ -9,8 +9,10 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
+import { describeTurnError } from "@bettertavern/core/api/client";
 import { optionColumns } from "@bettertavern/design/layout";
 import {
   canAct,
@@ -53,6 +55,7 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
   const palette = usePalette();
   const surfaces = useSheetSurfaces();
   const { size: layoutSize } = useLayout();
+  const { t } = useTranslation();
 
   if (state.phase === "loading" || state.phase === "load_failed") return null;
 
@@ -66,23 +69,23 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
           <Icon name="alert" size={20} color={palette.err} />
           <Text style={{ flex: 1, fontSize: 14, lineHeight: 21, color: palette.err }}>
             {routeMissing
-              ? "没有可用模型。先添加密钥，再选一个导演模型。"
+              ? t("play.noModel")
               : state.pending?.narrative
-                ? `这一段没写完：${state.error.message}`
-                : state.error.message}
+                ? t("play.unfinished", { error: describeTurnError(state.error) })
+                : describeTurnError(state.error)}
           </Text>
         </View>
         <View style={styles.buttons}>
           <Button
-            label={opening ? "关闭" : "换个行动"}
+            label={opening ? t("common.close") : t("play.changeAction")}
             variant="secondary"
             onPress={controls.dismissError}
             style={[styles.flex, { backgroundColor: surfaces.fill }]}
           />
           {routeMissing ? (
-            <Button label="去设置模型" onPress={onOpenSettings} style={styles.flex} />
+            <Button label={t("play.goModels")} onPress={onOpenSettings} style={styles.flex} />
           ) : canRetry(state) ? (
-            <Button label="重试" icon="retry" onPress={controls.retry} style={styles.flex} />
+            <Button label={t("common.retry")} icon="retry" onPress={controls.retry} style={styles.flex} />
           ) : null}
         </View>
       </View>
@@ -90,7 +93,7 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
   } else if (needsOpening(state)) {
     content = (
       <Button
-        label="开始故事"
+        label={t("start.button")}
         trailingIcon="arrowRight"
         between
         onPress={() => controls.submit({ source: "opening" })}

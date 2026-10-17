@@ -29,7 +29,7 @@ def _kdf(salt: bytes) -> Argon2id:
 
 def hash_password(password: str) -> str:
     if len(password) > MAX_PASSWORD_CHARS:
-        raise ValueError("密码过长")
+        raise ValueError("Password too long")
     return _kdf(os.urandom(SALT_LEN)).derive_phc_encoded(password.encode("utf-8"))
 
 

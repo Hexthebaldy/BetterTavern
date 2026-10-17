@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useRef, useState, type Ref } from "react";
+import { useTranslation } from "react-i18next";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -89,6 +90,7 @@ function Bar({
   const keyboard = keyboardHeight > 0;
   const [barHeight, setBarHeight] = useState(0);
   const frame = actionPanelFrame(available);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (barHeight > 0) onHeight(barHeight + keyboardHeight);
@@ -114,7 +116,7 @@ function Bar({
       <View style={styles.status}>
         <Icon name="lock" size={18} color={palette.mut} />
         <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, color: palette.mut }}>
-          同步完成前暂时不能行动
+          {t("play.syncBlocked")}
         </Text>
       </View>
     );
@@ -123,7 +125,7 @@ function Bar({
       <View style={styles.status}>
         <Icon name="flag" size={18} color={palette.mut} />
         <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, color: palette.mut }}>
-          故事已完结
+          {t("play.ended")}
         </Text>
       </View>
     );
@@ -162,7 +164,7 @@ function Bar({
           <View style={styles.row}>
             <ToolButton
               icon="world"
-              label={worldActive ? "收起世界状态" : "世界状态"}
+              label={worldActive ? t("play.worldHide") : t("play.world")}
               active={worldActive}
               onPress={onOpenWorld}
             />
@@ -173,7 +175,7 @@ function Bar({
             <ToolButton
               ref={moreRef}
               icon="more"
-              label="更多：阅读设置、重命名、写结局、删除"
+              label={t("play.moreLabel")}
               active={moreActive}
               onPress={onOpenMore}
             />
@@ -216,11 +218,12 @@ function ToolButton({
 /** “自己写…”：样子像一个输入框，有草稿时显示草稿 */
 function WriteButton({ draft, enabled, onPress }: { draft: string; enabled: boolean; onPress: () => void }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const surfaces = useSheetSurfaces();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={draft ? "继续写草稿" : "自己写"}
+      accessibilityLabel={draft ? t("play.continueDraft") : t("play.writeOwn")}
       accessibilityState={{ disabled: !enabled }}
       disabled={!enabled}
       onPress={onPress}
@@ -234,7 +237,7 @@ function WriteButton({ draft, enabled, onPress }: { draft: string; enabled: bool
     >
       <Icon name="write" size={16} color={palette.mut} />
       <Text numberOfLines={1} style={{ flex: 1, fontSize: 15, color: draft ? palette.ink : palette.mut }}>
-        {draft ? draft : "自己写…"}
+        {draft ? draft : t("play.writeOwnPlaceholder")}
       </Text>
     </Pressable>
   );
@@ -243,25 +246,26 @@ function WriteButton({ draft, enabled, onPress }: { draft: string; enabled: bool
 /** 生成中：圆点加一句状态；重连、等结果时是琥珀色 */
 function LiveStatus({ state }: { state: PlayState }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const warn = state.phase === "reconnecting" || state.phase === "polling";
   const source = state.pending?.action?.source;
   const pending = state.pending;
   const label =
     state.phase === "reconnecting"
-      ? "连接断了，正在重连…"
+      ? t("play.reconnecting")
       : state.phase === "polling"
-        ? "网络不太稳定，正在等结果…"
+        ? t("play.polling")
         : state.phase === "submitting"
-          ? "正在发送…"
+          ? t("play.sending")
           : pending?.waitingState
-            ? "世界还在更新…"
+            ? t("play.waitingState")
             : pending?.narrative === ""
-              ? "正在构思…"
+              ? t("play.thinking")
               : source === "opening"
-                ? "正在写开场"
+                ? t("play.writingOpening")
                 : source === "ending"
-                  ? "正在写结局"
-                  : "正在写下一段";
+                  ? t("play.writingEnding")
+                  : t("play.writingNext");
   return (
     <View style={styles.status} accessibilityLiveRegion="polite">
       <View
@@ -291,6 +295,7 @@ const JUMP_MS = 360;
  */
 function JumpButton({ shown, live, onPress }: { shown: boolean; live: boolean; onPress: () => void }) {
   const surfaces = useSheetSurfaces();
+  const { t } = useTranslation();
   const progress = useRef(new Animated.Value(shown ? 1 : 0)).current;
   useEffect(() => {
     // 宽度要进布局（左边的输入框跟着变窄），不能用原生驱动
@@ -318,7 +323,7 @@ function JumpButton({ shown, live, onPress }: { shown: boolean; live: boolean; o
     >
       <IconButton
         icon="down"
-        label={live ? "回到最新，有新内容" : "回到最新"}
+        label={live ? t("play.latestNew") : t("play.latest")}
         diameter={JUMP_SIZE}
         size={20}
         badge={live}
@@ -331,11 +336,12 @@ function JumpButton({ shown, live, onPress }: { shown: boolean; live: boolean; o
 
 function StopButton({ onPress }: { onPress: () => void }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const surfaces = useSheetSurfaces();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="停止"
+      accessibilityLabel={t("common.stop")}
       onPress={onPress}
       style={({ pressed }) => [
         styles.stop,
@@ -346,7 +352,7 @@ function StopButton({ onPress }: { onPress: () => void }) {
       ]}
     >
       <Icon name="stop" size={16} />
-      <Text style={{ fontSize: 15, color: palette.ink }}>停止</Text>
+      <Text style={{ fontSize: 15, color: palette.ink }}>{t("common.stop")}</Text>
     </Pressable>
   );
 }

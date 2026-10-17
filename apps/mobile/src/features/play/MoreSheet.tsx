@@ -6,6 +6,7 @@
  */
 
 import { useRef, useState, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 
 import {
@@ -26,6 +27,7 @@ const TRACK_PADDING = 14;
 
 function FontChoice() {
   const palette = usePalette();
+  const { t } = useTranslation();
   const surfaces = useSheetSurfaces();
   const { reading, setReading } = usePrefs();
   const option = (value: ReadingFont, glyph: string, label: string) => {
@@ -59,11 +61,11 @@ function FontChoice() {
   return (
     <View
       accessibilityRole="radiogroup"
-      accessibilityLabel="正文字体"
+      accessibilityLabel={t("reading.font")}
       style={[styles.fonts, { backgroundColor: surfaces.inset }]}
     >
-      {option("serif", "宋", "宋体")}
-      {option("sans", "黑", "黑体")}
+      {option("serif", t("reading.serifSample"), t("reading.serif"))}
+      {option("sans", t("reading.sansSample"), t("reading.sans"))}
     </View>
   );
 }
@@ -73,6 +75,7 @@ const KNOB = 24;
 /** 字号：两头是减小、增大的圆按钮，中间的轨道可以点或拖到某一档 */
 function SizeControl() {
   const palette = usePalette();
+  const { t } = useTranslation();
   const surfaces = useSheetSurfaces();
   const { reading, setReading } = usePrefs();
   const [trackWidth, setTrackWidth] = useState(0);
@@ -108,11 +111,11 @@ function SizeControl() {
   return (
     <View style={{ gap: space.s }}>
       <View style={[styles.size, { backgroundColor: surfaces.inset }]}>
-        {stepButton("字号减小", 14, -1)}
+        {stepButton(t("reading.smaller"), 14, -1)}
         <View
           accessible
           accessibilityRole="adjustable"
-          accessibilityLabel="正文字号"
+          accessibilityLabel={t("reading.size")}
           accessibilityValue={{ text: `${size}` }}
           accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
           onAccessibilityAction={(e) =>
@@ -141,11 +144,12 @@ function SizeControl() {
             />
           </View>
         </View>
-        {stepButton("字号增大", 22, 1)}
+        {stepButton(t("reading.larger"), 22, 1)}
       </View>
       <View style={styles.sizeNote}>
         <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.mut }}>
-          {size} / {lineHeightFor(size)} · {reading.size === null ? "跟随系统字体大小" : "固定字号"}
+          {size} / {lineHeightFor(size)} ·{" "}
+          {reading.size === null ? t("reading.followSystemSize") : t("reading.fixedSize")}
         </Text>
         {reading.size !== null ? (
           <Pressable
@@ -153,7 +157,9 @@ function SizeControl() {
             onPress={() => setReading({ ...reading, size: null })}
             hitSlop={10}
           >
-            <Text style={{ fontSize: 13, fontWeight: "500", color: palette.acc }}>跟随系统</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: palette.acc }}>
+              {t("reading.followSystem")}
+            </Text>
           </Pressable>
         ) : null}
       </View>
@@ -185,19 +191,25 @@ export function MoreSheet({
   above?: RefObject<View | null>;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <Sheet visible={visible} onClose={onClose} kind="menu" anchor={anchor} above={above}>
       <View style={styles.body}>
-        <Text style={[styles.label, { color: palette.mut }]}>阅读设置</Text>
+        <Text style={[styles.label, { color: palette.mut }]}>{t("reading.title")}</Text>
         <FontChoice />
         <SizeControl />
         <MenuGroup style={{ marginTop: space.xs }}>
-          <MenuItem icon="write" label="重命名存档" onPress={onRename} />
-          <MenuItem icon="world" label="世界状态" onPress={onWorld} />
+          <MenuItem icon="write" label={t("reading.renameSave")} onPress={onRename} />
+          <MenuItem icon="world" label={t("play.world")} onPress={onWorld} />
           {ending !== "ended" ? (
-            <MenuItem icon="flag" label="写结局" disabled={ending === "busy"} onPress={onEnd} />
+            <MenuItem
+              icon="flag"
+              label={t("play.writeEnding")}
+              disabled={ending === "busy"}
+              onPress={onEnd}
+            />
           ) : null}
-          <MenuItem icon="trash" label="删除存档" danger onPress={onDelete} />
+          <MenuItem icon="trash" label={t("reading.deleteSave")} danger onPress={onDelete} />
         </MenuGroup>
       </View>
     </Sheet>

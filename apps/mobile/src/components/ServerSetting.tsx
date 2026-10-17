@@ -4,7 +4,9 @@
  */
 
 import { useRouter } from "expo-router";
+import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -25,10 +27,11 @@ export function ServerRow({ onChange, width }: { onChange: () => void; width?: n
   const { serverUrl } = useApp();
   const palette = usePalette();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`服务器 ${displayServer(serverUrl)}，更改`}
+      accessibilityLabel={t("server.rowLabel", { server: displayServer(serverUrl) })}
       onPress={onChange}
       style={({ pressed }) => [
         styles.row,
@@ -42,21 +45,22 @@ export function ServerRow({ onChange, width }: { onChange: () => void; width?: n
     >
       <Icon name="server" size={18} color={palette.mut} />
       <Text style={[styles.rowText, { color: palette.mut }]} numberOfLines={1}>
-        服务器 <Text style={{ fontFamily: font.mono, color: palette.ink }}>{displayServer(serverUrl)}</Text>
+        {t("server.label")}{" "}
+        <Text style={{ fontFamily: font.mono, color: palette.ink }}>{displayServer(serverUrl)}</Text>
       </Text>
       <View style={[styles.change, { backgroundColor: palette.card }]}>
-        <Text style={{ fontSize: 13, fontWeight: "500", color: palette.ink }}>更改</Text>
+        <Text style={{ fontSize: 13, fontWeight: "500", color: palette.ink }}>{t("server.change")}</Text>
       </View>
     </Pressable>
   );
 }
 
-function describe(server: RecentServer, now: Date): { text: string; failed: boolean } | null {
+function describe(server: RecentServer, now: Date, t: TFunction): { text: string; failed: boolean } | null {
   if (server.failedAt && now.getTime() - new Date(server.failedAt).getTime() < RECENT_FAILURE_MS) {
-    return { text: "刚才无法连接", failed: true };
+    return { text: t("server.failedRecently"), failed: true };
   }
   if (server.lastUsedAt)
-    return { text: `上次使用 · ${formatRelative(server.lastUsedAt, now)}`, failed: false };
+    return { text: t("server.lastUsed", { time: formatRelative(server.lastUsedAt, now) }), failed: false };
   return null;
 }
 
@@ -82,6 +86,7 @@ export function ServerSheet({
   const { servers, serverUsed } = usePrefs();
   const palette = usePalette();
   const router = useRouter();
+  const { t } = useTranslation();
   const current = value ?? serverUrl;
   const choices = serverChoices(servers, current);
   const [selected, setSelected] = useState<string | null>(current);
@@ -109,12 +114,12 @@ export function ServerSheet({
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="服务器">
+    <Sheet visible={visible} onClose={onClose} title={t("server.title")}>
       <View style={styles.body}>
-        <View accessibilityRole="radiogroup" accessibilityLabel="选择服务器" style={{ gap: 6 }}>
+        <View accessibilityRole="radiogroup" accessibilityLabel={t("server.choose")} style={{ gap: 6 }}>
           {choices.map((server) => {
             const on = selected === server.url;
-            const note = describe(server, now);
+            const note = describe(server, now, t);
             return (
               <Pressable
                 key={server.url}
@@ -161,7 +166,7 @@ export function ServerSheet({
           >
             <Pressable
               accessibilityRole="radio"
-              accessibilityLabel="输入新地址"
+              accessibilityLabel={t("server.newAddress")}
               accessibilityState={{ selected: selected === null }}
               onPress={() => setSelected(null)}
               hitSlop={10}
@@ -176,12 +181,12 @@ export function ServerSheet({
               value={draft}
               onChangeText={setDraft}
               onFocus={() => setSelected(null)}
-              placeholder="输入新地址，例如 http://192.168.1.10:8000"
+              placeholder={t("server.newPlaceholder")}
               placeholderTextColor={palette.mut}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
-              accessibilityLabel="新服务器地址"
+              accessibilityLabel={t("server.newLabel")}
               style={[styles.input, { color: palette.ink }]}
             />
           </View>
@@ -189,7 +194,7 @@ export function ServerSheet({
         <View style={styles.buttons}>
           {showProbe ? (
             <Button
-              label="测试连接"
+              label={t("server.test")}
               variant="secondary"
               icon="probe"
               disabled={!chosen}
@@ -201,7 +206,7 @@ export function ServerSheet({
             />
           ) : null}
           <Button
-            label={onSave ? "使用这个地址" : "保存"}
+            label={onSave ? t("server.useThis") : t("common.save")}
             onPress={save}
             disabled={!chosen}
             style={{ flex: 1 }}

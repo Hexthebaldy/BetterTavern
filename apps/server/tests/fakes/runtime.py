@@ -269,7 +269,7 @@ class FakeStore:
         return 3
 
 
-def header(seq: int = 1, *, world_ready: bool = True) -> TurnHeader:
+def header(seq: int = 1, *, world_ready: bool = True, language: str = "zh") -> TurnHeader:
     return TurnHeader(
         turn_id="turn-1",
         playthrough_id="pt-1",
@@ -279,4 +279,5 @@ def header(seq: int = 1, *, world_ready: bool = True) -> TurnHeader:
         epoch=0,
         status="generating",
         world_ready=world_ready,
+        language=language,
     )

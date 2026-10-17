@@ -5,8 +5,10 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { i18n } from "@bettertavern/core/i18n/index";
 import { moveEntry, newEntry, type EntryDraft } from "@bettertavern/core/scenario/cardEdit";
 
 import { Button, Field, Icon, IconButton, Pill, Toggle } from "../../components/ui.tsx";
@@ -16,7 +18,7 @@ function entryTitle(entry: EntryDraft): string {
   const name = entry.name.trim();
   if (name) return name;
   const first = entry.content.trim().split("\n")[0] ?? "";
-  return first ? (first.length > 30 ? `${first.slice(0, 30)}…` : first) : "（空条目）";
+  return first ? (first.length > 30 ? `${first.slice(0, 30)}…` : first) : i18n.t("cardEdit.emptyEntry");
 }
 
 function Switch({
@@ -48,6 +50,7 @@ export function BookEditor({
   errorFor: (field: string) => string | null;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const [open, setOpen] = useState<string | null>(null);
 
   const update = (index: number, patch: Partial<EntryDraft>): void =>
@@ -71,7 +74,7 @@ export function BookEditor({
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded }}
-              accessibilityLabel={`第 ${i + 1} 条：${entryTitle(entry)}`}
+              accessibilityLabel={t("cardEdit.entryLabel", { n: i + 1, title: entryTitle(entry) })}
               onPress={() => setOpen(expanded ? null : entry.key)}
               style={styles.head}
             >
@@ -87,15 +90,17 @@ export function BookEditor({
               >
                 {entryTitle(entry)}
               </Text>
-              {broken ? <Pill tone="err" label="有问题" style={styles.pill} /> : null}
-              {entry.constant ? <Pill tone="acc" label="常驻" style={styles.pill} /> : null}
-              {!entry.enabled ? <Pill tone="card" label="未启用" style={styles.pill} /> : null}
+              {broken ? <Pill tone="err" label={t("cardEdit.broken")} style={styles.pill} /> : null}
+              {entry.constant ? <Pill tone="acc" label={t("cardEdit.constant")} style={styles.pill} /> : null}
+              {!entry.enabled ? (
+                <Pill tone="card" label={t("cardEdit.disabled")} style={styles.pill} />
+              ) : null}
               <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} color={palette.mut} />
             </Pressable>
             {expanded ? (
               <View style={styles.body}>
                 <Field
-                  label="名称"
+                  label={t("cardEdit.entryName")}
                   optional
                   onGrey
                   value={entry.name}
@@ -103,16 +108,16 @@ export function BookEditor({
                   error={errors[0]}
                 />
                 <Field
-                  label="关键词"
+                  label={t("cardEdit.keywords")}
                   optional
                   onGrey
                   value={entry.keys}
                   onChangeText={(keys) => update(i, { keys })}
-                  hint="用逗号或顿号分开"
+                  hint={t("cardEdit.hints.list")}
                   error={errors[1]}
                 />
                 <Field
-                  label="内容"
+                  label={t("cardEdit.content")}
                   onGrey
                   multiline
                   boxHeight={140}
@@ -120,30 +125,34 @@ export function BookEditor({
                   onChangeText={(content) => update(i, { content })}
                   error={errors[2]}
                 />
-                <Switch label="启用" value={entry.enabled} onChange={(enabled) => update(i, { enabled })} />
                 <Switch
-                  label="常驻（开局时优先使用）"
+                  label={t("cardEdit.enabled")}
+                  value={entry.enabled}
+                  onChange={(enabled) => update(i, { enabled })}
+                />
+                <Switch
+                  label={t("cardEdit.constantLabel")}
                   value={entry.constant}
                   onChange={(constant) => update(i, { constant })}
                 />
                 <View style={styles.actions}>
                   <IconButton
                     icon="chevronUp"
-                    label="上移"
+                    label={t("cardEdit.moveUp")}
                     tone="card"
                     disabled={i === 0}
                     onPress={() => onChange(moveEntry(book, i, -1))}
                   />
                   <IconButton
                     icon="chevronDown"
-                    label="下移"
+                    label={t("cardEdit.moveDown")}
                     tone="card"
                     disabled={i === book.length - 1}
                     onPress={() => onChange(moveEntry(book, i, 1))}
                   />
                   <View style={{ flex: 1 }} />
                   <Button
-                    label="删除这条"
+                    label={t("cardEdit.removeEntry")}
                     icon="trash"
                     variant="danger"
                     onPress={() => {
@@ -158,7 +167,7 @@ export function BookEditor({
           </View>
         );
       })}
-      <Button label="添加条目" icon="plus" variant="secondary" onPress={add} />
+      <Button label={t("cardEdit.addEntry")} icon="plus" variant="secondary" onPress={add} />
     </View>
   );
 }

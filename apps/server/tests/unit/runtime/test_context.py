@@ -52,7 +52,7 @@ WORLD = WorldSnapshot(
 
 
 def test_state_block_layout() -> None:
-    text = render_state_block(WORLD)
+    text = render_state_block(WORLD, PromptLibrary("zh"))
     assert text.startswith("<world-state>") and text.endswith("</world-state>")
     assert "地点：灰石酒馆：昏暗" in text and "时间：第三天夜里" in text
     assert "随身物品：无名信" in text
@@ -74,8 +74,8 @@ def test_state_block_degrades_to_fit_budget() -> None:
         links=WORLD.links,
         facts=WORLD.facts,
     )
-    full = render_state_block(big, budget_tokens=100_000)
-    small = render_state_block(big, budget_tokens=300)
+    full = render_state_block(big, PromptLibrary("zh"), budget_tokens=100_000)
+    small = render_state_block(big, PromptLibrary("zh"), budget_tokens=300)
     assert estimate_tokens(small) < estimate_tokens(full)
     assert "名册" in full and "名册" not in small
     assert "老周" in small  # 在场人物总是保留

@@ -156,7 +156,7 @@ Set-Cookie: bt_refresh=rt_…; HttpOnly; Max-Age=2591999; Path=/v1/auth; SameSit
 | `id` | string | 用户 ID |
 | `email` | string | 注册时填的邮箱（保留大小写） |
 | `display_name` | string | 昵称，可能是空串 |
-| `locale` | string | 界面语言；M1 固定为 `zh` |
+| `locale` | string | 固定为 `zh`，保留不用：界面语言是设备上的设置，见 [i18n.md](../i18n.md) |
 | `created_at` | string（时间） | 注册时间 |
 
 ### `AuthOut`

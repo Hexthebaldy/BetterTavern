@@ -87,22 +87,29 @@ def failure_from_provider(error: ProviderError, narrative: str = "") -> TurnFail
         retryable=retryable,
         partial=bool(narrative),
         narrative=narrative,
+        reason=error.error_class.value,
     )
 
 
 def _friendly(error: ProviderError) -> str:
     messages = {
-        ErrorClass.AUTH: "模型服务商拒绝了你的密钥，请检查设置里的 API Key",
-        ErrorClass.BILLING: "模型服务商提示额度不足或欠费",
-        ErrorClass.RATE_LIMIT: "请求太频繁，被模型服务商限流了，请稍后重试",
-        ErrorClass.OVERLOADED: "模型服务暂时繁忙，请稍后重试",
-        ErrorClass.MODEL_NOT_FOUND: "找不到这个模型，请检查模型名",
-        ErrorClass.CONTENT_POLICY_BLOCKED: "这段内容被模型服务商的内容策略拦截了",
-        ErrorClass.CONTEXT_OVERFLOW: "上下文超出了模型窗口，建议换更大窗口的模型",
-        ErrorClass.STREAM_INTERRUPTED: "生成中途断开了",
-        ErrorClass.CANCELLED: "生成已取消",
+        ErrorClass.AUTH: "The model provider rejected your key. Check the API key in Settings",
+        ErrorClass.BILLING: (
+            "The model provider says you're out of credit or have an unpaid balance"
+        ),
+        ErrorClass.RATE_LIMIT: "The model provider is rate-limiting you, please try again shortly",
+        ErrorClass.OVERLOADED: "The model service is busy, please try again shortly",
+        ErrorClass.MODEL_NOT_FOUND: "This model wasn't found. Check the model name",
+        ErrorClass.CONTENT_POLICY_BLOCKED: "The provider's content policy blocked this part",
+        ErrorClass.CONTEXT_OVERFLOW: (
+            "The context doesn't fit in the model's window; try a model with a larger window"
+        ),
+        ErrorClass.STREAM_INTERRUPTED: "The connection dropped while writing",
+        ErrorClass.CANCELLED: "Generation cancelled",
     }
-    return messages.get(error.error_class, f"模型服务出错：{error.error_class.value}")
+    return messages.get(
+        error.error_class, f"The model service ran into a problem: {error.error_class.value}"
+    )
 
 
 class StreamFailed(Exception):
@@ -122,8 +129,9 @@ class GenerationLimitHit(Exception):
 
 def _duration_text(seconds: float) -> str:
     if seconds >= 60 and seconds % 60 == 0:
-        return f"{int(seconds // 60)} 分钟"
-    return f"{seconds:g} 秒"
+        minutes = int(seconds // 60)
+        return f"{minutes} minute" if minutes == 1 else f"{minutes} minutes"
+    return f"{seconds:g} seconds"
 
 
 def limit_failure(reason: str, narrative: str, *, max_duration_s: float) -> TurnFailure:
@@ -131,11 +139,14 @@ def limit_failure(reason: str, narrative: str, *, max_duration_s: float) -> Turn
     if reason == "timeout":
         code = "GENERATION_TIMEOUT"
         message = (
-            f"这一段写了 {_duration_text(max_duration_s)}还没写完，已经停下。可以重试，或者换个模型"
+            f"This part was still unfinished after {_duration_text(max_duration_s)} and was "
+            "stopped. Retry, or switch models"
         )
     else:
         code = "OUTPUT_TOO_LONG"
-        message = "模型一直写个不停，超过了长度上限，已经停下。可以重试，或者换个模型"
+        message = (
+            "The model kept writing past the length limit and was stopped. Retry, or switch models"
+        )
     return TurnFailure(
         code=code, message=message, retryable=True, partial=bool(narrative), narrative=narrative
     )
@@ -280,7 +291,10 @@ class DirectorStreamer:
         except LimiterTimeout as exc:
             log.warning("provider.slot_timeout", duration_ms=self._elapsed_ms(started))
             raise StreamFailed(
-                ProviderError(ErrorClass.RATE_LIMIT, "等待模型并发槽位超时"), ""
+                ProviderError(
+                    ErrorClass.RATE_LIMIT, "Timed out waiting for a model concurrency slot"
+                ),
+                "",
             ) from exc
         except ProviderError as exc:
             await flush()

@@ -3,6 +3,7 @@
  * 没有下拉刷新：回到标签页时自动刷新。空状态、加载失败的文案同 App 的 app/(tabs)/playthroughs.tsx。
  */
 
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
@@ -35,6 +36,7 @@ function Skeleton() {
 
 function Empty() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   return (
     <div className={styles.empty}>
       <svg
@@ -61,15 +63,21 @@ function Empty() {
         />
         <circle cx={214} cy={40} r={10} fill="var(--acc)" />
       </svg>
-      <h2 className={styles.emptyTitle}>还没有存档</h2>
-      <p className={styles.emptyText}>去“剧本”导入一张角色卡，设定你扮演的角色，第一段故事就会写出来。</p>
-      <Button label="去导入角色卡" trailingIcon="arrowRight" between onClick={() => navigate("/library")} />
+      <h2 className={styles.emptyTitle}>{t("stories.emptyTitle")}</h2>
+      <p className={styles.emptyText}>{t("stories.emptyText")}</p>
+      <Button
+        label={t("stories.emptyAction")}
+        trailingIcon="arrowRight"
+        between
+        onClick={() => navigate("/library")}
+      />
     </div>
   );
 }
 
 export function StoriesPage() {
-  useDocumentTitle("存档");
+  const { t } = useTranslation();
+  useDocumentTitle(t("nav.saves"));
   const stories = useStories();
   const avatarOf = useAvatars();
   const actions = useStoryActions();
@@ -78,7 +86,7 @@ export function StoriesPage() {
   const onMenu = actions.menu;
   const failure = stories.error
     ? stories.error instanceof ApiError && stories.error.isNetwork
-      ? "连不上服务器，列表没加载出来"
+      ? t("stories.offlineShort")
       : describeError(stories.error)
     : null;
   const [first, ...others] = list ?? [];
@@ -86,12 +94,12 @@ export function StoriesPage() {
 
   return (
     <div className={pages.page}>
-      <PageHeader title="存档" count={list?.length ?? null} />
+      <PageHeader title={t("nav.saves")} count={list?.length ?? null} />
       {failure ? (
         <Notice
           icon="offline"
           message={failure}
-          actionLabel={list ? "重试" : "重新加载"}
+          actionLabel={list ? t("common.retry") : t("common.reload")}
           onAction={() => void stories.refetch()}
           className={styles.notice}
         />

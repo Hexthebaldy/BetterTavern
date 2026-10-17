@@ -5,6 +5,7 @@
  */
 
 import type { Playthrough } from "../api/types.ts";
+import { i18n } from "../i18n/index.ts";
 
 export type StoryStatus =
   | { kind: "writing"; label: string }
@@ -15,10 +16,13 @@ export type StoryStatus =
 export function storyStatus(
   story: Pick<Playthrough, "status" | "active_turn_id" | "head_turn_id" | "head_excerpt">,
 ): StoryStatus {
-  if (story.status === "ended") return { kind: "ended", label: "已完结" };
+  if (story.status === "ended") return { kind: "ended", label: i18n.t("stories.status.ended") };
   const opening = story.head_turn_id === null;
   if (story.active_turn_id !== null)
-    return { kind: "writing", label: opening ? "正在写开场" : "正在写下一段" };
-  if (opening && !story.head_excerpt) return { kind: "noOpening", label: "开场还没有写好" };
+    return {
+      kind: "writing",
+      label: i18n.t(opening ? "stories.status.writingOpening" : "stories.status.writingNext"),
+    };
+  if (opening && !story.head_excerpt) return { kind: "noOpening", label: i18n.t("stories.status.noOpening") };
   return null;
 }

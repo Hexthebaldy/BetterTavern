@@ -14,19 +14,19 @@ describe("recentGroups", () => {
   it("按今天、本周（周一起）、更早分组，组内从新到旧", () => {
     const groups = recentGroups([at(15, 9), at(12), at(13), at(15, 18), at(1)], now);
     assert.deepEqual(
-      groups.map((g) => [g.label, g.items.map((i) => i.id)]),
+      groups.map((g) => [g.key, g.items.map((i) => i.id)]),
       [
-        ["今天", ["15-18", "15-9"]],
-        ["本周", ["13-12", "12-12"]],
-        ["更早", ["1-12"]],
+        ["today", ["15-18", "15-9"]],
+        ["week", ["13-12", "12-12"]],
+        ["earlier", ["1-12"]],
       ],
     );
   });
 
   it("空的组不出现", () => {
     assert.deepEqual(
-      recentGroups([at(2)], now).map((g) => g.label),
-      ["更早"],
+      recentGroups([at(2)], now).map((g) => g.key),
+      ["earlier"],
     );
     assert.deepEqual(recentGroups([], now), []);
   });
@@ -34,10 +34,10 @@ describe("recentGroups", () => {
   it("周日算在这一周里（周一开始）", () => {
     const sunday = new Date(2026, 9, 18, 10, 0);
     assert.deepEqual(
-      recentGroups([at(12), at(11)], sunday).map((g) => [g.label, g.items.length]),
+      recentGroups([at(12), at(11)], sunday).map((g) => [g.key, g.items.length]),
       [
-        ["本周", 1],
-        ["更早", 1],
+        ["week", 1],
+        ["earlier", 1],
       ],
     );
   });

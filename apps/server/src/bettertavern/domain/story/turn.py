@@ -89,7 +89,7 @@ class PlayerAction:
     def from_json(cls, data: Mapping[str, Any]) -> PlayerAction:
         source = data.get("source")
         if source not in ACTION_SOURCES:
-            raise ActionError("VALIDATION_ERROR", f"未知的行动来源：{source!r}")
+            raise ActionError("VALIDATION_ERROR", f"Unknown action source: {source!r}")
         option_id = data.get("option_id")
         return cls(
             source=source,
@@ -108,17 +108,21 @@ def resolve_action(
     """校验客户端提交的行动并解析成服务端确定的文字。"""
     if source == "option":
         if not option_id:
-            raise ActionError("VALIDATION_ERROR", "点选项时需要 option_id")
+            raise ActionError("VALIDATION_ERROR", "option_id is required when picking a choice")
         match = next((o for o in parent_options if o.id == option_id), None)
         if match is None:
-            raise ActionError("OPTION_NOT_FOUND", "选项不存在，可能已经被重新生成")
+            raise ActionError(
+                "OPTION_NOT_FOUND", "That choice doesn't exist; it may have been regenerated"
+            )
         return PlayerAction(source="option", text=match.text, option_id=match.id)
     if source == "text":
         cleaned = (text or "").strip()
         if not cleaned:
-            raise ActionError("VALIDATION_ERROR", "自由输入不能为空")
+            raise ActionError("VALIDATION_ERROR", "The text can't be empty")
         if len(cleaned) > MAX_FREE_TEXT_CHARS:
-            raise ActionError("VALIDATION_ERROR", f"自由输入最多 {MAX_FREE_TEXT_CHARS} 字")
+            raise ActionError(
+                "VALIDATION_ERROR", f"The text can be at most {MAX_FREE_TEXT_CHARS} characters"
+            )
         return PlayerAction(source="text", text=cleaned)
     if source == "opening":
         return PlayerAction(source="opening", text="")
@@ -126,9 +130,12 @@ def resolve_action(
         # 结局的方向可以不填
         cleaned = (text or "").strip()
         if len(cleaned) > MAX_FREE_TEXT_CHARS:
-            raise ActionError("VALIDATION_ERROR", f"结局方向最多 {MAX_FREE_TEXT_CHARS} 字")
+            raise ActionError(
+                "VALIDATION_ERROR",
+                f"The ending wish can be at most {MAX_FREE_TEXT_CHARS} characters",
+            )
         return PlayerAction(source="ending", text=cleaned)
-    raise ActionError("VALIDATION_ERROR", f"未知的行动来源：{source!r}")
+    raise ActionError("VALIDATION_ERROR", f"Unknown action source: {source!r}")
 
 
 def clip_middle(text: str, limit: int, ellipsis: str = "……") -> str:

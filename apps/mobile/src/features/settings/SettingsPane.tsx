@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -16,7 +17,7 @@ import { gutter, settingsDetailLeft } from "@bettertavern/design/layout";
 import { Icon, InColumnContext } from "../../components/ui.tsx";
 import { RaisedSurface, space, usePalette } from "../../theme/index.ts";
 import { ProbeBody } from "../probe/ProbeBody.tsx";
-import { SettingsNavProvider, TARGET_TITLES, type SettingsNav, type SettingsTarget } from "./nav.tsx";
+import { SettingsNavProvider, type SettingsNav, type SettingsTarget } from "./nav.tsx";
 import { AccountBody } from "./screens/AccountBody.tsx";
 import { ModelBody } from "./screens/ModelBody.tsx";
 import { ModelsBody } from "./screens/ModelsBody.tsx";
@@ -48,6 +49,7 @@ export function SettingsPane({
   onNavigate: () => void;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [stack, setStack] = useState<SettingsTarget[]>([root]);
   const rootKey = keyOf(root);
@@ -90,7 +92,7 @@ export function SettingsPane({
       {parent ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`返回${TARGET_TITLES[parent.screen]}`}
+          accessibilityLabel={t("settings.backTo", { page: t(`settings.pages.${parent.screen}`) })}
           onPress={nav.back}
           style={({ pressed }) => [
             styles.back,
@@ -98,7 +100,7 @@ export function SettingsPane({
           ]}
         >
           <Icon name="back" size={18} />
-          <Text style={{ fontSize: 14, color: palette.ink }}>{TARGET_TITLES[parent.screen]}</Text>
+          <Text style={{ fontSize: 14, color: palette.ink }}>{t(`settings.pages.${parent.screen}`)}</Text>
         </Pressable>
       ) : null}
       <RaisedSurface>

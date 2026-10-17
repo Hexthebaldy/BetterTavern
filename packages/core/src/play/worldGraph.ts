@@ -4,6 +4,7 @@
  */
 
 import type { WorldEntity } from "../api/types.ts";
+import { lookup } from "../i18n/index.ts";
 
 export type GraphNode = {
   id: string;
@@ -19,15 +20,9 @@ export type GraphEdge = { from: GraphNode; to: GraphNode; label: string };
 export const NODE_HEIGHT = 32;
 const MAX_NODES = 8;
 
-/** 关系名的中文 */
-export const REL_LABELS: Record<string, string> = {
-  located_in: "位于",
-  held_by: "持有者",
-  member_of: "属于",
-};
-
+/** 关系名（位于、持有者、属于）；不认识的关系显示它的 id */
 export function relLabel(rel: string): string {
-  return REL_LABELS[rel] ?? rel;
+  return lookup(`world.rel.${rel}`) ?? rel;
 }
 
 /** 方框宽度按字数估算：中文一个字约 13pt，两边各留 12 */

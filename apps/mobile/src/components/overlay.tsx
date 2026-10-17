@@ -20,6 +20,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { Animated, Keyboard, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -91,7 +92,7 @@ const OverlayContext = createContext<Overlay | null>(null);
 
 export function useOverlay(): Overlay {
   const value = useContext(OverlayContext);
-  if (!value) throw new Error("useOverlay 必须在 OverlayProvider 里使用");
+  if (!value) throw new Error("useOverlay must be used inside OverlayProvider");
   return value;
 }
 
@@ -239,6 +240,7 @@ function PromptDialog({
   onSettle: (value: string | null) => void;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const text = draft.trim();
   // 先收起键盘再关对话框：输入框带着焦点被拿掉的话，iOS 会把键盘留在屏幕上，页面上又没有输入框能让它收回去
   const finish = (value: string | null): void => {
@@ -251,7 +253,7 @@ function PromptDialog({
       inline={inline}
       title={options.title}
       message={options.message}
-      confirmLabel={options.confirmLabel ?? "保存"}
+      confirmLabel={options.confirmLabel ?? t("common.save")}
       confirmDisabled={!options.optional && text.length === 0}
       onCancel={() => finish(null)}
       onConfirm={() => finish(text)}
@@ -349,6 +351,7 @@ function CardMenu({
   }, [open, options]);
 
   const modal = useGatedModal(open && placed?.options === options, "card-menu");
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!modal.shown) return;
@@ -381,7 +384,7 @@ function CardMenu({
             style={{ flex: 1 }}
             onPress={() => onSettle(null)}
             accessibilityRole="button"
-            accessibilityLabel="关闭"
+            accessibilityLabel={t("common.close")}
           />
         </Animated.View>
         {options.lifted ? (

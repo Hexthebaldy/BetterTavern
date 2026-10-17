@@ -50,7 +50,7 @@ from .ports import (
     TurnOutcome,
     TurnStore,
 )
-from .prompts import PromptLibrary
+from .prompts import PromptBook, PromptLibrary
 from .protocol.director_parser import MISSING_OPTIONS, ParseStage
 from .protocol.repair import NarrativeMissing, finalize_director_output
 from .protocol.structured import StructuredOutputError
@@ -91,7 +91,9 @@ class RunnerConfig:
 
 
 # 与清理任务写进库里的错误一致（infra 的 RUNNER_LOST_ERROR）
-LEASE_LOST = TurnFailure(code="RUNNER_LOST", message="生成进程意外中止，请重试", retryable=True)
+LEASE_LOST = TurnFailure(
+    code="RUNNER_LOST", message="Generation stopped unexpectedly, please try again", retryable=True
+)
 
 
 class TurnFailed(Exception):
@@ -107,7 +109,7 @@ class TurnRunner:
         store: TurnStore,
         routes: RouteResolver,
         hub: ProviderHub,
-        prompts: PromptLibrary,
+        prompts: PromptBook,
         config: RunnerConfig | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
@@ -115,7 +117,10 @@ class TurnRunner:
         self._routes = routes
         self._hub = hub
         self._prompts = prompts
-        self._assembler = ContextAssembler(prompts)
+        # 每种语言一个装配器；一局用哪种看 playthroughs.language（TurnHeader.language）
+        self._assemblers = {
+            language: ContextAssembler(prompts.get(language)) for language in prompts.languages
+        }
         self.config = config or RunnerConfig()
         self._clock = clock
         self._streamer = DirectorStreamer(
@@ -125,6 +130,12 @@ class TurnRunner:
             limiter_timeout_s=self.config.limiter_timeout_s,
             max_duration_s=self.config.director_timeout_s,
         )
+
+    def _prompts_for(self, header: TurnHeader) -> PromptLibrary:
+        return self._prompts.get(header.language)
+
+    def _assembler_for(self, header: TurnHeader) -> ContextAssembler:
+        return self._assemblers.get(header.language) or ContextAssembler(self._prompts_for(header))
 
     # ---- 入口 ---------------------------------------------------------------------------
     async def run(self, header: TurnHeader, stream: EventStream, cancel: CancelToken) -> None:
@@ -200,7 +211,9 @@ class TurnRunner:
                         header,
                         stream,
                         TurnFailure(
-                            code="CANCELLED", message="服务正在重启，请重试", retryable=True
+                            code="CANCELLED",
+                            message="The server is restarting, please try again",
+                            retryable=True,
                         ),
                         started=started,
                     )
@@ -211,7 +224,11 @@ class TurnRunner:
             await self._fail(
                 header,
                 stream,
-                TurnFailure(code="INTERNAL_ERROR", message="服务端出错了，请重试", retryable=True),
+                TurnFailure(
+                    code="INTERNAL_ERROR",
+                    message="Internal server error, please try again",
+                    retryable=True,
+                ),
                 started=started,
             )
         finally:
@@ -295,7 +312,9 @@ class TurnRunner:
             raise TurnFailed(
                 TurnFailure(
                     code="ROUTE_MISSING",
-                    message="还没有配置导演用的模型，请先在设置里添加密钥并选择模型",
+                    message=(
+                        "No director model is set up yet. Add a key and choose a model in Settings"
+                    ),
                     retryable=False,
                 )
             )
@@ -330,13 +349,15 @@ class TurnRunner:
                             self._hub.adapter(route.provider),
                             inp.card,
                             inp,
-                            prompts=self._prompts,
+                            prompts=self._prompts_for(header),
                             negative_cache=self._hub.negative_cache,
                             cancel=cancel,
                         )
                 seed, source, run = result.seed, "world_builder", result.run
             except TimeoutError:
-                run = failure_run(route, "timeout", "WorldBuilder 超时", self._elapsed_ms(started))
+                run = failure_run(
+                    route, "timeout", "WorldBuilder timed out", self._elapsed_ms(started)
+                )
             except ProviderError as exc:
                 if exc.error_class is ErrorClass.CANCELLED:
                     raise
@@ -391,7 +412,7 @@ class TurnRunner:
         cancel: CancelToken,
     ) -> Generation:
         try:
-            context = self._assembler.assemble(ctx, route.window.effective_window)
+            context = self._assembler_for(header).assemble(ctx, route.window.effective_window)
         except ContextTooLarge as exc:
             raise TurnFailed(
                 TurnFailure(code="CONTEXT_TOO_LARGE", message=str(exc), retryable=False)
@@ -432,7 +453,7 @@ class TurnRunner:
                         learned_window=limit if learned else None,
                     )
                     try:
-                        context = self._assembler.assemble(
+                        context = self._assembler_for(header).assemble(
                             ctx, window, budget=None if learned else overflow_retry_budget(window)
                         )
                     except ContextTooLarge as exc:
@@ -451,7 +472,9 @@ class TurnRunner:
                     fallback_used = True
                     attempt_route = fallback
                     try:
-                        context = self._assembler.assemble(ctx, fallback.window.effective_window)
+                        context = self._assembler_for(header).assemble(
+                            ctx, fallback.window.effective_window
+                        )
                     except ContextTooLarge as exc:
                         raise TurnFailed(failure_from_provider(error)) from exc
                     self._log_context(context, fallback)
@@ -476,7 +499,7 @@ class TurnRunner:
                     target.credential,
                     target.caps,
                     model=target.model,
-                    prompts=self._prompts,
+                    prompts=self._prompts_for(header),
                     narrative=narrative,
                     existing=list(existing),
                     max_tokens=target.params.max_tokens_for(RouteTask.REPAIR),
@@ -570,7 +593,7 @@ class TurnRunner:
         return TurnFailed(
             TurnFailure(
                 code="NARRATIVE_MISSING",
-                message="导演这次没有写出内容，请重试",
+                message="The director didn't write anything this time, please try again",
                 retryable=True,
                 narrative=generation.streamed,
                 partial=bool(generation.streamed),

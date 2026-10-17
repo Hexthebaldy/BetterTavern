@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, Response, status
 
 from bettertavern.api.lifecycle import Shutdown
 
-router = APIRouter(tags=["运维"])
+router = APIRouter(tags=["ops"])
 
 
 @router.get("/health")

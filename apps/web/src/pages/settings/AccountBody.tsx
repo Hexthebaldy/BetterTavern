@@ -4,6 +4,7 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { formatDate } from "@bettertavern/core/utils/format";
@@ -26,7 +27,8 @@ export function AccountBody() {
   const [deleting, setDeleting] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useDocumentTitle("账户");
+  const { t } = useTranslation();
+  useDocumentTitle(t("settings.account"));
 
   const name = user?.display_name || user?.email || "";
   const joined = user?.created_at ? formatDate(user.created_at) : "";
@@ -45,9 +47,9 @@ export function AccountBody() {
 
   const confirmDelete = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "删除账户？",
-      message: "所有存档、剧本和模型（包括 Key）都会被永久删除，无法恢复。",
-      confirmLabel: "删除账户",
+      title: t("account.deleteTitle"),
+      message: t("account.deleteMessage"),
+      confirmLabel: t("account.deleteAccount"),
       tone: "danger",
     });
     if (!ok) return;
@@ -77,22 +79,22 @@ export function AccountBody() {
       <div className={styles.accountHead}>
         <span className={styles.bigAvatar}>{Array.from(name)[0] ?? "?"}</span>
         <h2 className={styles.accountName}>{name}</h2>
-        {joined ? <span className={styles.rowSub}>注册于 {joined}</span> : null}
+        {joined ? <span className={styles.rowSub}>{t("account.joined", { date: joined })}</span> : null}
       </div>
       <div className={styles.kvGroup}>
         <div className={styles.kv}>
-          <span className={styles.kvKey}>邮箱</span>
+          <span className={styles.kvKey}>{t("account.email")}</span>
           <span className={styles.kvValue}>{user?.email}</span>
         </div>
         <div className={styles.kv}>
-          <span className={styles.kvKey}>昵称</span>
+          <span className={styles.kvKey}>{t("account.nickname")}</span>
           <span className={user?.display_name ? styles.kvValue : styles.muted}>
-            {user?.display_name || "没有设置"}
+            {user?.display_name || t("account.notSet")}
           </span>
         </div>
       </div>
       <Button
-        label="退出登录"
+        label={t("account.signOut")}
         variant="secondary"
         icon="logout"
         size="lg"
@@ -105,17 +107,17 @@ export function AccountBody() {
       <div className={styles.danger}>
         <button type="button" className={styles.dangerHead} aria-expanded={expanded} onClick={toggle}>
           <Icon name="alert" size={20} />
-          <span className={styles.flex}>删除账户</span>
+          <span className={styles.flex}>{t("account.deleteAccount")}</span>
           <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} />
         </button>
         {expanded ? (
           <div className={styles.dangerBody}>
             <div className={styles.accountStats}>
-              {stat("story", counts?.stories, "存档")}
-              {stat("library", counts?.scenarios, "剧本")}
-              {stat("key", counts?.models, "模型")}
+              {stat("story", counts?.stories, t("account.saves"))}
+              {stat("library", counts?.scenarios, t("account.scenarios"))}
+              {stat("key", counts?.models, t("account.models"))}
             </div>
-            <p className={styles.lead}>所有存档、剧本和模型（包括 Key）都会被永久删除，无法恢复。</p>
+            <p className={styles.lead}>{t("account.deleteMessage")}</p>
             {error ? <Notice message={error} /> : null}
             <form
               className={styles.dangerForm}
@@ -125,16 +127,16 @@ export function AccountBody() {
               }}
             >
               <PasswordField
-                label="输入密码确认"
+                label={t("account.confirmPassword")}
                 className={styles.hiddenLabel}
-                placeholder="输入密码确认"
+                placeholder={t("account.confirmPassword")}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
               <Button
                 type="submit"
-                label="删除账户"
+                label={t("account.deleteAccount")}
                 variant="dangerSolid"
                 size="lg"
                 busy={deleting}

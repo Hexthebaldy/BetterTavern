@@ -5,12 +5,13 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import {
   describeWindow,
-  MODEL_STATUS,
+  modelStatusLabel,
   modelTitle,
   providerName,
   statusKind,
@@ -47,6 +48,7 @@ export function ModelPage() {
 }
 
 export function ModelBody({ id, titled = true }: { id: string; titled?: boolean }) {
+  const { t } = useTranslation();
   const { api } = useApp();
   const overlay = useOverlay();
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
   const [message, setMessage] = useState<Message | null>(null);
   const [dialog, setDialog] = useState<"edit" | "key" | "window" | null>(null);
   const route = query.data;
-  useDocumentTitle(titled ? (route ? modelTitle(route) : "模型") : null);
+  useDocumentTitle(titled ? (route ? modelTitle(route) : t("models.title")) : null);
 
   useEffect(() => {
     if (!route) return;
@@ -77,8 +79,8 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
           </div>
         ) : (
           <Notice
-            message={`模型没加载出来：${describeError(query.error)}`}
-            actionLabel="重新加载"
+            message={t("models.modelLoadFailedWith", { error: describeError(query.error) })}
+            actionLabel={t("common.reload")}
             onAction={() => void query.refetch()}
           />
         )}
@@ -111,7 +113,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
       const fresh = await api.models.update(route.id, { director: true });
       update(fresh);
       const [first] = describeWindow(fresh.window);
-      setMessage({ tone: "info", text: `已设为导演模型。${first ?? ""}` });
+      setMessage({ tone: "info", text: t("models.madeDirector", { detail: first ?? "" }) });
     });
   const saveParams = (): Promise<void> =>
     run(async () => {
@@ -121,39 +123,37 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
         if (choice === "default") delete params.working_window;
         else params.working_window = Number(choice);
         update(await api.models.update(route.id, { params }));
-        overlay.toast("已保存");
+        overlay.toast(t("models.saved"));
       } finally {
         setSaving(false);
       }
     });
   const cancelDirector = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "取消导演模型？",
-      message: "取消后，新的回合会因为没有模型而无法生成，直到再选一个。",
-      confirmLabel: "取消导演模型",
-      cancelLabel: "保留",
+      title: t("models.cancelDirectorTitle"),
+      message: t("models.cancelDirectorMessage"),
+      confirmLabel: t("models.cancelDirector"),
+      cancelLabel: t("models.keep"),
       tone: "danger",
     });
     if (!ok) return;
     await run(async () => {
       update(await api.models.update(route.id, { director: false }));
-      overlay.toast("已取消导演模型");
+      overlay.toast(t("models.directorCancelled"));
     });
   };
   const remove = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "删除这个模型？",
-      message: route.is_director
-        ? "它是现在的导演。删除后新的回合没法生成，直到再选一个导演。"
-        : "删除后要用它得重新添加。",
-      confirmLabel: "删除",
+      title: t("models.deleteTitle"),
+      message: route.is_director ? t("models.deleteDirectorMessage") : t("models.deleteMessage"),
+      confirmLabel: t("common.delete"),
       tone: "danger",
     });
     if (!ok) return;
     await run(async () => {
       await api.models.remove(route.id);
       update({ ...route, is_director: false });
-      overlay.toast(`已删除“${modelTitle(route)}”`);
+      overlay.toast(t("common.deleted", { name: modelTitle(route) }));
       navigate("/settings/models", { replace: true });
     });
   };
@@ -170,13 +170,13 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
           <div className={styles.rowText}>
             <h2 className={cx(styles.bodyTitle, !route.label && styles.monoTitle)}>{modelTitle(route)}</h2>
             <div className={styles.statusLine}>
-              <StatusPill kind={kind} label={MODEL_STATUS[route.status]} />
-              {route.is_director ? <Pill tone="acc" label="导演" /> : null}
+              <StatusPill kind={kind} label={modelStatusLabel(route.status)} />
+              {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
             </div>
           </div>
           <IconButton
             icon="write"
-            label="编辑备注名、模型名和端点"
+            label={t("models.editLabel")}
             diameter={44}
             iconSize={20}
             onClick={() => setDialog("edit")}
@@ -185,10 +185,10 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
         <div className={styles.cells}>
           {(
             [
-              ["服务商", providerName(route.provider, providers.data), false],
+              [t("models.provider"), providerName(route.provider, providers.data), false],
               ["Key", `•••• ${route.key_last4}`, true],
-              ["模型", route.model, true],
-              ["端点", route.base_url ?? "官方地址", !!route.base_url],
+              [t("models.modelName"), route.model, true],
+              [t("models.endpointShort"), route.base_url ?? t("models.officialShort"), !!route.base_url],
             ] as const
           ).map(([key, value, mono]) => (
             <div key={key} className={styles.cell}>
@@ -199,9 +199,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
         </div>
         {route.status !== "ok" ? (
           <p className={cx(styles.hint, route.status === "invalid" ? styles.errText : styles.warnText)}>
-            {route.status === "invalid"
-              ? "服务商拒绝了这个 Key，请更换 Key。"
-              : "还没确认这个 Key 能用：测试一下这个模型就知道了。"}
+            {route.status === "invalid" ? t("models.keyRejected") : t("models.keyUnverified")}
           </p>
         ) : null}
         <div className={styles.actions}>
@@ -212,17 +210,17 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
             onClick={() => void probe()}
           >
             {probing ? (
-              <Dots label="测试中" />
+              <Dots label={t("models.testing")} />
             ) : (
               <>
-                <span>测试这个模型</span>
-                <span className={styles.probeNote}>约 30 秒</span>
+                <span>{t("models.test")}</span>
+                <span className={styles.probeNote}>{t("models.testTime")}</span>
               </>
             )}
           </button>
           {route.is_director ? null : (
             <Button
-              label="设为导演模型"
+              label={t("models.setDirector")}
               size="lg"
               className={styles.flex}
               onClick={() => void makeDirector()}
@@ -234,43 +232,41 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
       </div>
 
       <div className={styles.column}>
-        <SectionHeader title="上下文" />
+        <SectionHeader title={t("models.context")} />
         <MemoryBlocks route={route} choice={choice} />
         {note ? (
           <Notice
             tone={route.window.source === "learned" ? "info" : "warn"}
             message={note}
-            actionLabel={route.window.source === "learned" ? undefined : "填写"}
+            actionLabel={route.window.source === "learned" ? undefined : t("models.fillIn")}
             onAction={route.window.source === "learned" ? undefined : () => setDialog("window")}
           />
         ) : null}
 
-        <SectionHeader title="工作窗口上限" />
+        <SectionHeader title={t("models.workingCap")} />
         <Segmented
-          label="工作窗口上限"
+          label={t("models.workingCap")}
           value={choice}
           options={WINDOW_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
           onChange={setChoice}
           mono
         />
-        <p className={styles.note}>
-          窗口越大，导演记得越多，但每轮更慢、更贵。用到 80% 时，早期剧情会被压缩成摘要。
-        </p>
+        <p className={styles.note}>{t("models.workingNote")}</p>
         {clamped ? (
           <Notice
             tone="warn"
-            message={`这个模型只有 ${formatTokens(route.window.model_window)} 上下文，工作窗口会按 ${formatTokens(route.window.model_window)} 算。`}
+            message={t("models.clamped", { window: formatTokens(route.window.model_window) })}
           />
         ) : null}
 
-        <SectionHeader title="写法" />
+        <SectionHeader title={t("models.style")} />
         <label className={styles.switchRow}>
           <span className={styles.switchIcon}>
             <Icon name="bulb" size={20} />
           </span>
           <span className={styles.rowText}>
-            <span>深度思考</span>
-            <span className={styles.rowSub}>模型支持时先思考再写，更慢</span>
+            <span>{t("models.thinking")}</span>
+            <span className={styles.rowSub}>{t("models.thinkingNote")}</span>
           </span>
           <input
             type="checkbox"
@@ -281,7 +277,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
           />
         </label>
         <Button
-          label={dirty ? "保存" : "保存 · 没有改动"}
+          label={dirty ? t("common.save") : t("models.saveNoChanges")}
           size="lg"
           busy={saving}
           disabled={!dirty}
@@ -290,7 +286,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
 
         <div className={styles.bottom}>
           <Button
-            label="更换 Key"
+            label={t("models.replaceKey")}
             variant="secondary"
             icon="key"
             size="lg"
@@ -298,10 +294,16 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
           />
           {route.is_director ? (
             <button type="button" className={styles.cancelDirector} onClick={() => void cancelDirector()}>
-              取消导演模型
+              {t("models.cancelDirector")}
             </button>
           ) : null}
-          <Button label="删除模型" variant="danger" icon="trash" size="lg" onClick={() => void remove()} />
+          <Button
+            label={t("models.deleteModel")}
+            variant="danger"
+            icon="trash"
+            size="lg"
+            onClick={() => void remove()}
+          />
         </div>
       </div>
 
@@ -314,7 +316,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
           onClose={() => setDialog(null)}
           onSaved={(fresh) => {
             update(fresh);
-            setMessage({ tone: "info", text: `Key 已更换，尾号 ${fresh.key_last4}` });
+            setMessage({ tone: "info", text: t("models.keyReplaced", { last4: fresh.key_last4 }) });
           }}
         />
       ) : null}

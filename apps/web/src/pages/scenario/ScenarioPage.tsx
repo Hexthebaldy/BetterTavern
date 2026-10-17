@@ -12,10 +12,12 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
+import { currentLanguage, lookup } from "@bettertavern/core/i18n/index";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Button, cx, IconButton, Notice, Pill } from "../../components/controls.tsx";
@@ -30,16 +32,9 @@ import styles from "./scenario.module.css";
 import { StartForm, type StartValues } from "./StartForm.tsx";
 
 /** 角色卡里可能被截断的字段 */
-const FIELD_NAMES: Record<string, string> = {
-  description: "描述",
-  personality: "性格",
-  scenario: "场景",
-  first_mes: "开场白",
-  mes_example: "对话示例",
-  system_prompt: "系统提示",
-  post_history_instructions: "历史后指令",
-  creator_notes: "作者备注",
-};
+function fieldName(field: string): string {
+  return lookup(`scenario.fields.${field}`) ?? field;
+}
 
 function Stat({
   icon,
@@ -63,6 +58,7 @@ function Stat({
 
 function Description({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation();
   const [clamped, setClamped] = useState(false);
   const box = useRef<HTMLParagraphElement>(null);
   useLayoutEffect(() => {
@@ -81,7 +77,7 @@ function Description({ text }: { text: string }) {
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}
         >
-          {expanded ? "收起" : "展开全文"}
+          {expanded ? t("scenario.collapse") : t("scenario.expand")}
           <Icon name={expanded ? "chevronUp" : "chevronDown"} size={16} />
         </button>
       ) : null}
@@ -91,16 +87,28 @@ function Description({ text }: { text: string }) {
 
 function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void }) {
   const truncated = scenario.truncated_fields;
+  const { t } = useTranslation();
   return (
     <>
       <div className={styles.titleBlock}>
         <span className={styles.caption}>
-          角色卡{scenario.creator ? ` · 作者 ${scenario.creator}` : ""}
-          {scenario.edited_at ? " · 已编辑" : ""}
+          {[
+            t("scenario.card"),
+            scenario.creator ? t("scenario.creator", { creator: scenario.creator }) : null,
+            scenario.edited_at ? t("scenario.edited") : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
         <div className={styles.titleRow}>
           <h1 className={styles.hero}>{scenario.name}</h1>
-          <Button label="编辑角色卡" icon="write" variant="secondary" size="sm" onClick={onEdit} />
+          <Button
+            label={t("scenario.editCard")}
+            icon="write"
+            variant="secondary"
+            size="sm"
+            onClick={onEdit}
+          />
         </div>
         {scenario.tags.length > 0 ? (
           <div className={styles.tags}>
@@ -111,10 +119,10 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
         ) : null}
       </div>
       <div className={styles.stats}>
-        <Stat icon="world" value={scenario.book_entries} label="世界书条目" />
-        <Stat icon="greeting" value={1 + scenario.alternate_greetings} label="开场白" />
+        <Stat icon="world" value={scenario.book_entries} label={t("scenario.bookEntries")} />
+        <Stat icon="greeting" value={1 + scenario.alternate_greetings} label={t("scenario.greetings")} />
         {truncated.length > 0 ? (
-          <Stat icon="truncated" value={truncated.length} label="字段被截断" warn />
+          <Stat icon="truncated" value={truncated.length} label={t("scenario.truncatedFields")} warn />
         ) : null}
       </div>
       {scenario.description_preview || truncated.length > 0 ? (
@@ -124,7 +132,9 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
             <div className={styles.warn}>
               <Icon name="alert" size={16} />
               <span>
-                {truncated.map((f) => `“${FIELD_NAMES[f] ?? f}”`).join("、")}字段太长，只保留了前面的部分。
+                {t("scenario.truncatedNote", {
+                  fields: truncated.map((f) => `“${fieldName(f)}”`).join(t("common.listSeparator")),
+                })}
               </span>
             </div>
           ) : null}
@@ -132,7 +142,7 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
       ) : null}
       {scenario.first_mes_preview ? (
         <div className={cx(styles.card, styles.greeting)}>
-          <span className={styles.caption}>原卡的开场白</span>
+          <span className={styles.caption}>{t("scenario.originalGreeting")}</span>
           <p className={styles.greetingText}>{scenario.first_mes_preview}</p>
         </div>
       ) : null}
@@ -154,16 +164,17 @@ export function ScenarioPage() {
   const [summary, setSummary] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<unknown>(null);
-  useDocumentTitle(scenario?.name ?? "剧本");
+  const { t } = useTranslation();
+  useDocumentTitle(scenario?.name ?? t("nav.library"));
 
   if (!scenario) {
     return (
       <div className={styles.single}>
-        <IconButton icon="back" label="返回剧本库" onClick={() => navigate("/library")} />
+        <IconButton icon="back" label={t("scenario.backToLibrary")} onClick={() => navigate("/library")} />
         {query.isPending ? null : (
           <Notice
-            message={`剧本没加载出来：${describeError(query.error)}`}
-            actionLabel="重新加载"
+            message={t("scenario.loadFailedWith", { error: describeError(query.error) })}
+            actionLabel={t("common.reload")}
             onAction={() => void query.refetch()}
             className={styles.loadError}
           />
@@ -181,6 +192,8 @@ export function ScenarioPage() {
         scenario_id: scenario.id,
         protagonist: { name: values.name, summary: values.summary },
         preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
+        // 提示词按当前的界面语言（docs/i18n.md 第 4 节）
+        language: currentLanguage(),
       });
       void queries.invalidateQueries({ queryKey: storiesKey });
       navigate(`/play/${encodeURIComponent(created.playthrough.id)}`, { replace: true });
@@ -205,7 +218,7 @@ export function ScenarioPage() {
       <div className={styles.coverBar}>
         <IconButton
           icon="back"
-          label="返回剧本库"
+          label={t("scenario.backToLibrary")}
           tone="card"
           diameter={44}
           onClick={() => navigate("/library")}
@@ -215,8 +228,8 @@ export function ScenarioPage() {
   );
   const startHead = (
     <div className={styles.startHead}>
-      <h2 className={styles.startTitle}>开始新的故事</h2>
-      <span className={styles.caption}>只有第 1 步必填</span>
+      <h2 className={styles.startTitle}>{t("start.title")}</h2>
+      <span className={styles.caption}>{t("start.hint")}</span>
     </div>
   );
   const form = (
@@ -230,13 +243,16 @@ export function ScenarioPage() {
   );
   const errorNotice = startError ? (
     <Notice
-      message={routeMissing ? "没有可用模型" : describeError(startError)}
-      actionLabel={routeMissing ? "去设置" : undefined}
+      message={routeMissing ? t("start.noModel") : describeError(startError)}
+      actionLabel={routeMissing ? t("start.goSettings") : undefined}
       onAction={routeMissing ? () => navigate("/settings/models") : undefined}
     />
   ) : null;
   const pills = (
-    <div className={styles.summary} aria-label={`将要开始：${summary.join("，")}`}>
+    <div
+      className={styles.summary}
+      aria-label={t("start.willStart", { summary: summary.join(t("common.listSeparator")) })}
+    >
       {summary.map((part) => (
         <Pill key={part} label={part} />
       ))}
@@ -244,7 +260,7 @@ export function ScenarioPage() {
   );
   const startButton = (
     <Button
-      label="开始故事"
+      label={t("start.button")}
       size="lg"
       between
       trailingIcon="arrowRight"
@@ -257,13 +273,13 @@ export function ScenarioPage() {
   const danger = (
     <div className={styles.danger}>
       <Button
-        label="删除剧本"
+        label={t("scenario.deleteScenario")}
         variant="danger"
         icon="trash"
         className={styles.dangerButton}
         onClick={() => void actions.remove(scenario)}
       />
-      <span className={styles.caption}>已有的存档不受影响。</span>
+      <span className={styles.caption}>{t("library.deleteMessage")}</span>
     </div>
   );
 

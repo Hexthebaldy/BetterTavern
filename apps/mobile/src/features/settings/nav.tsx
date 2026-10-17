@@ -27,14 +27,6 @@ export type SettingsNav = {
   embedded: boolean;
 };
 
-/** 每一层的名字：右栏顶上“‹ 上一层”的胶囊用 */
-export const TARGET_TITLES: Record<SettingsTarget["screen"], string> = {
-  models: "模型",
-  model: "模型详情",
-  account: "账户",
-  probe: "连接测试",
-};
-
 const NavContext = createContext<SettingsNav | null>(null);
 
 export function SettingsNavProvider({ value, children }: { value: SettingsNav; children: ReactNode }) {

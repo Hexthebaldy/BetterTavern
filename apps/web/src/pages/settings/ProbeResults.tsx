@@ -1,7 +1,9 @@
 /** 模型详情页的测试结果（同 App 的 ProbeResults）：每项检查一行（通过 / 失败 / 跳过的圆形标记、耗时条） */
 
+import { useTranslation } from "react-i18next";
+
 import type { ProbeReport } from "@bettertavern/core/api/types";
-import { CHECK_NAMES, checkCounts } from "@bettertavern/core/settings/labels";
+import { checkCounts, checkName } from "@bettertavern/core/settings/labels";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { cx, Notice } from "../../components/controls.tsx";
@@ -10,9 +12,10 @@ import { SectionHeader } from "./parts.tsx";
 import styles from "./settings.module.css";
 
 function Mark({ ok }: { ok: boolean | null }) {
+  const { t } = useTranslation();
   if (ok === null) {
     return (
-      <span className={cx(styles.checkMark, styles.checkSkip)} aria-label="跳过">
+      <span className={cx(styles.checkMark, styles.checkSkip)} aria-label={t("models.skipped")}>
         <Icon name="minus" size={14} strokeWidth={2.6} />
       </span>
     );
@@ -20,7 +23,7 @@ function Mark({ ok }: { ok: boolean | null }) {
   return (
     <span
       className={cx(styles.checkMark, ok ? styles.checkOk : styles.checkFail)}
-      aria-label={ok ? "通过" : "失败"}
+      aria-label={ok ? t("models.passed") : t("models.failed")}
     >
       <Icon name={ok ? "check" : "cross"} size={14} strokeWidth={2.6} />
     </span>
@@ -28,13 +31,14 @@ function Mark({ ok }: { ok: boolean | null }) {
 }
 
 export function ProbeResults({ report }: { report: ProbeReport }) {
+  const { t } = useTranslation();
   const { passed, failed, skipped } = checkCounts(report.checks);
   const slowest = Math.max(1, ...report.checks.map((c) => c.latency_ms ?? 0));
   return (
     <div>
       <SectionHeader
-        title="测试结果"
-        meta={`${passed} 通过 · ${failed} 失败 · ${skipped} 跳过 · ${formatRelative(report.probed_at)}`}
+        title={t("models.results")}
+        meta={t("models.resultsMeta", { passed, failed, skipped, time: formatRelative(report.probed_at) })}
       />
       <div className={styles.checks}>
         {report.fatal_error ? <Notice message={report.fatal_error} /> : null}
@@ -42,9 +46,7 @@ export function ProbeResults({ report }: { report: ProbeReport }) {
           <div key={check.name} className={cx(styles.check, check.ok === false && styles.checkRowFail)}>
             <Mark ok={check.ok} />
             <span className={styles.rowText}>
-              <span className={check.ok === null ? styles.muted : undefined}>
-                {CHECK_NAMES[check.name] ?? check.name}
-              </span>
+              <span className={check.ok === null ? styles.muted : undefined}>{checkName(check.name)}</span>
               {check.detail ? (
                 <span className={cx(styles.rowSub, check.ok === false && styles.errText)}>
                   {check.detail}
@@ -63,7 +65,7 @@ export function ProbeResults({ report }: { report: ProbeReport }) {
               {check.latency_ms !== null
                 ? `${check.latency_ms.toLocaleString("en-US")} ms`
                 : check.ok === null
-                  ? "跳过"
+                  ? t("models.skipped")
                   : ""}
             </span>
           </div>

@@ -25,11 +25,6 @@ from .fences import sanitize_for_fence
 from .state_block import render_state_block
 from .tokens import estimate_messages
 
-LENGTH_HINTS = {
-    "short": "每次 100 到 200 字",
-    "medium": "每次 200 到 400 字",
-    "long": "每次 400 到 700 字",
-}
 STATE_BLOCK_RATIO = 0.12
 STATE_BLOCK_CAP = 2500
 ACTION_RATIO = 0.03
@@ -64,6 +59,8 @@ class AssembledContext:
 
 
 class ContextAssembler:
+    """一种语言一个：runner 按这一局的 playthroughs.language 取对应语言的提示词来建"""
+
     def __init__(self, prompts: PromptLibrary) -> None:
         self._prompts = prompts
 
@@ -94,12 +91,12 @@ class ContextAssembler:
                 "description": sanitize_for_fence(protagonist_desc),
             },
             title=sanitize_for_fence(title),
-            world=sanitize_for_fence(world_text) or "（未提供）",
+            world=sanitize_for_fence(world_text),
             rules=rules,
             characters=characters,
             style=sanitize_for_fence(style),
             boundaries=sanitize_for_fence(prefs.boundaries),
-            length_hint=LENGTH_HINTS[prefs.length],
+            length=prefs.length,
         )
 
     def history_messages(self, ctx: TurnContext) -> list[tuple[Message, Message]]:
@@ -131,7 +128,7 @@ class ContextAssembler:
 
     def final_message(self, ctx: TurnContext, window: int) -> RenderedPrompt:
         state_budget = min(math.floor(window * STATE_BLOCK_RATIO), STATE_BLOCK_CAP)
-        world_state = render_state_block(ctx.world, budget_tokens=state_budget)
+        world_state = render_state_block(ctx.world, self._prompts, budget_tokens=state_budget)
         if ctx.action.source == "opening":
             opening = ctx.seed.opening if ctx.seed is not None else None
             return self._prompts.render(
@@ -176,7 +173,10 @@ class ContextAssembler:
                 messages = build(keep)
                 total = estimate_messages(messages)
             if total > limit:
-                raise ContextTooLarge(f"上下文约 {total} token，超过有效窗口 {window} 能容纳的量")
+                raise ContextTooLarge(
+                    f"Context is about {total} tokens, "
+                    f"more than the effective window {window} holds"
+                )
         versions = {
             "director.system": system.version,
             final.name: final.version,

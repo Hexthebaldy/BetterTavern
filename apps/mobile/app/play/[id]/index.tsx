@@ -13,10 +13,11 @@
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { describeError } from "@bettertavern/core/api/client";
+import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { canAct, headTurn, isEnded } from "@bettertavern/core/play/turnMachine";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
@@ -41,6 +42,7 @@ import { radius, space, usePalette } from "../../../src/theme/index.ts";
 function OpeningSkeleton() {
   const palette = usePalette();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   return (
     <View style={{ flex: 1 }}>
       <View
@@ -64,10 +66,10 @@ function OpeningSkeleton() {
       <View
         style={[styles.opening, { bottom: insets.bottom + 30, backgroundColor: palette.bg2 }]}
         accessibilityRole="progressbar"
-        accessibilityLabel="正在打开故事"
+        accessibilityLabel={t("play.opening")}
       >
         <Dots />
-        <Text style={{ fontSize: 13, color: palette.mut }}>正在打开故事</Text>
+        <Text style={{ fontSize: 13, color: palette.mut }}>{t("play.opening")}</Text>
       </View>
     </View>
   );
@@ -75,6 +77,7 @@ function OpeningSkeleton() {
 
 function LoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <View style={styles.failedWrap}>
       <View style={[styles.failed, { backgroundColor: palette.bg2 }]} accessibilityRole="alert">
@@ -84,12 +87,12 @@ function LoadFailed({ message, onRetry }: { message: string; onRetry: () => void
         <Text
           style={{ fontSize: 22, lineHeight: 30, fontWeight: "700", color: palette.ink, textAlign: "center" }}
         >
-          故事没能打开
+          {t("play.openFailed")}
         </Text>
         <Text style={{ fontSize: 15, lineHeight: 24, color: palette.mut, textAlign: "center" }}>
           {message}
         </Text>
-        <Button label="重新加载" icon="retry" onPress={onRetry} style={styles.failedButton} />
+        <Button label={t("common.reload")} icon="retry" onPress={onRetry} style={styles.failedButton} />
       </View>
     </View>
   );
@@ -101,6 +104,7 @@ export default function PlayScreen() {
   const palette = usePalette();
   const overlay = useOverlay();
   const { api } = useApp();
+  const { t } = useTranslation();
   const { reading, worldDocked, setWorldDocked } = usePrefs();
   const { width } = useLayout();
   const controls = usePlaySession(id);
@@ -181,8 +185,8 @@ export default function PlayScreen() {
   const rename = async (): Promise<void> => {
     setMoreOpen(false);
     const next = await overlay.prompt({
-      title: "重命名存档",
-      label: "存档名",
+      title: t("stories.renameTitle"),
+      label: t("stories.nameLabel"),
       initial: shownTitle,
       maxLength: 80,
     });
@@ -191,7 +195,7 @@ export default function PlayScreen() {
       const updated = await api.playthroughs.rename(id, next);
       setTitle(updated.title);
     } catch (e) {
-      overlay.toast(`重命名失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.renameFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
@@ -199,12 +203,12 @@ export default function PlayScreen() {
   const end = async (): Promise<void> => {
     setMoreOpen(false);
     const wish = await overlay.prompt({
-      title: "给这个故事写结局？",
-      message: "导演会接着目前的剧情，写一大段作为结局。写完后故事就结束了，不能撤销，也不能再往下写。",
-      label: "结局方向",
-      placeholder: "想要怎样的结局（可不填）",
+      title: t("play.endTitle"),
+      message: t("play.endMessage"),
+      label: t("play.endWish"),
+      placeholder: t("play.endWishPlaceholder"),
       maxLength: 2000,
-      confirmLabel: "写结局",
+      confirmLabel: t("play.writeEnding"),
       optional: true,
     });
     if (wish === null) return;
@@ -215,18 +219,18 @@ export default function PlayScreen() {
   const remove = async (): Promise<void> => {
     setMoreOpen(false);
     const ok = await overlay.confirm({
-      title: `删除“${shownTitle}”？`,
-      message: "删除后这个存档的故事和世界状态都无法恢复。",
-      confirmLabel: "删除",
+      title: t("common.deleteConfirm", { name: shownTitle }),
+      message: t("stories.deleteMessage"),
+      confirmLabel: t("common.delete"),
       tone: "danger",
     });
     if (!ok) return;
     try {
       await api.playthroughs.remove(id);
-      overlay.toast(`已删除“${shownTitle}”`);
+      overlay.toast(t("common.deleted", { name: shownTitle }));
       router.back();
     } catch (e) {
-      overlay.toast(`删除失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.deleteFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
@@ -244,7 +248,10 @@ export default function PlayScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: palette.bg }}>
         {nav}
-        <LoadFailed message={state.error?.message ?? "加载失败"} onRetry={controls.reload} />
+        <LoadFailed
+          message={state.error ? describeTurnError(state.error) : t("play.loadFailed")}
+          onRetry={controls.reload}
+        />
       </View>
     );
   }
@@ -293,7 +300,7 @@ export default function PlayScreen() {
             <View accessibilityRole="alert" style={[styles.syncing, { backgroundColor: palette.accBg }]}>
               <Icon name="retry" size={16} color={palette.acc} />
               <Text style={{ fontSize: 13.5, fontWeight: "500", color: palette.acc }}>
-                故事有更新，正在同步…
+                {t("play.syncing")}
               </Text>
             </View>
           ) : null}

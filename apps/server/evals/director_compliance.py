@@ -83,7 +83,7 @@ class Scenario:
     protagonist: dict[str, str]
     characters: list[dict[str, str]]
     style: str
-    length_hint: str
+    length: str  # short / medium / long
     opening: str
     actions: list[str]
 
@@ -97,7 +97,9 @@ def load_scenario(path: Path) -> Scenario:
         protagonist=dict(data["protagonist"]),
         characters=[dict(c) for c in data.get("characters") or []],
         style=data.get("style", ""),
-        length_hint=data.get("length_hint", "每次 150 到 300 字"),
+        length=data.get("length")
+        if data.get("length") in ("short", "medium", "long")
+        else "medium",
         opening=data["opening"],
         actions=list(data.get("actions") or []),
     )
@@ -215,7 +217,7 @@ class DirectorEval:
             world=self.scenario.world,
             characters=self.scenario.characters,
             style=self.scenario.style,
-            length_hint=self.scenario.length_hint,
+            length=self.scenario.length,
         )
 
     def messages(self, action: str) -> list[Message]:

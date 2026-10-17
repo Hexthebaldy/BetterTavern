@@ -5,11 +5,12 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelInfo, ModelRoute, Provider } from "@bettertavern/core/api/types";
-import { MANUAL_WINDOW_CHOICES, needsManualWindow } from "@bettertavern/core/settings/labels";
+import { manualWindowChoices, needsManualWindow } from "@bettertavern/core/settings/labels";
 
 import { KeyField, ProviderMark } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, SectionHeader, Segmented } from "../../components/ui.tsx";
@@ -30,11 +31,12 @@ function ProviderTile({
   width: number | undefined;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={provider.display_name}
+      accessibilityLabel={provider.requires_base_url ? t("models.customProvider") : provider.display_name}
       onPress={onPress}
       style={({ pressed }) => [
         styles.tile,
@@ -47,7 +49,7 @@ function ProviderTile({
     >
       <ProviderMark provider={provider.id} size={36} tone={selected ? "acc" : "grey"} />
       <Text style={{ fontSize: 13.5, lineHeight: 18, color: palette.ink }}>
-        {provider.requires_base_url ? "自定义兼容端点" : provider.display_name}
+        {provider.requires_base_url ? t("models.customProvider") : provider.display_name}
       </Text>
     </Pressable>
   );
@@ -64,6 +66,7 @@ export function AddModelForm({
 }) {
   const { api } = useApp();
   const palette = usePalette();
+  const { t } = useTranslation();
   const [provider, setProvider] = useState(providers[0]?.id ?? "");
   const [tilesWidth, setTilesWidth] = useState<number | null>(null);
   const [key, setKey] = useState("");
@@ -116,7 +119,7 @@ export function AddModelForm({
       const list = await api.models.preview(provider, { api_key: key.trim(), base_url: endpoint() });
       if (seq !== requestSeq.current) return;
       setModels(list);
-      if (list.length === 0) setListError("服务商没有返回模型列表");
+      if (list.length === 0) setListError(t("models.emptyList"));
     } catch (e) {
       if (seq !== requestSeq.current) return;
       setModels(null);
@@ -151,7 +154,7 @@ export function AddModelForm({
     setError(null);
     try {
       const tokens = askWindow
-        ? (MANUAL_WINDOW_CHOICES.find((c) => c.value === windowChoice)?.tokens ?? null)
+        ? (manualWindowChoices().find((c) => c.value === windowChoice)?.tokens ?? null)
         : null;
       const created = await api.models.create({
         provider,
@@ -179,11 +182,11 @@ export function AddModelForm({
     <View style={{ gap: space.s }}>
       <View style={[styles.form, { backgroundColor: palette.bg2 }]}>
         <View style={{ gap: space.s }}>
-          <Text style={[styles.label, { color: palette.ink2 }]}>服务商</Text>
+          <Text style={[styles.label, { color: palette.ink2 }]}>{t("models.provider")}</Text>
           <View
             style={styles.tiles}
             accessibilityRole="radiogroup"
-            accessibilityLabel="服务商"
+            accessibilityLabel={t("models.provider")}
             onLayout={(e) => setTilesWidth(e.nativeEvent.layout.width)}
           >
             {providers.map((p) => (
@@ -199,9 +202,9 @@ export function AddModelForm({
         </View>
 
         <View style={{ gap: space.s }}>
-          <Text style={[styles.label, { color: palette.ink2 }]}>API Key</Text>
+          <Text style={[styles.label, { color: palette.ink2 }]}>{t("models.apiKey")}</Text>
           <KeyField
-            label="API Key"
+            label={t("models.apiKey")}
             hideLabel
             onGrey
             value={key}
@@ -210,13 +213,13 @@ export function AddModelForm({
               setModels(null);
             }}
             placeholder="sk-…"
-            hint="只发送这一次，之后只显示后四位。"
+            hint={t("models.keyHint")}
             hintIcon="lock"
           />
         </View>
 
         <View style={{ gap: space.s }}>
-          <Text style={[styles.label, { color: palette.ink2 }]}>端点地址</Text>
+          <Text style={[styles.label, { color: palette.ink2 }]}>{t("models.endpoint")}</Text>
           {needsUrl ? null : (
             <Pressable
               accessibilityRole="checkbox"
@@ -225,12 +228,12 @@ export function AddModelForm({
               style={[styles.choice, { backgroundColor: palette.card }]}
             >
               <CheckMark checked={official} />
-              <Text style={{ fontSize: 15, color: palette.ink }}>使用官方地址</Text>
+              <Text style={{ fontSize: 15, color: palette.ink }}>{t("models.official")}</Text>
             </Pressable>
           )}
           {useOfficial ? null : (
             <Field
-              label="端点地址"
+              label={t("models.endpoint")}
               hideLabel
               onGrey
               value={baseUrl}
@@ -246,14 +249,12 @@ export function AddModelForm({
             />
           )}
           {needsUrl ? (
-            <Text style={[styles.note, { color: palette.mut }]}>
-              OpenAI 兼容接口的地址，通常以 /v1 结尾。
-            </Text>
+            <Text style={[styles.note, { color: palette.mut }]}>{t("models.endpointNote")}</Text>
           ) : null}
         </View>
 
         <Button
-          label={models ? "重新获取模型列表" : "获取模型列表"}
+          label={models ? t("models.refetchList") : t("models.fetchList")}
           variant="secondary"
           icon="retry"
           onPress={() => void fetchModels()}
@@ -275,16 +276,14 @@ export function AddModelForm({
 
       {askWindow ? (
         <View>
-          <SectionHeader title="上下文窗口" />
+          <SectionHeader title={t("models.contextWindow")} />
           <View style={[styles.form, { backgroundColor: palette.bg2, gap: space.m }]}>
             <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink2 }}>
-              {models
-                ? "服务商的列表里没有这个模型能读多少。知道的话选一下；不知道就先按 32K 估计，之后服务商要是报“超长”会自动纠正。"
-                : "还没获取模型列表，保存时会再查一次。查不到的话按这里选的算；不知道就先按 32K 估计。"}
+              {models ? t("models.windowAskListed") : t("models.windowAskUnlisted")}
             </Text>
             <Segmented
               value={windowChoice}
-              options={MANUAL_WINDOW_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
+              options={manualWindowChoices().map((c) => ({ value: c.value, label: c.label }))}
               onChange={setWindowChoice}
               mono
             />
@@ -295,13 +294,13 @@ export function AddModelForm({
       <View style={[styles.form, { backgroundColor: palette.bg2, marginTop: space.s }]}>
         {error ? <Notice message={error} /> : null}
         <Field
-          label="备注名"
+          label={t("models.label")}
           optional
           onGrey
           value={label}
           onChangeText={setLabel}
           maxLength={60}
-          placeholder={chosen || "不填就显示模型名"}
+          placeholder={chosen || t("models.labelPlaceholder")}
         />
         <Pressable
           accessibilityRole="checkbox"
@@ -311,11 +310,11 @@ export function AddModelForm({
         >
           <CheckMark checked={director} />
           <Text style={{ flex: 1, fontSize: 15, color: palette.ink }}>
-            {hasDirector ? "设为导演（替换现在的导演）" : "设为导演"}
+            {hasDirector ? t("models.makeDirectorReplace") : t("models.makeDirector")}
           </Text>
         </Pressable>
         <Button
-          label="保存模型"
+          label={t("models.saveModel")}
           trailingIcon="arrowRight"
           between
           onPress={() => void save()}

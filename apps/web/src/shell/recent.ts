@@ -1,9 +1,10 @@
 /**
- * 侧栏“最近的存档”：按更新时间从新到旧，分成“今天 / 本周 / 更早”三组（本周从周一算起，按本地时间）。
+ * 侧栏“最近的存档”：按更新时间从新到旧，分成今天、本周、更早三组（本周从周一算起，按本地时间）。
+ * 组名在 i18n 资源里：nav.recentGroups.<key>。
  * 空的组不出现。导航条只放最近四个。
  */
 
-export type RecentGroup<T> = { label: "今天" | "本周" | "更早"; items: T[] };
+export type RecentGroup<T> = { key: "today" | "week" | "earlier"; items: T[] };
 
 function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -26,9 +27,9 @@ export function recentGroups<T extends { updated_at: string }>(
   const today = startOfDay(now);
   const week = startOfWeek(now);
   const groups: RecentGroup<T>[] = [
-    { label: "今天", items: [] },
-    { label: "本周", items: [] },
-    { label: "更早", items: [] },
+    { key: "today", items: [] },
+    { key: "week", items: [] },
+    { key: "earlier", items: [] },
   ];
   for (const item of byRecent(items)) {
     const at = Date.parse(item.updated_at);

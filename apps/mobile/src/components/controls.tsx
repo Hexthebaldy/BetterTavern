@@ -7,6 +7,7 @@
  */
 
 import { forwardRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Pressable,
   StyleSheet,
@@ -72,6 +73,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
   ref,
 ) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const multiline = !!input.multiline;
   const count = `${input.value?.length ?? 0} / ${input.maxLength ?? 0}`;
@@ -89,7 +91,9 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
         <View style={styles.labelRow}>
           <Text style={[type.label, { color: palette.ink2, flex: 1 }]}>
             {label}
-            {optional ? <Text style={{ color: palette.mut, fontWeight: "400" }}> 可选</Text> : null}
+            {optional ? (
+              <Text style={{ color: palette.mut, fontWeight: "400" }}> {t("common.optional")}</Text>
+            ) : null}
           </Text>
           {counter && input.maxLength && !multiline ? (
             <Text style={[styles.count, { color: palette.mut }]}>{count}</Text>

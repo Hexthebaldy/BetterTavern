@@ -9,6 +9,7 @@
  */
 
 import { memo, type CSSProperties, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   actionNote,
@@ -62,6 +63,7 @@ export function BookHeader({
   protagonist: string;
   coverWidth: number;
 }) {
+  const { t } = useTranslation();
   return (
     <header className={styles.book}>
       <Cover seed={seed} blobId={blobId} width={coverWidth} height={112} surface="onFill" rounded={20} />
@@ -69,7 +71,7 @@ export function BookHeader({
       {card || protagonist ? (
         <div className={styles.bookChips}>
           {card ? <Pill label={card} className={styles.cardPill} /> : null}
-          {protagonist ? <Pill label={`我是 ${protagonist}`} tone="acc" /> : null}
+          {protagonist ? <Pill label={t("play.iAm", { name: protagonist })} tone="acc" /> : null}
         </div>
       ) : null}
     </header>
@@ -78,9 +80,10 @@ export function BookHeader({
 
 /** “我的行动”：和叙述同样的字，颜色浅一档，左边一道竖线；读屏时前面加上“我的行动：” */
 function ActionNote({ text }: { text: string }) {
+  const { t } = useTranslation();
   return (
     <p className={styles.note}>
-      <span className={styles.srOnly}>我的行动：</span>
+      <span className={styles.srOnly}>{t("play.myActionPrefix")}</span>
       {text}
     </p>
   );
@@ -98,6 +101,7 @@ function Narrative({
   caret?: "live" | "waiting";
   interrupted?: boolean;
 }) {
+  const { t } = useTranslation();
   const parts = paragraphs(text);
   const caretNode = caret ? (
     <span className={cx(styles.caret, caret === "waiting" && styles.caretWaiting)} aria-hidden="true" />
@@ -111,7 +115,7 @@ function Narrative({
           <p key={i} className={cx(styles.narrative, "narrative", dim && styles.dim)}>
             {p}
             {last ? caretNode : null}
-            {last && interrupted ? <span className={styles.cut}>中断</span> : null}
+            {last && interrupted ? <span className={styles.cut}>{t("play.interrupted")}</span> : null}
           </p>
         );
       })}
@@ -120,6 +124,8 @@ function Narrative({
 }
 
 const TurnBlock = memo(function TurnBlock({ turn }: { turn: StoryTurn }) {
+  // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
+  useTranslation();
   const note = actionNote(turn.action);
   return (
     <section className={cx(styles.turn, styles.settled)}>
@@ -131,6 +137,7 @@ const TurnBlock = memo(function TurnBlock({ turn }: { turn: StoryTurn }) {
 
 /** 第一次开场：先搭建世界，再写开场。当前一步是白色的圆角行 */
 function OpeningSteps({ building }: { building: boolean }) {
+  const { t } = useTranslation();
   const step = (label: string, state: "active" | "done" | "todo") => (
     <div className={cx(styles.stepRow, state === "active" && styles.stepActive)}>
       <span className={cx(styles.stepMark, styles[`mark-${state}`])}>
@@ -143,10 +150,10 @@ function OpeningSteps({ building }: { building: boolean }) {
   return (
     <div aria-live="polite">
       <div className={styles.steps}>
-        {step(building ? "正在根据角色卡搭建世界…" : "搭建世界", building ? "active" : "done")}
-        {step(building ? "写开场" : "正在写开场…", building ? "todo" : "active")}
+        {step(building ? t("play.building") : t("play.buildWorld"), building ? "active" : "done")}
+        {step(building ? t("play.writeOpening") : t("play.writingOpeningStep"), building ? "todo" : "active")}
       </div>
-      <p className={styles.stepNote}>第一次开场比较慢。可以先离开，写好后会出现在“存档”里。</p>
+      <p className={styles.stepNote}>{t("play.slowNote")}</p>
     </div>
   );
 }
@@ -178,12 +185,13 @@ function PendingBlock({ pending, phase }: { pending: PendingTurn; phase: Phase }
 
 /** 开场还没写（上次中断了） */
 function OpeningMissing() {
+  const { t } = useTranslation();
   return (
     <div className={styles.missing}>
       <span className={styles.missingIcon}>
         <Icon name="untested" size={18} />
       </span>
-      开场还没有写好，上次可能中断了。
+      {t("play.noOpening")}
     </div>
   );
 }
@@ -198,6 +206,7 @@ export function StoryFeed({
   /** 接在最后一段后面的行动区 */
   footer?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const missingOpening = state.turns.length === 0 && state.phase === "idle";
   return (
     <>
@@ -208,7 +217,7 @@ export function StoryFeed({
       {state.pending ? <PendingBlock pending={state.pending} phase={state.phase} /> : null}
       {missingOpening ? <OpeningMissing /> : null}
       {isEnded(state) ? (
-        <p className={styles.end} aria-label="全文完">
+        <p className={styles.end} aria-label={t("play.theEnd")}>
           —END—
         </p>
       ) : null}

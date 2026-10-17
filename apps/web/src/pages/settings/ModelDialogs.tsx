@@ -1,11 +1,12 @@
 /** 模型详情页的对话框（同 App 的 ModelSheets）：编辑（备注名、模型名、端点）、更换 Key、填写上下文窗口 */
 
 import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoutePatch } from "@bettertavern/core/api/endpoints";
 import type { ModelRoute, Provider } from "@bettertavern/core/api/types";
-import { MANUAL_WINDOW_CHOICES, manualWindowChoice } from "@bettertavern/core/settings/labels";
+import { manualWindowChoice, manualWindowChoices } from "@bettertavern/core/settings/labels";
 
 import { Button, Checkbox, Field, Notice } from "../../components/controls.tsx";
 import { Dialog } from "../../overlay/Dialog.tsx";
@@ -44,6 +45,7 @@ export function EditDialog({
   onClose: () => void;
   onSaved: (route: ModelRoute) => void;
 }) {
+  const { t } = useTranslation();
   const { api } = useApp();
   const first = useRef<HTMLInputElement>(null);
   const needsUrl = provider?.requires_base_url ?? false;
@@ -75,11 +77,11 @@ export function EditDialog({
   };
 
   return (
-    <Frame title="编辑模型" onClose={onClose} first={first}>
+    <Frame title={t("models.editTitle")} onClose={onClose} first={first}>
       {error ? <Notice message={error} /> : null}
       <Field
         ref={first}
-        label="备注名"
+        label={t("models.label")}
         optional
         value={label}
         onChange={(e) => setLabel(e.target.value)}
@@ -87,7 +89,7 @@ export function EditDialog({
         placeholder={route.model}
       />
       <Field
-        label="模型名"
+        label={t("models.modelName")}
         className={styles.monoField}
         value={model}
         onChange={(e) => setModel(e.target.value)}
@@ -95,15 +97,19 @@ export function EditDialog({
         maxLength={200}
       />
       <div className={styles.formGroup}>
-        <span className={styles.formLabel}>端点地址</span>
+        <span className={styles.formLabel}>{t("models.endpoint")}</span>
         {needsUrl ? null : (
           <div className={styles.choice}>
-            <Checkbox label="使用官方地址" checked={official} onToggle={() => setOfficial((v) => !v)} />
+            <Checkbox
+              label={t("models.official")}
+              checked={official}
+              onToggle={() => setOfficial((v) => !v)}
+            />
           </div>
         )}
         {useOfficial ? null : (
           <Field
-            label="端点地址"
+            label={t("models.endpoint")}
             className={`${styles.hiddenLabel} ${styles.monoField}`}
             type="url"
             spellCheck={false}
@@ -115,11 +121,11 @@ export function EditDialog({
       </div>
       {urlChanged || modelChanged ? (
         <p className={styles.warnNote}>
-          换了{modelChanged ? "模型名" : "端点"}，之前的测试结果和上下文窗口会重新确定。
+          {modelChanged ? t("models.changedModel") : t("models.changedEndpoint")}
         </p>
       ) : null}
       <Button
-        label="保存"
+        label={t("common.save")}
         size="lg"
         busy={busy}
         disabled={!model.trim() || (!useOfficial && !baseUrl.trim())}
@@ -138,6 +144,7 @@ export function ReplaceKeyDialog({
   onClose: () => void;
   onSaved: (route: ModelRoute) => void;
 }) {
+  const { t } = useTranslation();
   const { api } = useApp();
   const first = useRef<HTMLInputElement>(null);
   const shared = route.shares_key_with.length;
@@ -159,26 +166,32 @@ export function ReplaceKeyDialog({
     }
   };
   return (
-    <Frame title="更换 Key" onClose={onClose} first={first}>
+    <Frame title={t("models.replaceKey")} onClose={onClose} first={first}>
       {error ? <Notice message={error} /> : null}
       <KeyField
         ref={first}
-        label="新的 API Key"
+        label={t("models.newKey")}
         value={key}
         onChange={(e) => setKey(e.target.value)}
         placeholder="sk-…"
-        hint={`现在的尾号 ${route.key_last4}。换了之后测试结果会清空。`}
+        hint={t("models.currentTail", { last4: route.key_last4 })}
       />
       {shared > 0 ? (
         <div className={styles.choice}>
           <Checkbox
-            label={`另外 ${shared} 个模型也用这个 Key，一起换`}
+            label={t("models.shareKey", { count: shared })}
             checked={together}
             onToggle={() => setTogether((v) => !v)}
           />
         </div>
       ) : null}
-      <Button label="更换" size="lg" busy={busy} disabled={!key.trim()} onClick={() => void save()} />
+      <Button
+        label={t("models.replace")}
+        size="lg"
+        busy={busy}
+        disabled={!key.trim()}
+        onClick={() => void save()}
+      />
     </Frame>
   );
 }
@@ -192,6 +205,7 @@ export function WindowDialog({
   onClose: () => void;
   onSaved: (route: ModelRoute) => void;
 }) {
+  const { t } = useTranslation();
   const { api } = useApp();
   const first = useRef<HTMLInputElement>(null);
   const [choice, setChoice] = useState(manualWindowChoice(route.manual_window));
@@ -201,7 +215,7 @@ export function WindowDialog({
     setBusy(true);
     setError(null);
     try {
-      const tokens = MANUAL_WINDOW_CHOICES.find((c) => c.value === choice)?.tokens ?? null;
+      const tokens = manualWindowChoices().find((c) => c.value === choice)?.tokens ?? null;
       onSaved(await api.models.update(route.id, { manual_window: tokens }));
       onClose();
     } catch (e) {
@@ -210,19 +224,17 @@ export function WindowDialog({
     }
   };
   return (
-    <Frame title="上下文窗口" onClose={onClose} first={first}>
+    <Frame title={t("models.contextWindow")} onClose={onClose} first={first}>
       {error ? <Notice message={error} /> : null}
-      <p className={styles.lead}>
-        这个模型一次最多能读多少 token。服务商的说明页一般会写；不知道就选“不知道”，先按 32K 估计。
-      </p>
+      <p className={styles.lead}>{t("models.windowSheetNote", { unknown: t("models.manualUnknown") })}</p>
       <Segmented
-        label="上下文窗口"
+        label={t("models.contextWindow")}
         value={choice}
-        options={MANUAL_WINDOW_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
+        options={manualWindowChoices().map((c) => ({ value: c.value, label: c.label }))}
         onChange={setChoice}
         mono
       />
-      <Button label="保存" size="lg" busy={busy} onClick={() => void save()} />
+      <Button label={t("common.save")} size="lg" busy={busy} onClick={() => void save()} />
     </Frame>
   );
 }

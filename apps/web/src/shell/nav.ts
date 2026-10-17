@@ -2,12 +2,18 @@
 
 import type { IconName } from "@bettertavern/design/icons";
 
-export type NavItem = { to: string; label: string; icon: IconName; prefixes: string[] };
+/** name 是 i18n 资源里 nav.<name> 的名字 */
+export type NavItem = {
+  to: string;
+  name: "saves" | "library" | "settings";
+  icon: IconName;
+  prefixes: string[];
+};
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/playthroughs", label: "存档", icon: "story", prefixes: ["/playthroughs"] },
-  { to: "/library", label: "剧本", icon: "library", prefixes: ["/library", "/scenario"] },
-  { to: "/settings", label: "设置", icon: "settings", prefixes: ["/settings", "/dev"] },
+  { to: "/playthroughs", name: "saves", icon: "story", prefixes: ["/playthroughs"] },
+  { to: "/library", name: "library", icon: "library", prefixes: ["/library", "/scenario"] },
+  { to: "/settings", name: "settings", icon: "settings", prefixes: ["/settings", "/dev"] },
 ];
 
 export function isActive(item: NavItem, pathname: string): boolean {

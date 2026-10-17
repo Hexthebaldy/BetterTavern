@@ -22,6 +22,7 @@ import {
 import { useNavigate } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
+import { i18n } from "@bettertavern/core/i18n/index";
 
 import { scenariosKey } from "../data/scenarios.ts";
 import { useOverlay } from "../overlay/OverlayProvider.tsx";
@@ -53,7 +54,7 @@ const ImportContext = createContext<Importer | null>(null);
 
 export function useImporter(): Importer {
   const value = useContext(ImportContext);
-  if (!value) throw new Error("useImporter 必须在 ImportProvider 里使用");
+  if (!value) throw new Error("useImporter must be used inside ImportProvider");
   return value;
 }
 
@@ -96,7 +97,10 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           outcomes.push({
             kind: "failed",
-            problem: { title: `${file.name} 导入失败`, message: describeError(e) },
+            problem: {
+              title: i18n.t("library.importFailed", { name: file.name }),
+              message: describeError(e),
+            },
           });
         }
       }
@@ -112,9 +116,9 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       }
       if (window.location.pathname !== "/library") navigate("/library");
       if (outcomes.length === 1 && only?.kind === "duplicate") {
-        overlay.toast(`“${only.name}”之前已经导入过了`, {
+        overlay.toast(i18n.t("library.duplicate", { name: only.name }), {
           icon: "info",
-          actionLabel: "打开",
+          actionLabel: i18n.t("common.open"),
           onAction: () => navigate(`/scenario/${encodeURIComponent(only.id)}`),
         });
         return;

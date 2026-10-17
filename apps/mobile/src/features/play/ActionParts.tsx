@@ -3,6 +3,7 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 
 import type { TurnOption } from "@bettertavern/core/api/types";
@@ -33,11 +34,12 @@ export function OptionRow({
 }) {
   const palette = usePalette();
   const surfaces = useSheetSurfaces();
+  const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${KEYS[index] ?? ""}：${option.text}`}
-      accessibilityHint="选择这个行动"
+      accessibilityLabel={t("play.optionLabel", { key: KEYS[index] ?? "", text: option.text })}
+      accessibilityHint={t("play.chooseHint")}
       accessibilityState={{ disabled, selected: chosen }}
       disabled={disabled}
       onPress={onPress}
@@ -87,6 +89,7 @@ export function FreeInput({
   onClose: (() => void) | null;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const surfaces = useSheetSurfaces();
   const [focused, setFocused] = useState(false);
   const trimmed = draft.trim();
@@ -97,12 +100,12 @@ export function FreeInput({
       <TextInput
         value={draft}
         onChangeText={onDraft}
-        placeholder="我……（用第一人称写下你要做的事）"
+        placeholder={t("play.inputPlaceholder")}
         placeholderTextColor={palette.mut}
         multiline
         autoFocus={onClose !== null}
         maxLength={MAX_TEXT}
-        accessibilityLabel="我要做的事"
+        accessibilityLabel={t("play.inputLabel")}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={[
@@ -125,10 +128,12 @@ export function FreeInput({
             ]}
           >
             <Icon name="chevronDown" size={20} />
-            <Text style={{ fontSize: 15, color: palette.ink }}>收起</Text>
+            <Text style={{ fontSize: 15, color: palette.ink }}>{t("common.collapse")}</Text>
           </Pressable>
         ) : null}
-        {left <= 200 ? <Text style={[styles.left, { color: palette.mut }]}>剩 {left}</Text> : null}
+        {left <= 200 ? (
+          <Text style={[styles.left, { color: palette.mut }]}>{t("play.left", { n: left })}</Text>
+        ) : null}
         <View style={{ flex: 1 }} />
         <Pressable
           accessibilityRole="button"
@@ -147,7 +152,7 @@ export function FreeInput({
           <View style={[styles.sendIcon, { backgroundColor: palette.arrowBg }]}>
             <Icon name="send" size={16} color={palette.onPri} />
           </View>
-          <Text style={{ fontSize: 15, fontWeight: "500", color: palette.onPri }}>发送</Text>
+          <Text style={{ fontSize: 15, fontWeight: "500", color: palette.onPri }}>{t("play.send")}</Text>
         </Pressable>
       </View>
     </View>

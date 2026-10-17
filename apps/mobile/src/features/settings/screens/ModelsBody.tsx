@@ -4,12 +4,13 @@
  * 路由页面是 app/settings/models.tsx；宽屏设置两栏时嵌在右栏里（见 ../nav.tsx）。
  */
 
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
 import { formatTokens } from "@bettertavern/core/utils/format";
-import { MODEL_STATUS, modelTitle, statusKind } from "@bettertavern/core/settings/labels";
+import { modelStatusLabel, modelTitle, statusKind } from "@bettertavern/core/settings/labels";
 
 import { ProviderMark } from "../../../components/KeyParts.tsx";
 import {
@@ -31,10 +32,13 @@ import { SettingsBack, useSettingsNav } from "../nav.tsx";
 
 function ModelRow({ route, onPress }: { route: ModelRoute; onPress: () => void }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${modelTitle(route)}${route.is_director ? "，导演" : ""}`}
+      accessibilityLabel={t(route.is_director ? "models.rowLabelDirector" : "models.rowLabel", {
+        name: modelTitle(route),
+      })}
       onPress={onPress}
       style={({ pressed }) => [styles.row, { backgroundColor: pressed ? palette.bg3 : "transparent" }]}
     >
@@ -60,11 +64,11 @@ function ModelRow({ route, onPress }: { route: ModelRoute; onPress: () => void }
             {route.label ? `${route.model} · ` : ""}•••• {route.key_last4} ·{" "}
             {formatTokens(route.window.model_window)}
           </Text>
-          <Status kind={statusKind(route.status)} label={MODEL_STATUS[route.status]} />
+          <Status kind={statusKind(route.status)} label={modelStatusLabel(route.status)} />
         </View>
       </View>
       {route.is_director ? (
-        <Pill label="导演" tone="acc" height={26} />
+        <Pill label={t("models.directorPill")} tone="acc" height={26} />
       ) : (
         <Icon name="chevronRight" size={18} color={palette.mut} />
       )}
@@ -77,6 +81,7 @@ export function ModelsBody() {
   const nav = useSettingsNav();
   const column = useColumnStyle();
   const palette = usePalette();
+  const { t } = useTranslation();
   const { data, error, loading, reload } = useAsync(async () => {
     const [providers, routes] = await Promise.all([api.models.providers(), api.models.list()]);
     return { providers, routes };
@@ -87,7 +92,11 @@ export function ModelsBody() {
     return (
       <View style={{ flex: 1, backgroundColor: palette.bg }}>
         <SettingsBack />
-        <ErrorState title="模型列表没加载出来" message={describeError(error)} onRetry={() => void reload()} />
+        <ErrorState
+          title={t("models.loadFailed")}
+          message={describeError(error)}
+          onRetry={() => void reload()}
+        />
       </View>
     );
   }
@@ -101,17 +110,15 @@ export function ModelsBody() {
       <ScrollView contentContainerStyle={[{ paddingBottom: 56 }, column]} keyboardShouldPersistTaps="handled">
         <View style={styles.head}>
           <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
-            模型
+            {t("models.title")}
           </Text>
-          <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut }}>
-            故事由你自己的模型来写。添加模型时把 Key 和模型一起配好，再选一个当导演；以后换导演点一下就行。
-          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut }}>{t("models.intro")}</Text>
         </View>
         {error ? (
           <Notice
             icon="offline"
             message={describeError(error)}
-            actionLabel="重试"
+            actionLabel={t("common.retry")}
             onAction={() => void reload()}
             style={styles.inset}
           />
@@ -123,7 +130,7 @@ export function ModelsBody() {
             ))}
           </Group>
         ) : null}
-        <SectionHeader title="添加模型" />
+        <SectionHeader title={t("models.add")} />
         {providers.length > 0 ? (
           <AddModelForm
             providers={providers}

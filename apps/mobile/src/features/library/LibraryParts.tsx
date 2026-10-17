@@ -3,10 +3,12 @@
  */
 
 import { useEffect, useRef, type ReactNode, type Ref } from "react";
+import { useTranslation } from "react-i18next";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import type { Scenario } from "@bettertavern/core/api/types";
+import { i18n } from "@bettertavern/core/i18n/index";
 import { formatBytes } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../components/Cover.tsx";
@@ -15,7 +17,11 @@ import type { LibraryView } from "../../state/PrefsProvider.tsx";
 import { font, radius, size, space, usePalette } from "../../theme/index.ts";
 
 export function summary(s: Scenario): string {
-  return s.description_preview || s.first_mes_preview || (s.creator ? `作者：${s.creator}` : "");
+  return (
+    s.description_preview ||
+    s.first_mes_preview ||
+    (s.creator ? i18n.t("library.byCreator", { creator: s.creator }) : "")
+  );
 }
 
 export type Importing = { name: string; size: number | undefined };
@@ -37,6 +43,7 @@ export function HeaderControls({
   labelled: boolean;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const option = (value: LibraryView, icon: IconName, label: string) => {
     const on = view === value;
     return (
@@ -58,15 +65,15 @@ export function HeaderControls({
     <View style={styles.controls}>
       <View
         accessibilityRole="radiogroup"
-        accessibilityLabel="视图"
+        accessibilityLabel={t("library.view")}
         style={[styles.seg, { backgroundColor: palette.bg2 }]}
       >
-        {option("grid", "grid", "网格")}
-        {option("list", "list", "列表")}
+        {option("grid", "grid", t("library.grid"))}
+        {option("list", "list", t("library.list"))}
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={importing ? "正在导入" : "导入角色卡"}
+        accessibilityLabel={importing ? t("library.importing") : t("library.import")}
         accessibilityState={{ disabled: importing, busy: importing }}
         disabled={importing}
         onPress={onImport}
@@ -81,7 +88,7 @@ export function HeaderControls({
         <Icon name="plus" size={labelled ? 18 : 22} color={importing ? palette.mut : palette.bg} />
         {labelled ? (
           <Text style={{ fontSize: 15, fontWeight: "500", color: importing ? palette.mut : palette.bg }}>
-            导入角色卡
+            {t("library.import")}
           </Text>
         ) : null}
       </Pressable>
@@ -107,11 +114,12 @@ export function Tile({
   onLongPress: () => void;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <Pressable
       ref={ref}
       accessibilityRole="button"
-      accessibilityHint="打开剧本；长按可以重命名或删除"
+      accessibilityHint={t("library.cardHint")}
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [
@@ -194,18 +202,19 @@ function Spinner({ size: d = 56 }: { size?: number }) {
 /** 网格里“正在导入”的那一格 */
 export function ImportingTile({ file, width }: { file: Importing; width: number }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const coverWidth = width - TILE_PAD * 2;
   return (
     <View
       accessibilityRole="progressbar"
-      accessibilityLabel={`正在导入 ${file.name}`}
+      accessibilityLabel={t("library.importingFile", { name: file.name })}
       style={[styles.tile, { width, backgroundColor: palette.bg2 }]}
     >
       <View style={[styles.importCover, { height: (coverWidth * 76) / 96, backgroundColor: palette.card }]}>
         <Spinner />
       </View>
       <View style={styles.tileMeta}>
-        <Text style={[styles.name, { color: palette.mut }]}>正在导入</Text>
+        <Text style={[styles.name, { color: palette.mut }]}>{t("library.importing")}</Text>
         <Text
           numberOfLines={2}
           style={[styles.summary, { fontFamily: font.mono, fontSize: 11.5, color: palette.mut }]}
@@ -221,15 +230,16 @@ export function ImportingTile({ file, width }: { file: Importing; width: number 
 /** 列表视图里“正在导入”的那一行 */
 export function ImportingRow({ file }: { file: Importing }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <View
       accessibilityRole="progressbar"
-      accessibilityLabel={`正在导入 ${file.name}`}
+      accessibilityLabel={t("library.importingFile", { name: file.name })}
       style={[styles.row, { backgroundColor: palette.bg2, alignItems: "center" }]}
     >
       <Spinner size={32} />
       <Text style={{ flex: 1, color: palette.mut }} numberOfLines={1}>
-        正在导入 {file.name}
+        {t("library.importingFile", { name: file.name })}
       </Text>
     </View>
   );
@@ -281,6 +291,7 @@ export function Row({
 
 export function Empty({ onImport, importing }: { onImport: () => void; importing: boolean }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const doc = (inner: ReactNode) => (
     <Svg width={44} height={52} viewBox="0 0 44 52">
       <Path
@@ -306,7 +317,7 @@ export function Empty({ onImport, importing }: { onImport: () => void; importing
           )}
           <View>
             <Text style={{ fontWeight: "700", color: palette.ink }}>PNG</Text>
-            <Text style={[styles.summary, { color: palette.mut, minHeight: 0 }]}>卡面图片里带数据</Text>
+            <Text style={[styles.summary, { color: palette.mut, minHeight: 0 }]}>{t("library.pngNote")}</Text>
           </View>
         </View>
         <View style={[styles.kind, { backgroundColor: palette.bg2 }]}>
@@ -322,13 +333,15 @@ export function Empty({ onImport, importing }: { onImport: () => void; importing
           )}
           <View>
             <Text style={{ fontWeight: "700", color: palette.ink }}>JSON</Text>
-            <Text style={[styles.summary, { color: palette.mut, minHeight: 0 }]}>纯文本角色卡</Text>
+            <Text style={[styles.summary, { color: palette.mut, minHeight: 0 }]}>
+              {t("library.jsonNote")}
+            </Text>
           </View>
         </View>
       </View>
       <View style={[styles.emptyBody, { backgroundColor: palette.bg2 }]}>
-        <Text style={[styles.emptyTitle, { color: palette.ink }]}>导入第一张角色卡</Text>
-        <View style={styles.specs} accessibilityLabel="支持 SillyTavern V1、V2、V3">
+        <Text style={[styles.emptyTitle, { color: palette.ink }]}>{t("library.emptyTitle")}</Text>
+        <View style={styles.specs} accessibilityLabel={t("library.supports")}>
           {["SillyTavern", "V1", "V2", "V3"].map((label, i) => (
             <View
               key={label}
@@ -347,10 +360,16 @@ export function Empty({ onImport, importing }: { onImport: () => void; importing
             <Icon name="world" size={18} color={palette.ink2} />
           </View>
           <Text style={{ flex: 1, paddingTop: 5, fontSize: 14, lineHeight: 22, color: palette.ink2 }}>
-            卡里附带的世界书，会转成故事的世界状态。
+            {t("library.bookNote")}
           </Text>
         </View>
-        <Button label="导入角色卡" trailingIcon="import" between busy={importing} onPress={onImport} />
+        <Button
+          label={t("library.import")}
+          trailingIcon="import"
+          between
+          busy={importing}
+          onPress={onImport}
+        />
         <Text style={{ fontFamily: font.mono, fontSize: 11.5, color: palette.mut, textAlign: "center" }}>
           .PNG / .JSON · ≤ 16 MB
         </Text>

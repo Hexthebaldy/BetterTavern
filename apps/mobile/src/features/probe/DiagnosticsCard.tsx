@@ -4,6 +4,7 @@
  */
 
 import { useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
 import { Share, StyleSheet, Text, View } from "react-native";
 
 import { diagnostics, exportText } from "@bettertavern/core/observability/log";
@@ -17,6 +18,7 @@ import { space, usePalette } from "../../theme/index.ts";
 export function DiagnosticsCard() {
   const palette = usePalette();
   const overlay = useOverlay();
+  const { t } = useTranslation();
   const { serverUrl } = useApp();
   const count = useSyncExternalStore(
     (listener) => diagnostics.subscribe(listener),
@@ -30,17 +32,17 @@ export function DiagnosticsCard() {
       server: serverUrl,
     });
     try {
-      await Share.share({ message, title: "BetterTavern 诊断日志" });
+      await Share.share({ message, title: t("diagnostics.shareTitle") });
     } catch {
-      overlay.toast("没能打开分享面板", { icon: "alert" });
+      overlay.toast(t("diagnostics.shareFailed"), { icon: "alert" });
     }
   };
 
   const clear = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "清空诊断日志？",
-      message: "手机上保存的记录会全部删掉，服务器上的日志不受影响。",
-      confirmLabel: "清空",
+      title: t("diagnostics.clearTitle"),
+      message: t("diagnostics.clearMessage"),
+      confirmLabel: t("diagnostics.clear"),
       tone: "danger",
     });
     if (ok) diagnostics.clear();
@@ -48,22 +50,19 @@ export function DiagnosticsCard() {
 
   return (
     <View>
-      <SectionHeader title="诊断日志" meta={`${count} 条`} />
+      <SectionHeader title={t("diagnostics.title")} meta={t("diagnostics.count", { count })} />
       <View style={[styles.card, { backgroundColor: palette.bg2 }]}>
-        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink2 }}>
-          {"手机上保留最近 500 条记录：失败和慢的请求、推送连接的断开和重连、回合状态的变化、App 报错。" +
-            "不含故事内容和密钥，只存在这台手机上。出问题时导出来发给开发者，按里面的单号能在服务器日志里找到对应的记录。"}
-        </Text>
+        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink2 }}>{t("diagnostics.about")}</Text>
         <View style={styles.buttons}>
           <Button
-            label="导出"
+            label={t("diagnostics.export")}
             icon="share"
             onPress={() => void share()}
             disabled={count === 0}
             style={styles.flex}
           />
           <Button
-            label="清空"
+            label={t("diagnostics.clear")}
             icon="trash"
             variant="secondary"
             onGrey

@@ -15,7 +15,7 @@ from bettertavern.domain.scenario.edit import CardEdit, LoreEntryEdit
 from bettertavern.importers.character_card import MAX_UPLOAD_BYTES
 from bettertavern.services.errors import AppError
 
-router = APIRouter(prefix="/v1", tags=["剧本库"])
+router = APIRouter(prefix="/v1", tags=["library"])
 
 # 保存编辑后的卡片：一张卡最多 30 万字，中文按 UTF-8 接近 1 MB，再加上 JSON 的引号和转义
 MAX_CARD_BODY_BYTES = 4 * 1024 * 1024
@@ -33,7 +33,9 @@ async def import_scenario(
     await file.close()
     if len(data) > MAX_UPLOAD_BYTES:
         raise AppError(
-            f"文件超过 {MAX_UPLOAD_BYTES // (1024 * 1024)} MB", code="PAYLOAD_TOO_LARGE", status=413
+            f"File exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MB",
+            code="PAYLOAD_TOO_LARGE",
+            status=413,
         )
     view = await services.scenarios.import_file(user_id, data)
     if view.duplicate:

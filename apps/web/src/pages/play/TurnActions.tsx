@@ -6,7 +6,9 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
+import { describeTurnError } from "@bettertavern/core/api/client";
 import type { TurnOption } from "@bettertavern/core/api/types";
 import {
   canAct,
@@ -34,6 +36,7 @@ function OptionRow({
   disabled: boolean;
   onPick: () => void;
 }) {
+  const { t } = useTranslation();
   // 按下即选中：浅蓝底、2px 蓝色内描边，字母圆变蓝（提交后选项就消失了）
   const [chosen, setChosen] = useState(false);
   return (
@@ -51,7 +54,7 @@ function OptionRow({
         {KEYS[index] ?? "·"}
       </span>
       <span className={styles.optionText}>
-        <span className={styles.srOnly}>{KEYS[index] ?? ""}：</span>
+        <span className={styles.srOnly}>{t("play.optionLabel", { key: KEYS[index] ?? "", text: "" })}</span>
         {option.text}
       </span>
     </button>
@@ -72,6 +75,7 @@ export function TurnActions({
   onPicked: () => void;
   twoColumns: boolean;
 }) {
+  const { t } = useTranslation();
   if (state.phase === "loading" || state.phase === "load_failed") return null;
 
   if (state.phase === "failed" && state.error) {
@@ -83,18 +87,22 @@ export function TurnActions({
           <Icon name="alert" size={20} />
           <span>
             {routeMissing
-              ? "没有可用模型。先添加密钥，再选一个导演模型。"
+              ? t("play.noModel")
               : state.pending?.narrative
-                ? `这一段没写完：${state.error.message}`
-                : state.error.message}
+                ? t("play.unfinished", { error: describeTurnError(state.error) })
+                : describeTurnError(state.error)}
           </span>
         </div>
         <div className={styles.failButtons}>
-          <Button label={opening ? "关闭" : "换个行动"} variant="secondary" onClick={controls.dismissError} />
+          <Button
+            label={opening ? t("common.close") : t("play.changeAction")}
+            variant="secondary"
+            onClick={controls.dismissError}
+          />
           {routeMissing ? (
-            <Button label="去设置模型" onClick={onOpenSettings} />
+            <Button label={t("play.goModels")} onClick={onOpenSettings} />
           ) : canRetry(state) ? (
-            <Button label="重试" icon="retry" onClick={controls.retry} />
+            <Button label={t("common.retry")} icon="retry" onClick={controls.retry} />
           ) : null}
         </div>
       </div>
@@ -104,7 +112,7 @@ export function TurnActions({
     return (
       <div className={styles.area}>
         <Button
-          label="开始故事"
+          label={t("start.button")}
           size="lg"
           between
           trailingIcon="arrowRight"

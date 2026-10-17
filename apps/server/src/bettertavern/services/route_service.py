@@ -85,23 +85,23 @@ class RouteService:
 
     def _check_provider(self, provider: str) -> None:
         if provider not in self._hub.registry:
-            raise Invalid(f"不支持的服务商：{provider}", field="provider")
+            raise Invalid(f"Unsupported provider: {provider}", field="provider")
 
     async def _check_endpoint(self, provider: str, base_url: str | None) -> str | None:
         profile = self._hub.registry.get(provider)
         url = (base_url or "").strip() or None
         if url is None:
             if profile.requires_base_url or not profile.default_base_url:
-                raise Invalid(f"{profile.display_name} 需要填写接口地址", field="base_url")
+                raise Invalid(f"{profile.display_name} needs an endpoint URL", field="base_url")
             return None
         url = url.rstrip("/")
         if len(url) > 500:
-            raise Invalid("接口地址太长", field="base_url")
+            raise Invalid("The endpoint URL is too long", field="base_url")
         try:
             await validate_endpoint(url, self._policy)
         except EndpointNotAllowed as exc:
             raise AppError(
-                f"接口地址不可用：{exc.reason}",
+                f"Endpoint not allowed: {exc.reason}",
                 code="ENDPOINT_NOT_ALLOWED",
                 status=422,
                 reason=exc.reason,
@@ -116,11 +116,11 @@ class RouteService:
 
     async def _row(self, user_id: str, route_id: str) -> repo.RouteRow:
         if not is_uuid(route_id):
-            raise NotFound("模型不存在")
+            raise NotFound("Model not found")
         async with self._engine.connect() as conn:
             row = await repo.get_route(conn, user_id, route_id)
         if row is None:
-            raise NotFound("模型不存在")
+            raise NotFound("Model not found")
         return row
 
     async def get(self, user_id: str, route_id: str) -> RouteView:
@@ -150,10 +150,10 @@ class RouteService:
                     async with self._engine.begin() as conn:
                         await repo.set_status(conn, route_id, status="invalid", ok=False)
                 raise AppError(
-                    "服务商拒绝了这个 Key", code="CREDENTIAL_INVALID", status=424
+                    "The provider rejected this key", code="CREDENTIAL_INVALID", status=424
                 ) from exc
             raise AppError(
-                f"获取模型列表失败：{exc.message[:200]}",
+                f"Couldn't get the model list: {exc.message[:200]}",
                 code="PROVIDER_ERROR",
                 status=502,
                 error_class=exc.error_class.value,
@@ -176,10 +176,10 @@ class RouteService:
         if api_key is not None and api_key.strip():
             return inp.clean_key(api_key), {}, None
         if copy_key_from is None:
-            raise Invalid("请填写 API Key", field="api_key")
+            raise Invalid("Enter an API key", field="api_key")
         source = await self._row(user_id, copy_key_from)
         if source.provider != provider:
-            raise Invalid("只能复用同一个服务商的 Key", field="copy_key_from")
+            raise Invalid("You can only reuse a key from the same provider", field="copy_key_from")
         return self._codec.key(source), self._codec.headers(source), source.base_url
 
     async def preview_models(
@@ -378,7 +378,7 @@ class RouteService:
             changed.append("fallback_route_id")
         elif patch.fallback_route_id is not None:
             if patch.fallback_route_id == row.id:
-                raise Invalid("备用模型不能是它自己", field="fallback_route_id")
+                raise Invalid("A model can't be its own fallback", field="fallback_route_id")
             await self._row(user_id, patch.fallback_route_id)
             row = dataclasses.replace(row, fallback_route_id=patch.fallback_route_id)
             changed.append("fallback_route_id")
@@ -446,10 +446,10 @@ class RouteService:
 
     async def delete(self, user_id: str, route_id: str) -> None:
         if not is_uuid(route_id):
-            raise NotFound("模型不存在")
+            raise NotFound("Model not found")
         async with self._engine.begin() as conn:
             if not await repo.delete_route(conn, user_id, route_id):
-                raise NotFound("模型不存在")
+                raise NotFound("Model not found")
         log.info("route.deleted", route_id=route_id)
 
     # ---- 测试 --------------------------------------------------------------------------

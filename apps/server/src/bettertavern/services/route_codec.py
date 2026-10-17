@@ -44,7 +44,8 @@ class RouteCodec:
     def _unreadable(self, row: RouteRow) -> AppError:
         log.error("route.key_unreadable", route_id=row.id, key_id=key_id_of(row.api_key_enc))
         return AppError(
-            "这个模型的 Key 无法解密（服务端的主密钥可能变了），请重新填写 Key",
+            "This model's key can't be decrypted (the server's master key may have changed). "
+            "Please enter the key again",
             code="CREDENTIAL_UNREADABLE",
             status=409,
         )

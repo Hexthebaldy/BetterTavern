@@ -105,6 +105,8 @@ class TurnFailure:
     partial: bool = False
     narrative: str = ""
     runs: list[AgentRunRecord] = field(default_factory=list)
+    # 服务商错误的类别（auth、billing、rate_limit……），客户端按它翻译；不是服务商错误时为 None
+    reason: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -112,6 +114,7 @@ class TurnFailure:
             "message": self.message,
             "retryable": self.retryable,
             "partial": self.partial,
+            "reason": self.reason,
         }
 
 

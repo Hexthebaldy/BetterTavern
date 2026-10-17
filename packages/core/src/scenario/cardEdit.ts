@@ -8,6 +8,7 @@
  */
 
 import type { CharacterCard, ScenarioCard, ScenarioCardInput } from "../api/types.ts";
+import { i18n } from "../i18n/index.ts";
 
 export const CARD_LIMITS = {
   displayName: 80,
@@ -26,16 +27,14 @@ export const CARD_LIMITS = {
 export const TEXT_FIELDS = ["description", "personality", "scenario", "first_mes", "mes_example"] as const;
 export type TextField = (typeof TEXT_FIELDS)[number];
 
-export const FIELD_LABELS: Record<TextField | "name" | "display_name" | "tags", string> = {
-  display_name: "剧本名",
-  name: "角色名",
-  description: "描述",
-  personality: "性格",
-  scenario: "情境",
-  first_mes: "开场白",
-  mes_example: "对话示例",
-  tags: "标签",
-};
+export type LabeledField = TextField | "name" | "display_name" | "tags";
+
+/** 编辑页上各字段的名字 */
+export function fieldLabel(field: LabeledField): string {
+  return i18n.t(`cardEdit.fields.${field}`);
+}
+
+const LABELED = new Set<string>([...TEXT_FIELDS, "name", "display_name", "tags"]);
 
 /** 世界书条目的草稿：key 只在界面上用来区分条目，不发给服务端 */
 export type EntryDraft = {
@@ -162,40 +161,42 @@ export function isDirty(original: CardDraft, draft: CardDraft): boolean {
 export function checkDraft(draft: CardDraft): DraftProblem[] {
   const problems: DraftProblem[] = [];
   const add = (field: string, message: string) => problems.push({ field, message });
+  const L = CARD_LIMITS;
   const displayName = draft.displayName.trim();
-  if (!displayName) add("display_name", "剧本名不能为空");
-  else if (charCount(displayName) > CARD_LIMITS.displayName)
-    add("display_name", `剧本名最多 ${CARD_LIMITS.displayName} 个字`);
+  if (!displayName) add("display_name", i18n.t("cardEdit.problems.displayNameEmpty"));
+  else if (charCount(displayName) > L.displayName)
+    add("display_name", i18n.t("cardEdit.problems.displayNameTooLong", { max: L.displayName }));
   const name = draft.name.trim();
-  if (!name) add("name", "角色名不能为空");
-  else if (charCount(name) > CARD_LIMITS.name) add("name", `角色名最多 ${CARD_LIMITS.name} 个字`);
+  if (!name) add("name", i18n.t("cardEdit.problems.nameEmpty"));
+  else if (charCount(name) > L.name) add("name", i18n.t("cardEdit.problems.nameTooLong", { max: L.name }));
   let total = 0;
   for (const field of TEXT_FIELDS) {
     const n = charCount(draft[field].trim());
     total += n;
-    if (n > CARD_LIMITS.field)
-      add(field, `${FIELD_LABELS[field]}最多 ${CARD_LIMITS.field} 个字，现在有 ${n} 个`);
+    if (n > L.field)
+      add(field, i18n.t("cardEdit.problems.fieldTooLong", { field: fieldLabel(field), max: L.field, n }));
   }
   const tags = splitList(draft.tags);
-  if (tags.length > CARD_LIMITS.tags) add("tags", `标签最多 ${CARD_LIMITS.tags} 个`);
-  else if (tags.some((t) => charCount(t) > CARD_LIMITS.tag))
-    add("tags", `每个标签最多 ${CARD_LIMITS.tag} 个字`);
-  if (draft.book.length > CARD_LIMITS.entries) add("book", `世界书最多 ${CARD_LIMITS.entries} 条`);
+  if (tags.length > L.tags) add("tags", i18n.t("cardEdit.problems.tooManyTags", { max: L.tags }));
+  else if (tags.some((t) => charCount(t) > L.tag))
+    add("tags", i18n.t("cardEdit.problems.tagTooLong", { max: L.tag }));
+  if (draft.book.length > L.entries)
+    add("book", i18n.t("cardEdit.problems.tooManyEntries", { max: L.entries }));
   draft.book.forEach((entry, i) => {
     const where = `book.${i}`;
-    if (charCount(entry.name.trim()) > CARD_LIMITS.entryName)
-      add(`${where}.name`, `条目名称最多 ${CARD_LIMITS.entryName} 个字`);
+    if (charCount(entry.name.trim()) > L.entryName)
+      add(`${where}.name`, i18n.t("cardEdit.problems.entryNameTooLong", { max: L.entryName }));
     const keys = splitList(entry.keys);
-    if (keys.length > CARD_LIMITS.keys) add(`${where}.keys`, `关键词最多 ${CARD_LIMITS.keys} 个`);
-    else if (keys.some((k) => charCount(k) > CARD_LIMITS.key))
-      add(`${where}.keys`, `每个关键词最多 ${CARD_LIMITS.key} 个字`);
+    if (keys.length > L.keys) add(`${where}.keys`, i18n.t("cardEdit.problems.tooManyKeys", { max: L.keys }));
+    else if (keys.some((k) => charCount(k) > L.key))
+      add(`${where}.keys`, i18n.t("cardEdit.problems.keyTooLong", { max: L.key }));
     const n = charCount(entry.content.trim());
     total += n;
-    if (n === 0) add(`${where}.content`, "条目内容不能为空");
-    else if (n > CARD_LIMITS.field) add(`${where}.content`, `条目内容最多 ${CARD_LIMITS.field} 个字`);
+    if (n === 0) add(`${where}.content`, i18n.t("cardEdit.problems.contentEmpty"));
+    else if (n > L.field)
+      add(`${where}.content`, i18n.t("cardEdit.problems.contentTooLong", { max: L.field }));
   });
-  if (total > CARD_LIMITS.total)
-    add("card", `角色卡文字总量最多 ${CARD_LIMITS.total} 字，现在有 ${total} 字`);
+  if (total > L.total) add("card", i18n.t("cardEdit.problems.totalTooLong", { max: L.total, n: total }));
   return problems;
 }
 
@@ -203,12 +204,12 @@ export function checkDraft(draft: CardDraft): DraftProblem[] {
 export function describeField(field: string): string {
   const entry = /^book\.(\d+)\.(name|keys|content)$/.exec(field);
   if (entry) {
-    const part = { name: "名称", keys: "关键词", content: "内容" }[entry[2] as "name" | "keys" | "content"];
-    return `世界书第 ${Number(entry[1]) + 1} 条的${part}`;
+    const part = i18n.t(`cardEdit.entryParts.${entry[2] as "name" | "keys" | "content"}`);
+    return i18n.t("cardEdit.entryField", { n: Number(entry[1]) + 1, part });
   }
-  if (field === "book") return "世界书";
-  if (field === "card") return "整张卡";
-  return FIELD_LABELS[field as keyof typeof FIELD_LABELS] ?? field;
+  if (field === "book") return i18n.t("cardEdit.book");
+  if (field === "card") return i18n.t("cardEdit.card");
+  return LABELED.has(field) ? fieldLabel(field as LabeledField) : field;
 }
 
 /** 把第 index 条往前（-1）或往后（1）挪一位；到头了就原样返回 */

@@ -6,7 +6,7 @@ from ..profile import ProviderProfile
 
 PROFILE = ProviderProfile(
     id="custom_openai",
-    display_name="自定义 OpenAI 兼容端点",
+    display_name="Custom OpenAI-compatible endpoint",
     default_base_url=None,
     requires_base_url=True,
 )

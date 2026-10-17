@@ -8,6 +8,7 @@
  */
 
 import type { NewAction, Turn, TurnAction, TurnError, TurnEvent, TurnOption } from "../api/types.ts";
+import { i18n } from "../i18n/index.ts";
 
 export type Phase =
   | "loading"
@@ -147,7 +148,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
           ...base,
           phase: "failed",
           pending: pendingFrom(event.lastFailed),
-          error: event.lastFailed.error ?? { code: "UNKNOWN", message: "生成失败", retryable: true },
+          error: event.lastFailed.error ?? { code: "UNKNOWN", message: "Generation failed", retryable: true },
         };
       }
       return { ...base, phase: "idle", pending: null };
@@ -198,7 +199,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
       if (turn.status === "failed" || turn.status === "archived") {
         return fail(
           { ...state, pending: { ...state.pending, narrative: turn.narrative } },
-          turn.error ?? { code: "UNKNOWN", message: "生成失败", retryable: true },
+          turn.error ?? { code: "UNKNOWN", message: "Generation failed", retryable: true },
         );
       }
       return state;
@@ -325,6 +326,7 @@ export function displayAction(action: NewAction, options: TurnOption[]): TurnAct
 /** 故事流里“我的行动”那一行的文字：开场没有；写结局是“写结局”，写了方向时带上方向 */
 export function actionNote(action: TurnAction | null): string | null {
   if (!action || action.source === "opening") return null;
-  if (action.source === "ending") return action.text ? `写结局：${action.text}` : "写结局";
+  if (action.source === "ending")
+    return action.text ? i18n.t("play.actionEndingWith", { wish: action.text }) : i18n.t("play.actionEnding");
   return action.text.length > 0 ? action.text : null;
 }

@@ -13,9 +13,10 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
-import { describeError } from "@bettertavern/core/api/client";
+import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import { readableColumn } from "@bettertavern/design/layout";
 import { headTurn, isEnded, isLive, canAct } from "@bettertavern/core/play/turnMachine";
 
@@ -49,6 +50,7 @@ import { usePlaySession } from "./usePlaySession.ts";
 import { WorldPanel } from "./WorldPanel.tsx";
 
 function OpeningSkeleton() {
+  const { t } = useTranslation();
   return (
     <div className={styles.skeleton} aria-hidden="true">
       {[100, 100, 100, 58, 0, 100, 100, 74, 0, 100, 40].map((w, i) =>
@@ -58,22 +60,23 @@ function OpeningSkeleton() {
           <span key={i} className={styles.skeletonLine} style={{ width: `${w}%` }} />
         ),
       )}
-      <div className={styles.opening} role="progressbar" aria-label="正在打开故事">
-        正在打开故事
+      <div className={styles.opening} role="progressbar" aria-label={t("play.opening")}>
+        {t("play.opening")}
       </div>
     </div>
   );
 }
 
 function LoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.failed} role="alert">
       <span className={styles.failedIcon}>
         <Icon name="alertCircle" size={28} />
       </span>
-      <h2 className={styles.failedTitle}>故事没能打开</h2>
+      <h2 className={styles.failedTitle}>{t("play.openFailed")}</h2>
       <p className={styles.failedText}>{message}</p>
-      <Button label="重新加载" icon="retry" size="lg" className={styles.wide} onClick={onRetry} />
+      <Button label={t("common.reload")} icon="retry" size="lg" className={styles.wide} onClick={onRetry} />
     </div>
   );
 }
@@ -91,6 +94,7 @@ export function PlayRoute() {
 }
 
 function PlayPage({ id }: { id: string }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const overlay = useOverlay();
   const queries = useQueryClient();
@@ -153,7 +157,7 @@ function PlayPage({ id }: { id: string }) {
   const [renamed, setRenamed] = useState<string | null>(null);
   const shownTitle = renamed ?? state.title;
   const live = isLive(state);
-  useDocumentTitle(shownTitle || "故事", live);
+  useDocumentTitle(shownTitle || t("play.story"), live);
 
   // 写完一段（或出错）后让故事列表刷新：侧栏的状态和摘要跟着变
   const head = headTurn(state);
@@ -226,12 +230,12 @@ function PlayPage({ id }: { id: string }) {
     if (action === "end") {
       // 确认框里可以填想要的方向，也可以不填；写完就不能再继续，也没有撤销
       const wish = await overlay.prompt({
-        title: "给这个故事写结局？",
-        message: "导演会接着目前的剧情，写一大段作为结局。写完后故事就结束了，不能撤销，也不能再往下写。",
-        label: "结局方向",
-        placeholder: "想要怎样的结局（可不填）",
+        title: t("play.endTitle"),
+        message: t("play.endMessage"),
+        label: t("play.endWish"),
+        placeholder: t("play.endWishPlaceholder"),
         maxLength: 2000,
-        confirmLabel: "写结局",
+        confirmLabel: t("play.writeEnding"),
         optional: true,
       });
       if (wish === null) return;
@@ -240,8 +244,8 @@ function PlayPage({ id }: { id: string }) {
     }
     if (action === "rename") {
       const next = await overlay.prompt({
-        title: "重命名存档",
-        label: "存档名",
+        title: t("stories.renameTitle"),
+        label: t("stories.nameLabel"),
         initial: shownTitle,
         maxLength: 80,
       });
@@ -251,7 +255,7 @@ function PlayPage({ id }: { id: string }) {
         setRenamed(updated.title);
         void queries.invalidateQueries({ queryKey: storiesKey });
       } catch (e) {
-        overlay.toast(`重命名失败：${describeError(e)}`, { icon: "alert" });
+        overlay.toast(t("common.renameFailed", { error: describeError(e) }), { icon: "alert" });
       }
     }
   };
@@ -302,7 +306,7 @@ function PlayPage({ id }: { id: string }) {
       {layout.nav === "tabbar" ? (
         <IconButton
           icon="back"
-          label="返回存档列表"
+          label={t("play.backToSaves")}
           className={styles.back}
           onClick={() => navigate("/playthroughs")}
         />
@@ -319,7 +323,10 @@ function PlayPage({ id }: { id: string }) {
           {state.phase === "loading" ? (
             <OpeningSkeleton />
           ) : (
-            <LoadFailed message={state.error?.message ?? "加载失败"} onRetry={controls.reload} />
+            <LoadFailed
+              message={state.error ? describeTurnError(state.error) : t("play.loadFailed")}
+              onRetry={controls.reload}
+            />
           )}
         </div>
       </div>
@@ -333,7 +340,7 @@ function PlayPage({ id }: { id: string }) {
       {syncing ? (
         <div className={styles.syncing} role="alert">
           <Icon name="retry" size={16} />
-          故事有更新，正在同步…
+          {t("play.syncing")}
         </div>
       ) : null}
       <div className={styles.feed} style={syncing ? { opacity: 0.4 } : undefined}>

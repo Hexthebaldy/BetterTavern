@@ -2,20 +2,22 @@
  * 模型详情页的测试结果：一张灰卡里每项检查一行（通过 / 失败 / 跳过的圆形标记、耗时条）。
  */
 
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { ProbeReport } from "@bettertavern/core/api/types";
 import { formatRelative } from "@bettertavern/core/utils/format";
-import { CHECK_NAMES, checkCounts } from "@bettertavern/core/settings/labels";
+import { checkCounts, checkName } from "@bettertavern/core/settings/labels";
 
 import { Icon, Notice, SectionHeader } from "../../components/ui.tsx";
 import { font, onColor, space, usePalette } from "../../theme/index.ts";
 
 function Mark({ ok }: { ok: boolean | null }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   if (ok === null) {
     return (
-      <View style={[styles.mark, { backgroundColor: palette.bg3 }]} accessibilityLabel="跳过">
+      <View style={[styles.mark, { backgroundColor: palette.bg3 }]} accessibilityLabel={t("models.skipped")}>
         <Icon name="minus" size={14} color={palette.mut} strokeWidth={2.6} />
       </View>
     );
@@ -23,7 +25,7 @@ function Mark({ ok }: { ok: boolean | null }) {
   return (
     <View
       style={[styles.mark, { backgroundColor: ok ? palette.ok : palette.err }]}
-      accessibilityLabel={ok ? "通过" : "失败"}
+      accessibilityLabel={ok ? t("models.passed") : t("models.failed")}
     >
       <Icon name={ok ? "check" : "cross"} size={14} color={onColor} strokeWidth={2.6} />
     </View>
@@ -32,13 +34,14 @@ function Mark({ ok }: { ok: boolean | null }) {
 
 export function ProbeResults({ report }: { report: ProbeReport }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const { passed, failed, skipped } = checkCounts(report.checks);
   const slowest = Math.max(1, ...report.checks.map((c) => c.latency_ms ?? 0));
   return (
     <View>
       <SectionHeader
-        title="测试结果"
-        meta={`${passed} 通过 · ${failed} 失败 · ${skipped} 跳过 · ${formatRelative(report.probed_at)}`}
+        title={t("models.results")}
+        meta={t("models.resultsMeta", { passed, failed, skipped, time: formatRelative(report.probed_at) })}
       />
       <View style={[styles.card, { backgroundColor: palette.bg2 }]}>
         {report.fatal_error ? <Notice message={report.fatal_error} style={{ borderRadius: 22 }} /> : null}
@@ -54,7 +57,7 @@ export function ProbeResults({ report }: { report: ProbeReport }) {
                 <Text
                   style={{ fontSize: 15, lineHeight: 22, color: skippedCheck ? palette.mut : palette.ink }}
                 >
-                  {CHECK_NAMES[check.name] ?? check.name}
+                  {checkName(check.name)}
                 </Text>
                 {check.detail ? (
                   <Text
@@ -84,7 +87,7 @@ export function ProbeResults({ report }: { report: ProbeReport }) {
                 {check.latency_ms !== null
                   ? `${check.latency_ms.toLocaleString("en-US")} ms`
                   : skippedCheck
-                    ? "跳过"
+                    ? t("models.skipped")
                     : ""}
               </Text>
             </View>

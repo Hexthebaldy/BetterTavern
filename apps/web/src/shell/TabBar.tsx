@@ -1,5 +1,6 @@
 /** 窄于 900 的底部胶囊 Tab 栏（手机、平板中屏）：选中项是透明的玻璃框（glass.tsx），图标和文字横排、蓝色 */
 
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router";
 
 import { Icon } from "../components/Icon.tsx";
@@ -10,9 +11,10 @@ import styles from "./shell.module.css";
 
 export function TabBar() {
   const { pathname } = useLocation();
+  const { t } = useTranslation();
   const { ref, glass } = useGlass(NAV_ITEMS.find((item) => isActive(item, pathname))?.to ?? null);
   return (
-    <nav aria-label="主导航" className={styles.tabBar}>
+    <nav aria-label={t("nav.main")} className={styles.tabBar}>
       {glass}
       {NAV_ITEMS.map((item) => {
         const active = isActive(item, pathname);
@@ -25,7 +27,7 @@ export function TabBar() {
             aria-current={active ? "page" : undefined}
           >
             <Icon name={item.icon} size={22} />
-            <span>{item.label}</span>
+            <span>{t(`nav.${item.name}`)}</span>
           </Link>
         );
       })}

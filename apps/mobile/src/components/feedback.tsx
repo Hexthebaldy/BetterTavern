@@ -4,6 +4,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { font, onColor, radius, space, usePalette, type Palette } from "../theme/index.ts";
@@ -47,6 +48,7 @@ export function Notice({
   style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const c = toneColors(tone, palette);
   const action = actionLabel && onAction;
   return (
@@ -88,7 +90,7 @@ export function Notice({
       {onClose ? (
         <IconButton
           icon="close"
-          label="关闭"
+          label={t("common.close")}
           size={16}
           diameter={36}
           tone="plain"
@@ -215,6 +217,7 @@ export function ErrorState({
   style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <View accessibilityRole="alert" style={[styles.errorState, { backgroundColor: palette.bg2 }, style]}>
       <View style={[styles.errorIcon, { backgroundColor: palette.errBg }]}>
@@ -234,7 +237,7 @@ export function ErrorState({
       )}
       {onRetry ? (
         <Button
-          label="重新加载"
+          label={t("common.reload")}
           variant={primary ? "primary" : "secondary"}
           onGrey
           icon="retry"

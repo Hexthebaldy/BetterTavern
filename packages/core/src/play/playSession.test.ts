@@ -100,6 +100,7 @@ function detail(head: Turn | null, extra: Partial<PlaythroughDetail> = {}): Play
       title: "雨夜",
       status: "active",
       scenario_id: "s1",
+      language: "zh",
       protagonist_name: "林川",
       preferences: {},
       head_turn_id: head?.id ?? null,

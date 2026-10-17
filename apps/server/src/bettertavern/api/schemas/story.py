@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from bettertavern.domain.story.language import DEFAULT_LANGUAGE, PromptLanguage
+
 from .common import Out
 
 
@@ -106,6 +108,8 @@ class PlaythroughIn(BaseModel):
     protagonist: ProtagonistIn
     title: str | None = Field(default=None, max_length=80)
     preferences: PreferencesIn = Field(default_factory=PreferencesIn)
+    # 这一局给 agent 的提示词用哪种语言：客户端传当前的界面语言；之后不变
+    language: PromptLanguage = DEFAULT_LANGUAGE
 
 
 class PlaythroughPatchIn(BaseModel):
@@ -138,6 +142,7 @@ class PlaythroughOut(Out):
     title: str
     status: str
     scenario_id: str | None
+    language: str
     protagonist_name: str
     preferences: dict[str, Any]
     head_turn_id: str | None

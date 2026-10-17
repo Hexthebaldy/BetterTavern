@@ -119,7 +119,7 @@ class Story:
         if "<character-card>" in prompt:
             self.world_calls += 1
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
-        if "接下来可以采取的行动" in prompt:
+        if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:
             return JsonReply(completion('{"options": ["修复的选项一", "修复的选项二"]}'))
         return JsonReply({"error": {"message": "unexpected request"}}, status=400)
 

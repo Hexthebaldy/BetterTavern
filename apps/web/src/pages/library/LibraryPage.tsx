@@ -5,6 +5,7 @@
  */
 
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { cellWidth, libraryColumns, sizeClass } from "@bettertavern/design/layout";
@@ -26,7 +27,8 @@ import styles from "./library.module.css";
 const GAP = 16;
 
 export function LibraryPage() {
-  useDocumentTitle("剧本");
+  const { t } = useTranslation();
+  useDocumentTitle(t("nav.library"));
   const scenarios = useScenarios();
   const actions = useScenarioActions();
   const importer = useImporter();
@@ -44,7 +46,7 @@ export function LibraryPage() {
 
   return (
     <div className={pages.page}>
-      <PageHeader title="剧本" count={list && !empty ? list.length : null}>
+      <PageHeader title={t("nav.library")} count={list && !empty ? list.length : null}>
         {list && !empty ? (
           <HeaderControls
             view={libraryView}
@@ -71,9 +73,11 @@ export function LibraryPage() {
         <Notice
           icon="offline"
           message={
-            list ? describeError(scenarios.error) : `剧本库没加载出来：${describeError(scenarios.error)}`
+            list
+              ? describeError(scenarios.error)
+              : t("library.loadFailedWith", { error: describeError(scenarios.error) })
           }
-          actionLabel={list ? "重试" : "重新加载"}
+          actionLabel={list ? t("common.retry") : t("common.reload")}
           onAction={() => void scenarios.refetch()}
           className={styles.banner}
         />
@@ -82,7 +86,7 @@ export function LibraryPage() {
         {!list ? (
           scenarios.isPending ? (
             <div className={styles.loading}>
-              <Button label="加载中" variant="text" busy />
+              <Button label={t("common.loading")} variant="text" busy />
             </div>
           ) : null
         ) : empty ? (

@@ -34,7 +34,7 @@ class NotFound(AppError):
     status = 404
     code = "NOT_FOUND"
 
-    def __init__(self, title: str = "资源不存在") -> None:
+    def __init__(self, title: str = "Not found") -> None:
         super().__init__(title)
 
 
@@ -42,7 +42,7 @@ class Unauthenticated(AppError):
     status = 401
     code = "UNAUTHENTICATED"
 
-    def __init__(self, title: str = "需要登录", **extra: Any) -> None:
+    def __init__(self, title: str = "Sign-in required", **extra: Any) -> None:
         super().__init__(title, **extra)
 
 
@@ -63,7 +63,7 @@ class RateLimited(AppError):
     def __init__(self, retry_after: float) -> None:
         seconds = max(int(retry_after + 0.999), 1)
         super().__init__(
-            "请求太频繁，请稍后再试",
+            "Too many requests, please try again later",
             retryable=True,
             headers={"Retry-After": str(seconds)},
             retry_after=seconds,

@@ -7,7 +7,10 @@
  * - 更窄：/settings 是列表；子页单栏，左上角返回。
  */
 
+import { useTranslation } from "react-i18next";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
+
+import { i18n } from "@bettertavern/core/i18n/index";
 
 import { IconButton } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -27,11 +30,12 @@ type FromState = { from?: "models" } | null;
 /** 从模型列表进来的模型详情：返回到模型列表 */
 function parentOf(pathname: string, state: FromState): { to: string; label: string } {
   if (pathname.startsWith("/settings/model/") && state?.from === "models")
-    return { to: "/settings/models", label: "模型" };
-  return { to: "/settings", label: "设置" };
+    return { to: "/settings/models", label: i18n.t("settings.pages.models") };
+  return { to: "/settings", label: i18n.t("nav.settings") };
 }
 
 export function SettingsLayout() {
+  const { t } = useTranslation();
   const width = useWindowWidth();
   const wide = width >= desktop.rail;
   const { pathname, state } = useLocation();
@@ -42,8 +46,8 @@ export function SettingsLayout() {
     if (atRoot) {
       return (
         <div className={pages.page}>
-          <Title text="设置" />
-          <PageHeader title="设置" />
+          <Title text={t("nav.settings")} />
+          <PageHeader title={t("nav.settings")} />
           <SettingsList wide={false} />
         </div>
       );
@@ -53,7 +57,7 @@ export function SettingsLayout() {
       <div className={styles.single}>
         <IconButton
           icon="back"
-          label={`返回${parent.label}`}
+          label={t("settings.backTo", { page: parent.label })}
           className={styles.backButton}
           onClick={() => navigate(parent.to)}
         />
@@ -69,10 +73,10 @@ export function SettingsLayout() {
   return (
     <div className={styles.split}>
       <div className={styles.list}>
-        <PageHeader title="设置" />
+        <PageHeader title={t("nav.settings")} />
         <SettingsList wide />
       </div>
-      <section className={`${styles.pane} surface-raised`} aria-label="设置详情">
+      <section className={`${styles.pane} surface-raised`} aria-label={t("settings.detail")}>
         <div className={styles.paneScroll}>
           {parent ? (
             <Link to={parent.to} className={styles.backPill}>
@@ -95,13 +99,14 @@ function Title({ text }: { text: string }) {
 
 /** /settings 本身：宽屏时右栏默认打开导演模型（没有导演时是模型列表）；窄屏只有左边的列表 */
 export function SettingsIndex() {
+  const { t } = useTranslation();
   const width = useWindowWidth();
   const routes = useModelRoutes();
   if (width < desktop.rail) return null;
   const director = routes.data?.find((r) => r.is_director);
   return (
     <>
-      <Title text="设置" />
+      <Title text={t("nav.settings")} />
       {routes.data ? (
         director ? (
           <ModelBody id={director.id} titled={false} />

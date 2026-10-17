@@ -4,11 +4,12 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import type { ModelRoute } from "@bettertavern/core/api/types";
 import { formatTokens } from "@bettertavern/core/utils/format";
-import { WINDOW_SOURCE } from "@bettertavern/core/settings/labels";
+import { windowSourceLabel } from "@bettertavern/core/settings/labels";
 import { choiceTokens, windowBlocks, type WindowChoice } from "@bettertavern/core/settings/window";
 
 import { font, space, usePalette } from "../../theme/index.ts";
@@ -18,6 +19,7 @@ const GAP = 4;
 
 export function MemoryBlocks({ route, choice }: { route: ModelRoute; choice: WindowChoice }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   // 圆点直径按格子区的宽度算（百分比宽度加 aspectRatio 在换行容器里会让布局反复计算）。
   // 先按手机上的样子估一个，量到实际宽度（平板的居中栏、设置的右栏）再改
@@ -36,10 +38,13 @@ export function MemoryBlocks({ route, choice }: { route: ModelRoute; choice: Win
     <View style={[styles.memory, { backgroundColor: palette.bg2 }]}>
       <View style={styles.memoryTitle}>
         <Text accessibilityRole="header" style={{ fontSize: 17, fontWeight: "700", color: palette.ink }}>
-          能记住多少
+          {t("models.memoryTitle")}
         </Text>
         <Text style={{ fontFamily: font.mono, fontSize: 12.5, color: palette.mut }}>
-          上下文 {k(route.window.model_window)} · {WINDOW_SOURCE[route.window.source]}
+          {t("models.memoryContext", {
+            window: k(route.window.model_window),
+            source: windowSourceLabel(route.window.source),
+          })}
         </Text>
       </View>
       <View
@@ -49,7 +54,12 @@ export function MemoryBlocks({ route, choice }: { route: ModelRoute; choice: Win
           setMeasured((old) => (old !== null && Math.abs(old - next) < 1 ? old : next));
         }}
         accessibilityRole="image"
-        accessibilityLabel={`上下文 ${k(route.window.model_window)}，故事 ${k(w.story)}，每轮输出 ${k(route.window.max_tokens)}，不使用 ${k(w.free)}`}
+        accessibilityLabel={t("models.memoryLabel", {
+          window: k(route.window.model_window),
+          story: k(w.story),
+          output: k(route.window.max_tokens),
+          free: k(w.free),
+        })}
       >
         {w.blocks.map((b, i) => (
           <View
@@ -66,14 +76,22 @@ export function MemoryBlocks({ route, choice }: { route: ModelRoute; choice: Win
         ))}
       </View>
       <View style={styles.legends}>
-        {legend({ backgroundColor: palette.ink }, `故事 ${k(w.story)}`)}
-        {legend({ backgroundColor: palette.acc }, `每轮输出 ${k(route.window.max_tokens)}`)}
-        {legend({ backgroundColor: palette.bg3 }, `不使用 ${k(w.free)}`)}
-        {legend({ boxShadow: `inset 0 0 0 2.5px ${palette.warn}` }, "开始压缩")}
+        {legend({ backgroundColor: palette.ink }, t("models.memoryStory", { size: k(w.story) }))}
+        {legend(
+          { backgroundColor: palette.acc },
+          t("models.memoryOutput", { size: k(route.window.max_tokens) }),
+        )}
+        {legend({ backgroundColor: palette.bg3 }, t("models.memoryFree", { size: k(w.free) }))}
+        {legend({ boxShadow: `inset 0 0 0 2.5px ${palette.warn}` }, t("models.memoryCompact"))}
       </View>
       <Text style={{ fontSize: 14, lineHeight: 23, color: palette.ink2 }}>
-        每个圆点是 {k(w.unit)}。模型最多能读 {k(route.window.model_window)}，你给导演 {k(w.used)}：每轮最多写{" "}
-        {k(route.window.max_tokens)}，剩下约 {k(w.story)} 用来记前情和世界状态。
+        {t("models.memoryNote", {
+          unit: k(w.unit),
+          window: k(route.window.model_window),
+          used: k(w.used),
+          output: k(route.window.max_tokens),
+          story: k(w.story),
+        })}
       </Text>
     </View>
   );

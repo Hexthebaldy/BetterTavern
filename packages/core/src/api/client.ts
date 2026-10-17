@@ -9,8 +9,9 @@
  * 每个请求结束时调用 onRequest，App 用它把失败和慢的请求记进诊断日志。
  */
 
+import { currentLanguage, i18n, lookup } from "../i18n/index.ts";
 import { newRequestId } from "../observability/log.ts";
-import type { Problem } from "./types.ts";
+import type { Problem, TurnError } from "./types.ts";
 
 export type HttpRequestInit = {
   method: string;
@@ -76,7 +77,7 @@ export class ApiError extends Error {
 }
 
 export function networkError(cause: unknown, timedOut: boolean, requestId: string | null = null): ApiError {
-  const error = new ApiError(timedOut ? "服务器响应超时" : "连不上服务器，请检查网络和服务器地址", {
+  const error = new ApiError(timedOut ? "Server timed out" : "Can't reach the server", {
     status: 0,
     code: timedOut ? "TIMEOUT" : "NETWORK",
     retryable: true,
@@ -93,20 +94,6 @@ function isProblem(data: unknown): data is Problem {
   return typeof d.code === "string" && typeof d.title === "string";
 }
 
-const STATUS_MESSAGES: Record<number, string> = {
-  400: "请求有误",
-  401: "需要登录",
-  403: "没有权限",
-  404: "要找的内容不存在",
-  409: "操作冲突，请刷新后再试",
-  413: "文件太大",
-  422: "填写的内容有误",
-  429: "请求太频繁，请稍后再试",
-  502: "服务器暂时不可用",
-  503: "服务器暂时不可用",
-  504: "服务器响应超时",
-};
-
 /** 把非 2xx 响应变成 ApiError：优先用服务端的 problem+json，其次（比如代理返回的 HTML）按状态码 */
 export function errorFromResponse(status: number, data: unknown, requestId: string | null = null): ApiError {
   if (isProblem(data)) {
@@ -118,7 +105,7 @@ export function errorFromResponse(status: number, data: unknown, requestId: stri
       requestId: typeof data.request_id === "string" ? data.request_id : requestId,
     });
   }
-  return new ApiError(STATUS_MESSAGES[status] ?? `服务器返回了错误（HTTP ${status}）`, {
+  return new ApiError(`HTTP ${status}`, {
     status,
     code: `HTTP_${status}`,
     retryable: status >= 500 || status === 429,
@@ -304,7 +291,7 @@ function parse<T>(raw: RawResponse): T {
   if (!raw.ok) throw errorFromResponse(raw.status, data, raw.requestId);
   if (raw.text !== "" && data === undefined) {
     // 常见原因：服务器地址填成了别的服务（比如 Expo 的 8081 端口），返回的是网页
-    throw new ApiError("服务器返回的内容无法解析", {
+    throw new ApiError("Unreadable response", {
       status: raw.status,
       code: "BAD_RESPONSE",
       retryable: false,
@@ -319,13 +306,48 @@ function unexpected(error: ApiError): boolean {
   return error.status === 0 || error.status >= 500 || error.code === "BAD_RESPONSE";
 }
 
-/** 界面上显示的错误文字 */
+/**
+ * 界面上显示的错误文字，按错误码翻译成界面语言（docs/i18n.md 第 3 节）。服务端的说明（message）是英文：
+ * 只在英文界面、又没有对应的翻译时直接用；中文界面这时按 HTTP 状态码给一句通用的。
+ */
 export function describeError(error: unknown): string {
   if (error instanceof ApiError) {
+    const text = apiErrorText(error);
     return unexpected(error) && error.requestId
-      ? `${error.message}（单号 ${error.requestId.slice(0, 8)}）`
-      : error.message;
+      ? i18n.t("errors.withRef", { text, ref: error.requestId.slice(0, 8) })
+      : text;
   }
   if (error instanceof Error && error.message) return error.message;
-  return "出了点问题，请重试";
+  return i18n.t("errors.generic");
+}
+
+function apiErrorText(error: ApiError): string {
+  if (error.code === "NETWORK") return i18n.t("errors.network");
+  if (error.code === "TIMEOUT") return i18n.t("errors.timeout");
+  if (error.code === "BAD_RESPONSE") return i18n.t("errors.badResponse");
+  const english = currentLanguage() === "en" && error.problem !== null && error.message !== "";
+  if (error.code === "VALIDATION_ERROR") {
+    // 业务校验带 field：按字段说；不认识的字段，英文界面用服务端更具体的说明
+    const field = error.field("field");
+    const byField = typeof field === "string" ? lookup(`errors.field.${field}`) : null;
+    if (byField) return byField;
+    if (english) return error.message;
+  }
+  const byCode = error.problem ? lookup(`errors.api.${error.code}`) : null;
+  if (byCode) return byCode;
+  if (english) return error.message;
+  return lookup(`errors.status.${error.status}`) ?? i18n.t("errors.httpStatus", { status: error.status });
+}
+
+/**
+ * 回合失败（turn.failed 事件、回合详情里的 error）的说明：先按服务商错误的原因（reason），
+ * 再按回合失败码，最后按接口错误码；都没有时英文界面用服务端的说明，中文界面说“生成失败”。
+ */
+export function describeTurnError(error: Pick<TurnError, "code" | "message" | "reason">): string {
+  return (
+    (error.reason ? lookup(`errors.reason.${error.reason}`) : null) ??
+    lookup(`errors.turn.${error.code}`) ??
+    lookup(`errors.api.${error.code}`) ??
+    (currentLanguage() === "en" && error.message ? error.message : i18n.t("errors.turnFailed"))
+  );
 }

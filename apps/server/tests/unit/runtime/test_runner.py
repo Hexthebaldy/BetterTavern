@@ -15,7 +15,7 @@ from bettertavern.providers import CancelToken, ProviderError, ProviderHub
 from bettertavern.providers.errors import ErrorClass
 from bettertavern.runtime.events.buffer import EventBufferRegistry, EventStream
 from bettertavern.runtime.ports import Preferences, WorldBuildInput
-from bettertavern.runtime.prompts import PromptLibrary
+from bettertavern.runtime.prompts import PromptBook
 from bettertavern.runtime.runner import LEASE_LOST, RunnerConfig, TurnRunner, TurnRunnerPool
 from tests.fakes.runtime import (
     FakeRoutes,
@@ -46,16 +46,17 @@ async def run_turn(
     *,
     seq: int = 1,
     world_ready: bool = True,
+    language: str = "zh",
 ) -> list[tuple[str, dict[str, object]]]:
     runner = TurnRunner(
         store=store,
         routes=routes,
         hub=hub,
-        prompts=PromptLibrary("zh"),
+        prompts=PromptBook(),
         config=CONFIG,
     )
     stream = EventStream("turn-1")
-    await runner.run(header(seq, world_ready=world_ready), stream, CancelToken())
+    await runner.run(header(seq, world_ready=world_ready, language=language), stream, CancelToken())
     return [(e.event, json.loads(e.data)) for e in stream.snapshot()]
 
 
@@ -240,7 +241,7 @@ async def test_slow_endless_stream_is_cut_at_the_time_limit() -> None:
         store=store,
         routes=FakeRoutes({RouteTask.DIRECTOR: make_route()}),
         hub=hub,
-        prompts=PromptLibrary("zh"),
+        prompts=PromptBook(),
         config=RunnerConfig(delta_batch_s=0.0, lease_renew_s=0.05, director_timeout_s=0.3),
     )
     stream = EventStream("turn-1")
@@ -250,7 +251,7 @@ async def test_slow_endless_stream_is_cut_at_the_time_limit() -> None:
     assert loop.time() - started < 2
     failure = store.failed[0]
     assert failure.code == "GENERATION_TIMEOUT" and failure.retryable and failure.partial
-    assert "0.3 秒" in failure.message and failure.narrative.startswith("雾")
+    assert "0.3 seconds" in failure.message and failure.narrative.startswith("雾")
     assert adapters["fake"].closed == 1
     assert not store.committed
 
@@ -264,6 +265,21 @@ async def test_auth_error_is_not_retryable() -> None:
     events = await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
     assert store.failed[0].code == "CREDENTIAL_INVALID"
     assert events[-1][1]["retryable"] is False
+    # 客户端按 reason 翻译说明（docs/i18n.md 第 3 节）；说明本身是英文
+    assert events[-1][1]["reason"] == "auth"
+    assert str(events[-1][1]["message"]).isascii()
+
+
+async def test_english_playthrough_uses_english_prompts() -> None:
+    hub, adapters = scripted_hub("fake")
+    adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
+    store = FakeStore()
+    await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub, language="en")
+    messages = adapters["fake"].requests[0].messages
+    assert messages[0].content.startswith("You are the director")
+    assert "[Scene]" in messages[-1].content or "<player-action>" in messages[-1].content
+    assert "导演" not in messages[0].content and "【" not in messages[-1].content
+    assert store.committed
 
 
 async def test_missing_narrative_fails_the_turn() -> None:
@@ -347,7 +363,7 @@ async def test_pool_shutdown_cancels_slow_turns() -> None:
         store=store,
         routes=FakeRoutes({RouteTask.DIRECTOR: make_route()}),
         hub=hub,
-        prompts=PromptLibrary("zh"),
+        prompts=PromptBook(),
         config=RunnerConfig(delta_batch_s=0.0, lease_renew_s=10),
     )
     pool = TurnRunnerPool(runner, EventBufferRegistry())

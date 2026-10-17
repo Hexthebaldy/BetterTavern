@@ -63,9 +63,9 @@ def test_public_addresses_are_allowed(address: str) -> None:
     [
         ("http://api.example.com/v1", "https"),
         ("ftp://api.example.com", "https"),
-        ("https://user:pw@api.example.com", "用户名"),
-        ("https://127.0.0.1/v1", "内网"),
-        ("https://[::1]/v1", "内网"),
+        ("https://user:pw@api.example.com", "user name"),
+        ("https://127.0.0.1/v1", "Private or reserved"),
+        ("https://[::1]/v1", "Private or reserved"),
         ("https://localhost:8080/v1", "localhost"),
         ("https://foo.localhost/v1", "localhost"),
         ("not a url", "https"),
@@ -98,7 +98,7 @@ async def test_any_private_resolution_rejects_whole_host() -> None:
 
 
 async def test_validate_endpoint_reports_dns_failure_as_not_allowed() -> None:
-    with pytest.raises(EndpointNotAllowed, match="无法解析"):
+    with pytest.raises(EndpointNotAllowed, match="resolve"):
         await validate_endpoint("https://nowhere.example/v1", STRICT, fake_resolver({}))
 
 

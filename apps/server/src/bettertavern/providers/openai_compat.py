@@ -298,7 +298,7 @@ class OpenAICompatAdapter:
             if not state.saw_done_marker and state.finish_reason is None:
                 raise ProviderError(
                     ErrorClass.STREAM_INTERRUPTED,
-                    "流在结束标记之前断开",
+                    "The stream ended before the done marker",
                     provider=self._profile.id,
                     model=req.model,
                     partial=state.emitted,
@@ -328,7 +328,7 @@ class OpenAICompatAdapter:
         except json.JSONDecodeError as exc:
             raise ProviderError(
                 ErrorClass.INVALID_RESPONSE,
-                "无法解析流式数据块",
+                "Couldn't parse a stream chunk",
                 provider=self._profile.id,
                 model=model,
                 partial=state.emitted,
@@ -410,7 +410,7 @@ class OpenAICompatAdapter:
         except TimeoutError as exc:
             raise ProviderError(
                 ErrorClass.TIMEOUT,
-                f"请求总时长超过 {self._total_timeout:g} 秒",
+                f"The request took longer than {self._total_timeout:g} s in total",
                 provider=self._profile.id,
                 model=req.model,
             ) from exc
@@ -423,14 +423,14 @@ class OpenAICompatAdapter:
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise ProviderError(
                 ErrorClass.INVALID_RESPONSE,
-                "响应不是合法的 JSON",
+                "The response isn't valid JSON",
                 provider=self._profile.id,
                 model=model,
             ) from exc
         if not isinstance(payload, Mapping):
             raise ProviderError(
                 ErrorClass.INVALID_RESPONSE,
-                "响应不是 JSON 对象",
+                "The response isn't a JSON object",
                 provider=self._profile.id,
                 model=model,
             )
@@ -443,7 +443,7 @@ class OpenAICompatAdapter:
         if not isinstance(choices, list) or not choices or not isinstance(choices[0], Mapping):
             raise ProviderError(
                 ErrorClass.INVALID_RESPONSE,
-                "响应里没有 choices",
+                "The response has no choices",
                 provider=self._profile.id,
                 model=model,
             )
@@ -495,7 +495,9 @@ class OpenAICompatAdapter:
             payload = json.loads(raw)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise ProviderError(
-                ErrorClass.INVALID_RESPONSE, "模型列表不是合法的 JSON", provider=self._profile.id
+                ErrorClass.INVALID_RESPONSE,
+                "The model list isn't valid JSON",
+                provider=self._profile.id,
             ) from exc
         items = payload.get("data") if isinstance(payload, Mapping) else payload
         models: list[ModelInfo] = []
@@ -519,7 +521,7 @@ class OpenAICompatAdapter:
                     return bytes(data[:limit])
                 raise ProviderError(
                     ErrorClass.INVALID_RESPONSE,
-                    f"响应超过 {limit // (1024 * 1024)}MB 上限",
+                    f"The response exceeds the {limit // (1024 * 1024)} MB limit",
                     provider=self._profile.id,
                 )
         return bytes(data)

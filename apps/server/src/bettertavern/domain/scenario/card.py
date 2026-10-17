@@ -50,7 +50,7 @@ class CharacterCard(BaseModel):
     tags: tuple[str, ...] = ()
     book_name: str = ""
     book: tuple[LoreEntry, ...] = ()
-    truncated: tuple[str, ...] = Field(default=(), description="被截断的字段名")
+    truncated: tuple[str, ...] = Field(default=(), description="Names of truncated fields")
 
     def total_chars(self) -> int:
         texts = [

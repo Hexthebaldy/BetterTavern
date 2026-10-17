@@ -6,18 +6,19 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import type { Preferences } from "@bettertavern/core/api/types";
 import {
-  BOUNDARY_ITEMS,
+  boundaryItems,
   composeBoundaries,
   composeStyle,
-  LENGTH_LABELS,
+  lengthLabel,
   NAME_MAX,
   randomName,
-  STYLE_TAGS,
+  styleTags,
   suggestNames,
   SUMMARY_MAX,
   summaryParts,
@@ -83,7 +84,11 @@ export function StartForm({
 }) {
   const palette = usePalette();
   const overlay = useOverlay();
-  const suggestions = useMemo(() => suggestNames(4), []);
+  const { t, i18n } = useTranslation();
+  // 名字建议、内置的文风和边界随界面语言
+  const suggestions = useMemo(() => suggestNames(4), [i18n.language]);
+  const tags = useMemo(() => styleTags(), [i18n.language]);
+  const avoidItems = useMemo(() => boundaryItems(), [i18n.language]);
   const [name, setName] = useState("");
   const [summary, setSummary] = useState("");
   const [length, setLength] = useState<Preferences["length"]>("medium");
@@ -104,7 +109,8 @@ export function StartForm({
       boundaries: composeBoundaries(bounds),
     };
     onChangeRef.current(values, summaryParts({ name, length, styles: styles_, boundaries: bounds.length }));
-  }, [name, summary, length, styles_, bounds]);
+    // 换了界面语言，底部摘要（“还没起名”“适中”）也要换
+  }, [name, summary, length, styles_, bounds, i18n.language]);
 
   const changeName = (text: string): void => setName(text);
   const toggle = (list: string[], item: string): string[] =>
@@ -112,11 +118,11 @@ export function StartForm({
 
   const addCustom = async (kind: "style" | "bound"): Promise<void> => {
     const text = await overlay.prompt({
-      title: kind === "style" ? "自定义文风" : "其他不想看到的内容",
-      label: kind === "style" ? "文风" : "不想看到的内容",
-      placeholder: kind === "style" ? "例如：多写环境" : "例如：校园霸凌",
+      title: kind === "style" ? t("start.customStyleTitle") : t("start.customAvoidTitle"),
+      label: kind === "style" ? t("start.customStyleLabel") : t("start.customAvoidLabel"),
+      placeholder: kind === "style" ? t("start.customStylePlaceholder") : t("start.customAvoidPlaceholder"),
       maxLength: 30,
-      confirmLabel: "添加",
+      confirmLabel: t("common.add"),
     });
     if (!text) return;
     if (kind === "style") {
@@ -130,21 +136,21 @@ export function StartForm({
 
   return (
     <View>
-      <Step n="1" title="你扮演谁">
+      <Step n="1" title={t("start.stepWho")}>
         <View style={wide ? styles.nameRow : styles.nameColumn}>
           <Field
-            label="主角的名字"
+            label={t("start.nameLabel")}
             hideLabel
             onGrey
             value={name}
             onChangeText={changeName}
             maxLength={NAME_MAX}
-            placeholder="名字"
+            placeholder={t("start.namePlaceholder")}
             style={wide ? { flex: 1 } : undefined}
             trailing={
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="随机一个名字"
+                accessibilityLabel={t("start.randomName")}
                 onPress={() => changeName(randomName(name))}
                 style={({ pressed }) => [
                   styles.dice,
@@ -166,9 +172,9 @@ export function StartForm({
         </View>
       </Step>
 
-      <Step n="2" title="这个角色是谁" optional="可选">
+      <Step n="2" title={t("start.stepIdentity")} optional={t("common.optional")}>
         <Field
-          label="这个角色是谁"
+          label={t("start.stepIdentity")}
           hideLabel
           onGrey
           multiline
@@ -176,15 +182,15 @@ export function StartForm({
           value={summary}
           onChangeText={setSummary}
           maxLength={SUMMARY_MAX}
-          placeholder="身份、来历、和卡里角色的关系"
+          placeholder={t("start.identityPlaceholder")}
         />
       </Step>
 
-      <Step n="3" title="每段的长度">
+      <Step n="3" title={t("start.stepLength")}>
         <View
           style={[styles.lengths, { backgroundColor: palette.bg3 }]}
           accessibilityRole="radiogroup"
-          accessibilityLabel="每段的长度"
+          accessibilityLabel={t("start.stepLength")}
         >
           {(["short", "medium", "long"] as const).map((value) => {
             const on = length === value;
@@ -194,7 +200,7 @@ export function StartForm({
                 key={value}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={LENGTH_LABELS[value]}
+                accessibilityLabel={lengthLabel(value)}
                 onPress={() => setLength(value)}
                 style={[
                   styles.length,
@@ -216,7 +222,7 @@ export function StartForm({
                     color: on ? palette.ink : palette.ink2,
                   }}
                 >
-                  {LENGTH_LABELS[value]}
+                  {lengthLabel(value)}
                 </Text>
               </Pressable>
             );
@@ -224,9 +230,9 @@ export function StartForm({
         </View>
       </Step>
 
-      <Step n="4" title="文风" optional="可选 · 可多选">
+      <Step n="4" title={t("start.stepStyle")} optional={t("start.optionalMulti")}>
         <View style={styles.wrap}>
-          {[...STYLE_TAGS, ...customStyles].map((tag) => (
+          {[...tags, ...customStyles].map((tag) => (
             <Chip
               key={tag}
               label={tag}
@@ -236,13 +242,19 @@ export function StartForm({
               onPress={() => setStyles((list) => toggle(list, tag))}
             />
           ))}
-          <Chip label="自定义" icon="plus" muted onGrey onPress={() => void addCustom("style")} />
+          <Chip
+            label={t("start.customStyle")}
+            icon="plus"
+            muted
+            onGrey
+            onPress={() => void addCustom("style")}
+          />
         </View>
       </Step>
 
-      <Step n="5" title="不想看到的内容" optional="可选">
+      <Step n="5" title={t("start.stepAvoid")} optional={t("common.optional")}>
         <View style={[styles.checks, { backgroundColor: palette.card }]}>
-          {[...BOUNDARY_ITEMS, ...customBounds].map((item) => (
+          {[...avoidItems, ...customBounds].map((item) => (
             <View key={item} style={styles.checkCell}>
               <Checkbox
                 label={item}
@@ -252,7 +264,12 @@ export function StartForm({
             </View>
           ))}
           <View style={styles.checkCell}>
-            <Checkbox label="其他…" checked={false} plus onToggle={() => void addCustom("bound")} />
+            <Checkbox
+              label={t("start.other")}
+              checked={false}
+              plus
+              onToggle={() => void addCustom("bound")}
+            />
           </View>
         </View>
       </Step>

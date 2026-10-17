@@ -7,6 +7,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 import {
   lineHeightFor,
@@ -24,6 +25,7 @@ import { usePrefs } from "../../state/PrefsProvider.tsx";
 import styles from "./play.module.css";
 
 function FontChoice() {
+  const { t } = useTranslation();
   const { reading, setReading } = usePrefs();
   const option = (value: ReadingFont, glyph: string, label: string) => {
     const on = reading.font === value;
@@ -41,15 +43,16 @@ function FontChoice() {
     );
   };
   return (
-    <div className={styles.fonts} role="radiogroup" aria-label="正文字体">
-      {option("serif", "宋", "宋体")}
-      {option("sans", "黑", "黑体")}
+    <div className={styles.fonts} role="radiogroup" aria-label={t("reading.font")}>
+      {option("serif", t("reading.serifSample"), t("reading.serif"))}
+      {option("sans", t("reading.sansSample"), t("reading.sans"))}
     </div>
   );
 }
 
 /** 字号：两头是减小、增大的圆按钮，中间是可以点、拖、用方向键调的滑杆 */
 function SizeControl() {
+  const { t } = useTranslation();
   const { reading, setReading } = usePrefs();
   const size = readingSize(reading);
   const index = sizeIndex(size);
@@ -67,11 +70,11 @@ function SizeControl() {
   return (
     <div className={styles.sizeBlock}>
       <div className={styles.size}>
-        {step("字号减小", 14, -1)}
+        {step(t("reading.smaller"), 14, -1)}
         <input
           type="range"
           className={styles.range}
-          aria-label="正文字号"
+          aria-label={t("reading.size")}
           aria-valuetext={`${size}`}
           min={0}
           max={READING_SIZES.length - 1}
@@ -80,11 +83,12 @@ function SizeControl() {
           style={{ "--fill": `${ratio * 100}%` } as CSSProperties}
           onChange={(e) => setReading({ ...reading, size: READING_SIZES[Number(e.target.value)] ?? size })}
         />
-        {step("字号增大", 22, 1)}
+        {step(t("reading.larger"), 22, 1)}
       </div>
       <div className={styles.sizeNote}>
         <span className={styles.mono}>
-          {size} / {lineHeightFor(size)} · {reading.size === null ? "跟随浏览器字号" : "固定字号"}
+          {size} / {lineHeightFor(size)} ·{" "}
+          {reading.size === null ? t("reading.followBrowserSize") : t("reading.fixedSize")}
         </span>
         {reading.size !== null ? (
           <button
@@ -92,7 +96,7 @@ function SizeControl() {
             className={styles.follow}
             onClick={() => setReading({ ...reading, size: null })}
           >
-            跟随浏览器字号
+            {t("reading.followBrowserSize")}
           </button>
         ) : null}
       </div>
@@ -114,6 +118,7 @@ export function MorePopover({
   onClose: () => void;
   onAction: (action: MoreAction) => void;
 }) {
+  const { t } = useTranslation();
   const box = useRef<HTMLDivElement>(null);
   const [frame, setFrame] = useState<{ left: number; top: number; width: number } | null>(null);
   const close = useRef(onClose);
@@ -183,20 +188,22 @@ export function MorePopover({
     <div
       ref={box}
       role="dialog"
-      aria-label="更多"
+      aria-label={t("common.more")}
       className={cx(styles.popover, "surface-sheet")}
       style={frame ? { left: frame.left, top: frame.top, width: frame.width } : { visibility: "hidden" }}
       onKeyDown={onKeyDown}
     >
-      <div className={styles.popLabel}>阅读设置</div>
+      <div className={styles.popLabel}>{t("reading.title")}</div>
       <FontChoice />
       <SizeControl />
       <div className={styles.menuGroup}>
-        {item("rename", "write", "重命名存档")}
-        {item("world", "world", "世界状态", "W")}
-        {ending !== "ended" ? item("end", "flag", "写结局", undefined, false, ending === "busy") : null}
-        {item("shortcuts", "grid", "键盘快捷键", "?")}
-        {item("delete", "trash", "删除存档", undefined, true)}
+        {item("rename", "write", t("reading.renameSave"))}
+        {item("world", "world", t("play.world"), "W")}
+        {ending !== "ended"
+          ? item("end", "flag", t("play.writeEnding"), undefined, false, ending === "busy")
+          : null}
+        {item("shortcuts", "grid", t("shortcuts.title"), "?")}
+        {item("delete", "trash", t("reading.deleteSave"), undefined, true)}
       </div>
     </div>,
     document.body,

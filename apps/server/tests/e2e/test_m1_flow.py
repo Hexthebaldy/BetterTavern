@@ -61,6 +61,7 @@ async def test_full_m1_flow(running: Running) -> None:
         )
         assert r.status_code == 202, r.text
         created = r.json()
+        assert created["playthrough"]["language"] == "zh"  # 不传时按中文
         playthrough_id = created["playthrough"]["id"]
         opening_events = await read_events(client, created["events_url"], token)
         names = [e.event for e in opening_events]
@@ -171,15 +172,29 @@ async def test_ending_closes_the_story(running: Running) -> None:
         auth = {"Authorization": f"Bearer {token}"}
         files = {"file": ("card.json", json.dumps(CARD).encode(), "application/json")}
         scenario = (await client.post("/v1/scenarios/import", headers=auth, files=files)).json()
+        # 提示词的语言只认 zh、en
         r = await client.post(
             "/v1/playthroughs",
             headers=auth,
-            json={"scenario_id": scenario["id"], "protagonist": {"name": "林川"}},
+            json={"scenario_id": scenario["id"], "protagonist": {"name": "林川"}, "language": "fr"},
+        )
+        assert r.status_code == 422 and r.json()["code"] == "VALIDATION_ERROR"
+        # 英文界面开的局：存下 language，之后给导演的提示词是英文的（故事内容照旧）
+        r = await client.post(
+            "/v1/playthroughs",
+            headers=auth,
+            json={"scenario_id": scenario["id"], "protagonist": {"name": "林川"}, "language": "en"},
         )
         created = r.json()
+        assert created["playthrough"]["language"] == "en"
         playthrough_id = created["playthrough"]["id"]
         opening = json.loads((await read_events(client, created["events_url"], token))[-1].data)
         head_id = opening["turn"]["id"]
+        director = [req for req in running.fake.app.chat_requests if req.body.get("stream")][
+            -1
+        ].body["messages"]
+        assert director[0]["content"].startswith("You are the director")
+        assert "<opening-brief>" in director[-1]["content"]
         turns_url = f"/v1/playthroughs/{playthrough_id}/turns"
 
         # 写结局，带上想要的方向

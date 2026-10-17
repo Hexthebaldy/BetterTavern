@@ -25,9 +25,9 @@ def _inflate(data: bytes, limit: int) -> bytes:
     try:
         out = decompressor.decompress(data, limit + 1)
     except zlib.error as exc:
-        raise PngError("压缩的文本块损坏") from exc
+        raise PngError("Corrupt compressed text chunk") from exc
     if len(out) > limit or decompressor.unconsumed_tail:
-        raise PngError("压缩的文本块解压后过大")
+        raise PngError("Compressed text chunk is too large when decompressed")
     return out
 
 
@@ -71,7 +71,7 @@ def read_text_chunks(data: bytes, keywords: tuple[str, ...] | None = None) -> di
     给了 keywords（不区分大小写）就只读这些关键字的块，其余的块不解压。
     """
     if not data.startswith(PNG_SIGNATURE):
-        raise PngError("不是 PNG 文件")
+        raise PngError("Not a PNG file")
     wanted = {k.lower() for k in keywords} if keywords is not None else None
     texts: dict[str, bytes] = {}
     total = 0
@@ -79,18 +79,18 @@ def read_text_chunks(data: bytes, keywords: tuple[str, ...] | None = None) -> di
     count = 0
     while pos < len(data):
         if pos + 8 > len(data):
-            raise PngError("PNG 文件被截断")
+            raise PngError("Truncated PNG file")
         length = int.from_bytes(data[pos : pos + 4], "big")
         kind = data[pos + 4 : pos + 8]
         end = pos + 8 + length
         if length > len(data) or end + 4 > len(data):
-            raise PngError("PNG 文件被截断")
+            raise PngError("Truncated PNG file")
         count += 1
         if count > MAX_CHUNKS:
-            raise PngError("PNG 的块数量过多")
+            raise PngError("Too many PNG chunks")
         if kind in (b"tEXt", b"zTXt", b"iTXt"):
             if length > MAX_TEXT_BYTES:
-                raise PngError("PNG 的文本块过大")
+                raise PngError("PNG text chunk too large")
             body = data[pos + 8 : end]
             name = _keyword(body)
             if (
@@ -102,7 +102,7 @@ def read_text_chunks(data: bytes, keywords: tuple[str, ...] | None = None) -> di
                 if parsed is not None:
                     total += len(parsed[1])
                     if total > MAX_TOTAL_TEXT_BYTES:
-                        raise PngError("PNG 的文本块合计过大")
+                        raise PngError("PNG text chunks too large in total")
                     texts[parsed[0]] = parsed[1]
         pos = end + 4  # 跳过 CRC
         if kind == b"IEND":
@@ -117,4 +117,4 @@ def card_payload(data: bytes) -> tuple[str, bytes]:
         for name, value in texts.items():
             if name.lower() == keyword:
                 return keyword, value
-    raise PngError("这张 PNG 里没有角色卡数据（找不到 chara 或 ccv3 文本块）")
+    raise PngError("This PNG has no character card data (no chara or ccv3 text chunk)")

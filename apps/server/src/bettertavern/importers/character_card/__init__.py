@@ -27,7 +27,7 @@ class ImportedCard:
 
 def import_card(data: bytes) -> ImportedCard:
     if len(data) > MAX_UPLOAD_BYTES:
-        raise CardError(f"文件超过 {MAX_UPLOAD_BYTES // (1024 * 1024)} MB")
+        raise CardError(f"File exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MB")
     digest = hashlib.sha256(data).hexdigest()
     if data.startswith(PNG_SIGNATURE):
         try:
@@ -44,4 +44,4 @@ def import_card(data: bytes) -> ImportedCard:
         return ImportedCard(
             card=normalize_card(raw), raw=raw, sha256=digest, image=None, image_mime=None
         )
-    raise CardError("只支持 PNG 角色卡或 JSON 角色卡")
+    raise CardError("Only PNG or JSON character cards are supported")

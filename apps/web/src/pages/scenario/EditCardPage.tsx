@@ -11,6 +11,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useBlocker, useLocation, useNavigate, useParams } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
@@ -21,6 +22,7 @@ import {
   checkDraft,
   describeField,
   draftFrom,
+  fieldLabel,
   isDirty,
   toInput,
   type CardDraft,
@@ -50,6 +52,7 @@ export function EditCardPage() {
   const location = useLocation();
   const queries = useQueryClient();
   const overlay = useOverlay();
+  const { t } = useTranslation();
   const [detail, setDetail] = useState<ScenarioCard | null>(null);
   const [original, setOriginal] = useState<CardDraft | null>(null);
   const [draft, setDraft] = useState<CardDraft | null>(null);
@@ -60,7 +63,7 @@ export function EditCardPage() {
   const [saving, setSaving] = useState(false);
   // 保存成功、确认放弃之后要离开：这时不再拦
   const leaving = useRef(false);
-  useDocumentTitle(detail ? `编辑 ${detail.display_name}` : "编辑角色卡");
+  useDocumentTitle(detail ? t("cardEdit.pageTitle", { name: detail.display_name }) : t("scenario.editCard"));
 
   const apply = useCallback((next: ScenarioCard) => {
     const fresh = draftFrom(next);
@@ -101,10 +104,10 @@ export function EditCardPage() {
     if (blocker.state !== "blocked") return;
     void overlay
       .confirm({
-        title: "放弃修改？",
-        message: "这里改的内容还没有保存。",
-        confirmLabel: "放弃",
-        cancelLabel: "继续编辑",
+        title: t("cardEdit.discardTitle"),
+        message: t("cardEdit.discardMessage"),
+        confirmLabel: t("cardEdit.discard"),
+        cancelLabel: t("cardEdit.keepEditing"),
         tone: "danger",
       })
       .then((ok) => {
@@ -143,13 +146,13 @@ export function EditCardPage() {
     return (
       <div className={styles.page}>
         <header className={styles.bar}>
-          <IconButton icon="back" label="返回剧本详情" onClick={back} />
-          <h1 className={styles.title}>编辑角色卡</h1>
+          <IconButton icon="back" label={t("cardEdit.backToScenario")} onClick={back} />
+          <h1 className={styles.title}>{t("scenario.editCard")}</h1>
         </header>
         {loadError ? (
           <Notice
-            message={`角色卡没加载出来：${describeError(loadError)}`}
-            actionLabel="重新加载"
+            message={t("cardEdit.loadFailedWith", { error: describeError(loadError) })}
+            actionLabel={t("common.reload")}
             onAction={() => void load()}
           />
         ) : (
@@ -167,9 +170,12 @@ export function EditCardPage() {
     setProblems(local);
     setRecheck(local.length > 0);
     if (local.length > 0) {
-      overlay.toast(`有 ${local.length} 处需要修改：${describeField(local[0]?.field ?? "")}`, {
-        icon: "alert",
-      });
+      overlay.toast(
+        t("cardEdit.needsFixing", { count: local.length, field: describeField(local[0]?.field ?? "") }),
+        {
+          icon: "alert",
+        },
+      );
       return;
     }
     setSaving(true);
@@ -181,33 +187,36 @@ export function EditCardPage() {
       setSaving(false);
       if (e instanceof ApiError && e.code === "CARD_CHANGED") {
         const reload = await overlay.confirm({
-          title: "这张角色卡在别处改过了",
-          message: "重新加载会丢掉这里还没保存的修改。",
-          confirmLabel: "重新加载",
+          title: t("cardEdit.conflictTitle"),
+          message: t("cardEdit.conflictMessage"),
+          confirmLabel: t("common.reload"),
         });
         if (reload) await load();
       } else if (e instanceof ApiError && typeof e.field("field") === "string") {
         const field = e.field("field") as string;
-        setProblems([{ field, message: e.message }]);
-        overlay.toast(`${describeField(field)}：${e.message}`, { icon: "alert" });
+        const problem = describeError(e);
+        setProblems([{ field, message: problem }]);
+        overlay.toast(t("cardEdit.fieldProblem", { field: describeField(field), problem }), {
+          icon: "alert",
+        });
       } else {
-        overlay.toast(`保存失败：${describeError(e)}`, { icon: "alert" });
+        overlay.toast(t("common.saveFailed", { error: describeError(e) }), { icon: "alert" });
       }
       return;
     }
     setSaving(false);
     apply(saved);
     refreshScenario();
-    overlay.toast("已保存，之后开始的新故事会用改过的角色卡");
+    overlay.toast(t("cardEdit.saved"));
     leaving.current = true;
     back();
   };
 
   const reset = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "恢复导入时的内容？",
-      message: "角色卡（包括世界书）会回到刚导入时的样子，剧本名不变。改过的内容找不回来。",
-      confirmLabel: "恢复",
+      title: t("cardEdit.resetTitle"),
+      message: t("cardEdit.resetMessage"),
+      confirmLabel: t("cardEdit.resetConfirm"),
       tone: "danger",
       icon: "retry",
     });
@@ -215,15 +224,15 @@ export function EditCardPage() {
     try {
       apply(await api.scenarios.resetCard(id));
       refreshScenario();
-      overlay.toast("已恢复成导入时的内容");
+      overlay.toast(t("cardEdit.resetDone"));
     } catch (e) {
-      overlay.toast(`恢复失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("cardEdit.resetFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
-  const textField = (field: TextField, label: string, height: number, hint?: string) => (
+  const textField = (field: TextField, height: number, hint?: string) => (
     <TextArea
-      label={label}
+      label={fieldLabel(field)}
       optional
       height={height}
       value={draft[field]}
@@ -236,64 +245,71 @@ export function EditCardPage() {
   return (
     <div className={styles.page}>
       <header className={styles.bar}>
-        <IconButton icon="back" label="返回剧本详情" onClick={back} />
-        <h1 className={styles.title}>编辑角色卡</h1>
-        <Button label="保存" size="sm" busy={saving} disabled={!dirty} onClick={() => void save()} />
+        <IconButton icon="back" label={t("cardEdit.backToScenario")} onClick={back} />
+        <h1 className={styles.title}>{t("scenario.editCard")}</h1>
+        <Button
+          label={t("common.save")}
+          size="sm"
+          busy={saving}
+          disabled={!dirty}
+          onClick={() => void save()}
+        />
       </header>
-      <Notice
-        tone="info"
-        message="修改只影响之后开始的新故事，已经开始的故事不变。文中的 {{user}} 会换成主角的名字，{{char}} 会换成角色名。"
-      />
+      <Notice tone="info" message={t("cardEdit.notice", { user: "{{user}}", char: "{{char}}" })} />
       {errorFor("card") ? <Notice message={errorFor("card")} /> : null}
 
-      <h2 className={styles.section}>基本</h2>
+      <h2 className={styles.section}>{t("cardEdit.sections.basic")}</h2>
       <Field
-        label="剧本名"
+        label={fieldLabel("display_name")}
         value={draft.displayName}
         onChange={(e) => set({ displayName: e.target.value })}
-        hint="只在剧本库里显示"
+        hint={t("cardEdit.hints.displayName")}
         error={errorFor("display_name")}
       />
       <Field
-        label="角色名"
+        label={fieldLabel("name")}
         value={draft.name}
         onChange={(e) => set({ name: e.target.value })}
-        hint="故事里这个角色的名字，替换 {{char}}"
+        hint={t("cardEdit.hints.name", { char: "{{char}}" })}
         error={errorFor("name")}
       />
       <Field
-        label="标签"
+        label={fieldLabel("tags")}
         optional
         value={draft.tags}
         onChange={(e) => set({ tags: e.target.value })}
-        hint="用逗号或顿号分开"
+        hint={t("cardEdit.hints.list")}
         error={errorFor("tags")}
       />
 
-      <h2 className={styles.section}>角色</h2>
-      {textField("description", "描述", 180, "外貌、身份、经历")}
-      {textField("personality", "性格", 110)}
+      <h2 className={styles.section}>{t("cardEdit.sections.character")}</h2>
+      {textField("description", 180, t("cardEdit.hints.description"))}
+      {textField("personality", 110)}
 
-      <h2 className={styles.section}>场景与开场</h2>
-      {textField("scenario", "情境", 120, "故事开始时的处境")}
-      {textField("first_mes", "开场白", 150, "只参考情境和语气，开场由导演重新写")}
+      <h2 className={styles.section}>{t("cardEdit.sections.opening")}</h2>
+      {textField("scenario", 120, t("cardEdit.hints.scenario"))}
+      {textField("first_mes", 150, t("cardEdit.hints.first_mes"))}
 
-      <h2 className={styles.section}>说话方式</h2>
-      {textField("mes_example", "对话示例", 150, "用来提炼角色的说话方式")}
+      <h2 className={styles.section}>{t("cardEdit.sections.speech")}</h2>
+      {textField("mes_example", 150, t("cardEdit.hints.mes_example"))}
 
       <div className={styles.sectionRow}>
-        <h2 className={styles.section}>世界书</h2>
-        <span className={styles.sectionMeta}>{draft.book.length} 条</span>
+        <h2 className={styles.section}>{t("cardEdit.book")}</h2>
+        <span className={styles.sectionMeta}>{t("cardEdit.entries", { count: draft.book.length })}</span>
       </div>
-      <p className={styles.note}>
-        开局搭建世界时，常驻条目优先，其次按这里的顺序，最多用 40 条；不启用的条目不用。
-      </p>
+      <p className={styles.note}>{t("cardEdit.bookNote")}</p>
       {errorFor("book") ? <Notice message={errorFor("book")} /> : null}
       <BookEditor book={draft.book} onChange={(book) => set({ book })} errorFor={errorFor} />
 
       <div className={styles.bottom}>
-        <Button label="保存修改" size="lg" busy={saving} disabled={!dirty} onClick={() => void save()} />
-        <Button label="恢复导入时的内容" variant="text" onClick={() => void reset()} />
+        <Button
+          label={t("cardEdit.saveChanges")}
+          size="lg"
+          busy={saving}
+          disabled={!dirty}
+          onClick={() => void save()}
+        />
+        <Button label={t("cardEdit.reset")} variant="text" onClick={() => void reset()} />
       </div>
     </div>
   );

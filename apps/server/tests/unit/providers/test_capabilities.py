@@ -55,7 +55,7 @@ def test_structured_ladder_order_and_negative_cache() -> None:
 
 
 def test_unknown_keys_are_rejected() -> None:
-    with pytest.raises(ValueError, match="未知字段"):
+    with pytest.raises(ValueError, match="Unknown fields"):
         parse_rules([{"match": {}, "caps": {"context_windw": 1}}])
     with pytest.raises(ValueError):
         parse_rules([{"match": {}, "caps": {"structured": ["xml"]}}])

@@ -4,6 +4,7 @@
  */
 
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import type { Playthrough } from "@bettertavern/core/api/types";
@@ -29,6 +30,7 @@ export function StoryRow({
   onMenu: (story: Playthrough, place: MenuPlace) => void;
 }) {
   const status = storyStatus(story);
+  const { t } = useTranslation();
   const more = useRef<HTMLButtonElement>(null);
   const context = useContextMenu((place) => onMenu(story, place));
   return (
@@ -69,7 +71,7 @@ export function StoryRow({
       <IconButton
         ref={more}
         icon="more"
-        label={`“${story.title}”的更多操作`}
+        label={t("nav.moreFor", { title: story.title })}
         tone="card"
         diameter={30}
         iconSize={18}

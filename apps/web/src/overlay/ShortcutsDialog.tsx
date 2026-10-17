@@ -4,6 +4,7 @@
  */
 
 import { Fragment, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import { IconButton } from "../components/controls.tsx";
 import { usePrefs } from "../state/PrefsProvider.tsx";
@@ -12,9 +13,9 @@ import { Dialog } from "./Dialog.tsx";
 import styles from "./overlay.module.css";
 
 /** 和设计稿一样分两组：前六项是读和写，其余是界面（世界状态、侧栏、这张表、关闭） */
-const GROUPS: { title: string; items: Shortcut[] }[] = [
-  { title: "阅读", items: SHORTCUTS.slice(0, 6) },
-  { title: "界面", items: SHORTCUTS.slice(6) },
+const GROUPS: { title: "reading" | "app"; items: Shortcut[] }[] = [
+  { title: "reading", items: SHORTCUTS.slice(0, 6) },
+  { title: "app", items: SHORTCUTS.slice(6) },
 ];
 
 function Keys({ keys, single }: { keys: string[]; single: boolean }) {
@@ -34,18 +35,22 @@ function Keys({ keys, single }: { keys: string[]; single: boolean }) {
 export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   const { singleKeys, setSingleKeys } = usePrefs();
   const toggle = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
   return (
-    <Dialog label="键盘快捷键" onClose={onClose} width={shell.shortcutsDialog} initialFocus={toggle}>
+    <Dialog
+      label={t("shortcuts.title")}
+      onClose={onClose}
+      width={shell.shortcutsDialog}
+      initialFocus={toggle}
+    >
       <div className={styles.shortcutsHead}>
-        <h2 className={styles.shortcutsTitle}>键盘快捷键</h2>
-        <IconButton icon="close" label="关闭" diameter={36} iconSize={18} onClick={onClose} />
+        <h2 className={styles.shortcutsTitle}>{t("shortcuts.title")}</h2>
+        <IconButton icon="close" label={t("common.close")} diameter={36} iconSize={18} onClick={onClose} />
       </div>
       <label className={styles.singleRow}>
         <span className={styles.singleText}>
-          <span className={styles.singleTitle}>单键快捷键</span>
-          <span className={styles.singleNote}>
-            字母、/、[ 和 ? 只在没有输入文字的时候生效；用读屏或语音输入时可以关掉
-          </span>
+          <span className={styles.singleTitle}>{t("shortcuts.single")}</span>
+          <span className={styles.singleNote}>{t("shortcuts.singleNote")}</span>
         </span>
         <input
           ref={toggle}
@@ -57,12 +62,16 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
         />
       </label>
       {GROUPS.map((group) => (
-        <section key={group.title} className={styles.shortcutGroup} aria-label={group.title}>
-          <div className={styles.groupTitle}>{group.title}</div>
+        <section
+          key={group.title}
+          className={styles.shortcutGroup}
+          aria-label={t(`shortcuts.${group.title}`)}
+        >
+          <div className={styles.groupTitle}>{t(`shortcuts.${group.title}`)}</div>
           <div className={styles.shortcutList}>
             {group.items.map((item) => (
-              <div key={item.label} className={styles.shortcutRow}>
-                <span>{item.label}</span>
+              <div key={item.id} className={styles.shortcutRow}>
+                <span>{t(`shortcuts.items.${item.id}`)}</span>
                 <Keys keys={item.keys} single={item.single} />
               </div>
             ))}

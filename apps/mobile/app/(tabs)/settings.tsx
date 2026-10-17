@@ -8,11 +8,13 @@
  */
 
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
-import { MODEL_STATUS, WINDOW_SOURCE } from "@bettertavern/core/settings/labels";
+import { LANGUAGE_NAMES } from "@bettertavern/core/i18n/index";
+import { modelStatusLabel, windowSourceLabel } from "@bettertavern/core/settings/labels";
 import { centerColumn, pane, rail, tabInsets } from "@bettertavern/design/layout";
 import { formatTokens } from "@bettertavern/core/utils/format";
 
@@ -31,6 +33,7 @@ import {
 } from "../../src/components/ui.tsx";
 import { CLIENT_VERSION } from "../../src/config.ts";
 import { AppearanceSheet } from "../../src/features/settings/AppearanceSheet.tsx";
+import { LanguageSheet } from "../../src/features/settings/LanguageSheet.tsx";
 import { useSettingsNav, type SettingsTarget } from "../../src/features/settings/nav.tsx";
 import { displayServer } from "../../src/features/settings/servers.ts";
 import { SettingsPane } from "../../src/features/settings/SettingsPane.tsx";
@@ -38,7 +41,7 @@ import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
-import { font, settingLabel, space, usePalette } from "../../src/theme/index.ts";
+import { font, space, usePalette } from "../../src/theme/index.ts";
 
 /**
  * 导演模型卡片。手机和中屏是墨色的；宽屏两栏的左栏里换成浅灰（light），右栏打开着它时白底加蓝色内描边。
@@ -55,6 +58,7 @@ function DirectorCard({
   selected?: boolean;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const { model_window: total, working_cap: cap, max_tokens: out } = route.window;
   const used = Math.min(cap, total);
   const story = Math.max(0, used - out) / total;
@@ -74,7 +78,7 @@ function DirectorCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`导演模型 ${route.model}`}
+      accessibilityLabel={t("settings.directorLabel", { model: route.model })}
       accessibilityState={selected ? { selected } : undefined}
       onPress={onPress}
       style={({ pressed }) => [
@@ -87,10 +91,10 @@ function DirectorCard({
       ]}
     >
       <View style={styles.cardTop}>
-        <Text style={[{ fontSize: 13 }, faint]}>导演模型</Text>
+        <Text style={[{ fontSize: 13 }, faint]}>{t("settings.director")}</Text>
         <View style={[styles.cardStatus, { backgroundColor: light ? palette.bg3 : palette.arrowBg }]}>
           <View style={[styles.dot, { backgroundColor: statusDot }]} />
-          <Text style={{ fontSize: 12, color: fg }}>{MODEL_STATUS[route.status]}</Text>
+          <Text style={{ fontSize: 12, color: fg }}>{modelStatusLabel(route.status)}</Text>
         </View>
       </View>
       <View style={styles.cardMain}>
@@ -102,7 +106,7 @@ function DirectorCard({
             {route.model}
           </Text>
           <Text numberOfLines={1} style={[{ fontSize: 12.5, lineHeight: 18 }, faint]}>
-            {route.label || route.provider} · 尾号 {route.key_last4}
+            {route.label || route.provider} · {t("settings.keyTail", { last4: route.key_last4 })}
           </Text>
         </View>
         {light ? null : <Icon name="chevronRight" size={18} color={fg} />}
@@ -121,10 +125,12 @@ function DirectorCard({
           <View style={{ flex: Math.max(0, 1 - story - output) }} />
         </View>
         <View style={styles.cardTop}>
-          <Text style={[styles.small, faint]}>工作窗口 {formatTokens(used)}</Text>
           <Text style={[styles.small, faint]}>
-            上下文 {formatTokens(total)}
-            {route.window.source === "default" ? `（${WINDOW_SOURCE.default}）` : ""}
+            {t("settings.workingWindow", { size: formatTokens(used) })}
+          </Text>
+          <Text style={[styles.small, faint]}>
+            {t("settings.context", { size: formatTokens(total) })}
+            {route.window.source === "default" ? ` (${windowSourceLabel("default")})` : ""}
           </Text>
         </View>
       </View>
@@ -134,6 +140,7 @@ function DirectorCard({
 
 function SetupCard({ hasModels, onPress }: { hasModels: boolean; onPress: () => void }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const step = (n: number, label: string, current: boolean, done: boolean) => (
     <View style={[styles.step, current ? { backgroundColor: palette.card } : null]}>
       <View
@@ -155,16 +162,16 @@ function SetupCard({ hasModels, onPress }: { hasModels: boolean; onPress: () => 
   );
   return (
     <View style={[styles.card, styles.setup, { backgroundColor: palette.warnBg }]}>
-      <Pill tone="warn" icon="alert" label="还不能开始故事" height={28} />
+      <Pill tone="warn" icon="alert" label={t("settings.cantStart")} height={28} />
       <Text style={{ fontSize: 20, lineHeight: 28, fontWeight: "700", color: palette.ink }}>
-        设置导演模型
+        {t("settings.setupTitle")}
       </Text>
       <View style={{ gap: 6 }}>
-        {step(1, "添加模型（Key 和模型一起配）", !hasModels, hasModels)}
-        {step(2, "选一个当导演", hasModels, false)}
+        {step(1, t("settings.setupStep1"), !hasModels, hasModels)}
+        {step(2, t("settings.setupStep2"), hasModels, false)}
       </View>
       <Button
-        label={hasModels ? "选一个当导演" : "添加模型"}
+        label={hasModels ? t("settings.pickDirector") : t("settings.addModel")}
         trailingIcon="arrowRight"
         between
         onPress={onPress}
@@ -177,9 +184,11 @@ export default function SettingsScreen() {
   const { api, user, serverUrl } = useApp();
   const nav = useSettingsNav();
   const palette = usePalette();
-  const { theme } = usePrefs();
+  const { t } = useTranslation();
+  const { theme, language } = usePrefs();
   const { size: layoutSize, width, expanded } = useLayout();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
   // 宽屏两栏：右栏打开着哪一项（没点过就按有没有导演模型决定）
   const [picked, setPicked] = useState<SettingsTarget | null>(null);
   const { data, error, refreshing, refresh, reload } = useAsync(async () => {
@@ -191,7 +200,7 @@ export default function SettingsScreen() {
   const { bottom: bottomSpace } = useTabBarSpace();
   const director = data?.director ?? null;
   const routes = data?.routes ?? [];
-  const name = user?.display_name || user?.email || "账户";
+  const name = user?.display_name || user?.email || t("settings.account");
   const paneRoot: SettingsTarget | null =
     picked ?? (data ? (director ? { screen: "model", id: director.id } : { screen: "models" }) : null);
   const open = (target: SettingsTarget): void => {
@@ -215,7 +224,7 @@ export default function SettingsScreen() {
       : undefined;
   return (
     <Page
-      header={<LargeHeader title="设置" insets={headerInsets} />}
+      header={<LargeHeader title={t("nav.settings")} insets={headerInsets} />}
       refreshing={refreshing}
       onRefresh={() => void refresh()}
       bottomSpace={bottomSpace}
@@ -230,7 +239,7 @@ export default function SettingsScreen() {
         <Notice
           icon="offline"
           message={describeError(error)}
-          actionLabel="重试"
+          actionLabel={t("common.retry")}
           onAction={() => void reload()}
           style={{ marginTop: space.s }}
         />
@@ -246,7 +255,7 @@ export default function SettingsScreen() {
         <SetupCard hasModels={routes.length > 0} onPress={() => open({ screen: "models" })} />
       ) : null}
 
-      <GroupLabel style={styles.label}>配置</GroupLabel>
+      <GroupLabel style={styles.label}>{t("settings.groupConfig")}</GroupLabel>
       <Group>
         <ListRow
           key="account"
@@ -265,8 +274,8 @@ export default function SettingsScreen() {
         {data && !director ? (
           <ListRow
             key="director"
-            title="导演模型"
-            subtitle="还没有设置"
+            title={t("settings.director")}
+            subtitle={t("settings.notSet")}
             subtitleColor={palette.warn}
             leading={<RowIcon name="director" />}
             onPress={() => open({ screen: "models" })}
@@ -274,8 +283,8 @@ export default function SettingsScreen() {
         ) : null}
         <ListRow
           key="models"
-          title="模型"
-          subtitle="Key、端点和模型"
+          title={t("settings.models")}
+          subtitle={t("settings.modelsSub")}
           leading={<RowIcon name="key" />}
           trailing={
             data ? (
@@ -286,7 +295,7 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               ) : (
-                <Text style={{ fontSize: 12.5, color: palette.mut }}>还没有添加</Text>
+                <Text style={{ fontSize: 12.5, color: palette.mut }}>{t("settings.noneAdded")}</Text>
               )
             ) : null
           }
@@ -294,17 +303,27 @@ export default function SettingsScreen() {
           selected={isOpen("models")}
         />
       </Group>
-      <GroupLabel style={styles.label}>其他</GroupLabel>
+      <GroupLabel style={styles.label}>{t("settings.groupOther")}</GroupLabel>
       <Group>
         <ListRow
-          title="外观"
+          title={t("appearance.title")}
           leading={<RowIcon name="moon" />}
-          trailing={<Text style={{ fontSize: 13, color: palette.mut }}>{settingLabel(theme)}</Text>}
+          trailing={<Text style={{ fontSize: 13, color: palette.mut }}>{t(`appearance.${theme}`)}</Text>}
           onPress={() => setAppearanceOpen(true)}
         />
         <ListRow
-          title="连接测试"
-          subtitle="检查流式输出、断线续传和延迟"
+          title={t("language.title")}
+          leading={<RowIcon name="language" />}
+          trailing={
+            <Text style={{ fontSize: 13, color: palette.mut }}>
+              {language === "system" ? t("language.system") : LANGUAGE_NAMES[language]}
+            </Text>
+          }
+          onPress={() => setLanguageOpen(true)}
+        />
+        <ListRow
+          title={t("settings.probe")}
+          subtitle={t("settings.probeSub")}
           leading={<RowIcon name="probe" />}
           onPress={() => open({ screen: "probe" })}
           selected={isOpen("probe")}
@@ -314,6 +333,7 @@ export default function SettingsScreen() {
         v{CLIENT_VERSION} · {displayServer(serverUrl)}
       </Text>
       <AppearanceSheet visible={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
+      <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
     </Page>
   );
 }

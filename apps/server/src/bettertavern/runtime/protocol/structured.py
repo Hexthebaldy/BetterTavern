@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -53,12 +53,23 @@ class StructuredResult[T: BaseModel]:
     latency_ms: int
 
 
-def schema_of(model: type[BaseModel]) -> dict[str, Any]:
-    return model.model_json_schema()
+def schema_of(model: type[BaseModel], notes: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """模型的 JSON Schema。notes 是按这一局语言的字段说明（"模型名.字段名" → 说明），
+    取自 runtime/prompts/<lang>/schema/<name>.json；加进去后键照 pydantic 的习惯按字母排。"""
+    schema = model.model_json_schema()
+    for key, text in (notes or {}).items():
+        owner, _, field_name = key.partition(".")
+        holder = schema if owner == schema.get("title") else schema.get("$defs", {}).get(owner)
+        properties = holder.get("properties", {}) if holder else {}
+        if field_name in properties:
+            properties[field_name] = dict(
+                sorted({**properties[field_name], "description": text}.items())
+            )
+    return schema
 
 
-def schema_text(model: type[BaseModel]) -> str:
-    return json.dumps(schema_of(model), ensure_ascii=False, indent=1)
+def schema_text(model: type[BaseModel], notes: Mapping[str, str] | None = None) -> str:
+    return json.dumps(schema_of(model, notes), ensure_ascii=False, indent=1)
 
 
 def _merge_usage(a: Usage | None, b: Usage | None) -> Usage | None:
@@ -79,8 +90,8 @@ def _error_summary(exc: ValidationError | ValueError) -> str:
         parts = []
         for err in exc.errors()[:6]:
             loc = ".".join(str(p) for p in err.get("loc", ()))
-            parts.append(f"{loc or '(根)'}: {err.get('msg', '')}")
-        return "；".join(parts)
+            parts.append(f"{loc or '(root)'}: {err.get('msg', '')}")
+        return "; ".join(parts)
     return str(exc)[:300]
 
 
@@ -95,6 +106,7 @@ async def run_structured[T: BaseModel](
     description: str,
     build_messages: MessageBuilder,
     prompts: PromptLibrary,
+    schema_notes: Mapping[str, str] | None = None,
     max_tokens: int,
     temperature: float | None,
     reasoning: ReasoningConfig | None,
@@ -106,7 +118,7 @@ async def run_structured[T: BaseModel](
         negative_cache.disabled(cred.credential_id, model) if negative_cache else frozenset()
     )
     ladder = caps.structured_ladder(disabled)
-    schema = schema_of(output)
+    schema = schema_of(output, schema_notes)
     started = clock()
     attempts = 0
     usage: Usage | None = None
@@ -144,7 +156,7 @@ async def run_structured[T: BaseModel](
                 result = await adapter.complete(request, cred, caps, cancel=cancel)
             except ProviderError as exc:
                 if exc.error_class is ErrorClass.UNSUPPORTED_FEATURE and mode != "prompt_json":
-                    last_error = f"{mode} 不支持：{exc.message[:120]}"
+                    last_error = f"{mode} not supported: {exc.message[:120]}"
                     unsupported = True
                     break
                 raise
@@ -157,7 +169,7 @@ async def run_structured[T: BaseModel](
             try:
                 data = extract_json_object(raw) if mode != "tool_call" else json.loads(raw)
                 if data is None:
-                    raise ValueError("没有找到 JSON 对象")
+                    raise ValueError("no JSON object found")
                 value = output.model_validate(data)
             except (ValidationError, ValueError) as exc:
                 last_error = _error_summary(exc)
@@ -181,5 +193,5 @@ async def run_structured[T: BaseModel](
         if not unsupported:
             levels_used += 1
     raise StructuredOutputError(
-        f"结构化输出失败（{attempts} 次尝试）", attempts=attempts, last_error=last_error
+        f"Structured output failed ({attempts} attempts)", attempts=attempts, last_error=last_error
     )

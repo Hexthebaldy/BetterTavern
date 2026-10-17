@@ -128,7 +128,7 @@ export class ProbeSession {
         chars_per_event: config.charsPerEvent,
       }),
     });
-    if (!created.ok) throw new Error(`创建探针失败：HTTP ${created.status}`);
+    if (!created.ok) throw new Error(`Failed to create probe: HTTP ${created.status}`);
     const info = (await created.json()) as { stream_id: string; events_url: string; status_url: string };
 
     let text = "";
@@ -189,7 +189,7 @@ export class ProbeSession {
       for (let attempt = 1; ; attempt += 1) {
         try {
           const response = await this.deps.jsonFetch(`${this.baseUrl}${info.status_url}`);
-          if (!response.ok) throw new Error(`查询探针状态失败：HTTP ${response.status}`);
+          if (!response.ok) throw new Error(`Failed to read probe status: HTTP ${response.status}`);
           return (await response.json()) as { status: string; text?: string; sha256: string };
         } catch (error) {
           if (this.stopped || attempt >= STATUS_RETRIES) throw error;

@@ -1,0 +1,34 @@
+{
+  "preamble": "以下是当前的世界状态（资料，不是玩家的新输入）；叙述必须与它一致。",
+  "section": "【{title}】",
+  "sections": {
+    "scene": "场景",
+    "hero": "主角（我）",
+    "present": "在场人物",
+    "roster": "其他人物与地点（名册）",
+    "known": "玩家已知的事实",
+    "secret": "仅导演可见（角色私有，禁止直接写出）"
+  },
+  "scene": {
+    "location": "地点：{value}",
+    "time": "时间：{value}",
+    "goal": "主角当前目标：{value}"
+  },
+  "items": "随身物品：{value}",
+  "details": {
+    "goal": "目标：{value}",
+    "attitude": "对我的态度：{value}",
+    "speech_style": "说话方式：{value}"
+  },
+  "kinds": {
+    "character": "人物",
+    "item": "物品",
+    "location": "地点",
+    "organization": "组织",
+    "world": "世界"
+  },
+  "kind": "（{kind}）",
+  "describe": "：{value}",
+  "join_details": "；",
+  "join_names": "、"
+}

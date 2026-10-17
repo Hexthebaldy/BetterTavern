@@ -306,7 +306,7 @@ export class PlaySession {
     } else if (outcome === "unauthorized") {
       this.dispatch({
         type: "load_failed",
-        error: { code: "UNAUTHENTICATED", message: "登录已失效，请重新登录", retryable: false },
+        error: { code: "UNAUTHENTICATED", message: "Session expired", retryable: false },
       });
     }
   }

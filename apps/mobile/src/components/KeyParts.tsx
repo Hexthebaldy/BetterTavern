@@ -3,6 +3,7 @@
  */
 
 import * as Clipboard from "expo-clipboard";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
@@ -62,6 +63,7 @@ export function ProviderMark({
 /** API Key 输入框：等宽、隐藏输入，框里右侧一个“粘贴”胶囊 */
 export function KeyField(props: Omit<FieldProps, "trailing" | "trailingWidth" | "mono" | "secureTextEntry">) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const paste = async (): Promise<void> => {
     const text = (await Clipboard.getStringAsync().catch(() => "")).trim();
     if (text) props.onChangeText?.(text);
@@ -77,7 +79,7 @@ export function KeyField(props: Omit<FieldProps, "trailing" | "trailingWidth" | 
       trailing={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="粘贴 API Key"
+          accessibilityLabel={t("models.pasteKey")}
           onPress={() => void paste()}
           style={({ pressed }) => [
             styles.paste,
@@ -85,7 +87,7 @@ export function KeyField(props: Omit<FieldProps, "trailing" | "trailingWidth" | 
           ]}
         >
           <Icon name="paste" size={16} color={palette.bg} />
-          <Text style={{ fontSize: 13.5, color: palette.bg }}>粘贴</Text>
+          <Text style={{ fontSize: 13.5, color: palette.bg }}>{t("common.paste")}</Text>
         </Pressable>
       }
     />

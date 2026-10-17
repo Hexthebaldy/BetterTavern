@@ -186,20 +186,26 @@ export function tooltipFrame(
   return { left: Math.min(Math.max(8, center), window.width - 8 - tip.width), top, above };
 }
 
-/** 键盘快捷键，W12 对话框和“更多”菜单里的键帽都从这里取。single 表示单键快捷键（可以在对话框里关掉） */
-export type Shortcut = { keys: string[]; label: string; scope: "reading" | "app"; single: boolean };
+/**
+ * 键盘快捷键，W12 对话框和“更多”菜单里的键帽都从这里取。single 表示单键快捷键（可以在对话框里关掉）。
+ * 说明文字在 i18n 资源里：shortcuts.items.<id>。
+ */
+export type ShortcutId =
+  "pick" | "write" | "send" | "newline" | "collapse" | "latest" | "world" | "sidebar" | "help" | "close";
+
+export type Shortcut = { id: ShortcutId; keys: string[]; scope: "reading" | "app"; single: boolean };
 
 export const SHORTCUTS: Shortcut[] = [
-  { keys: ["A", "B", "C", "D"], label: "选一个选项", scope: "reading", single: true },
-  { keys: ["/"], label: "自己写", scope: "reading", single: true },
-  { keys: ["Enter"], label: "发送", scope: "reading", single: false },
-  { keys: ["Shift", "Enter"], label: "换行", scope: "reading", single: false },
-  { keys: ["Esc"], label: "收起输入框，草稿留着", scope: "reading", single: false },
-  { keys: ["End"], label: "回到最新", scope: "reading", single: false },
-  { keys: ["W"], label: "打开或收起世界状态", scope: "reading", single: true },
-  { keys: ["["], label: "展开或收起侧栏", scope: "app", single: true },
-  { keys: ["?"], label: "显示这张表", scope: "app", single: true },
-  { keys: ["Esc"], label: "关闭菜单、对话框和滑出的面板", scope: "app", single: false },
+  { id: "pick", keys: ["A", "B", "C", "D"], scope: "reading", single: true },
+  { id: "write", keys: ["/"], scope: "reading", single: true },
+  { id: "send", keys: ["Enter"], scope: "reading", single: false },
+  { id: "newline", keys: ["Shift", "Enter"], scope: "reading", single: false },
+  { id: "collapse", keys: ["Esc"], scope: "reading", single: false },
+  { id: "latest", keys: ["End"], scope: "reading", single: false },
+  { id: "world", keys: ["W"], scope: "reading", single: true },
+  { id: "sidebar", keys: ["["], scope: "app", single: true },
+  { id: "help", keys: ["?"], scope: "app", single: true },
+  { id: "close", keys: ["Esc"], scope: "app", single: false },
 ];
 
 /**

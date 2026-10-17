@@ -103,21 +103,22 @@ def clean_label(label: str) -> str:
 def clean_model(model: str) -> str:
     value = model.strip()
     if not value or len(value) > MAX_MODEL:
-        raise Invalid("请填写模型名", field="model")
+        raise Invalid("Enter a model name", field="model")
     return value
 
 
 def clean_key(key: str) -> str:
     value = key.strip()
     if not value or len(value) > MAX_KEY_CHARS:
-        raise Invalid("请填写有效的 API Key", field="api_key")
+        raise Invalid("Enter a valid API key", field="api_key")
     return value
 
 
 def clean_manual_window(window: int) -> int:
     if not MIN_MANUAL_WINDOW <= window <= MAX_MANUAL_WINDOW:
         raise Invalid(
-            f"上下文窗口要在 {MIN_MANUAL_WINDOW} 到 {MAX_MANUAL_WINDOW} 之间", field="manual_window"
+            f"The context window must be between {MIN_MANUAL_WINDOW} and {MAX_MANUAL_WINDOW}",
+            field="manual_window",
         )
     return window
 
@@ -126,16 +127,16 @@ def clean_headers(headers: Mapping[str, str] | None) -> dict[str, str]:
     if not headers:
         return {}
     if len(headers) > MAX_HEADERS:
-        raise Invalid(f"自定义请求头最多 {MAX_HEADERS} 个", field="extra_headers")
+        raise Invalid(f"At most {MAX_HEADERS} custom headers", field="extra_headers")
     clean: dict[str, str] = {}
     for name, value in headers.items():
         if not _HEADER_NAME.match(name):
-            raise Invalid(f"请求头名称不合法：{name!r}", field="extra_headers")
+            raise Invalid(f"Invalid header name: {name!r}", field="extra_headers")
         if name.lower() in _FORBIDDEN_HEADERS:
-            raise Invalid(f"不能自定义请求头 {name}", field="extra_headers")
+            raise Invalid(f"Header {name} can't be customized", field="extra_headers")
         text = str(value)
         if len(text) > 2000 or "\n" in text or "\r" in text:
-            raise Invalid(f"请求头 {name} 的值不合法", field="extra_headers")
+            raise Invalid(f"Invalid value for header {name}", field="extra_headers")
         clean[name] = text
     return clean
 
@@ -144,7 +145,7 @@ def clean_body(body: Mapping[str, Any] | None) -> dict[str, Any]:
     if not body:
         return {}
     if len(json.dumps(body, ensure_ascii=False).encode()) > MAX_EXTRA_BODY_BYTES:
-        raise Invalid("自定义请求体字段太大", field="extra_body")
+        raise Invalid("The custom body fields are too large", field="extra_body")
     return dict(body)
 
 
@@ -155,7 +156,7 @@ def parse_params(data: Mapping[str, Any] | None) -> RouteParams:
         first = exc.errors()[0]
         field = ".".join(str(p) for p in first.get("loc", ()))
         raise Invalid(
-            f"路由参数不合法：{field} {first.get('msg', '')}", field=f"params.{field}"
+            f"Invalid route parameter: {field} {first.get('msg', '')}", field=f"params.{field}"
         ) from exc
 
 
@@ -165,9 +166,9 @@ def clean_caps_override(data: Mapping[str, Any] | None) -> dict[str, Any]:
         return {}
     if "context_window" in override:
         # 窗口有自己的来源顺序（服务商列表 > 能力表 > 手填），手填用 manual_window
-        raise Invalid("上下文窗口请用 manual_window 设置", field="caps_override")
+        raise Invalid("Set the context window with manual_window", field="caps_override")
     try:
         Capabilities.from_mapping(override)
     except ValueError as exc:
-        raise Invalid(f"能力覆盖不合法：{exc}", field="caps_override") from exc
+        raise Invalid(f"Invalid capability override: {exc}", field="caps_override") from exc
     return override

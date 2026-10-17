@@ -19,7 +19,7 @@
 | `email_norm` | text | 否 |  | `email` 去掉首尾空白后转小写，唯一；登录时按它查找 |
 | `password_hash` | text | 否 |  | Argon2id 的 PHC 字符串（`$argon2id$v=19$m=…,t=…,p=…$…`）。哈希参数调整后，用户下次登录成功时重新哈希 |
 | `display_name` | text | 否 | `''` | 昵称，最多 40 字 |
-| `locale` | text | 否 | `'zh'` | 界面语言；M1 只有中文 |
+| `locale` | text | 否 | `'zh'` | 保留不用：界面语言是设备上的设置（[i18n.md](../i18n.md)） |
 | `settings` | jsonb | 否 | `'{}'` | 账户级设置；M1 没有用到 |
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `updated_at` | timestamptz | 否 | `now()` | 更新密码哈希时写入 |

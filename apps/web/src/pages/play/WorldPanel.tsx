@@ -10,8 +10,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { describeError } from "@bettertavern/core/api/client";
+import { i18n } from "@bettertavern/core/i18n/index";
 
 import { Button, cx, Dots, IconButton } from "../../components/controls.tsx";
 import { Dialog } from "../../overlay/Dialog.tsx";
@@ -34,9 +36,9 @@ function useWorld(playthroughId: string, version: string | null) {
   const reveal = async (): Promise<void> => {
     const count = query.data?.hidden_facts ?? 0;
     const ok = await overlay.confirm({
-      title: count > 1 ? `揭示 ${count} 条秘密？` : "揭示一条秘密？",
-      message: "这是导演知道、而“我”还不知道的事，看了会剧透接下来的故事。",
-      confirmLabel: "揭示",
+      title: count > 1 ? i18n.t("world.revealMany", { count }) : i18n.t("world.revealOne"),
+      message: i18n.t("world.revealMessage"),
+      confirmLabel: i18n.t("world.reveal"),
       tone: "warn",
       icon: "lock",
     });
@@ -56,6 +58,7 @@ function WorldContent({
   mode: WorldMode;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { query, reveal } = useWorld(playthroughId, version);
   const [tab, setTab] = useState<Tab>("entities");
   const view = query.data;
@@ -68,27 +71,27 @@ function WorldContent({
       }
     : null;
   const tabs: { value: Tab; label: string; count?: number }[] = [
-    { value: "entities", label: "人物与地点", count: counts?.entities },
-    { value: "links", label: "关系", count: counts?.links },
-    { value: "facts", label: "事实", count: counts?.facts },
+    { value: "entities", label: t("world.tabs.entities"), count: counts?.entities },
+    { value: "links", label: t("world.tabs.links"), count: counts?.links },
+    { value: "facts", label: t("world.tabs.facts"), count: counts?.facts },
   ];
   const docked = mode === "dock";
   return (
     <>
       <div className={styles.head}>
         <div className={styles.headText}>
-          <h2 className={styles.title}>世界</h2>
-          <span className={styles.subtitle}>导演记下的一切 · 开局时整理</span>
+          <h2 className={styles.title}>{t("world.title")}</h2>
+          <span className={styles.subtitle}>{t("world.subtitle")}</span>
         </div>
         <IconButton
           icon={docked ? "sidebar" : "close"}
-          label={docked ? "收起世界状态" : "关闭"}
+          label={docked ? t("play.worldHide") : t("common.close")}
           aria-keyshortcuts={docked ? "W" : "Escape"}
           iconSize={docked ? 20 : 22}
           onClick={onClose}
         />
       </div>
-      <div className={styles.tabs} role="tablist" aria-label="世界状态">
+      <div className={styles.tabs} role="tablist" aria-label={t("play.world")}>
         {tabs.map((t) => (
           <button
             key={t.value}
@@ -118,8 +121,13 @@ function WorldContent({
           )
         ) : query.error ? (
           <div className={styles.error}>
-            <p>世界状态没加载出来：{describeError(query.error)}</p>
-            <Button label="重试" icon="retry" variant="secondary" onClick={() => void query.refetch()} />
+            <p>{t("world.loadFailedWith", { error: describeError(query.error) })}</p>
+            <Button
+              label={t("common.retry")}
+              icon="retry"
+              variant="secondary"
+              onClick={() => void query.refetch()}
+            />
           </div>
         ) : (
           <div className={styles.loading}>
@@ -143,19 +151,20 @@ export function WorldPanel({
   version: string | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const content = (
     <WorldContent playthroughId={playthroughId} version={version} mode={mode} onClose={onClose} />
   );
   if (mode === "dock") {
     return (
-      <aside className={cx(styles.panel, styles.dock, "surface-panel")} aria-label="世界状态">
+      <aside className={cx(styles.panel, styles.dock, "surface-panel")} aria-label={t("play.world")}>
         {content}
       </aside>
     );
   }
   return (
     <Dialog
-      label="世界状态"
+      label={t("play.world")}
       onClose={onClose}
       className={cx(styles.panel, styles.slideOver, mode === "sheet" && styles.sheet, "surface-panel")}
       bare

@@ -163,6 +163,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 export function useApp(): AppContextValue {
   const value = useContext(AppContext);
-  if (!value) throw new Error("useApp 必须在 AppProvider 里使用");
+  if (!value) throw new Error("useApp must be used inside AppProvider");
   return value;
 }

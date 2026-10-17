@@ -79,5 +79,5 @@ def _content_length(scope: Scope) -> int | None:
 
 def _title(limit: int) -> str:
     if limit >= 1024 * 1024:
-        return f"请求体超过 {limit // (1024 * 1024)} MB"
-    return f"请求体超过 {max(limit // 1024, 1)} KB"
+        return f"Request body exceeds {limit // (1024 * 1024)} MB"
+    return f"Request body exceeds {max(limit // 1024, 1)} KB"

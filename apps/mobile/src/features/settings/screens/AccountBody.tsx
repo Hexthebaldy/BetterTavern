@@ -4,6 +4,7 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
@@ -30,6 +31,7 @@ export function AccountBody() {
   const column = useColumnStyle();
   const palette = usePalette();
   const overlay = useOverlay();
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [counts, setCounts] = useState<Counts | null>(null);
   const [password, setPassword] = useState("");
@@ -53,9 +55,9 @@ export function AccountBody() {
 
   const confirmDelete = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "删除账户？",
-      message: "所有存档、剧本和模型（包括 Key）都会被永久删除，无法恢复。",
-      confirmLabel: "删除账户",
+      title: t("account.deleteTitle"),
+      message: t("account.deleteMessage"),
+      confirmLabel: t("account.deleteAccount"),
       tone: "danger",
     });
     if (!ok) return;
@@ -98,24 +100,33 @@ export function AccountBody() {
             <Text accessibilityRole="header" numberOfLines={1} style={[styles.name, { color: palette.ink }]}>
               {name}
             </Text>
-            {joined ? <Text style={{ fontSize: 12.5, color: palette.mut }}>注册于 {joined}</Text> : null}
+            {joined ? (
+              <Text style={{ fontSize: 12.5, color: palette.mut }}>
+                {t("account.joined", { date: joined })}
+              </Text>
+            ) : null}
           </View>
         </View>
         <Group inset={14}>
           <View style={styles.kv}>
-            <Text style={[styles.key, { color: palette.mut }]}>邮箱</Text>
+            <Text style={[styles.key, { color: palette.mut }]}>{t("account.email")}</Text>
             <Text style={{ flex: 1, fontSize: 15, color: palette.ink }} selectable>
               {user?.email}
             </Text>
           </View>
           <View style={styles.kv}>
-            <Text style={[styles.key, { color: palette.mut }]}>昵称</Text>
+            <Text style={[styles.key, { color: palette.mut }]}>{t("account.nickname")}</Text>
             <Text style={{ flex: 1, fontSize: 15, color: user?.display_name ? palette.ink : palette.mut }}>
-              {user?.display_name || "没有设置"}
+              {user?.display_name || t("account.notSet")}
             </Text>
           </View>
         </Group>
-        <Button label="退出登录" variant="secondary" icon="logout" onPress={() => void signOut()} />
+        <Button
+          label={t("account.signOut")}
+          variant="secondary"
+          icon="logout"
+          onPress={() => void signOut()}
+        />
 
         <View style={[styles.danger, { backgroundColor: palette.errBg }]}>
           <Pressable
@@ -125,27 +136,29 @@ export function AccountBody() {
             style={styles.dangerHead}
           >
             <Icon name="alert" size={20} color={palette.err} />
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: palette.err }}>删除账户</Text>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: palette.err }}>
+              {t("account.deleteAccount")}
+            </Text>
             <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} color={palette.err} />
           </Pressable>
           {expanded ? (
             <View style={{ gap: space.m }}>
               <View style={styles.stats}>
-                {stat("story", counts?.stories, "存档")}
-                {stat("library", counts?.scenarios, "剧本")}
-                {stat("key", counts?.models, "模型")}
+                {stat("story", counts?.stories, t("account.saves"))}
+                {stat("library", counts?.scenarios, t("account.scenarios"))}
+                {stat("key", counts?.models, t("account.models"))}
               </View>
               <Text
                 style={{ fontSize: 14, lineHeight: 22, color: palette.ink2, paddingHorizontal: space.xs }}
               >
-                所有存档、剧本和模型（包括 Key）都会被永久删除，无法恢复。
+                {t("account.deleteMessage")}
               </Text>
               {error ? <Notice message={error} /> : null}
               <Field
-                label="输入密码确认"
+                label={t("account.confirmPassword")}
                 hideLabel
                 onGrey
-                placeholder="输入密码确认"
+                placeholder={t("account.confirmPassword")}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -153,7 +166,7 @@ export function AccountBody() {
                 textContentType="password"
               />
               <Button
-                label="删除账户"
+                label={t("account.deleteAccount")}
                 variant="dangerSolid"
                 onPress={() => void confirmDelete()}
                 busy={deleting}

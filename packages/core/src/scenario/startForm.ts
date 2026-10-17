@@ -5,34 +5,26 @@
  */
 
 import type { Preferences } from "../api/types.ts";
+import { i18n } from "../i18n/index.ts";
 
 export const NAME_MAX = 40;
 export const SUMMARY_MAX = 400;
 export const STYLE_MAX = 200;
 export const BOUNDARIES_MAX = 300;
 
-export const NAME_POOL = [
-  "林川",
-  "沈舟",
-  "顾长安",
-  "阿柏",
-  "陆鸣",
-  "许知远",
-  "周遥",
-  "江离",
-  "叶青",
-  "唐棠",
-  "苏白",
-  "程野",
-  "温言",
-  "方晓",
-  "韩松",
-  "秦岚",
-] as const;
+/** 一份用 | 分开的选项表（名字建议、文风、不想看到的内容），随界面语言 */
+function list(key: "start.names" | "start.styles" | "start.boundaries"): string[] {
+  return i18n.t(key).split("|");
+}
+
+/** 名字建议的候选：中文界面是中文名，英文界面是英文名 */
+export function namePool(): string[] {
+  return list("start.names");
+}
 
 /** 从名字池里取几个建议；random 返回 [0, 1)，测试时可以换成固定序列 */
 export function suggestNames(count: number, random: () => number = Math.random): string[] {
-  const pool: string[] = [...NAME_POOL];
+  const pool = namePool();
   const picked: string[] = [];
   while (picked.length < count && pool.length > 0) {
     const index = Math.floor(random() * pool.length);
@@ -43,27 +35,33 @@ export function suggestNames(count: number, random: () => number = Math.random):
 
 /** 随机一个和当前不同的名字 */
 export function randomName(current: string, random: () => number = Math.random): string {
-  const pool = NAME_POOL.filter((n) => n !== current);
-  return pool[Math.floor(random() * pool.length)] ?? NAME_POOL[0];
+  const all = namePool();
+  const pool = all.filter((n) => n !== current);
+  return pool[Math.floor(random() * pool.length)] ?? all[0] ?? "";
 }
 
-export const STYLE_TAGS = ["克制", "白描", "古典", "悬疑感", "诗意", "轻快", "冷幽默"] as const;
+/** 内置的文风标签 */
+export function styleTags(): string[] {
+  return list("start.styles");
+}
 
-export const BOUNDARY_ITEMS = ["血腥描写", "主要角色死亡", "突然的惊吓", "露骨的亲密描写", "粗口"] as const;
+/** 内置的“不想看到的内容” */
+export function boundaryItems(): string[] {
+  return list("start.boundaries");
+}
 
-export const LENGTH_LABELS: Record<Preferences["length"], string> = {
-  short: "短",
-  medium: "适中",
-  long: "长",
-};
+export function lengthLabel(length: Preferences["length"]): string {
+  return i18n.t(`start.length.${length}`);
+}
 
-/** 用顿号连起来；放不下的项整项丢掉，不截断半个词 */
+/** 用界面语言的分隔符连起来（中文是顿号，英文是逗号）；放不下的项整项丢掉，不截断半个词 */
 export function joinWithin(items: string[], max: number): string {
+  const separator = i18n.t("common.listSeparator");
   let text = "";
   for (const item of items) {
     const value = item.trim();
     if (!value) continue;
-    const next = text ? `${text}、${value}` : value;
+    const next = text ? `${text}${separator}${value}` : value;
     if (next.length > max) break;
     text = next;
   }
@@ -85,8 +83,8 @@ export function summaryParts(form: {
   styles: string[];
   boundaries: number;
 }): string[] {
-  const parts = [form.name.trim() || "还没起名", LENGTH_LABELS[form.length]];
+  const parts = [form.name.trim() || i18n.t("start.noName"), lengthLabel(form.length)];
   if (form.styles.length > 0) parts.push(form.styles.join(" · "));
-  if (form.boundaries > 0) parts.push(`避开 ${form.boundaries} 项`);
+  if (form.boundaries > 0) parts.push(i18n.t("start.avoid", { count: form.boundaries }));
   return parts;
 }

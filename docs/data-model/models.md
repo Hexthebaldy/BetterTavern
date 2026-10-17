@@ -114,7 +114,7 @@
   "report": {                              // 与接口返回的 ProbeOut 相同
     "provider": "deepseek", "model": "deepseek-chat", "probed_at": "2026-10-14T08:00:00+00:00",
     "fatal_error": null,                   // 例如 "auth: Invalid API key"：冒号前是错误类别
-    "checks": [{ "name": "stream", "ok": true, "detail": "收到文字", "latency_ms": 420 }],
+    "checks": [{ "name": "stream", "ok": true, "detail": "Text received", "latency_ms": 420 }],
     "caps_overlay": { "structured": ["json_object", "tool_call"], "stream_usage": true }
   },
   "caps": { "structured": ["json_object", "tool_call"], "stream_usage": true }  // 叠加到能力表上的测试结果

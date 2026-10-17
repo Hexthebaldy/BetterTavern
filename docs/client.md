@@ -18,7 +18,7 @@
 | 本地存储 | expo-sqlite（历史缓存）、expo-secure-store（令牌） | 缓存随时可丢，服务端才是权威 |
 | API 客户端 | `openapi-fetch` + 生成的类型 | 来自 `packages/api-contract`（[backend.md 第 9 节](backend.md)） |
 | 流式 | `expo/fetch` 加自写 `SseClient` | 见下 |
-| 国际化 | i18next + expo-localization | 界面语言与故事语言是两个独立设置；v1 只提供中文 |
+| 国际化 | i18next + react-i18next + expo-localization | 中文、英文两种界面语言，资源和网页端共用（`packages/core/src/i18n/`），见 [i18n.md](i18n.md) |
 | 文件导入 | expo-document-picker | 角色卡原样上传，服务端解析 PNG 里的 `chara` 文本块，客户端不带 PNG 解析器 |
 | 测试 | `node --test`（纯逻辑）、Jest、React Native Testing Library、MSW、Maestro | [testing.md 第 1 节](testing.md) |
 
@@ -111,7 +111,7 @@ apps/mobile/
 │   ├── state/  authStore.ts  uiStore.ts
 │   ├── storage/  db.ts  secure.ts      # expo-sqlite 缓存；expo-secure-store
 │   ├── components/  theme/  utils/
-│   └── i18n/  index.ts  zh.json   # v1 只有中文，en.json 以后再加
+│   └── i18n/                       # 实际放在 packages/core/src/i18n/，两端共用（见 i18n.md）
 ├── e2e/                                # Maestro 流程
 └── __tests__/
 ```
@@ -130,7 +130,6 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | `openapi-fetch` 加生成的类型 | `packages/core/src/api/client.ts` 的 `ApiClient`（带令牌、401 时刷新一次再重试、problem+json 转 `ApiError`、超时）加手写的 `types.ts` 与 `endpoints.ts`。字段与 [api/](api/README.md) 里各领域的请求和响应模型一一对应，改接口时一起改 | 契约工具链接入时 |
 | FlashList | `FlatList`：已完成的回合用 `memo` 固定，只有生成中的那一段重渲染 | 故事很长、出现卡顿时 |
 | expo-sqlite 本地缓存 | 不缓存，打开故事时整条拉取（分页，每页 200 回合） | M2 |
-| i18n | 界面文字直接写在组件里（只有中文） | 加英文时 |
 | Jest、RNTL、Maestro | 纯逻辑用 `node --test`（见下）；界面还没有自动化测试，靠真机验收 | M2 |
 | 触觉反馈 | 没有（需要 expo-haptics） | 之后 |
 
@@ -156,9 +155,12 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | `settings/models` | 模型列表（导演那一行带标记）和添加模型：服务商图块（DeepSeek、OpenAI、Grok、Hugging Face、自定义兼容端点，一行三块；圆标里是各家的标志，取自 Lobe Icons，形状数据在 `@bettertavern/design/providerLogos`，自定义端点写 { }）→ Key（每次都新填，可粘贴；不列出已配置过的 Key）→ 端点（使用官方地址）→ 模型列表（Key 和端点填好后自动获取，也可以手动重新获取）、搜索兼手动输入 → 上下文窗口（只有服务商列表和内置资料都不知道时才让填，不知道就按 32K 估计）→ 备注名、是否设为导演 → 保存。一个 Key 配几个模型时每个模型一行 |
 | `settings/model/[id]` | 模型详情：服务商、Key、模型名、端点；测试这个模型（结果存在模型上）、设为导演；“能记住多少”格子图，标出窗口的来源（服务商提供、内置资料、你填的、按服务商报错纠正、估计值），估计值和手填的可以改；工作窗口上限、深度思考；编辑备注名、模型名和端点；更换 Key（别的模型也用这个 Key 时可以一起换）；取消导演；删除 |
 | `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、模型数，输入密码确认） |
+| 设置首页的“语言” | 选择面板（手机是底部面板，平板是对话框）：跟随系统（下面注明系统语言）、中文、English；“中文”“English”用各自的语言写 |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
 
-界面按 [design/ui/](design/ui/README.md) 的设计稿实现（“白 / 柔线 / 大圆角”，第一版正式界面；交互规则也在那份 README 里）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `packages/design/src/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）。
+界面按 [design/ui/](design/ui/README.md) 的设计稿实现（“白 / 柔线 / 大圆角”，第一版正式界面；交互规则也在那份 README 里）。
+界面文字有中文和英文，在“设置 → 语言”里选：跟随系统（系统语言是中文时用中文，其他用英文）、中文、English，存在设备上，选了立刻生效；
+开局时把当前的界面语言传给服务端，决定这一局的提示词用哪种语言（[i18n.md](i18n.md)）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `packages/design/src/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）。
 选中标签的图标和文字是 `#5B7CFF`（色板的 `tabOn`），底下是一块选中框，切换时滑到新标签（宽屏的竖向导航栏上下滑）：
 iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）——整条标签栏是一块玻璃，页面内容从下面透出来，选中框是另一块透明玻璃；
 没有液态玻璃时（Android、更早的 iOS）标签栏是白卡，选中框没有底色，一圈蓝色细描边加灰色投影（`tabCapsuleShadow`）。
@@ -214,11 +216,12 @@ iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）—�
 packages/
 ├── core/src/                  # @bettertavern/core
 │   ├── api/      client.ts  endpoints.ts  types.ts  events.ts  turnStream.ts  sse/（SseParser、SseClient）
+│   ├── i18n/     index.ts  zh/  en/        # 界面文字：共用的 i18next 实例、按领域分文件的中英文资源（docs/i18n.md）
 │   ├── auth/     session.ts                # SessionManager：令牌、单飞刷新
 │   ├── play/     turnMachine.ts  playSession.ts  reading.ts  worldGraph.ts  testing.ts（测试用的回合样本）
 │   ├── scenario/ startForm.ts              # 开始新故事的内置选项与拼接
 │   │             cardEdit.ts               # 编辑角色卡：草稿、上限（同服务端）、保存前检查、世界书条目移动
-│   ├── settings/ labels.ts  window.ts      # 模型状态、窗口来源的文案；“能记住多少”的格子
+│   ├── settings/ labels.ts  window.ts      # 模型状态、窗口来源的说明（调用时按界面语言取）；“能记住多少”的格子
 │   ├── probe/    probeSession.ts           # 连接测试
 │   ├── observability/ log.ts  requests.ts  # 诊断日志：脱敏、请求记录
 │   └── utils/    format.ts  ids.ts
@@ -233,7 +236,8 @@ apps/mobile/
 └── src/
     ├── config.ts                           # 版本号、默认服务器地址
     ├── state/    AppProvider.tsx           # 组装 ApiClient、会话、事件流连接；useApp()
-    │             PrefsProvider.tsx         # 设备上的界面偏好：最近用过的服务器、阅读设置、剧本库视图、外观
+    │             PrefsProvider.tsx         # 设备上的界面偏好：最近用过的服务器、阅读设置、剧本库视图、外观、界面语言
+    │             language.ts               # 按设置和系统语言（expo-localization）切换界面语言
     ├── storage/  secure.ts                 # expo-secure-store（令牌、服务器地址、界面偏好）
     ├── features/
     │   ├── play/     usePlaySession.ts  StoryFeed.tsx  TurnActions.tsx  BottomBar.tsx
@@ -242,7 +246,7 @@ apps/mobile/
     │   ├── library/  LibraryParts.tsx                 # 剧本库的卡片、列表行、空状态
     │   ├── scenario/ StartForm.tsx  BookEditor.tsx    # 开始新故事的表单；编辑角色卡里的世界书
     │   ├── settings/ servers.ts  AddModelForm.tsx  ModelPicker.tsx  ModelSheets.tsx
-    │   │             MemoryBlocks.tsx  ProbeResults.tsx  AppearanceSheet.tsx  nav.tsx  SettingsPane.tsx
+    │   │             MemoryBlocks.tsx  ProbeResults.tsx  AppearanceSheet.tsx  LanguageSheet.tsx  nav.tsx  SettingsPane.tsx
     │   │             screens/（模型列表、模型详情、账户的页面主体）
     │   └── probe/    DiagnosticsCard.tsx  ProbeBody.tsx   # 连接测试；诊断日志的导出和清空
     ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  sheet  overlay  dialog  icons
@@ -254,7 +258,7 @@ apps/mobile/
     └── utils/      orientation.ts
 ```
 
-`*.test.ts` 与被测文件放在一起，在仓库根目录 `npm test`（各工作区的 `node --test`）运行。`packages/core`：SSE 解析与重连、回合状态机、
+`*.test.ts` 与被测文件放在一起，在仓库根目录 `npm test`（各工作区的 `node --test`）运行。`packages/core`：两种语言的资源一一对应、语言的解析、SSE 解析与重连、回合状态机、
 `PlaySession`（加载、幂等重试、409 的处理、续传、轮询）、`SessionManager`、`ApiClient`、诊断日志，以及开始表单的拼接、窗口格子、
 关系图布局、阅读字号、数字格式；`packages/design`：平板断点与栏宽、主题、几何封面；`apps/mobile`：最近用过的服务器。
 
@@ -298,7 +302,7 @@ apps/mobile/
 | `/scenario/:id` | 剧本详情（W05）：≥ 900 两栏各自滚动，右栏是开始新故事的五步，底部浮着摘要栏；更窄单栏。剧本名右边进编辑角色卡；封面上只有返回按钮，删除剧本在概要下面（单栏时在最底下） |
 | `/scenario/:id/edit` | 编辑角色卡：单栏（≤ 640）居中，顶上一条（返回、标题、保存）贴着；内容和规则同 App 的 `scenario/[id]/edit`。没保存时站内跳转（侧栏、返回、浏览器后退）由路由的 blocker 先问，刷新或关标签页由浏览器提示（`beforeunload`） |
 | `/play/:id` | 阅读页（W06–W11）：书名页、故事流、选项（≥ 900 两列）、底部操作栏、世界状态（停靠 / 滑出）、更多（含写结局，行为同 App） |
-| `/settings` 及子页 | 设置（W13–W17）：≥ 900 两栏，左栏是设置首页，右栏是子页（模型、模型详情、账户、连接测试）；更窄逐层进入 |
+| `/settings` 及子页 | 设置（W13–W17）：≥ 900 两栏，左栏是设置首页，右栏是子页（模型、模型详情、账户、连接测试）；更窄逐层进入。“外观”“语言”是居中对话框，选了立刻生效；跟随系统时看浏览器的语言 |
 
 和 App 不同的只是布局和输入方式：文案、状态、错误提示、接口调用都照 App 的页面写，纯逻辑直接用 `@bettertavern/core`。
 
@@ -335,11 +339,12 @@ apps/mobile/
 ```
 apps/web/
 ├── index.html  vite.config.ts  playwright.config.ts  public/favicon.svg
-├── e2e/                         # Playwright 端到端测试和测试用的角色卡
+├── e2e/                         # Playwright 端到端测试（中文的完整流程、英文界面的冒烟测试）和测试用的角色卡
 └── src/
-    ├── main.tsx                 # 诊断日志 → 数据缓存 → 界面偏好 → 主题 → 登录状态 → 路由
+    ├── main.tsx                 # 诊断日志 → 界面语言 → 数据缓存 → 界面偏好 → 主题 → 登录状态 → 路由
     ├── app/       router.tsx  guards.tsx        # 路由表（阅读页、剧本详情、编辑角色卡、设置按需加载）；没登录去登录页、登录了不停在登录页
     ├── state/     AppProvider.tsx  PrefsProvider.tsx  prefs.ts   # 接口、会话（Cookie 模式）；浏览器里的界面偏好
+    │              language.ts                  # 按设置和浏览器语言（navigator.languages）切换界面语言，设好 <html lang>
     ├── storage/   local.ts                      # localStorage：存不进去、读不出来都当作没存过
     ├── observability/ setup.ts                 # 诊断日志接回、定时写入、页面报错
     ├── theme/     tokens.css  base.css  layout.ts  palette.ts  ThemeProvider.tsx
@@ -359,7 +364,6 @@ apps/web/
 - 登录态：设计稿的“平台替代”建议把令牌放在 localStorage；按讨论的方案改成 HttpOnly Cookie（见上），服务端为此加了 Cookie 模式。
 - 没有“换服务器”：Cookie 只发给同一个网站，网页和接口同源部署，登录页不放服务器入口和服务器对话框（W02 的对话框不做）；连接测试只测这一个服务器。
 - 共用代码：设计稿建议用路径别名直接引用 `apps/mobile/src`；改成 npm 工作区的两个包，手机端也从包里引用。
-- 连不上服务器的提示：App 是“连不上服务器，检查地址或网络。”，网页没有地址可改，改成“连不上服务器，检查网络后再试。”
 - API Key 输入框：用圆点遮住，但不用 `type=password`（免得浏览器把它存成这个网站的密码）；网页里直接粘贴，没有 App 的“粘贴”按钮。
 - 诊断日志导出：设计稿写的是 `.json`；内容和 App 导出的一样（开头几行说明，后面每行一条 JSON，可以拖进 vis），所以文件名是 `.jsonl`。
 - 提示浮条停留 4 秒（设计稿的值）；App 是 3 秒，带操作的 5 秒。

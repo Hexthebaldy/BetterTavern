@@ -50,6 +50,7 @@ class PlaythroughView:
     title: str
     status: str
     scenario_id: str | None
+    language: str
     protagonist_name: str
     preferences: dict[str, Any]
     head_turn_id: str | None
@@ -71,6 +72,7 @@ class PlaythroughView:
             title=row.title,
             status=row.status,
             scenario_id=row.scenario_id,
+            language=row.language,
             protagonist_name=str(protagonist.get("name") or ""),
             preferences=dict(row.settings.get("preferences") or {}),
             head_turn_id=row.head_turn_id,

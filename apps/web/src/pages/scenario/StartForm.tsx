@@ -6,16 +6,17 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { Preferences } from "@bettertavern/core/api/types";
 import {
-  BOUNDARY_ITEMS,
+  boundaryItems,
   composeBoundaries,
   composeStyle,
-  LENGTH_LABELS,
+  lengthLabel,
   NAME_MAX,
   randomName,
-  STYLE_TAGS,
+  styleTags as builtinStyles,
   suggestNames,
   SUMMARY_MAX,
   summaryParts,
@@ -74,7 +75,11 @@ export function StartForm({
   wide?: boolean;
 }) {
   const overlay = useOverlay();
-  const suggestions = useMemo(() => suggestNames(4), []);
+  const { t, i18n } = useTranslation();
+  // 名字建议、内置的文风和边界随界面语言
+  const suggestions = useMemo(() => suggestNames(4), [i18n.language]);
+  const builtinTags = useMemo(() => builtinStyles(), [i18n.language]);
+  const avoidItems = useMemo(() => boundaryItems(), [i18n.language]);
   const [name, setName] = useState("");
   const [summary, setSummary] = useState("");
   const [length, setLength] = useState<Preferences["length"]>("medium");
@@ -96,7 +101,8 @@ export function StartForm({
       },
       summaryParts({ name, length, styles: styleTags, boundaries: bounds.length }),
     );
-  }, [name, summary, length, styleTags, bounds]);
+    // 换了界面语言，底部摘要（“还没起名”“适中”）也要换
+  }, [name, summary, length, styleTags, bounds, i18n.language]);
 
   const toggle = (list: string[], item: string): string[] =>
     list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
@@ -104,11 +110,11 @@ export function StartForm({
 
   const addCustom = async (kind: "style" | "bound"): Promise<void> => {
     const text = await overlay.prompt({
-      title: kind === "style" ? "自定义文风" : "其他不想看到的内容",
-      label: kind === "style" ? "文风" : "不想看到的内容",
-      placeholder: kind === "style" ? "例如：多写环境" : "例如：校园霸凌",
+      title: kind === "style" ? t("start.customStyleTitle") : t("start.customAvoidTitle"),
+      label: kind === "style" ? t("start.customStyleLabel") : t("start.customAvoidLabel"),
+      placeholder: kind === "style" ? t("start.customStylePlaceholder") : t("start.customAvoidPlaceholder"),
       maxLength: 30,
-      confirmLabel: "添加",
+      confirmLabel: t("common.add"),
     });
     if (!text) return;
     if (kind === "style") {
@@ -122,20 +128,20 @@ export function StartForm({
 
   return (
     <div className={styles.steps}>
-      <Step n="1" title="你扮演谁">
+      <Step n="1" title={t("start.stepWho")}>
         <div className={wide ? styles.nameRow : styles.nameColumn}>
           <Field
-            label="主角的名字"
+            label={t("start.nameLabel")}
             className={cx(styles.nameField, styles.hiddenLabel)}
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={NAME_MAX}
-            placeholder="名字"
+            placeholder={t("start.namePlaceholder")}
             trailing={
               <IconButton
                 icon="dice"
                 className={styles.dice}
-                label="随机一个名字"
+                label={t("start.randomName")}
                 iconSize={20}
                 onClick={() => setName(randomName(name))}
               />
@@ -149,20 +155,20 @@ export function StartForm({
         </div>
       </Step>
 
-      <Step n="2" title="这个角色是谁" optional="可选">
+      <Step n="2" title={t("start.stepIdentity")} optional={t("common.optional")}>
         <TextArea
-          label="这个角色是谁"
+          label={t("start.stepIdentity")}
           hideLabel
           counter
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           maxLength={SUMMARY_MAX}
-          placeholder="身份、来历、和卡里角色的关系"
+          placeholder={t("start.identityPlaceholder")}
         />
       </Step>
 
-      <Step n="3" title="每段的长度">
-        <div className={styles.lengths} role="radiogroup" aria-label="每段的长度">
+      <Step n="3" title={t("start.stepLength")}>
+        <div className={styles.lengths} role="radiogroup" aria-label={t("start.stepLength")}>
           {(["short", "medium", "long"] as const).map((value) => {
             const on = length === value;
             const glyph = LENGTH_GLYPHS[value];
@@ -178,16 +184,16 @@ export function StartForm({
                 <svg width={36} height={22} viewBox="0 0 36 22" aria-hidden="true">
                   <path d={glyph.d} stroke="currentColor" strokeWidth={glyph.width} strokeLinecap="round" />
                 </svg>
-                <span>{LENGTH_LABELS[value]}</span>
+                <span>{lengthLabel(value)}</span>
               </button>
             );
           })}
         </div>
       </Step>
 
-      <Step n="4" title="文风" optional="可选 · 可多选">
+      <Step n="4" title={t("start.stepStyle")} optional={t("start.optionalMulti")}>
         <div className={styles.chips}>
-          {[...STYLE_TAGS, ...customStyles].map((tag) => (
+          {[...builtinTags, ...customStyles].map((tag) => (
             <Chip
               key={tag}
               label={tag}
@@ -196,13 +202,13 @@ export function StartForm({
               onClick={() => setStyleTags((list) => toggle(list, tag))}
             />
           ))}
-          <Chip label="自定义" icon="plus" accent onClick={() => void addCustom("style")} />
+          <Chip label={t("start.customStyle")} icon="plus" accent onClick={() => void addCustom("style")} />
         </div>
       </Step>
 
-      <Step n="5" title="不想看到的内容" optional="可选">
+      <Step n="5" title={t("start.stepAvoid")} optional={t("common.optional")}>
         <div className={styles.checks}>
-          {[...BOUNDARY_ITEMS, ...customBounds].map((item) => (
+          {[...avoidItems, ...customBounds].map((item) => (
             <Checkbox
               key={item}
               label={item}
@@ -210,7 +216,7 @@ export function StartForm({
               onToggle={() => setBounds((list) => toggle(list, item))}
             />
           ))}
-          <Checkbox label="其他…" checked={false} plus onToggle={() => void addCustom("bound")} />
+          <Checkbox label={t("start.other")} checked={false} plus onToggle={() => void addCustom("bound")} />
         </div>
       </Step>
     </div>

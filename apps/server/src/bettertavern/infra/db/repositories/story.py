@@ -278,9 +278,10 @@ RETURNING t.id
 
 RUNNER_LOST_ERROR = {
     "code": "RUNNER_LOST",
-    "message": "生成进程意外中止，请重试",
+    "message": "Generation stopped unexpectedly, please try again",
     "retryable": True,
     "partial": False,
+    "reason": None,
 }
 
 

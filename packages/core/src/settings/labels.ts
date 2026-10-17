@@ -1,21 +1,24 @@
 /** 设置页共用的文字和小规则（模型列表、添加模型、模型详情）。纯逻辑，node --test 可测。 */
 
 import type { ModelInfo, ModelRoute, ProbeCheck, Provider, RouteWindow, WindowSource } from "../api/types.ts";
+import { i18n, lookup } from "../i18n/index.ts";
 import { formatTokens } from "../utils/format.ts";
 
-export const MODEL_STATUS: Record<ModelRoute["status"], string> = {
-  ok: "可用",
-  unverified: "还没确认",
-  invalid: "Key 无效",
-};
+/** 模型的状态：可用、还没确认、Key 无效 */
+export function modelStatusLabel(status: ModelRoute["status"]): string {
+  return i18n.t(`models.status.${status}`);
+}
 
 /** 状态图标：可用 = 对勾，还没确认 = 虚线方框，Key 无效 = 叉 */
 export function statusKind(status: ModelRoute["status"]): "ok" | "untested" | "invalid" {
   return status === "ok" ? "ok" : status === "invalid" ? "invalid" : "untested";
 }
 
+/** 服务商的名字：品牌名不翻译；要自己填地址的“自定义兼容端点”按界面语言 */
 export function providerName(id: string, providers: Provider[] | undefined): string {
-  return providers?.find((p) => p.id === id)?.display_name ?? id;
+  const provider = providers?.find((p) => p.id === id);
+  if (provider?.requires_base_url) return i18n.t("models.customProvider");
+  return provider?.display_name ?? id;
 }
 
 /** 列表和标题里显示的名字：备注名，没有就是模型名 */
@@ -24,40 +27,41 @@ export function modelTitle(route: Pick<ModelRoute, "label" | "model">): string {
 }
 
 /** 窗口来源的短说明，放在“上下文 128K”后面 */
-export const WINDOW_SOURCE: Record<WindowSource, string> = {
-  listed: "服务商提供",
-  table: "内置资料",
-  manual: "你填的",
-  learned: "按服务商报错纠正",
-  default: "估计值",
-};
+export function windowSourceLabel(source: WindowSource): string {
+  return i18n.t(`models.windowSource.${source}`);
+}
 
 /** 窗口来源的完整说明；null 表示不用特别说明 */
 export function windowNote(window: RouteWindow): string | null {
-  const k = formatTokens(window.model_window);
+  const values = { window: formatTokens(window.model_window) };
   switch (window.source) {
     case "default":
-      return `服务商没告诉我们这个模型能读多少，先按 ${k} 估计。知道的话可以填一下；之后服务商要是报“超长”，会自动改成它说的上限。`;
     case "learned":
-      return `服务商报“上下文超长”时说这个模型最多 ${k}，已经自动按它算。`;
     case "manual":
-      return `上下文 ${k} 是你填的。服务商的模型列表里没有这个模型的长度。`;
+      return i18n.t(`models.windowNote.${window.source}`, values);
     default:
       return null;
   }
 }
 
-/** 手填窗口的选项；“不知道”就是不填，按 32K 估计 */
-export const MANUAL_WINDOW_CHOICES: { value: string; label: string; tokens: number | null }[] = [
-  { value: "unknown", label: "不知道", tokens: null },
-  { value: "8192", label: "8K", tokens: 8192 },
-  { value: "32768", label: "32K", tokens: 32768 },
-  { value: "131072", label: "128K", tokens: 131072 },
-  { value: "1000000", label: "1M", tokens: 1_000_000 },
+const MANUAL_WINDOWS: { value: string; tokens: number | null }[] = [
+  { value: "unknown", tokens: null },
+  { value: "8192", tokens: 8192 },
+  { value: "32768", tokens: 32768 },
+  { value: "131072", tokens: 131072 },
+  { value: "1000000", tokens: 1_000_000 },
 ];
 
+/** 手填窗口的选项；“不知道”就是不填，按 32K 估计 */
+export function manualWindowChoices(): { value: string; label: string; tokens: number | null }[] {
+  return MANUAL_WINDOWS.map((c) => ({
+    ...c,
+    label: c.tokens === null ? i18n.t("models.manualUnknown") : formatTokens(c.tokens),
+  }));
+}
+
 export function manualWindowChoice(tokens: number | null): string {
-  return MANUAL_WINDOW_CHOICES.find((c) => c.tokens === tokens)?.value ?? "unknown";
+  return MANUAL_WINDOWS.find((c) => c.tokens === tokens)?.value ?? "unknown";
 }
 
 /**
@@ -78,24 +82,24 @@ export function needsManualWindow(models: ModelInfo[] | null, chosen: string): b
 /** 窗口校验结果的说明 */
 export function describeWindow(window: RouteWindow): string[] {
   const lines = [
-    `模型上下文 ${formatTokens(window.model_window)}（${WINDOW_SOURCE[window.source]}），工作窗口上限 ${formatTokens(window.working_cap)}`,
-    `每轮最多输出 ${formatTokens(window.max_tokens)}，留给故事的上下文 ${formatTokens(window.effective_window)}`,
+    i18n.t("models.windowSummary", {
+      window: formatTokens(window.model_window),
+      source: windowSourceLabel(window.source),
+      cap: formatTokens(window.working_cap),
+    }),
+    i18n.t("models.windowBudget", {
+      output: formatTokens(window.max_tokens),
+      effective: formatTokens(window.effective_window),
+    }),
   ];
-  if (window.warnings.includes("WINDOW_CLAMPED")) {
-    lines.push("工作窗口超过了模型的上下文长度，按模型的上限计算");
-  }
+  if (window.warnings.includes("WINDOW_CLAMPED")) lines.push(i18n.t("models.windowClamped"));
   return lines;
 }
 
-/** 探测各项检查的中文名 */
-export const CHECK_NAMES: Record<string, string> = {
-  stream: "流式输出",
-  stream_usage: "流式用量统计",
-  json_object: "结构化输出（JSON）",
-  json_schema: "结构化输出（JSON Schema）",
-  tool_call: "工具调用",
-  reasoning_toggle: "关闭思考",
-};
+/** 探测各项检查的名字；不认识的检查显示它的 id */
+export function checkName(id: string): string {
+  return lookup(`probe.checks.${id}`) ?? id;
+}
 
 /** 一次探测里通过、失败、跳过各几项 */
 export function checkCounts(checks: ProbeCheck[]): { passed: number; failed: number; skipped: number } {

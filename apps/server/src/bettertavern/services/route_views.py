@@ -61,7 +61,8 @@ class RouteView:
 
 def too_small(check: WindowCheck) -> AppError:
     return AppError(
-        "有效窗口太小：请换更大窗口的模型、调大工作窗口上限或调小最大输出",
+        "The effective window is too small: use a model with a larger window, "
+        "raise the working window limit or lower the max output",
         code="WINDOW_TOO_SMALL",
         status=422,
         model_window=check.model_window,

@@ -30,7 +30,7 @@ class ProviderProfile:
     def base_url(self, cred: ResolvedCredential) -> str:
         url = cred.base_url or self.default_base_url
         if not url:
-            raise ValueError(f"{self.display_name} 需要填写基址")
+            raise ValueError(f"{self.display_name} needs a base URL")
         return url.rstrip("/")
 
     def auth_headers(self, cred: ResolvedCredential) -> dict[str, str]:

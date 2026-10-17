@@ -17,6 +17,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { IconName } from "@bettertavern/design/icons";
 
@@ -72,7 +73,7 @@ const OverlayContext = createContext<Overlay | null>(null);
 
 export function useOverlay(): Overlay {
   const value = useContext(OverlayContext);
-  if (!value) throw new Error("useOverlay 必须在 OverlayProvider 里使用");
+  if (!value) throw new Error("useOverlay must be used inside OverlayProvider");
   return value;
 }
 
@@ -148,7 +149,7 @@ export function DialogCard({
   title,
   message,
   children,
-  cancelLabel = "取消",
+  cancelLabel,
   confirmLabel,
   confirmDisabled,
   onCancel,
@@ -170,6 +171,7 @@ export function DialogCard({
   confirmRef?: Ref<HTMLButtonElement>;
 }) {
   const look = toneOf(tone);
+  const { t } = useTranslation();
   const shownIcon = icon ?? look.icon;
   return (
     <>
@@ -184,7 +186,13 @@ export function DialogCard({
         {children}
       </div>
       <div className={styles.dialogButtons}>
-        <Button ref={cancelRef} label={cancelLabel} variant="secondary" size="lg" onClick={onCancel} />
+        <Button
+          ref={cancelRef}
+          label={cancelLabel ?? t("common.cancel")}
+          variant="secondary"
+          size="lg"
+          onClick={onCancel}
+        />
         <Button
           ref={confirmRef}
           label={confirmLabel}
@@ -224,6 +232,7 @@ function PromptDialog({
   onSettle: (value: string | null) => void;
 }) {
   const [draft, setDraft] = useState(options.initial ?? "");
+  const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
   const text = draft.trim();
   const ready = text.length > 0 || options.optional === true;
@@ -239,7 +248,7 @@ function PromptDialog({
         <DialogCard
           title={options.title}
           message={options.message}
-          confirmLabel={options.confirmLabel ?? "保存"}
+          confirmLabel={options.confirmLabel ?? t("common.save")}
           confirmDisabled={!ready}
           onCancel={() => onSettle(null)}
           onConfirm={() => ready && onSettle(text)}

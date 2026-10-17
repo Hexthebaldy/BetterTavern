@@ -200,20 +200,21 @@ make vis
 | `unit/importers/test_character_card.py` | PNG 的 tEXt 与压缩文本块、V3 优先于 V2、压缩炸弹、无效输入、V1 / V3 的 JSON、宏替换 |
 | `unit/domain/test_seed_and_plan.py` | Seed 规范化（名字与引用）、世界规划、最小 Seed、名字规范化、行动解析 |
 | `unit/runtime/test_context.py` | 状态块排版与秘密分区、预算降级、消息摆放、确定性、玩家文字跳不出围栏、紧急截断 |
+| `unit/runtime/test_prompt_languages.py` | 中文、英文两套提示词（[i18n.md](i18n.md) 第 4 节）：文件一一对应、模板用到的变量相同、数据文件的键相同、字段说明指向真实字段、两种语言都能渲染；英文的状态块和上下文是英文的 |
 | `unit/runtime/test_structured.py` | 结构化输出阶梯：校验失败带错误重试一次、不支持的级别跳过并缓存、降两级后放弃、传输错误上抛 |
-| `unit/runtime/test_runner.py` | 事件顺序与提交、选项修复与默认选项、首 token 前出错切 fallback、半截失败保留叙述、鉴权错误不重试、没有叙述、没有路由、提交被围栏拒绝、屏障超时、租约丢失时取消生成、开局构建、关闭时取消 |
+| `unit/runtime/test_runner.py` | 事件顺序与提交、选项修复与默认选项、首 token 前出错切 fallback、半截失败保留叙述、鉴权错误不重试（失败事件带 `reason`）、没有叙述、没有路由、提交被围栏拒绝、屏障超时、租约丢失时取消生成、开局构建、关闭时取消、英文的一局用英文提示词 |
 | `unit/api/test_body_limit.py`、`unit/api/test_probe_api.py` | 请求体大小限制；探针接口读不到真实回合的事件流 |
 | `unit/api/test_api_doc.py` | [docs/api/](api/README.md) 与 OpenAPI 一致（目录里的文件合在一起检查，每个接口和模型只能写一次）：接口齐全、鉴权与成功状态码、查询参数与请求头、每个请求和响应模型的字段与必填项 |
 | `integration/test_data_model_doc.py` | [docs/data-model/](data-model/README.md) 与迁移建出的表一致（同上）：表、列名、类型、可空、索引名 |
 | `integration/test_accounts.py` | 注册登录、刷新令牌轮换、宽限期与盗用检测、退出吊销整族、删除账户 |
 | `integration/test_routes.py` | 模型路由：窗口的来源顺序（服务商列表 > 能力表 > 手填 > 32K）、保存时复用表单拉过的列表、复用 Key 与一起换 Key、只有一个导演且所有用途都用它、备用模型、学到的窗口只往小调、跨用户 404 |
 | `integration/test_turns.py` | 同一个幂等键并发提交只建一个回合、生成中再提交得到 `TURN_IN_PROGRESS`、租约过期清理后迟到的结果作废、跨用户 404、过期父回合与选项校验 |
-| `e2e/test_m1_flow.py` | uvicorn 里的真实 api 加假模型服务：注册 → 拉模型列表并添加模型 → 导入 → 开局 → 多回合（幂等重放、并发提交、过期父回合）→ 中途断开再续传，拼接结果等于最终叙述；鉴权与隔离；窗口校验 |
+| `e2e/test_m1_flow.py` | uvicorn 里的真实 api 加假模型服务：注册 → 拉模型列表并添加模型 → 导入 → 开局 → 多回合（幂等重放、并发提交、过期父回合）→ 中途断开再续传，拼接结果等于最终叙述；鉴权与隔离；窗口校验；开局的 `language`（不传按中文、只认 zh / en、英文的一局给导演的是英文提示词） |
 | `e2e/test_web_auth.py` | 网页的 Cookie 登录：注册、刷新、登录只在 HttpOnly Cookie 里给刷新令牌，刷新和退出凭 Cookie、被拒时删掉 Cookie；跨站请求返回 403；不带 `X-Auth-Mode` 时和 App 一样 |
 
 `integration` 与 `e2e/test_m1_flow.py`、`e2e/test_web_auth.py` 需要 `BT_TEST_DATABASE_URL`（`make test-integration`），没有设置时跳过。
 
-客户端（仓库根目录 `npm test`，主要在 `packages/core`）：`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
+客户端（仓库根目录 `npm test`，主要在 `packages/core`）：`i18n`（中英文资源的 key 一一对应、插值变量和组件标签一致、英文复数齐全、语言的解析和切换）、错误按错误码翻译（中英文）、`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
 `TURN_IN_PROGRESS` / `STALE_PARENT`、续传、轮询、失效登录）、`turnStream`（半截终止事件后的恢复）、`session`（单飞刷新、网页的 Cookie 模式）、`client`（401 重试、problem+json、
 Cookie 模式的请求头和请求体）。网页端（`apps/web`）自己的纯逻辑也在 `npm test` 里：桌面布局（`theme/layout.ts`：断点、阅读页让位、设置两栏、右键菜单和提示的位置、
 快捷键判断、标签页标题）、浏览器存储、界面偏好、最近故事分组、导入规则、跟随新文字、Enter 发送与输入法组字。App 的界面还没有自动化测试。
@@ -221,7 +222,10 @@ Cookie 模式的请求头和请求体）。网页端（`apps/web`）自己的纯
 网页端的端到端测试（`apps/web/e2e`，`make web-e2e`）：Playwright 自己起后端（开发数据库）、假模型服务（`tests/fakes/story_llm.py`）和 Vite，
 用本机的 Chrome 走一遍注册 → 刷新后仍登录（Cookie）→ 添加模型 → 导入角色卡 → 开局 → 按 A 选选项 → 按 / 自己写、Enter 发送 → 按 W 停靠世界状态 →
 把窗口拖到 1300、1100、390 看侧栏让位、世界滑出、没有横向滚动 → 按 ? → 删除账户。设 `E2E_ALL_BROWSERS=1` 时加跑 WebKit 和 Firefox
-（先 `npx playwright install webkit firefox`）。
+（先 `npx playwright install webkit firefox`）。上面这条按中文跑；`e2e/english.spec.ts` 用英文浏览器跑一条冒烟：
+界面是英文、登录失败的说明按错误码翻译、设置里切到中文再切回来立刻生效、开局请求带 `language: "en"`。
+
+`make lint` 最后跑 `scripts/check-i18n.mjs`：手机端、网页端和 `packages` 的代码里不能有写死的中文字符串（资源目录、测试文件除外），界面文字都要走 i18n。
 
 **M1 的出口验收**（需要真机和真实的 Key，自动化测试覆盖不了）：DeepSeek 与 Hugging Face 各完整玩 30 回合；
 游玩中途切到飞行模式再切回来，叙述接着出、不重复不缺字；生成中杀掉 App 再打开，能接上或看到可重试的失败。

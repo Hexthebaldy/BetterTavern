@@ -29,16 +29,18 @@ class ProviderRegistry:
 
     def register_provider(self, profile: ProviderProfile, *, replace: bool = False) -> None:
         if profile.id in self._profiles and not replace:
-            raise ValueError(f"厂商 {profile.id!r} 已注册")
+            raise ValueError(f"Provider {profile.id!r} is already registered")
         if profile.adapter not in self._factories:
-            raise ValueError(f"厂商 {profile.id!r} 指定的适配器 {profile.adapter!r} 未注册")
+            raise ValueError(
+                f"Adapter {profile.adapter!r} for provider {profile.id!r} is not registered"
+            )
         self._profiles[profile.id] = profile
 
     def register_adapter_factory(
         self, name: str, factory: AdapterFactory, *, replace: bool = False
     ) -> None:
         if name in self._factories and not replace:
-            raise ValueError(f"适配器 {name!r} 已注册")
+            raise ValueError(f"Adapter {name!r} is already registered")
         self._factories[name] = factory
 
     def get(self, provider_id: str) -> ProviderProfile:

@@ -1,5 +1,5 @@
 /**
- * 根布局：全局服务、界面偏好、主题、浮层、字体，按登录状态切换可访问的页面。
+ * 根布局：全局服务、界面文字的语言、界面偏好、主题、浮层、字体，按登录状态切换可访问的页面。
  * 字体加载完、界面偏好读出来之前保持系统启动画面（主题跟着偏好走，避免先闪一帧别的颜色）；
  * 之后恢复登录状态期间显示闪屏（app/index.tsx）。
  * 退出登录（包括令牌失效）时受保护的页面整体移出导航栈。
@@ -11,6 +11,9 @@ import { DarkTheme, DefaultTheme, SplashScreen, Stack, ThemeProvider, type Theme
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, type ReactNode } from "react";
+import { I18nextProvider } from "react-i18next";
+
+import { i18n } from "@bettertavern/core/i18n/index";
 
 import { OverlayProvider } from "../src/components/ui.tsx";
 import { installDiagnostics } from "../src/observability/setup.ts";
@@ -34,15 +37,17 @@ export default function RootLayout() {
 
   if (!ready) return null;
   return (
-    <AppProvider>
-      <PrefsProvider>
-        <Themed>
-          <OverlayProvider>
-            <RootNavigator />
-          </OverlayProvider>
-        </Themed>
-      </PrefsProvider>
-    </AppProvider>
+    <I18nextProvider i18n={i18n}>
+      <AppProvider>
+        <PrefsProvider>
+          <Themed>
+            <OverlayProvider>
+              <RootNavigator />
+            </OverlayProvider>
+          </Themed>
+        </PrefsProvider>
+      </AppProvider>
+    </I18nextProvider>
   );
 }
 

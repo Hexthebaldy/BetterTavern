@@ -4,6 +4,7 @@
  */
 
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
@@ -25,6 +26,7 @@ export function useStoryActions() {
   const queries = useQueryClient();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { t } = useTranslation();
 
   const patchList = (change: (list: Playthrough[]) => Playthrough[]): void => {
     queries.setQueryData<Playthrough[]>(storiesKey, (list) => (list ? change(list) : list));
@@ -32,8 +34,8 @@ export function useStoryActions() {
 
   const rename = async (story: Playthrough): Promise<void> => {
     const title = await overlay.prompt({
-      title: "重命名存档",
-      label: "存档名",
+      title: t("stories.renameTitle"),
+      label: t("stories.nameLabel"),
       initial: story.title,
       maxLength: 80,
     });
@@ -43,15 +45,15 @@ export function useStoryActions() {
       patchList((list) => list.map((s) => (s.id === story.id ? { ...s, ...updated } : s)));
       void queries.invalidateQueries({ queryKey: ["playthrough", story.id] });
     } catch (e) {
-      overlay.toast(`重命名失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.renameFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
   const remove = async (story: Pick<Playthrough, "id" | "title">): Promise<void> => {
     const ok = await overlay.confirm({
-      title: `删除“${story.title}”？`,
-      message: "删除后这个存档的故事和世界状态都无法恢复。",
-      confirmLabel: "删除",
+      title: t("common.deleteConfirm", { name: story.title }),
+      message: t("stories.deleteMessage"),
+      confirmLabel: t("common.delete"),
       tone: "danger",
     });
     if (!ok) return;
@@ -60,9 +62,9 @@ export function useStoryActions() {
       patchList((list) => list.filter((s) => s.id !== story.id));
       queries.removeQueries({ queryKey: ["playthrough", story.id] });
       if (openStoryId(pathname) === story.id) navigate("/playthroughs", { replace: true });
-      overlay.toast(`已删除“${story.title}”`);
+      overlay.toast(t("common.deleted", { name: story.title }));
     } catch (e) {
-      overlay.toast(`删除失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.deleteFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
@@ -71,9 +73,9 @@ export function useStoryActions() {
       label: story.title,
       place,
       items: [
-        { key: "newTab", label: "在新标签页打开", icon: "newTab" },
-        { key: "rename", label: "重命名", icon: "write" },
-        { key: "delete", label: "删除", icon: "trash", danger: true, separated: true },
+        { key: "newTab", label: t("common.openInNewTab"), icon: "newTab" },
+        { key: "rename", label: t("common.rename"), icon: "write" },
+        { key: "delete", label: t("common.delete"), icon: "trash", danger: true, separated: true },
       ],
     });
     if (key === "newTab") window.open(storyPath(story), "_blank", "noopener");

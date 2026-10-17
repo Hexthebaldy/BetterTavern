@@ -56,7 +56,7 @@ class CancelToken:
 
 
 def cancelled_error(token: CancelToken) -> ProviderError:
-    return ProviderError(ErrorClass.CANCELLED, f"请求已取消：{token.reason or 'cancelled'}")
+    return ProviderError(ErrorClass.CANCELLED, f"Request cancelled: {token.reason or 'cancelled'}")
 
 
 async def await_or_cancel[T](awaitable: Awaitable[T], token: CancelToken | None) -> T:

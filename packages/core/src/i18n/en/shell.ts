@@ -1,0 +1,76 @@
+import type { Messages } from "../types.ts";
+import type { shell as source } from "../zh/shell.ts";
+
+export const shell: Messages<typeof source> = {
+  nav: {
+    saves: "Saves",
+    library: "Library",
+    settings: "Settings",
+    count_one: "{{count}} item",
+    count_other: "{{count}} items",
+    main: "Main navigation",
+    expandSidebar: "Expand sidebar",
+    collapseSidebar: "Collapse sidebar",
+    recent: "Recent saves",
+    noNickname: "No nickname",
+    recentGroups: {
+      today: "Today",
+      week: "This week",
+      earlier: "Earlier",
+    },
+    moreFor: "More actions for “{{title}}”",
+  },
+  notFound: {
+    title: "Page not found",
+    heading: "This page doesn't exist",
+    text: "The address may be wrong, or the content was deleted. <link>Back to Saves</link>",
+  },
+  shortcuts: {
+    title: "Keyboard shortcuts",
+    single: "Single-key shortcuts",
+    singleNote:
+      "Letters, /, [ and ? only work when you're not typing. Turn them off if you use a screen reader or voice input.",
+    reading: "Reading",
+    app: "Interface",
+    items: {
+      pick: "Pick a choice",
+      write: "Write your own",
+      send: "Send",
+      newline: "New line",
+      collapse: "Close the input, keep the draft",
+      latest: "Jump to latest",
+      world: "Open or close the world state",
+      sidebar: "Expand or collapse the sidebar",
+      help: "Show this list",
+      close: "Close menus, dialogs and slide-out panels",
+    },
+  },
+  import: {
+    dropTitle: "Drop to import",
+    dropFormats: "PNG (data inside the card image) or JSON (plain-text card), up to 16 MB",
+    dropSupports: "Supports SillyTavern V1, V2 and V3. You can drop several at once.",
+    imported_one: "Imported {{count}} character card",
+    imported_other: "Imported {{count}} character cards",
+    duplicates_one: "{{count}} was already imported",
+    duplicates_other: "{{count}} were already imported",
+    failed_one: "{{count}} card wasn't imported",
+    failed_other: "{{count}} cards weren't imported",
+  },
+  splash: {
+    restoring: "Signing you back in",
+  },
+  server: {
+    title: "Server",
+    rowLabel: "Server {{server}}, change",
+    label: "Server",
+    change: "Change",
+    choose: "Choose a server",
+    failedRecently: "Couldn't connect just now",
+    lastUsed: "Last used · {{time}}",
+    newAddress: "Enter a new address",
+    newPlaceholder: "New address, e.g. http://192.168.1.10:8000",
+    newLabel: "New server address",
+    test: "Test connection",
+    useThis: "Use this address",
+  },
+};

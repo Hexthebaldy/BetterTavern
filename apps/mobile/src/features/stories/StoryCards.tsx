@@ -10,6 +10,7 @@
  */
 
 import type { ReactNode, Ref } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import type { Playthrough } from "@bettertavern/core/api/types";
@@ -68,12 +69,13 @@ function Shell({
   children: ReactNode;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <Pressable
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={story.title}
-      accessibilityHint="打开存档；长按可以重命名或删除"
+      accessibilityHint={t("stories.cardHint")}
       onPress={onOpen}
       onLongPress={onMenu}
       style={({ pressed }) => [

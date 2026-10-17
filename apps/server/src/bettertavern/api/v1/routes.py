@@ -16,7 +16,7 @@ from bettertavern.api.schemas.routes import (
 )
 from bettertavern.services.route_inputs import RouteInput, RoutePatch
 
-router = APIRouter(prefix="/v1", tags=["模型路由"])
+router = APIRouter(prefix="/v1", tags=["models"])
 
 
 @router.get("/providers")

@@ -5,14 +5,15 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
 import { formatTokens } from "@bettertavern/core/utils/format";
 import {
-  MODEL_STATUS,
   describeWindow,
+  modelStatusLabel,
   modelTitle,
   providerName,
   statusKind,
@@ -56,6 +57,7 @@ export function ModelBody({ id }: { id: string }) {
   const column = useColumnStyle();
   const palette = usePalette();
   const overlay = useOverlay();
+  const { t } = useTranslation();
   const { data, error, loading, reload, setData } = useAsync(async () => {
     const [route, providers] = await Promise.all([api.models.get(id), api.models.providers()]);
     return { route, providers };
@@ -80,7 +82,11 @@ export function ModelBody({ id }: { id: string }) {
     return (
       <View style={{ flex: 1, backgroundColor: palette.bg }}>
         <SettingsBack />
-        <ErrorState title="模型没加载出来" message={describeError(error)} onRetry={() => void reload()} />
+        <ErrorState
+          title={t("models.modelLoadFailed")}
+          message={describeError(error)}
+          onRetry={() => void reload()}
+        />
       </View>
     );
   }
@@ -116,7 +122,7 @@ export function ModelBody({ id }: { id: string }) {
       const fresh = await api.models.update(route.id, { director: true });
       update(fresh);
       const [first] = describeWindow(fresh.window);
-      setMessage({ tone: "info", text: `已设为导演模型。${first ?? ""}` });
+      setMessage({ tone: "info", text: t("models.madeDirector", { detail: first ?? "" }) });
     });
 
   const saveParams = (): Promise<void> =>
@@ -127,7 +133,7 @@ export function ModelBody({ id }: { id: string }) {
         if (choice === "default") delete params.working_window;
         else params.working_window = Number(choice);
         update(await api.models.update(route.id, { params }));
-        overlay.toast("已保存");
+        overlay.toast(t("models.saved"));
       } finally {
         setSaving(false);
       }
@@ -135,32 +141,30 @@ export function ModelBody({ id }: { id: string }) {
 
   const cancelDirector = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "取消导演模型？",
-      message: "取消后，新的回合会因为没有模型而无法生成，直到再选一个。",
-      confirmLabel: "取消导演模型",
-      cancelLabel: "保留",
+      title: t("models.cancelDirectorTitle"),
+      message: t("models.cancelDirectorMessage"),
+      confirmLabel: t("models.cancelDirector"),
+      cancelLabel: t("models.keep"),
       tone: "danger",
     });
     if (!ok) return;
     await run(async () => {
       update(await api.models.update(route.id, { director: false }));
-      overlay.toast("已取消导演模型");
+      overlay.toast(t("models.directorCancelled"));
     });
   };
 
   const remove = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "删除这个模型？",
-      message: route.is_director
-        ? "它是现在的导演。删除后新的回合没法生成，直到再选一个导演。"
-        : "删除后要用它得重新添加。",
-      confirmLabel: "删除",
+      title: t("models.deleteTitle"),
+      message: route.is_director ? t("models.deleteDirectorMessage") : t("models.deleteMessage"),
+      confirmLabel: t("common.delete"),
       tone: "danger",
     });
     if (!ok) return;
     await run(async () => {
       await api.models.remove(route.id);
-      overlay.toast(`已删除“${modelTitle(route)}”`);
+      overlay.toast(t("common.deleted", { name: modelTitle(route) }));
       nav.back();
     });
   };
@@ -187,13 +191,13 @@ export function ModelBody({ id }: { id: string }) {
               {modelTitle(route)}
             </Text>
             <View style={styles.statusLine}>
-              <Status kind={kind} label={MODEL_STATUS[route.status]} />
-              {route.is_director ? <Pill tone="acc" label="导演" /> : null}
+              <Status kind={kind} label={modelStatusLabel(route.status)} />
+              {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
             </View>
           </View>
           <IconButton
             icon="write"
-            label="编辑备注名、模型名和端点"
+            label={t("models.editLabel")}
             size={20}
             diameter={44}
             onPress={() => setSheet("edit")}
@@ -201,10 +205,10 @@ export function ModelBody({ id }: { id: string }) {
         </View>
         <View style={styles.grid}>
           {[
-            ["服务商", providerName(route.provider, providers), false],
+            [t("models.provider"), providerName(route.provider, providers), false],
             ["Key", `•••• ${route.key_last4}`, true],
-            ["模型", route.model, true],
-            ["端点", route.base_url ?? "官方地址", !!route.base_url],
+            [t("models.modelName"), route.model, true],
+            [t("models.endpointShort"), route.base_url ?? t("models.officialShort"), !!route.base_url],
           ].map(([key, value, mono]) => (
             <View key={String(key)} style={[styles.cell, { backgroundColor: palette.bg2 }]}>
               <Text style={[styles.cellKey, { color: palette.mut }]}>{key}</Text>
@@ -222,27 +226,31 @@ export function ModelBody({ id }: { id: string }) {
         </View>
         {route.status !== "ok" ? (
           <Text style={[styles.hint, { color: statusColor }]}>
-            {route.status === "invalid"
-              ? "服务商拒绝了这个 Key，请更换 Key。"
-              : "还没确认这个 Key 能用：测试一下这个模型就知道了。"}
+            {route.status === "invalid" ? t("models.keyRejected") : t("models.keyUnverified")}
           </Text>
         ) : null}
 
         <View style={styles.actions}>
           <Button
-            label="测试这个模型"
+            label={t("models.test")}
             variant="secondary"
             onPress={() => void probe()}
             busy={probing}
             style={styles.action}
           >
             <View style={{ alignItems: "center" }}>
-              <Text style={{ fontSize: 16, fontWeight: "500", color: palette.ink }}>测试这个模型</Text>
-              <Text style={{ fontFamily: font.mono, fontSize: 10.5, color: palette.mut }}>约 30 秒</Text>
+              <Text style={{ fontSize: 16, fontWeight: "500", color: palette.ink }}>{t("models.test")}</Text>
+              <Text style={{ fontFamily: font.mono, fontSize: 10.5, color: palette.mut }}>
+                {t("models.testTime")}
+              </Text>
             </View>
           </Button>
           {route.is_director ? null : (
-            <Button label="设为导演模型" onPress={() => void makeDirector()} style={styles.action} />
+            <Button
+              label={t("models.setDirector")}
+              onPress={() => void makeDirector()}
+              style={styles.action}
+            />
           )}
         </View>
         {message ? (
@@ -254,19 +262,19 @@ export function ModelBody({ id }: { id: string }) {
         ) : null}
         {route.last_probe ? <ProbeResults report={route.last_probe} /> : null}
 
-        <SectionHeader title="上下文" />
+        <SectionHeader title={t("models.context")} />
         <MemoryBlocks route={route} choice={choice} />
         {note ? (
           <Notice
             tone={route.window.source === "learned" ? undefined : "warn"}
             message={note}
-            actionLabel={route.window.source === "learned" ? undefined : "填写"}
+            actionLabel={route.window.source === "learned" ? undefined : t("models.fillIn")}
             onAction={route.window.source === "learned" ? undefined : () => setSheet("window")}
             style={{ marginHorizontal: space.list, marginTop: space.s, borderRadius: 22 }}
           />
         ) : null}
 
-        <SectionHeader title="工作窗口上限" />
+        <SectionHeader title={t("models.workingCap")} />
         <View style={{ paddingHorizontal: space.list, gap: 10 }}>
           <Segmented
             value={choice}
@@ -276,21 +284,21 @@ export function ModelBody({ id }: { id: string }) {
             height={52}
           />
           <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut, paddingHorizontal: space.m }}>
-            窗口越大，导演记得越多，但每轮更慢、更贵。用到 80% 时，早期剧情会被压缩成摘要。
+            {t("models.workingNote")}
           </Text>
           {clamped ? (
             <Notice
               tone="warn"
-              message={`这个模型只有 ${formatTokens(route.window.model_window)} 上下文，工作窗口会按 ${formatTokens(route.window.model_window)} 算。`}
+              message={t("models.clamped", { window: formatTokens(route.window.model_window) })}
             />
           ) : null}
         </View>
 
-        <SectionHeader title="写法" />
+        <SectionHeader title={t("models.style")} />
         <Pressable
           accessibilityRole="switch"
           accessibilityState={{ checked: thinking }}
-          accessibilityLabel="深度思考"
+          accessibilityLabel={t("models.thinking")}
           onPress={() => setThinking((t) => !t)}
           style={[styles.switchRow, { backgroundColor: palette.bg2 }]}
         >
@@ -298,16 +306,16 @@ export function ModelBody({ id }: { id: string }) {
             <Icon name="bulb" size={20} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontSize: 16, color: palette.ink }}>深度思考</Text>
+            <Text style={{ fontSize: 16, color: palette.ink }}>{t("models.thinking")}</Text>
             <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut }}>
-              模型支持时先思考再写，更慢
+              {t("models.thinkingNote")}
             </Text>
           </View>
-          <Toggle value={thinking} onChange={setThinking} label="深度思考" />
+          <Toggle value={thinking} onChange={setThinking} label={t("models.thinking")} />
         </Pressable>
         <View style={{ paddingHorizontal: space.list, paddingTop: space.l }}>
           <Button
-            label={dirty ? "保存" : "保存 · 没有改动"}
+            label={dirty ? t("common.save") : t("models.saveNoChanges")}
             onPress={() => void saveParams()}
             busy={saving}
             disabled={!dirty}
@@ -315,13 +323,25 @@ export function ModelBody({ id }: { id: string }) {
         </View>
 
         <View style={styles.bottom}>
-          <Button label="更换 Key" variant="secondary" icon="key" onPress={() => setSheet("key")} />
+          <Button
+            label={t("models.replaceKey")}
+            variant="secondary"
+            icon="key"
+            onPress={() => setSheet("key")}
+          />
           {route.is_director ? (
-            <Button label="取消导演模型" variant="text" onPress={() => void cancelDirector()}>
-              <Text style={{ fontSize: 15, fontWeight: "500", color: palette.err }}>取消导演模型</Text>
+            <Button label={t("models.cancelDirector")} variant="text" onPress={() => void cancelDirector()}>
+              <Text style={{ fontSize: 15, fontWeight: "500", color: palette.err }}>
+                {t("models.cancelDirector")}
+              </Text>
             </Button>
           ) : null}
-          <Button label="删除模型" variant="danger" icon="trash" onPress={() => void remove()} />
+          <Button
+            label={t("models.deleteModel")}
+            variant="danger"
+            icon="trash"
+            onPress={() => void remove()}
+          />
         </View>
       </ScrollView>
       <EditSheet
@@ -337,7 +357,7 @@ export function ModelBody({ id }: { id: string }) {
         route={route}
         onSaved={(fresh) => {
           update(fresh);
-          setMessage({ tone: "info", text: `Key 已更换，尾号 ${fresh.key_last4}` });
+          setMessage({ tone: "info", text: t("models.keyReplaced", { last4: fresh.key_last4 }) });
         }}
       />
       <WindowSheet

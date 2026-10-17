@@ -68,27 +68,30 @@ def check_url(url: str, policy: EndpointPolicy) -> httpx.URL:
     try:
         parsed = httpx.URL(url)
     except (httpx.InvalidURL, TypeError, ValueError) as exc:
-        raise EndpointNotAllowed(f"URL 无法解析：{exc}") from exc
+        raise EndpointNotAllowed(f"Can't parse the URL: {exc}") from exc
     if parsed.scheme not in ("https", "http"):
-        raise EndpointNotAllowed("只支持 https 端点")
+        raise EndpointNotAllowed("Only https endpoints are supported")
     if parsed.scheme == "http" and not policy.allow_private:
-        raise EndpointNotAllowed("只支持 https 端点（自己部署时可打开 ALLOW_PRIVATE_ENDPOINTS）")
+        raise EndpointNotAllowed(
+            "Only https endpoints are supported "
+            "(self-hosted servers can set ALLOW_PRIVATE_ENDPOINTS)"
+        )
     if not parsed.host:
-        raise EndpointNotAllowed("URL 缺少主机名")
+        raise EndpointNotAllowed("The URL has no host name")
     if parsed.userinfo:
-        raise EndpointNotAllowed("URL 里不能带用户名或密码")
+        raise EndpointNotAllowed("The URL can't contain a user name or password")
     if not policy.allow_private:
         try:
             literal = ipaddress.ip_address(parsed.host)
         except ValueError:
             literal = None
         if literal is not None and not ip_is_public(literal):
-            raise EndpointNotAllowed(f"不允许访问内网或保留地址：{literal}")
+            raise EndpointNotAllowed(f"Private or reserved addresses aren't allowed: {literal}")
         if parsed.host.lower() in (
             "localhost",
             "localhost.localdomain",
         ) or parsed.host.lower().endswith(".localhost"):
-            raise EndpointNotAllowed("不允许访问 localhost")
+            raise EndpointNotAllowed("localhost isn't allowed")
     return parsed
 
 
@@ -113,13 +116,15 @@ async def resolve_and_check(
     try:
         ips = list(await resolver(host, port))
     except OSError as exc:
-        raise HostResolutionError(f"无法解析主机 {host}：{exc}") from exc
+        raise HostResolutionError(f"Can't resolve host {host}: {exc}") from exc
     if not ips:
-        raise HostResolutionError(f"主机 {host} 没有解析结果")
+        raise HostResolutionError(f"Host {host} has no addresses")
     if not policy.allow_private:
         blocked = [str(ip) for ip in ips if not ip_is_public(ip)]
         if blocked:
-            raise EndpointNotAllowed(f"主机 {host} 解析到内网或保留地址：{', '.join(blocked)}")
+            raise EndpointNotAllowed(
+                f"Host {host} resolves to private or reserved addresses: {', '.join(blocked)}"
+            )
     return ips
 
 
@@ -165,7 +170,7 @@ class SafeNetworkBackend(httpcore.AsyncNetworkBackend):
             async with asyncio.timeout(timeout):
                 ips = await resolve_and_check(host, port, self._policy, self._resolver)
         except TimeoutError as exc:
-            raise httpcore.ConnectTimeout(f"解析 {host} 超时") from exc
+            raise httpcore.ConnectTimeout(f"Resolving {host} timed out") from exc
         except HostResolutionError as exc:
             raise httpcore.ConnectError(str(exc)) from exc
         last_error: Exception | None = None
@@ -189,7 +194,7 @@ class SafeNetworkBackend(httpcore.AsyncNetworkBackend):
         timeout: float | None = None,
         socket_options: Iterable[Any] | None = None,
     ) -> httpcore.AsyncNetworkStream:
-        raise EndpointNotAllowed("不允许通过 Unix socket 访问模型服务")
+        raise EndpointNotAllowed("Model services can't be reached through a Unix socket")
 
     async def sleep(self, seconds: float) -> None:
         await self._inner.sleep(seconds)
@@ -213,7 +218,9 @@ class SafeTransport(httpx.AsyncHTTPTransport):
             else httpx.create_ssl_context(verify=verify, trust_env=False)
         )
         if not hasattr(self, "_pool"):  # pragma: no cover - httpx 内部结构变化时尽早暴露
-            raise RuntimeError("httpx.AsyncHTTPTransport 的内部结构变了，SafeTransport 需要更新")
+            raise RuntimeError(
+                "httpx.AsyncHTTPTransport internals changed; SafeTransport needs an update"
+            )
         self._pool = httpcore.AsyncConnectionPool(
             ssl_context=ssl_context,
             max_connections=limits.max_connections,

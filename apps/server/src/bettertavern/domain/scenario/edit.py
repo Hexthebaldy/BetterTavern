@@ -68,10 +68,10 @@ def _strings(
         if not item or item in result:
             continue
         if len(item) > each:
-            raise EditError(field, f"{what}“{item[:20]}…”太长了，最多 {each} 个字")
+            raise EditError(field, f"{what} “{item[:20]}…” is too long; at most {each} characters")
         result.append(item)
     if len(result) > limit:
-        raise EditError(field, f"{what}最多 {limit} 个")
+        raise EditError(field, f"At most {limit} {what}")
     return tuple(result)
 
 
@@ -79,14 +79,18 @@ def _entry(index: int, edit: LoreEntryEdit) -> LoreEntry:
     where = f"book.{index}"
     name = _clean(edit.name)
     if len(name) > MAX_ENTRY_NAME_CHARS:
-        raise EditError(f"{where}.name", f"条目名称最多 {MAX_ENTRY_NAME_CHARS} 个字")
+        raise EditError(
+            f"{where}.name", f"The entry name can be at most {MAX_ENTRY_NAME_CHARS} characters"
+        )
     content = _clean(edit.content)
     if not content:
-        raise EditError(f"{where}.content", "条目内容不能为空")
+        raise EditError(f"{where}.content", "The entry content can't be empty")
     if len(content) > MAX_FIELD_CHARS:
-        raise EditError(f"{where}.content", f"条目内容最多 {MAX_FIELD_CHARS} 个字")
+        raise EditError(
+            f"{where}.content", f"The entry content can be at most {MAX_FIELD_CHARS} characters"
+        )
     keys = _strings(
-        edit.keys, field=f"{where}.keys", limit=MAX_KEYS, each=MAX_KEY_CHARS, what="关键词"
+        edit.keys, field=f"{where}.keys", limit=MAX_KEYS, each=MAX_KEY_CHARS, what="keywords"
     )
     return LoreEntry(
         name=name,
@@ -102,23 +106,25 @@ def apply_edit(card: CharacterCard, edit: CardEdit) -> CharacterCard:
     """把编辑应用到卡片上，返回新卡片；不合格时抛 EditError。没开放的字段原样保留。"""
     name = _clean(edit.name)
     if not name:
-        raise EditError("name", "角色名不能为空")
+        raise EditError("name", "The character name can't be empty")
     if len(name) > MAX_NAME_CHARS:
-        raise EditError("name", f"角色名最多 {MAX_NAME_CHARS} 个字")
+        raise EditError("name", f"The character name can be at most {MAX_NAME_CHARS} characters")
     texts: dict[str, str] = {}
     for field in EDITABLE_TEXT_FIELDS:
         text = _clean(getattr(edit, field))
         if len(text) > MAX_FIELD_CHARS:
-            raise EditError(field, f"最多 {MAX_FIELD_CHARS} 个字，现在有 {len(text)} 个")
+            raise EditError(field, f"At most {MAX_FIELD_CHARS} characters (now {len(text)})")
         texts[field] = text
-    tags = _strings(edit.tags, field="tags", limit=MAX_TAGS, each=MAX_TAG_CHARS, what="标签")
+    tags = _strings(edit.tags, field="tags", limit=MAX_TAGS, each=MAX_TAG_CHARS, what="tags")
     if len(edit.book) > MAX_BOOK_ENTRIES:
-        raise EditError("book", f"世界书最多 {MAX_BOOK_ENTRIES} 条")
+        raise EditError("book", f"The lorebook can have at most {MAX_BOOK_ENTRIES} entries")
     book = tuple(_entry(i, entry) for i, entry in enumerate(edit.book))
     updated = card.model_copy(update={"name": name, "tags": tags, "book": book, **texts})
     if updated.total_chars() > MAX_TOTAL_CHARS:
         raise EditError(
-            "card", f"角色卡文字总量最多 {MAX_TOTAL_CHARS} 字，现在有 {updated.total_chars()} 字"
+            "card",
+            f"The card can have at most {MAX_TOTAL_CHARS} characters in total "
+            f"(now {updated.total_chars()})",
         )
     # 改过的字段不再算“导入时被截断”
     still_truncated = tuple(f for f in card.truncated if getattr(updated, f) == getattr(card, f))

@@ -7,6 +7,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { pane } from "@bettertavern/design/layout";
@@ -72,13 +73,14 @@ function DialogCard({
   title,
   message,
   children,
-  cancelLabel = "取消",
+  cancelLabel,
   confirmLabel,
   confirmDisabled,
   onCancel,
   onConfirm,
 }: Omit<DialogProps, "visible" | "inline">) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const accent = tone === "danger" ? palette.err : tone === "warn" ? palette.warn : palette.ink;
   const accentBg = tone === "danger" ? palette.errBg : tone === "warn" ? palette.warnBg : palette.bg2;
   const shownIcon = icon ?? (tone === "danger" ? "trash" : undefined);
@@ -112,7 +114,9 @@ function DialogCard({
             },
           ]}
         >
-          <Text style={[type.button, { fontWeight: "400", color: palette.ink }]}>{cancelLabel}</Text>
+          <Text style={[type.button, { fontWeight: "400", color: palette.ink }]}>
+            {cancelLabel ?? t("common.cancel")}
+          </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"

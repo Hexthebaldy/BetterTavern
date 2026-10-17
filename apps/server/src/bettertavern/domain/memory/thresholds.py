@@ -55,12 +55,12 @@ def effective_window(
     margin: float = SAFETY_MARGIN,
 ) -> WindowCheck:
     if model_window <= 0:
-        raise ValueError("模型窗口必须是正数")
+        raise ValueError("model window must be positive")
     if reserved_output < 0:
-        raise ValueError("预留输出不能为负")
+        raise ValueError("reserved output can't be negative")
     cap = DEFAULT_WORKING_WINDOW if working_cap is None else working_cap
     if cap <= 0:
-        raise ValueError("工作窗口上限必须是正数")
+        raise ValueError("working window cap must be positive")
     base = min(model_window, cap)
     window = math.floor(base - reserved_output - base * margin)
     return WindowCheck(
@@ -79,7 +79,7 @@ class Occupancy(StrEnum):
 
 def occupancy_ratio(tokens: int, window: int) -> float:
     if window <= 0:
-        raise ValueError("有效窗口必须是正数")
+        raise ValueError("effective window must be positive")
     return tokens / window
 
 

@@ -30,10 +30,11 @@ _ID_PREFIX = re.compile(r"^[0-9a-zA-Z._:-]{6,64}$")
 
 _NO_WEB = """<!doctype html><meta charset="utf-8"><title>BetterTavern vis</title>
 <body style="font-family:system-ui;padding:40px;line-height:1.7">
-<h2>网页还没有构建</h2>
-<p>接口已经在运行（<a href="/api/meta">/api/meta</a>）。构建网页：</p>
+<h2>The web app hasn't been built yet</h2>
+<p>The API is running (<a href="/api/meta">/api/meta</a>). To build the web app:</p>
 <pre>cd apps/vis &amp;&amp; npm install &amp;&amp; npm run build</pre>
-<p>或者开发时运行 <code>npm run dev</code>，打开它给出的地址。</p></body>"""
+<p>Or, during development, run <code>npm run dev</code> and open the address it prints.</p>
+</body>"""
 
 
 def create_vis_app(
@@ -61,7 +62,7 @@ def create_vis_app(
 
     def db() -> AsyncEngine:
         if engine is None:
-            raise HTTPException(503, "没有配置数据库")
+            raise HTTPException(503, "No database configured")
         return engine
 
     async def with_db(fn: Any, *args: Any, **kwargs: Any) -> Any:
@@ -71,7 +72,7 @@ def create_vis_app(
         except HTTPException:
             raise
         except Exception as exc:  # 数据库连不上：只影响需要数据库的部分
-            raise HTTPException(503, f"数据库连不上：{type(exc).__name__}") from exc
+            raise HTTPException(503, f"Can't reach the database: {type(exc).__name__}") from exc
 
     def story_on(story: int) -> bool:
         return story_allowed and story == 1
@@ -127,10 +128,10 @@ def create_vis_app(
     @app.get("/api/playthroughs/{playthrough_id}")
     async def playthrough(playthrough_id: str, story: int = 0) -> dict[str, Any]:
         if not _UUID.match(playthrough_id):
-            raise HTTPException(404, "故事不存在")
+            raise HTTPException(404, "Story not found")
         detail = await with_db(queries.playthrough_detail, playthrough_id, story=story_on(story))
         if detail is None:
-            raise HTTPException(404, "故事不存在")
+            raise HTTPException(404, "Story not found")
         entries = await logs()
         # 每个回合在日志里的重试、断线次数，回合列表上显示
         counts: dict[str, dict[str, int]] = {}
@@ -153,7 +154,7 @@ def create_vis_app(
     @app.get("/api/turns/{turn_id}")
     async def turn(turn_id: str, story: int = 0) -> dict[str, Any]:
         if not _UUID.match(turn_id):
-            raise HTTPException(404, "回合不存在")
+            raise HTTPException(404, "Turn not found")
         await asyncio.to_thread(store.refresh)
         entries = store.for_turn(turn_id)
         detail: dict[str, Any] | None
@@ -163,7 +164,7 @@ def create_vis_app(
         except HTTPException as exc:
             detail, db_error = None, exc.detail
         if detail is None and not entries:
-            raise HTTPException(404, db_error or "回合不存在")
+            raise HTTPException(404, db_error or "Turn not found")
         turn_row = detail["turn"] if detail else None
         timeline = build_timeline(
             entries, running=bool(turn_row and turn_row["status"] == "generating")
@@ -198,7 +199,7 @@ def create_vis_app(
         await asyncio.to_thread(store.refresh)
         entries = store.lookup("request_id", request_id)
         if not entries:
-            raise HTTPException(404, "日志里没有这个单号")
+            raise HTTPException(404, "No such request id in the logs")
         turn_ids: list[str] = []
         for e in entries:
             tid = e.get("turn_id")
@@ -263,7 +264,7 @@ def create_vis_app(
     @app.get("/{path:path}", include_in_schema=False)
     async def web(path: str) -> Any:
         if path.startswith("api/"):
-            raise HTTPException(404, "没有这个接口")
+            raise HTTPException(404, "No such endpoint")
         found = await asyncio.to_thread(static_file, path)
         return HTMLResponse(_NO_WEB) if found is None else FileResponse(found)
 

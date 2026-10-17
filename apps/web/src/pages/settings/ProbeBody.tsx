@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   DEFAULT_PROBE_CONFIG,
@@ -38,6 +39,7 @@ function clock(seconds: number): string {
 
 /** 最近延迟的走势；虚线是 300ms 的目标 */
 function Spark({ values }: { values: number[] }) {
+  const { t } = useTranslation();
   const width = 300;
   const height = 60;
   const max = Math.max(TARGET_MS * 1.3, ...values);
@@ -52,7 +54,7 @@ function Spark({ values }: { values: number[] }) {
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
       role="img"
-      aria-label="延迟走势"
+      aria-label={t("probe.trend")}
     >
       <path
         d={`M0 ${y(TARGET_MS)}H${width}`}
@@ -81,6 +83,7 @@ function Spark({ values }: { values: number[] }) {
 }
 
 function ReportView({ report, duration }: { report: ProbeReport; duration: number }) {
+  const { t } = useTranslation();
   const row = (label: string, value: ReactNode) => (
     <div className={styles.reportRow}>
       <span>{label}</span>
@@ -94,8 +97,10 @@ function ReportView({ report, duration }: { report: ProbeReport; duration: numbe
   return (
     <div>
       <SectionHeader
-        title="报告"
-        meta={`上一次 · ${DURATIONS.find((d) => Number(d.value) === duration)?.label ?? `${duration}s`}`}
+        title={t("probe.report")}
+        meta={t("probe.lastRun", {
+          duration: DURATIONS.find((d) => Number(d.value) === duration)?.label ?? `${duration}s`,
+        })}
       />
       <div className={styles.report}>
         <div className={cx(styles.verdict, report.passed ? styles.verdictOk : styles.verdictFail)}>
@@ -103,32 +108,35 @@ function ReportView({ report, duration }: { report: ProbeReport; duration: numbe
             <Icon name={report.passed ? "check" : "cross"} size={26} strokeWidth={2.4} />
           </span>
           <span className={styles.rowText}>
-            <span className={styles.verdictTitle}>{report.passed ? "通过" : "未通过"}</span>
+            <span className={styles.verdictTitle}>
+              {report.passed ? t("probe.passed") : t("probe.notPassed")}
+            </span>
             <span className={styles.rowSub}>
-              断线 {report.reconnects} 次，{report.integrityOk ? "续传完整" : "文本不一致"}
+              {t("probe.summary", {
+                count: report.reconnects,
+                integrity: report.integrityOk ? t("probe.resumedIntact") : t("probe.textMismatch"),
+              })}
             </span>
           </span>
         </div>
-        {row("模式", report.mode === "sse" ? "SSE" : "轮询降级")}
-        {report.mode === "polling" ? (
-          <p className={styles.warnNote}>这一跳可能在缓冲 SSE（反向代理或网关），事件流被降级成了轮询。</p>
-        ) : null}
-        {row("字符数", report.chars.toLocaleString("en-US"))}
+        {row(t("probe.mode"), report.mode === "sse" ? "SSE" : t("probe.pollingFallback"))}
+        {report.mode === "polling" ? <p className={styles.warnNote}>{t("probe.bufferedNote")}</p> : null}
+        {row(t("probe.chars"), report.chars.toLocaleString("en-US"))}
         {row(
-          "完整性",
+          t("probe.integrity"),
           <span className={report.integrityOk ? styles.okText : styles.errText}>
-            {report.integrityOk ? "完整" : "不完整"}
+            {report.integrityOk ? t("probe.intact") : t("probe.broken")}
           </span>,
         )}
-        {row("重复或缺失", String(report.duplicateOrMissing))}
+        {row(t("probe.duplicates"), String(report.duplicateOrMissing))}
         <div className={styles.latency}>
           <div className={styles.reportRow}>
-            <span>延迟</span>
+            <span>{t("probe.latency")}</span>
             <span className={styles.mono}>
               p50 {report.latencyP50Ms ?? "-"} · p95 {report.latencyP95Ms ?? "-"} ms
             </span>
           </div>
-          <div className={styles.axis} aria-label={`p50 ${p50} 毫秒，p95 ${p95} 毫秒，目标低于 300 毫秒`}>
+          <div className={styles.axis} aria-label={t("probe.latencyLabel", { p50, p95, target: TARGET_MS })}>
             <span
               className={styles.axisRange}
               style={{ left: pct(p50), width: pct(Math.max(p95 - p50, 6)) }}
@@ -137,18 +145,19 @@ function ReportView({ report, duration }: { report: ProbeReport; duration: numbe
           </div>
           <div className={styles.axisLabels}>
             <span>0</span>
-            <span className={styles.errText}>目标 {TARGET_MS}</span>
+            <span className={styles.errText}>{t("probe.target", { target: TARGET_MS })}</span>
             <span>{scale}ms</span>
           </div>
         </div>
-        {row("续传补发的积压", String(report.backlogEvents))}
-        {row("时钟偏差", `${report.clockOffsetMs >= 0 ? "+" : ""}${report.clockOffsetMs} ms`)}
+        {row(t("probe.backlog"), String(report.backlogEvents))}
+        {row(t("probe.clockOffset"), `${report.clockOffsetMs >= 0 ? "+" : ""}${report.clockOffsetMs} ms`)}
       </div>
     </div>
   );
 }
 
 export function ProbeBody() {
+  const { t } = useTranslation();
   const [duration, setDuration] = useState<Duration>("60");
   const [progress, setProgress] = useState<ProbeProgress | null>(null);
   const [latencies, setLatencies] = useState<number[]>([]);
@@ -160,7 +169,7 @@ export function ProbeBody() {
   const pending = useRef<ProbeProgress | null>(null);
   const frame = useRef<number | null>(null);
   const lastSample = useRef(0);
-  useDocumentTitle("连接测试");
+  useDocumentTitle(t("probe.title"));
 
   useEffect(
     () => () => {
@@ -225,25 +234,25 @@ export function ProbeBody() {
         <BodyHead
           title={
             <>
-              <Pill label="开发者工具" className={styles.devPill} />
+              <Pill label={t("probe.devTool")} className={styles.devPill} />
               <br />
-              连接测试
+              {t("probe.title")}
             </>
           }
-          lead="模拟一次长时间的流式输出，检查断线续传是否完整、延迟是否够低。服务端要开启探针接口（ENABLE_PROBE_ENDPOINTS）。"
+          lead={t("probe.intro")}
         />
         <div className={styles.formCard}>
           <div className={styles.formGroup}>
-            <span className={styles.formLabel}>服务器</span>
+            <span className={styles.formLabel}>{t("probe.server")}</span>
             <span className={styles.server}>
               <Icon name="server" size={18} />
               <span className={styles.mono}>{window.location.host}</span>
             </span>
           </div>
           <div className={styles.formGroup}>
-            <span className={styles.formLabel}>测试时长</span>
+            <span className={styles.formLabel}>{t("probe.duration")}</span>
             <Segmented
-              label="测试时长"
+              label={t("probe.duration")}
               value={duration}
               options={DURATIONS}
               onChange={setDuration}
@@ -252,16 +261,16 @@ export function ProbeBody() {
             />
           </div>
           <div className={styles.probeButtons}>
-            <Button label="开始" icon="play" disabled={running} onClick={() => void start()} />
+            <Button label={t("probe.start")} icon="play" disabled={running} onClick={() => void start()} />
             <Button
-              label="模拟断线"
+              label={t("probe.drop")}
               icon="disconnect"
               variant="secondary"
               disabled={!running}
               onClick={() => session.current?.dropConnection()}
             />
             <Button
-              label="停止"
+              label={t("common.stop")}
               icon="stop"
               variant={running ? "primary" : "secondary"}
               disabled={!running}
@@ -272,7 +281,7 @@ export function ProbeBody() {
         {progress ? (
           <>
             <SectionHeader
-              title="实时"
+              title={t("probe.live")}
               meta={
                 <Pill
                   tone={running ? (live ? "acc" : "warn") : "grey"}
@@ -281,11 +290,11 @@ export function ProbeBody() {
                     <>
                       {running
                         ? live
-                          ? "接收中"
+                          ? t("probe.receiving")
                           : progress.state === "polling"
-                            ? "轮询中"
-                            : "重连中"
-                        : "已结束"}{" "}
+                            ? t("probe.polling")
+                            : t("probe.reconnecting")
+                        : t("probe.finished")}{" "}
                       · <span className={styles.mono}>{clock(elapsed)}</span>
                     </>
                   }
@@ -294,17 +303,17 @@ export function ProbeBody() {
             />
             <div className={styles.tiles}>
               <div className={styles.tile}>
-                <span className={styles.cellKey}>事件数</span>
+                <span className={styles.cellKey}>{t("probe.events")}</span>
                 <span className={styles.tileValue}>{progress.events.toLocaleString("en-US")}</span>
               </div>
               <div className={styles.tile}>
-                <span className={styles.cellKey}>重连次数</span>
+                <span className={styles.cellKey}>{t("probe.reconnects")}</span>
                 <span className={styles.tileValue}>{progress.reconnects}</span>
               </div>
             </div>
             <div className={styles.tile}>
               <div className={styles.reportRow}>
-                <span className={styles.cellKey}>最近延迟</span>
+                <span className={styles.cellKey}>{t("probe.lastLatency")}</span>
                 <span className={styles.mono}>
                   {progress.lastLatencyMs === null ? "-" : Math.round(progress.lastLatencyMs)} ms
                 </span>
@@ -313,7 +322,7 @@ export function ProbeBody() {
             </div>
             {tail.length > 0 ? (
               <div className={styles.tile}>
-                <span className={styles.cellKey}>最近 300 字</span>
+                <span className={styles.cellKey}>{t("probe.tail")}</span>
                 <p className={styles.tail}>
                   {tail}
                   {running ? <span className={styles.tailCaret}>▍</span> : null}
@@ -325,7 +334,7 @@ export function ProbeBody() {
       </div>
       <div className={styles.column}>
         {report ? <ReportView report={report.report} duration={report.duration} /> : null}
-        {error ? <p className={cx(styles.note, styles.errText)}>出错：{error}</p> : null}
+        {error ? <p className={cx(styles.note, styles.errText)}>{t("probe.error", { error })}</p> : null}
         <Diagnostics />
       </div>
     </div>

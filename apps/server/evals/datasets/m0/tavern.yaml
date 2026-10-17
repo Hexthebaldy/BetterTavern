@@ -14,7 +14,7 @@ characters:
   - name: 阿苓
     description: 酒馆的帮工，十七岁，想离开灰石镇，偷偷收集各地的地图。
 style: 现在时，语言克制，细节具体，对话简短，少用形容词堆砌。
-length_hint: 每次 150 到 300 字
+length: medium  # 篇幅：short / medium / long，说明文字在 director.system.j2 里
 opening: 开场：我推开灰石镇唯一一家酒馆的门，雨水顺着斗篷往下淌，屋里的人都抬起了头。
 # 偶尔用自由输入代替选项，检验导演对非选项行动的处理
 actions:

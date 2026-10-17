@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { applyLanguage } from "../i18n/index.ts";
 import {
   BOUNDARIES_MAX,
   composeBoundaries,
   composeStyle,
-  NAME_POOL,
+  namePool,
   randomName,
   STYLE_MAX,
   suggestNames,
@@ -16,7 +17,7 @@ describe("开始新故事的表单", () => {
   it("名字建议不重复", () => {
     const names = suggestNames(4, () => 0);
     assert.equal(new Set(names).size, 4);
-    assert.ok(names.every((n) => (NAME_POOL as readonly string[]).includes(n)));
+    assert.ok(names.every((n) => namePool().includes(n)));
   });
 
   it("随机名字和当前的不同", () => {
@@ -45,5 +46,25 @@ describe("开始新故事的表单", () => {
       "还没起名",
       "短",
     ]);
+  });
+
+  it("英文界面：英文名字、逗号分隔、英文摘要", () => {
+    applyLanguage("en");
+    try {
+      assert.ok(suggestNames(3, () => 0).every((n) => /^[A-Za-z]+$/.test(n)));
+      assert.equal(composeStyle(["Restrained", "Spare"]), "Restrained, Spare");
+      assert.deepEqual(summaryParts({ name: "", length: "long", styles: ["Poetic"], boundaries: 1 }), [
+        "No name yet",
+        "Long",
+        "Poetic",
+        "Avoid 1 item",
+      ]);
+      assert.equal(
+        summaryParts({ name: "Ada", length: "medium", styles: [], boundaries: 3 })[2],
+        "Avoid 3 items",
+      );
+    } finally {
+      applyLanguage("zh");
+    }
   });
 });

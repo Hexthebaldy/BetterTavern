@@ -13,6 +13,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Pressable,
   RefreshControl,
@@ -127,12 +128,13 @@ export function Dots({ color, cell = 6, gap = 4 }: { color?: string; cell?: numb
 
 export function Loading({ label }: { label?: string }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <Centered>
       <View
         style={[styles.loadingPill, { backgroundColor: palette.bg2 }]}
         accessibilityRole="progressbar"
-        accessibilityLabel={label ?? "加载中"}
+        accessibilityLabel={label ?? t("common.loading")}
       >
         <Dots />
         {label ? <Text style={{ fontSize: 13, color: palette.mut }}>{label}</Text> : null}

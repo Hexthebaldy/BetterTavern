@@ -33,6 +33,7 @@ test-integration:
 
 lint:
 	cd $(SERVER) && uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run lint-imports --config importlinter.ini
+	node scripts/check-i18n.mjs
 
 fmt:
 	cd $(SERVER) && uv run ruff format . && uv run ruff check --fix .

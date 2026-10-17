@@ -7,6 +7,7 @@
  */
 
 import { useRef, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import type { Playthrough } from "@bettertavern/core/api/types";
@@ -58,6 +59,7 @@ function CardFrame({
 }) {
   const more = useRef<HTMLButtonElement>(null);
   const context = useContextMenu((place) => onMenu(story, place));
+  const { t } = useTranslation();
   return (
     <div className={cx(styles.cell, hero && styles.heroCell)}>
       <Link to={storyPath(story)} className={cx(styles.card, hero && styles.hero)} {...context}>
@@ -66,7 +68,7 @@ function CardFrame({
       <IconButton
         ref={more}
         icon="more"
-        label={`“${story.title}”的更多操作`}
+        label={t("nav.moreFor", { title: story.title })}
         tone="card"
         diameter={32}
         iconSize={18}

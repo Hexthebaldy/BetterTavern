@@ -36,7 +36,7 @@ def b64decode(text: str) -> bytes:
     try:
         return base64.urlsafe_b64decode(padded.encode())
     except (binascii.Error, ValueError) as exc:
-        raise KeyringError("base64 解码失败") from exc
+        raise KeyringError("base64 decoding failed") from exc
 
 
 @dataclass(frozen=True)
@@ -46,12 +46,14 @@ class Keyring:
 
     def __post_init__(self) -> None:
         if self.active_kid not in self.keys:
-            raise KeyringError("当前密钥不在密钥环里")
+            raise KeyringError("The current key isn't in the keyring")
         for kid, key in self.keys.items():
             if not _KID.match(kid):
-                raise KeyringError(f"密钥编号 {kid!r} 只能用字母、数字、下划线和连字符")
+                raise KeyringError(
+                    f"Key id {kid!r} may only contain letters, digits, underscores and hyphens"
+                )
             if len(key) != KEY_BYTES:
-                raise KeyringError(f"密钥 {kid} 必须是 {KEY_BYTES} 字节")
+                raise KeyringError(f"Key {kid} must be {KEY_BYTES} bytes")
 
     @property
     def active(self) -> tuple[str, bytes]:
@@ -61,7 +63,9 @@ class Keyring:
         try:
             return self.keys[kid]
         except KeyError:
-            raise KeyringError(f"密钥环里没有 {kid}，可能已被移除") from None
+            raise KeyringError(
+                f"Key {kid} isn't in the keyring; it may have been removed"
+            ) from None
 
     def __repr__(self) -> str:  # 不把密钥打进日志
         return f"Keyring(kids={list(self.keys)}, active={self.active_kid!r})"
@@ -76,14 +80,14 @@ def parse_master_keys(value: str) -> Keyring:
             continue
         kid, sep, encoded = part.partition(":")
         if not sep:
-            raise KeyringError("MASTER_KEYS 的每一项应该是 kid:base64密钥")
+            raise KeyringError("Each MASTER_KEYS item must be kid:base64-key")
         kid = kid.strip()
         if kid in keys:
-            raise KeyringError(f"密钥编号 {kid} 重复")
+            raise KeyringError(f"Duplicate key id {kid}")
         keys[kid] = b64decode(encoded.strip())
         order.append(kid)
     if not order:
-        raise KeyringError("MASTER_KEYS 为空")
+        raise KeyringError("MASTER_KEYS is empty")
     return Keyring(keys=keys, active_kid=order[0])
 
 
@@ -130,7 +134,8 @@ def load_secrets(
     if not master_keys or not auth_secret:
         if not allow_dev_fallback:
             raise KeyringError(
-                "生产环境必须配置 MASTER_KEYS 和 AUTH_SECRET（运行 `bettertavern keygen` 生成）"
+                "Production needs MASTER_KEYS and AUTH_SECRET "
+                "(generate them with `bettertavern keygen`)"
             )
         dev_master, dev_auth, generated = _load_or_create_dev_secrets(data_dir)
         master_keys = master_keys or dev_master
@@ -138,7 +143,7 @@ def load_secrets(
     # 原样当作 HMAC 密钥使用（keygen 生成的是 64 个字符的随机串）
     secret = auth_secret.encode("utf-8")
     if len(secret) < 32:
-        raise KeyringError("AUTH_SECRET 至少需要 32 个字符")
+        raise KeyringError("AUTH_SECRET needs at least 32 characters")
     return AppSecrets(
         keyring=parse_master_keys(master_keys), auth_secret=secret, generated_dev_file=generated
     )

@@ -27,7 +27,7 @@ from bettertavern.services.errors import Unavailable
 from bettertavern.services.playthrough_service import NewPlaythrough
 from bettertavern.services.turn_service import ActionInput
 
-router = APIRouter(prefix="/v1", tags=["游玩"])
+router = APIRouter(prefix="/v1", tags=["play"])
 
 
 def events_url(turn_id: str) -> str:
@@ -37,7 +37,11 @@ def events_url(turn_id: str) -> str:
 def _check_accepting(request: Request) -> None:
     shutdown: Shutdown | None = getattr(request.app.state, "shutdown", None)
     if shutdown is not None and shutdown.triggered:
-        raise Unavailable("服务正在重启，请稍后重试", retryable=True, headers={"Retry-After": "5"})
+        raise Unavailable(
+            "The server is restarting, please try again shortly",
+            retryable=True,
+            headers={"Retry-After": "5"},
+        )
 
 
 @router.post("/playthroughs", status_code=status.HTTP_202_ACCEPTED)
@@ -58,6 +62,7 @@ async def create_playthrough(
             protagonist_summary=body.protagonist.summary,
             title=body.title,
             preferences=body.preferences.model_dump(),
+            language=body.language,
         ),
     )
     return PlaythroughCreatedOut(

@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, type Ref } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { canAct, isEnded, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
 
@@ -22,25 +23,26 @@ import type { PlayControls } from "./usePlaySession.ts";
 const MAX_TEXT = 2000;
 
 function LiveStatus({ state }: { state: PlayState }) {
+  const { t } = useTranslation();
   const warn = state.phase === "reconnecting" || state.phase === "polling";
   const source = state.pending?.action?.source;
   const pending = state.pending;
   const label =
     state.phase === "reconnecting"
-      ? "连接断了，正在重连…"
+      ? t("play.reconnecting")
       : state.phase === "polling"
-        ? "网络不太稳定，正在等结果…"
+        ? t("play.polling")
         : state.phase === "submitting"
-          ? "正在发送…"
+          ? t("play.sending")
           : pending?.waitingState
-            ? "世界还在更新…"
+            ? t("play.waitingState")
             : pending?.narrative === ""
-              ? "正在构思…"
+              ? t("play.thinking")
               : source === "opening"
-                ? "正在写开场"
+                ? t("play.writingOpening")
                 : source === "ending"
-                  ? "正在写结局"
-                  : "正在写下一段";
+                  ? t("play.writingEnding")
+                  : t("play.writingNext");
   return (
     <div className={cx(styles.status, warn && styles.statusWarn)} aria-live="polite">
       <span className={styles.liveDot} />
@@ -63,6 +65,7 @@ function FreeInput({
   onSend: (text: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const input = useRef<HTMLTextAreaElement>(null);
   const trimmed = draft.trim();
   const left = MAX_TEXT - draft.length;
@@ -80,8 +83,8 @@ function FreeInput({
         className={styles.textarea}
         value={draft}
         maxLength={MAX_TEXT}
-        placeholder="我……（用第一人称写下你要做的事）"
-        aria-label="我要做的事"
+        placeholder={t("play.inputPlaceholder")}
+        aria-label={t("play.inputLabel")}
         onChange={(e) => onDraft(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
@@ -96,17 +99,17 @@ function FreeInput({
       <div className={styles.inputRow}>
         <button type="button" className={styles.collapse} onClick={onClose}>
           <Icon name="chevronDown" size={20} />
-          收起
+          {t("common.collapse")}
         </button>
-        {left <= 200 ? <span className={styles.left}>剩 {left}</span> : null}
+        {left <= 200 ? <span className={styles.left}>{t("play.left", { n: left })}</span> : null}
         <span className={styles.sendHint}>
-          <kbd>Enter</kbd> 发送 · <kbd>Shift</kbd> + <kbd>Enter</kbd> 换行
+          <Trans i18nKey="play.inputKeys" components={{ kbd: <kbd /> }} />
         </span>
         <button type="button" className={styles.send} disabled={blocked} onClick={() => onSend(trimmed)}>
           <span className={styles.sendIcon}>
             <Icon name="send" size={16} />
           </span>
-          发送
+          {t("play.send")}
         </button>
       </div>
     </div>
@@ -150,6 +153,7 @@ export function BottomBar({
   moreRef: Ref<HTMLButtonElement>;
   barRef: Ref<HTMLDivElement>;
 }) {
+  const { t } = useTranslation();
   if (state.phase === "loading" || state.phase === "load_failed") return null;
   const enabled = canAct(state);
   const live = isLive(state);
@@ -163,7 +167,7 @@ export function BottomBar({
         {cancellable ? (
           <button type="button" className={styles.stop} onClick={controls.cancel}>
             <Icon name="stop" size={16} />
-            停止
+            {t("common.stop")}
           </button>
         ) : null}
       </>
@@ -172,14 +176,14 @@ export function BottomBar({
     middle = (
       <div className={cx(styles.status, styles.statusMuted)}>
         <Icon name="lock" size={18} />
-        <span className={styles.statusText}>同步完成前暂时不能行动</span>
+        <span className={styles.statusText}>{t("play.syncBlocked")}</span>
       </div>
     );
   } else if (isEnded(state)) {
     middle = (
       <div className={cx(styles.status, styles.statusMuted)}>
         <Icon name="flag" size={18} />
-        <span className={styles.statusText}>故事已完结</span>
+        <span className={styles.statusText}>{t("play.ended")}</span>
       </div>
     );
   } else if (needsOpening(state) || state.turns.length === 0) {
@@ -190,12 +194,14 @@ export function BottomBar({
         type="button"
         className={styles.writePill}
         disabled={!enabled}
-        aria-label={draft ? "继续写草稿" : "自己写"}
+        aria-label={draft ? t("play.continueDraft") : t("play.writeOwn")}
         aria-keyshortcuts="/"
         onClick={onWrite}
       >
         <Icon name="write" size={16} />
-        <span className={cx(styles.writeText, draft && styles.writeDraft)}>{draft || "自己写…"}</span>
+        <span className={cx(styles.writeText, draft && styles.writeDraft)}>
+          {draft || t("play.writeOwnPlaceholder")}
+        </span>
         <kbd className={styles.slash}>/</kbd>
       </button>
     );
@@ -203,7 +209,7 @@ export function BottomBar({
 
   const expanded = writing && enabled;
   return (
-    <div ref={barRef} className={styles.bar} role="toolbar" aria-label="阅读操作">
+    <div ref={barRef} className={styles.bar} role="toolbar" aria-label={t("play.toolbar")}>
       <div className={styles.barInner}>
         {expanded ? (
           <FreeInput
@@ -217,7 +223,7 @@ export function BottomBar({
           <div className={styles.barRow}>
             <IconButton
               icon="world"
-              label={worldActive ? "收起世界状态" : "世界状态"}
+              label={worldActive ? t("play.worldHide") : t("play.world")}
               aria-keyshortcuts="W"
               diameter={44}
               on={worldActive}
@@ -228,7 +234,7 @@ export function BottomBar({
               <div className={cx(styles.jump, away && styles.jumpShown)} aria-hidden={!away}>
                 <IconButton
                   icon="down"
-                  label={live ? "回到最新，有新内容" : "回到最新"}
+                  label={live ? t("play.latestNew") : t("play.latest")}
                   aria-keyshortcuts="End"
                   diameter={44}
                   iconSize={20}
@@ -241,7 +247,7 @@ export function BottomBar({
             <IconButton
               ref={moreRef}
               icon="more"
-              label="更多：阅读设置、重命名、写结局、删除"
+              label={t("play.moreLabel")}
               aria-haspopup="dialog"
               aria-expanded={moreActive}
               diameter={44}

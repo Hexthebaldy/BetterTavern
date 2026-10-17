@@ -59,7 +59,7 @@
 ```json
 {
   "type": "/errors/turn-in-progress",
-  "title": "上一轮还在生成中",
+  "title": "The previous turn is still being written",
   "status": 409,
   "code": "TURN_IN_PROGRESS",
   "retryable": false,
@@ -68,7 +68,8 @@
 }
 ```
 
-- `code` 是稳定的错误码，客户端按它判断，全部取值见下文“错误码”；`title` 是可以直接给玩家看的中文说明；`retryable` 表示原样重试有没有可能成功。
+- `code` 是稳定的错误码，客户端按它判断，全部取值见下文“错误码”；`retryable` 表示原样重试有没有可能成功。
+- `title` 是英文说明，不做多语言。客户端按 `code`（业务校验再看 `field`）显示界面语言的文字，没有对应翻译时英文界面才直接用 `title`（[i18n.md](../i18n.md) 第 3 节）。
 - 有些错误带附加字段，例如上面的 `active_turn_id`。附加字段也列在“错误码”里。
 - 请求体或参数不符合模型定义（缺字段、类型不对、超过长度限制、JSON 格式错误）时，返回 422 `VALIDATION_ERROR`，带 `errors` 字段：
   `[{ "loc": ["body", "email"], "msg": "…" }]`，最多 20 条。各模型的限制写在领域文件的字段表里。

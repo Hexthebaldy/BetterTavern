@@ -12,6 +12,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
@@ -55,6 +56,7 @@ export default function LibraryScreen() {
   const palette = usePalette();
   const overlay = useOverlay();
   const { libraryView, setLibraryView } = usePrefs();
+  const { t } = useTranslation();
   const { width, size: layoutSize, compact, expanded } = useLayout();
   const nodes = useRef(new Map<string, View>());
   const { data, error, loading, refreshing, reload, refresh, setData } = useAsync(
@@ -78,11 +80,17 @@ export default function LibraryScreen() {
     const file = picked.assets[0];
     if (!file) return;
     if (!/\.(png|json)$/i.test(file.name)) {
-      setImportError({ title: `${file.name} 不是角色卡`, message: "只支持 PNG 或 JSON，最大 16 MB。" });
+      setImportError({
+        title: t("library.notCard", { name: file.name }),
+        message: t("library.notCardMessage"),
+      });
       return;
     }
     if (file.size !== undefined && file.size > MAX_BYTES) {
-      setImportError({ title: `${file.name} 太大了`, message: "角色卡最大 16 MB。" });
+      setImportError({
+        title: t("library.tooLarge", { name: file.name }),
+        message: t("library.tooLargeMessage"),
+      });
       return;
     }
     setImporting({ name: file.name, size: file.size });
@@ -90,16 +98,16 @@ export default function LibraryScreen() {
       const scenario = await api.scenarios.importFile(new File(file.uri));
       void reload();
       if (scenario.duplicate) {
-        overlay.toast(`“${scenario.name}”之前已经导入过了`, {
+        overlay.toast(t("library.duplicate", { name: scenario.name }), {
           icon: "info",
-          actionLabel: "打开",
+          actionLabel: t("common.open"),
           onAction: () => open(scenario.id),
         });
       } else {
         open(scenario.id);
       }
     } catch (e) {
-      setImportError({ title: `${file.name} 导入失败`, message: describeError(e) });
+      setImportError({ title: t("library.importFailed", { name: file.name }), message: describeError(e) });
     } finally {
       setImporting(null);
     }
@@ -107,8 +115,8 @@ export default function LibraryScreen() {
 
   const rename = async (s: Scenario): Promise<void> => {
     const name = await overlay.prompt({
-      title: "重命名剧本",
-      label: "剧本名",
+      title: t("library.renameTitle"),
+      label: t("library.nameLabel"),
       initial: s.name,
       maxLength: 80,
     });
@@ -117,24 +125,24 @@ export default function LibraryScreen() {
       const updated = await api.scenarios.rename(s.id, name);
       setData((list) => list?.map((x) => (x.id === s.id ? updated : x)));
     } catch (e) {
-      overlay.toast(`重命名失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.renameFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
   const remove = async (s: Scenario): Promise<void> => {
     const ok = await overlay.confirm({
-      title: `删除剧本“${s.name}”？`,
-      message: "已有的存档不受影响。",
-      confirmLabel: "删除",
+      title: t("library.deleteConfirm", { name: s.name }),
+      message: t("library.deleteMessage"),
+      confirmLabel: t("common.delete"),
       tone: "danger",
     });
     if (!ok) return;
     try {
       await api.scenarios.remove(s.id);
       setData((list) => list?.filter((x) => x.id !== s.id));
-      overlay.toast(`已删除“${s.name}”`);
+      overlay.toast(t("common.deleted", { name: s.name }));
     } catch (e) {
-      overlay.toast(`删除失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.deleteFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
@@ -144,8 +152,8 @@ export default function LibraryScreen() {
     const key = await overlay.menu({
       title: s.name,
       items: [
-        { key: "rename", label: "重命名", icon: "write" },
-        { key: "delete", label: "删除", icon: "trash", danger: true },
+        { key: "rename", label: t("common.rename"), icon: "write" },
+        { key: "delete", label: t("common.delete"), icon: "trash", danger: true },
       ],
       anchor: anchor ? { current: anchor } : undefined,
       lifted: anchor && tileWidth ? <LiftedTile scenario={s} width={tileWidth} /> : undefined,
@@ -157,7 +165,7 @@ export default function LibraryScreen() {
 
   const empty = data !== undefined && data.length === 0 && !importing;
   const header = (
-    <LargeHeader title="剧本">
+    <LargeHeader title={t("nav.library")}>
       {empty || !data ? null : (
         <HeaderControls
           view={libraryView}
@@ -190,7 +198,7 @@ export default function LibraryScreen() {
           <Loading />
         ) : (
           <ErrorState
-            title="剧本库没加载出来"
+            title={t("library.loadFailed")}
             message={describeError(error)}
             onRetry={() => void reload()}
             style={{ marginTop: space.l }}
@@ -238,7 +246,7 @@ export default function LibraryScreen() {
         <Notice
           icon="offline"
           message={describeError(error)}
-          actionLabel="重试"
+          actionLabel={t("common.retry")}
           onAction={() => void reload()}
           style={[styles.banner, columnMargins]}
         />
@@ -288,8 +296,14 @@ export default function LibraryScreen() {
           ) : (
             <SwipeRow
               actions={[
-                { key: "rename", label: "重命名", icon: "write", onPress: () => void rename(s) },
-                { key: "delete", label: "删除", icon: "trash", danger: true, onPress: () => void remove(s) },
+                { key: "rename", label: t("common.rename"), icon: "write", onPress: () => void rename(s) },
+                {
+                  key: "delete",
+                  label: t("common.delete"),
+                  icon: "trash",
+                  danger: true,
+                  onPress: () => void remove(s),
+                },
               ]}
             >
               {row}

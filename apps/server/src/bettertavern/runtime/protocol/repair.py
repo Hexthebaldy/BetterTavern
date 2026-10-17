@@ -40,7 +40,7 @@ async def finalize_director_output(
     timeout: float = 5.0,
 ) -> DirectorOutcome:
     if parse.stage is ParseStage.FAILED or not parse.narrative.strip():
-        raise NarrativeMissing("导演没有产出叙述")
+        raise NarrativeMissing("the director produced no narrative")
     notes = list(parse.notes)
     existing = list(parse.options)
     if len(existing) >= OPTION_COUNT:
@@ -64,11 +64,11 @@ async def finalize_director_output(
                     repairs=parse.repairs,
                     notes=tuple(notes),
                 )
-            notes.append("OptionsRepair 没有给出 2 个有效选项")
+            notes.append("OptionsRepair did not produce 2 valid choices")
         except TimeoutError:
-            notes.append(f"OptionsRepair 超过 {timeout:g} 秒")
+            notes.append(f"OptionsRepair took longer than {timeout:g} s")
         except Exception as exc:  # 修复是尽力而为，任何失败都退到默认选项
-            notes.append(f"OptionsRepair 失败：{type(exc).__name__}")
+            notes.append(f"OptionsRepair failed: {type(exc).__name__}")
     merged = normalize_options([*existing, *fallback], limit=OPTION_COUNT)
     if len(merged) < OPTION_COUNT:  # 已有选项恰好与默认选项重复
         merged = list(fallback)

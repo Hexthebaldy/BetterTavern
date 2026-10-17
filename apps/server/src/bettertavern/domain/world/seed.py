@@ -2,6 +2,7 @@
 
 模型输出是不可信的：字符串超长就截断、列表超长就截掉，而不是整体拒绝；
 名字之间的引用（谁在场、谁拿着什么）在 normalize_seed() 里统一校正。
+给模型看的字段说明随一局的语言，放在 runtime/prompts/<lang>/schema/seed.json，这里不写。
 """
 
 from __future__ import annotations
@@ -50,13 +51,11 @@ class _SeedModel(BaseModel):
 
 
 class WorldSeed(_SeedModel):
-    title: str = Field(default="", description="故事或世界的名字，不超过 40 字")
-    setting: str = Field(
-        default="", description="世界观：时代、地点、社会、超自然规则等，不超过 800 字"
-    )
-    tone: str = Field(default="", description="基调与氛围，不超过 200 字")
-    rules: list[str] = Field(default_factory=list, description="必须遵守的世界规则，至多 8 条")
-    style: str = Field(default="", description="叙述文风，不超过 200 字")
+    title: str = Field(default="")
+    setting: str = Field(default="")
+    tone: str = Field(default="")
+    rules: list[str] = Field(default_factory=list)
+    style: str = Field(default="")
 
     _title = field_validator("title", mode="before")(_clip(40))
     _setting = field_validator("setting", mode="before")(_clip(800))
@@ -66,9 +65,9 @@ class WorldSeed(_SeedModel):
 
 
 class ProtagonistSeed(_SeedModel):
-    name: str = Field(description="主角的名字（玩家扮演的“我”）")
-    summary: str = Field(default="", description="外貌、身份、性格，不超过 400 字")
-    goal: str = Field(default="", description="开场时主角的目标，不超过 160 字")
+    name: str
+    summary: str = Field(default="")
+    goal: str = Field(default="")
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
     _summary = field_validator("summary", mode="before")(_clip(400))
@@ -77,12 +76,12 @@ class ProtagonistSeed(_SeedModel):
 
 class CharacterSeed(_SeedModel):
     name: str
-    aliases: list[str] = Field(default_factory=list, description="别名、昵称，至多 6 个")
-    summary: str = Field(default="", description="外貌、性格、说话方式、动机，不超过 500 字")
-    goal: str = Field(default="", description="当前目标，不超过 160 字")
-    attitude: str = Field(default="", description="对主角的态度，不超过 160 字")
-    speech_style: str = Field(default="", description="说话方式与口头禅，不超过 240 字")
-    importance: int = Field(default=3, ge=1, le=5, description="重要程度 1 到 5")
+    aliases: list[str] = Field(default_factory=list)
+    summary: str = Field(default="")
+    goal: str = Field(default="")
+    attitude: str = Field(default="")
+    speech_style: str = Field(default="")
+    importance: int = Field(default=3, ge=1, le=5)
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
     _aliases = field_validator("aliases", mode="before")(_clip_list(6, NAME_CHARS))
@@ -100,7 +99,7 @@ class CharacterSeed(_SeedModel):
 class LocationSeed(_SeedModel):
     name: str
     aliases: list[str] = Field(default_factory=list)
-    summary: str = Field(default="", description="外观、氛围、出口，不超过 400 字")
+    summary: str = Field(default="")
     importance: int = Field(default=3, ge=1, le=5)
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
@@ -116,9 +115,9 @@ class LocationSeed(_SeedModel):
 class ItemSeed(_SeedModel):
     name: str
     aliases: list[str] = Field(default_factory=list)
-    summary: str = Field(default="", description="外观、来历、用途，不超过 300 字")
-    holder: str | None = Field(default=None, description="持有它的人物名字；与 location 二选一")
-    location: str | None = Field(default=None, description="它所在的地点名字")
+    summary: str = Field(default="")
+    holder: str | None = Field(default=None)
+    location: str | None = Field(default=None)
     importance: int = Field(default=2, ge=1, le=5)
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
@@ -134,9 +133,9 @@ class ItemSeed(_SeedModel):
 class OrgSeed(_SeedModel):
     name: str
     aliases: list[str] = Field(default_factory=list)
-    summary: str = Field(default="", description="宗旨、结构、行事风格，不超过 300 字")
-    stance: str = Field(default="", description="对主角的立场，不超过 120 字")
-    members: list[str] = Field(default_factory=list, description="成员的人物名字")
+    summary: str = Field(default="")
+    stance: str = Field(default="")
+    members: list[str] = Field(default_factory=list)
     importance: int = Field(default=2, ge=1, le=5)
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
@@ -152,11 +151,11 @@ class OrgSeed(_SeedModel):
 
 
 class FactSeed(_SeedModel):
-    text: str = Field(description="一条原子事实，不超过 200 字")
-    about: list[str] = Field(default_factory=list, description="涉及的实体名字")
+    text: str
+    about: list[str] = Field(default_factory=list)
     importance: int = Field(default=2, ge=1, le=5)
-    secret: bool = Field(default=False, description="主角一开始不知道的秘密")
-    known_by: list[str] = Field(default_factory=list, description="知道这个秘密的人物名字")
+    secret: bool = Field(default=False)
+    known_by: list[str] = Field(default_factory=list)
 
     _text = field_validator("text", mode="before")(_clip(200))
     _about = field_validator("about", mode="before")(_clip_list(6, NAME_CHARS))
@@ -169,12 +168,10 @@ class FactSeed(_SeedModel):
 
 
 class OpeningBrief(_SeedModel):
-    location: str | None = Field(default=None, description="开场地点的名字（须在 locations 里）")
-    present: list[str] = Field(default_factory=list, description="开场时在场的人物名字，不含主角")
-    situation: str = Field(
-        default="", description="开场情境：主角此刻在做什么、刚发生了什么，不超过 500 字"
-    )
-    hook: str = Field(default="", description="把故事推起来的第一个钩子，不超过 200 字")
+    location: str | None = Field(default=None)
+    present: list[str] = Field(default_factory=list)
+    situation: str = Field(default="")
+    hook: str = Field(default="")
 
     _present = field_validator("present", mode="before")(_clip_list(8, NAME_CHARS))
     _situation = field_validator("situation", mode="before")(_clip(500))
@@ -184,13 +181,11 @@ class OpeningBrief(_SeedModel):
 class Seed(_SeedModel):
     world: WorldSeed = Field(default_factory=WorldSeed)
     protagonist: ProtagonistSeed
-    characters: list[CharacterSeed] = Field(
-        default_factory=list, description="关键 NPC，至多 12 个"
-    )
-    locations: list[LocationSeed] = Field(default_factory=list, description="至多 12 个")
-    items: list[ItemSeed] = Field(default_factory=list, description="至多 16 个")
-    organizations: list[OrgSeed] = Field(default_factory=list, description="至多 8 个")
-    facts: list[FactSeed] = Field(default_factory=list, description="至多 40 条")
+    characters: list[CharacterSeed] = Field(default_factory=list)
+    locations: list[LocationSeed] = Field(default_factory=list)
+    items: list[ItemSeed] = Field(default_factory=list)
+    organizations: list[OrgSeed] = Field(default_factory=list)
+    facts: list[FactSeed] = Field(default_factory=list)
     opening: OpeningBrief = Field(default_factory=OpeningBrief)
 
     _characters = field_validator("characters", mode="before")(_clip_list(12))

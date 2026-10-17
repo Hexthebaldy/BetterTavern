@@ -26,9 +26,9 @@ class LimiterConfig:
 
     def __post_init__(self) -> None:
         if self.capacity < 1:
-            raise ValueError("capacity 至少为 1")
+            raise ValueError("capacity must be at least 1")
         if not 0 <= self.reserved_interactive < self.capacity:
-            raise ValueError("reserved_interactive 必须小于 capacity")
+            raise ValueError("reserved_interactive must be less than capacity")
 
 
 class _CredentialPool:
@@ -86,7 +86,7 @@ class CredentialLimiter:
         if wait > 0:
             left = remaining()
             if left is not None and wait > left:
-                raise LimiterTimeout("凭据处于限流冷却中")
+                raise LimiterTimeout("The credential is cooling down after rate limiting")
             await asyncio.sleep(wait)
         try:
             async with pool.condition:
@@ -97,7 +97,7 @@ class CredentialLimiter:
                 if not interactive:
                     pool.background_in_use += 1
         except TimeoutError as exc:
-            raise LimiterTimeout("等待并发槽位超时") from exc
+            raise LimiterTimeout("Timed out waiting for a concurrency slot") from exc
         try:
             yield
         finally:

@@ -75,13 +75,13 @@ class Capabilities:
         structured = tuple(data.get("structured") or ())
         unknown = [m for m in structured if m not in _CONFIRMABLE]
         if unknown:
-            raise ValueError(f"caps.structured 里有未知的方式：{unknown}")
+            raise ValueError(f"Unknown modes in caps.structured: {unknown}")
         control = reasoning.get("control", "none")
         if control not in ("none", "thinking_toggle", "effort"):
-            raise ValueError(f"caps.reasoning.control 取值无效：{control!r}")
+            raise ValueError(f"Invalid caps.reasoning.control: {control!r}")
         alternation = roles.get("alternation", "loose")
         if alternation not in ("loose", "strict"):
-            raise ValueError(f"caps.roles.alternation 取值无效：{alternation!r}")
+            raise ValueError(f"Invalid caps.roles.alternation: {alternation!r}")
         return cls(
             context_window=_opt_int(data.get("context_window"), "context_window"),
             max_output=_opt_int(data.get("max_output"), "max_output"),
@@ -116,17 +116,17 @@ _TOP_KEYS = {
 
 def _check_keys(data: Mapping[str, Any], allowed: set[str], where: str) -> None:
     if not isinstance(data, Mapping):
-        raise ValueError(f"{where} 应该是映射")
+        raise ValueError(f"{where} must be a mapping")
     extra = set(data) - allowed
     if extra:
-        raise ValueError(f"{where} 里有未知字段：{sorted(extra)}")
+        raise ValueError(f"Unknown fields in {where}: {sorted(extra)}")
 
 
 def _opt_int(value: Any, name: str) -> int | None:
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        raise ValueError(f"caps.{name} 应该是正整数")
+        raise ValueError(f"caps.{name} must be a positive integer")
     return value
 
 
@@ -162,11 +162,11 @@ class CapabilityRule:
 
 def parse_rules(data: Any) -> list[CapabilityRule]:
     if not isinstance(data, list):
-        raise ValueError("capabilities.yaml 顶层应该是规则列表")
+        raise ValueError("capabilities.yaml must be a list of rules at the top level")
     rules: list[CapabilityRule] = []
     for index, item in enumerate(data):
         if not isinstance(item, Mapping) or "caps" not in item:
-            raise ValueError(f"第 {index + 1} 条规则缺少 caps")
+            raise ValueError(f"Rule {index + 1} has no caps")
         match = item.get("match") or {}
         _check_keys(match, {"provider", "model"}, f"rules[{index}].match")
         caps = item["caps"]

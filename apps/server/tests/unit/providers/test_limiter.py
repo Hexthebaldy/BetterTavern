@@ -58,7 +58,7 @@ async def test_cooldown_after_rate_limit() -> None:
     now = [100.0]
     limiter = CredentialLimiter(clock=lambda: now[0])
     limiter.note_rate_limited("c", retry_after=30.0)
-    with pytest.raises(LimiterTimeout, match="冷却"):
+    with pytest.raises(LimiterTimeout, match="cooling down"):
         async with limiter.slot("c", interactive=False, timeout=5.0):
             pass
     now[0] = 131.0

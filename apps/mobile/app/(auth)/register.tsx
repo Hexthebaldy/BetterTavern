@@ -5,6 +5,7 @@
 
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
@@ -23,8 +24,12 @@ const NAME_MAX = 40;
 function LengthBar({ length }: { length: number }) {
   const palette = usePalette();
   const ratio = Math.min(length / MIN_PASSWORD, 1);
+  const { t } = useTranslation();
   return (
-    <View style={styles.lengthRow} accessibilityLabel={`已输入 ${length} 位，至少 ${MIN_PASSWORD} 位`}>
+    <View
+      style={styles.lengthRow}
+      accessibilityLabel={t("auth.passwordTyped", { length, min: MIN_PASSWORD })}
+    >
       <View style={[styles.track, { backgroundColor: palette.bg3 }]}>
         <View
           style={[
@@ -34,7 +39,7 @@ function LengthBar({ length }: { length: number }) {
         />
       </View>
       <Text style={[styles.meta, { color: palette.mut }]}>
-        {length >= MIN_PASSWORD ? `${length} 位` : `${length} / ${MIN_PASSWORD}`}
+        {length >= MIN_PASSWORD ? t("auth.passwordLength", { count: length }) : `${length} / ${MIN_PASSWORD}`}
       </Text>
     </View>
   );
@@ -44,6 +49,7 @@ export default function RegisterScreen() {
   const { api, signIn, serverUrl } = useApp();
   const { serverUsed, serverFailed } = usePrefs();
   const palette = usePalette();
+  const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -74,7 +80,7 @@ export default function RegisterScreen() {
       if (typeof field === "string") setFieldError({ field, message: describeError(e) });
       else if (e instanceof ApiError && e.isNetwork) {
         serverFailed(serverUrl);
-        setError("连不上服务器，检查地址或网络。");
+        setError(t("auth.cantConnect"));
         setServerOpen(true);
       } else setError(describeError(e));
     }
@@ -91,12 +97,12 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
-          创建账户
+          {t("auth.registerTitle")}
         </Text>
         {error ? <Notice message={error} /> : null}
         <View style={styles.form}>
           <Field
-            label="邮箱"
+            label={t("auth.email")}
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
@@ -107,10 +113,10 @@ export default function RegisterScreen() {
             error={errorFor("email")}
           />
           <Field
-            label="密码"
+            label={t("auth.password")}
             value={password}
             onChangeText={setPassword}
-            placeholder={`至少 ${MIN_PASSWORD} 位`}
+            placeholder={t("auth.passwordMin", { min: MIN_PASSWORD })}
             secureTextEntry={!reveal}
             autoComplete="new-password"
             textContentType="newPassword"
@@ -118,7 +124,7 @@ export default function RegisterScreen() {
             trailing={
               <IconButton
                 icon={reveal ? "eyeOff" : "eye"}
-                label={reveal ? "隐藏密码" : "显示密码"}
+                label={reveal ? t("auth.hidePassword") : t("auth.showPassword")}
                 tone="plain"
                 diameter={44}
                 color={palette.mut}
@@ -128,7 +134,7 @@ export default function RegisterScreen() {
             below={password.length > 0 ? <LengthBar length={password.length} /> : null}
           />
           <Field
-            label="昵称"
+            label={t("auth.nickname")}
             optional
             counter
             value={name}
@@ -137,7 +143,7 @@ export default function RegisterScreen() {
             onSubmitEditing={() => void submit()}
           />
           <Button
-            label="注册并登录"
+            label={t("auth.registerAndLogin")}
             trailingIcon="arrowRight"
             between
             onPress={() => void submit()}

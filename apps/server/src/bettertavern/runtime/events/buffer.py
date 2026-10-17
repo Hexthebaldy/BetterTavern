@@ -60,7 +60,7 @@ class EventStream:
         if self._closed:
             raise StreamClosed(self.stream_id)
         if len(self._events) >= self._max_events:
-            raise OverflowError(f"事件流 {self.stream_id} 超过 {self._max_events} 个事件")
+            raise OverflowError(f"Event stream {self.stream_id} exceeded {self._max_events} events")
         payload = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
         item = StreamEvent(self.stream_id, len(self._events) + 1, event, payload)
         async with self._condition:
@@ -107,7 +107,7 @@ class EventBufferRegistry:
     def create(self, stream_id: str, *, max_events: int = 100_000) -> EventStream:
         self.sweep()
         if stream_id in self._streams:
-            raise KeyError(f"事件流 {stream_id} 已存在")
+            raise KeyError(f"Event stream {stream_id} already exists")
         stream = EventStream(stream_id, max_events=max_events, clock=self._clock)
         self._streams[stream_id] = stream
         return stream

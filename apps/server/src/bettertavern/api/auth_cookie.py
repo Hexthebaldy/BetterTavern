@@ -33,7 +33,7 @@ class CrossSite(AppError):
     code = "CROSS_SITE"
 
     def __init__(self) -> None:
-        super().__init__("不接受其他网站发来的登录请求")
+        super().__init__("Sign-in requests from other sites aren't accepted")
 
 
 def cookie_mode(request: Request, mode: str | None, settings: Settings) -> bool:
@@ -41,7 +41,7 @@ def cookie_mode(request: Request, mode: str | None, settings: Settings) -> bool:
     if mode is None:
         return False
     if mode.strip().lower() != "cookie":
-        raise Invalid("X-Auth-Mode 只能是 cookie", field="X-Auth-Mode")
+        raise Invalid("X-Auth-Mode can only be cookie", field="X-Auth-Mode")
     site = request.headers.get("sec-fetch-site")
     if site is not None and site not in _SAME_ORIGIN:
         origin = request.headers.get("origin")

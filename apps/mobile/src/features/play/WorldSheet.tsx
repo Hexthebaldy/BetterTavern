@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -36,6 +37,7 @@ import { Entities, Facts, Links, type Tab } from "./WorldParts.tsx";
 function useWorld(playthroughId: string, active: boolean) {
   const { api } = useApp();
   const overlay = useOverlay();
+  const { t } = useTranslation();
   const [view, setView] = useState<WorldView | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [revealed, setRevealed] = useState(false);
@@ -60,9 +62,9 @@ function useWorld(playthroughId: string, active: boolean) {
   const reveal = async (): Promise<void> => {
     const count = view?.hidden_facts ?? 0;
     const ok = await overlay.confirm({
-      title: count > 1 ? `揭示 ${count} 条秘密？` : "揭示一条秘密？",
-      message: "这是导演知道、而“我”还不知道的事，看了会剧透接下来的故事。",
-      confirmLabel: "揭示",
+      title: count > 1 ? t("world.revealMany", { count }) : t("world.revealOne"),
+      message: t("world.revealMessage"),
+      confirmLabel: t("world.reveal"),
       tone: "warn",
       icon: "lock",
     });
@@ -92,6 +94,7 @@ function WorldHeader({
 }) {
   const palette = usePalette();
   const surfaces = useSheetSurfaces();
+  const { t } = useTranslation();
   const { view } = world;
   const counts = view
     ? {
@@ -101,24 +104,22 @@ function WorldHeader({
       }
     : null;
   const tabs: { value: Tab; label: string; count?: number }[] = [
-    { value: "entities", label: "人物与地点", count: counts?.entities },
-    { value: "links", label: "关系", count: counts?.links },
-    { value: "facts", label: "事实", count: counts?.facts },
+    { value: "entities", label: t("world.tabs.entities"), count: counts?.entities },
+    { value: "links", label: t("world.tabs.links"), count: counts?.links },
+    { value: "facts", label: t("world.tabs.facts"), count: counts?.facts },
   ];
   return (
     <View>
       <View style={styles.head}>
         <View style={{ flex: 1 }}>
           <Text accessibilityRole="header" style={[styles.title, { color: palette.ink }]}>
-            世界
+            {t("world.title")}
           </Text>
-          <Text style={{ fontSize: 12, lineHeight: 17, color: palette.mut }}>
-            导演记下的一切 · 开局时整理
-          </Text>
+          <Text style={{ fontSize: 12, lineHeight: 17, color: palette.mut }}>{t("world.subtitle")}</Text>
         </View>
         <IconButton
           icon={docked ? "sidebar" : "close"}
-          label={docked ? "收起世界状态" : "关闭"}
+          label={docked ? t("play.worldHide") : t("common.close")}
           size={docked ? 20 : 22}
           onPress={onClose}
           style={{ backgroundColor: surfaces.fill }}
@@ -148,6 +149,7 @@ function WorldBody({
   panel: boolean;
 }) {
   const { view, error } = world;
+  const { t } = useTranslation();
   const names = useMemo(() => new Map((view?.entities ?? []).map((e) => [e.id, e.name])), [view]);
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: space.xxl }}>
@@ -160,7 +162,7 @@ function WorldBody({
           <Facts view={view} names={names} onReveal={() => void world.reveal()} />
         )
       ) : error ? (
-        <ErrorState title="世界状态没加载出来" message={describeError(error)} onRetry={world.retry} />
+        <ErrorState title={t("world.loadFailed")} message={describeError(error)} onRetry={world.retry} />
       ) : (
         <View style={styles.loading}>
           <Dots />
@@ -203,12 +205,13 @@ export function WorldSheet({
 /** 停靠在阅读页右侧的世界状态（阅读页宽 ≥ 1100）：宽 400，上、下、右各留 8，圆角 32，灰底，不加遮罩 */
 export function WorldDock({ onClose, playthroughId }: { onClose: () => void; playthroughId: string }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const world = useWorld(playthroughId, true);
   const [tab, setTab] = useState<Tab>("entities");
   return (
     <View
-      accessibilityLabel="世界状态"
+      accessibilityLabel={t("play.world")}
       style={[
         styles.dock,
         {

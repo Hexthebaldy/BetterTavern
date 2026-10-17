@@ -36,7 +36,7 @@ flowchart LR
 | 任务队列 | Postgres 表队列，`JobQueue` 接口 | 与业务写入同事务入队，无需双写；以后可换 Taskiq / Celery |
 | 事件总线 | `EventBus` 接口：进程内 + PG NOTIFY，Redis Streams 可选 | token 流续传与跨进程通知 |
 | LLM 调用 | 自有 provider 层（httpx + 自写 SSE 解析） | 见第 8 节 |
-| 提示词 | Jinja2 模板文件，按语言分目录（v1 只有中文） | 模板可单独评测和替换 |
+| 提示词 | Jinja2 模板文件，按语言分目录（中文、英文，按这一局的语言选） | 模板可单独评测和替换 |
 | 密钥 | `cryptography`，AES-GCM 信封加密 | 见第 11 节 |
 | 可观测 | structlog + OpenTelemetry | 见[testing.md 第 1 节](testing.md) |
 | 工程 | uv + 锁文件，ruff，pyright，pytest | hermes-agent 对直接依赖精确锁定，并把 provider 专属依赖放进 extras，我们照此办理 |
@@ -611,7 +611,14 @@ class Seed(BaseModel):
 
 ### 提示词管理
 
-所有提示词是 `runtime/prompts/<lang>/<name>.j2` 模板文件，不写在 Python 字符串里；模板头部有 `version`，渲染结果的哈希写入 `agent_runs.prompt_hash`，评测时可以按版本对比。v1 只做中文，但目录按语言分开，以后加英文只需新增一个目录；故事语言由 playthrough 设置决定，与界面语言无关。渲染必须是确定性的（第 4 节的缓存要求），模板里不允许调用时间和随机函数。
+所有提示词是 `runtime/prompts/<lang>/<name>.j2` 模板文件，不写在 Python 字符串里；模板头部有 `version`，渲染结果的哈希写入 `agent_runs.prompt_hash`，评测时可以按版本对比。渲染必须是确定性的（第 4 节的缓存要求），模板里不允许调用时间和随机函数。
+
+现在有中文（`zh`）和英文（`en`）两套，文件一一对应（[i18n.md](i18n.md) 第 4 节）：
+
+- 一局用哪套由 `playthroughs.language` 决定：开局时客户端传当前的界面语言，之后不变。runtime 的 `PromptBook` 按回合头里的语言取 `PromptLibrary`，开局世界构建、导演、选项修补、结构化输出重试都用同一种语言。
+- 拼进上下文的固定文字也随语言：篇幅说明、“未提供”写在 `director.system.j2` 里；状态块的标签和标点在 `state_block.json`；WorldBuilder 结构化输出的字段说明在 `schema/seed.json`（`domain/world/seed.py` 里不写说明）。
+- 提示词里不规定故事正文用什么语言，正文一般跟着提示词、角色卡和玩家输入的语言。
+- `tests/unit/runtime/test_prompt_languages.py` 检查两套的文件、模板变量、数据文件的键一致，且都能渲染。
 
 ## 7 回退与重新生成
 
@@ -914,7 +921,7 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 统一用 RFC 9457 的 `application/problem+json`：
 
 ```json
-{ "type": "/errors/rollback-beyond-floor", "title": "不能回退到压缩之前", "status": 409,
+{ "type": "/errors/rollback-beyond-floor", "title": "Can't roll back past the summary", "status": 409,
   "code": "ROLLBACK_BEYOND_FLOOR", "retryable": false, "floor": 41, "head": 57 }
 ```
 
@@ -1083,7 +1090,7 @@ apps/server/
 | 导入 ST 世界书 | `importers/lorebook/`，输出 `Seed` 的片段（entities 与 facts） |
 | RPG 模式 | 新增 `domain/rules/` 与裁决 agent，扩展 `user_action` 类型；回合协议其余部分不变 |
 | 新增一种门控实现（如 Jev） | `runtime/gates/<name>.py` 实现 `GateClient`，在 `factory.py` 注册；若要让压缩也用它，再改 `domain/memory/thresholds.py` 和 summary 车道 |
-| 新增一种语言 | `runtime/prompts/<lang>/` 放同名模板，客户端在 `i18n/` 加语言文件；故事语言由 playthrough 设置选目录 |
+| 新增一种语言 | `runtime/prompts/<lang>/` 放同名的模板和数据文件，`domain/story/language.py` 和迁移的 CHECK 加上它；客户端在 `packages/core/src/i18n/` 加语言文件（[i18n.md](i18n.md)） |
 
 ## 11 安全与合规
 

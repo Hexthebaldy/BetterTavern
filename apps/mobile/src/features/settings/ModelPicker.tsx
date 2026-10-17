@@ -4,6 +4,7 @@
  */
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import type { ModelInfo } from "@bettertavern/core/api/types";
@@ -34,6 +35,7 @@ export function ModelPicker({
   onRefresh: () => void;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const filtered = useMemo(() => {
     if (!models) return [];
     const q = query.trim().toLowerCase();
@@ -44,7 +46,10 @@ export function ModelPicker({
   const manual = typed !== "" && !models?.some((m) => m.id === typed);
   return (
     <View>
-      <SectionHeader title="选择模型" meta={models ? `${models.length} 个可用` : undefined} />
+      <SectionHeader
+        title={t("models.pick")}
+        meta={models ? t("models.available", { count: models.length }) : undefined}
+      />
       <View style={[styles.card, { backgroundColor: palette.bg2 }]}>
         <View style={styles.search}>
           <View style={styles.searchIcon} pointerEvents="none">
@@ -53,16 +58,16 @@ export function ModelPicker({
           <TextInput
             value={query}
             onChangeText={onQuery}
-            placeholder="搜索或输入模型名"
+            placeholder={t("models.search")}
             placeholderTextColor={palette.mut}
             autoCapitalize="none"
             autoCorrect={false}
-            accessibilityLabel="搜索或输入模型名"
+            accessibilityLabel={t("models.search")}
             style={[styles.searchInput, { color: palette.ink, backgroundColor: palette.card }]}
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="重新获取模型列表"
+            accessibilityLabel={t("models.refetchList")}
             onPress={onRefresh}
             disabled={listing}
             style={({ pressed }) => [
@@ -74,13 +79,13 @@ export function ModelPicker({
           </Pressable>
         </View>
         {listError ? (
-          <Notice message={`${listError}。可以直接在上面输入模型名。`} style={{ borderRadius: 18 }} />
+          <Notice message={t("models.listErrorHint", { error: listError })} style={{ borderRadius: 18 }} />
         ) : null}
-        <View accessibilityRole="radiogroup" accessibilityLabel="模型" style={{ gap: 4 }}>
+        <View accessibilityRole="radiogroup" accessibilityLabel={t("models.listLabel")} style={{ gap: 4 }}>
           {manual ? (
             <ModelRow
               id={typed}
-              label={`使用“${typed}”`}
+              label={t("models.useTyped", { name: typed })}
               window={null}
               selected={chosen === typed}
               onPress={() => onPick(typed)}
@@ -98,14 +103,12 @@ export function ModelPicker({
         </View>
         {models ? (
           <Text style={[styles.footnote, { color: palette.mut }]}>
-            显示 {shown.length} / {models.length}，最多 {MAX_LISTED} 个
+            {t("models.shown", { shown: shown.length, total: models.length, max: MAX_LISTED })}
           </Text>
         ) : listing ? (
-          <Text style={[styles.footnote, { color: palette.mut }]}>正在获取模型列表…</Text>
+          <Text style={[styles.footnote, { color: palette.mut }]}>{t("models.fetching")}</Text>
         ) : listError ? null : (
-          <Text style={[styles.footnote, { color: palette.mut }]}>
-            填好 Key 后会自动获取模型列表，也可以直接在上面输入模型名。
-          </Text>
+          <Text style={[styles.footnote, { color: palette.mut }]}>{t("models.fetchHint")}</Text>
         )}
       </View>
     </View>

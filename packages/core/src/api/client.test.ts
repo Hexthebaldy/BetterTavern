@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { applyLanguage } from "../i18n/index.ts";
 import {
   ApiClient,
   ApiError,
   describeError,
+  describeTurnError,
   type HttpFetch,
   type HttpRequestInit,
   type HttpResponse,
@@ -108,12 +110,13 @@ describe("ApiClient", () => {
     });
   });
 
-  it("代理返回的错误页（不是 JSON）按状态码给出中文说明", async () => {
+  it("代理返回的错误页（不是 JSON）按状态码给出说明", async () => {
     const { fetch } = scripted([{ status: 502, text: "<html>Bad Gateway</html>" }]);
     await assert.rejects(client(fetch).get("/v1/me"), (e: unknown) => {
       assert.ok(e instanceof ApiError);
       assert.equal(e.code, "HTTP_502");
       assert.ok(e.retryable);
+      assert.equal(describeError(e).split("（")[0], "服务器暂时不可用");
       return true;
     });
   });
@@ -238,26 +241,98 @@ describe("请求单号", () => {
   });
 
   it("意外的错误在提示里附上单号的前 8 位，业务错误不附", async () => {
-    const network = new ApiError("连不上服务器", {
+    const network = new ApiError("Can't reach the server", {
       status: 0,
       code: "NETWORK",
       retryable: true,
       requestId: "9f2c4e1a7b3d",
     });
-    const garbled = new ApiError("服务器返回的内容无法解析", {
+    const garbled = new ApiError("Unreadable response", {
       status: 200,
       code: "BAD_RESPONSE",
       retryable: false,
       requestId: "abcdef1234",
     });
-    const conflict = new ApiError("上一轮还在生成中", {
-      status: 409,
-      code: "TURN_IN_PROGRESS",
-      retryable: false,
-      requestId: "x",
-    });
-    assert.equal(describeError(network), "连不上服务器（单号 9f2c4e1a）");
+    const conflict = serverError(409, "TURN_IN_PROGRESS", "The previous turn is still being written");
+    assert.equal(describeError(network), "连不上服务器，请检查网络和服务器地址（单号 9f2c4e1a）");
     assert.equal(describeError(garbled), "服务器返回的内容无法解析（单号 abcdef12）");
-    assert.equal(describeError(conflict), "上一轮还在生成中");
+    assert.equal(describeError(conflict), "上一段还在写");
+  });
+});
+
+function serverError(
+  status: number,
+  code: string,
+  title: string,
+  extra: Record<string, unknown> = {},
+): ApiError {
+  return new ApiError(title, {
+    status,
+    code,
+    retryable: false,
+    problem: { type: "about:blank", title, status, code, retryable: false, ...extra },
+    requestId: "r1",
+  });
+}
+
+describe("错误说明按错误码翻译", () => {
+  it("中文界面：按错误码、按字段，没有对应翻译时按状态码", () => {
+    assert.equal(describeError(serverError(409, "EMAIL_TAKEN", "Email taken")), "这个邮箱已经注册过了");
+    const field = serverError(422, "VALIDATION_ERROR", "Enter a name", { field: "protagonist_name" });
+    assert.equal(describeError(field), "请填写主角的名字");
+    const unknownField = serverError(422, "VALIDATION_ERROR", "Bad thing", { field: "mystery" });
+    assert.equal(describeError(unknownField), "填写的内容有误");
+    assert.equal(describeError(serverError(418, "TEAPOT", "I'm a teapot")), "服务器返回了错误（HTTP 418）");
+  });
+
+  it("英文界面：没有对应翻译时用服务端的英文说明", () => {
+    applyLanguage("en");
+    try {
+      assert.equal(
+        describeError(serverError(409, "EMAIL_TAKEN", "Email taken")),
+        "That email is already registered.",
+      );
+      const unknownField = serverError(422, "VALIDATION_ERROR", "Tags can have at most 32 items", {
+        field: "tags",
+      });
+      assert.equal(describeError(unknownField), "Tags can have at most 32 items");
+      assert.equal(describeError(serverError(418, "TEAPOT", "I'm a teapot")), "I'm a teapot");
+      const network = new ApiError("x", {
+        status: 0,
+        code: "NETWORK",
+        retryable: true,
+        requestId: "9f2c4e1a7b",
+      });
+      assert.equal(
+        describeError(network),
+        "Can't reach the server. Check your network and the server address. (ref 9f2c4e1a)",
+      );
+    } finally {
+      applyLanguage("zh");
+    }
+  });
+
+  it("回合失败：先看原因，再看失败码", () => {
+    const billing = { code: "PROVIDER_ERROR", message: "Out of credit", reason: "billing" };
+    assert.equal(describeTurnError(billing), "模型服务商提示额度不足或欠费");
+    assert.equal(
+      describeTurnError({ code: "PROVIDER_ERROR", message: "x", reason: null }),
+      "模型服务出错了，请稍后重试",
+    );
+    assert.equal(
+      describeTurnError({ code: "STORY_ENDED", message: "x" }),
+      "这个故事已经写完结局，不能再继续了",
+    );
+    assert.equal(describeTurnError({ code: "SOMETHING_NEW", message: "Server said so" }), "生成失败");
+    applyLanguage("en");
+    try {
+      assert.equal(describeTurnError({ code: "SOMETHING_NEW", message: "Server said so" }), "Server said so");
+      assert.equal(
+        describeTurnError(billing),
+        "The model provider says you're out of credit or have an unpaid balance.",
+      );
+    } finally {
+      applyLanguage("zh");
+    }
   });
 });

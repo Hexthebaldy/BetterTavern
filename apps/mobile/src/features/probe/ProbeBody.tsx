@@ -6,6 +6,7 @@
 
 import { fetch as expoFetch } from "expo/fetch";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 
@@ -50,6 +51,7 @@ function clock(seconds: number): string {
 /** 最近延迟的走势；虚线是 300ms 的目标 */
 function Spark({ values, width }: { values: number[]; width: number }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const height = 60;
   const max = Math.max(TARGET_MS * 1.3, ...values);
   const y = (v: number): number => height - 6 - (v / max) * (height - 14);
@@ -58,7 +60,7 @@ function Spark({ values, width }: { values: number[]; width: number }) {
   const path = values.map((v, i) => `${i === 0 ? "M" : "L"}${(offset + i) * step} ${y(v)}`).join("");
   const peak = values.length > 0 ? values.indexOf(Math.max(...values)) : -1;
   return (
-    <Svg width={width} height={height} accessibilityLabel="延迟走势">
+    <Svg width={width} height={height} accessibilityLabel={t("probe.trend")}>
       <Path
         d={`M0 ${y(TARGET_MS)}H${width}`}
         stroke={palette.err}
@@ -88,6 +90,7 @@ function Spark({ values, width }: { values: number[]; width: number }) {
 
 function ReportView({ report, duration }: { report: ProbeReport; duration: number }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const tone = report.passed ? palette.ok : palette.err;
   const row = (label: string, value: ReactNode) => (
     <View style={styles.kv}>
@@ -103,8 +106,10 @@ function ReportView({ report, duration }: { report: ProbeReport; duration: numbe
   return (
     <View>
       <SectionHeader
-        title="报告"
-        meta={`上一次 · ${DURATIONS.find((d) => Number(d.value) === duration)?.label ?? `${duration}s`}`}
+        title={t("probe.report")}
+        meta={t("probe.lastRun", {
+          duration: DURATIONS.find((d) => Number(d.value) === duration)?.label ?? `${duration}s`,
+        })}
       />
       <View style={[styles.report, { backgroundColor: palette.bg2 }]}>
         <View style={[styles.verdict, { backgroundColor: report.passed ? palette.okBg : palette.errBg }]}>
@@ -113,42 +118,45 @@ function ReportView({ report, duration }: { report: ProbeReport; duration: numbe
           </View>
           <View>
             <Text style={{ fontSize: 24, lineHeight: 30, fontWeight: "900", color: palette.ink }}>
-              {report.passed ? "通过" : "未通过"}
+              {report.passed ? t("probe.passed") : t("probe.notPassed")}
             </Text>
             <Text style={{ fontSize: 13, color: palette.ink2 }}>
-              断线 {report.reconnects} 次，{report.integrityOk ? "续传完整" : "文本不一致"}
+              {t("probe.summary", {
+                count: report.reconnects,
+                integrity: report.integrityOk ? t("probe.resumedIntact") : t("probe.textMismatch"),
+              })}
             </Text>
           </View>
         </View>
-        {row("模式", report.mode === "sse" ? "SSE" : "轮询降级")}
+        {row(t("probe.mode"), report.mode === "sse" ? "SSE" : t("probe.pollingFallback"))}
         {report.mode === "polling" ? (
-          <Text style={[styles.note, { color: palette.warn }]}>
-            这一跳可能在缓冲 SSE（反向代理或网关），事件流被降级成了轮询。
-          </Text>
+          <Text style={[styles.note, { color: palette.warn }]}>{t("probe.bufferedNote")}</Text>
         ) : null}
         {sep}
-        {row("字符数", report.chars.toLocaleString("en-US"))}
+        {row(t("probe.chars"), report.chars.toLocaleString("en-US"))}
         {sep}
         {row(
-          "完整性",
+          t("probe.integrity"),
           <View style={styles.inline}>
             <Icon name={report.integrityOk ? "check" : "cross"} size={15} color={tone} strokeWidth={2.2} />
-            <Text style={{ fontSize: 14, color: tone }}>{report.integrityOk ? "完整" : "不完整"}</Text>
+            <Text style={{ fontSize: 14, color: tone }}>
+              {report.integrityOk ? t("probe.intact") : t("probe.broken")}
+            </Text>
           </View>,
         )}
         {sep}
-        {row("重复或缺失", String(report.duplicateOrMissing))}
+        {row(t("probe.duplicates"), String(report.duplicateOrMissing))}
         {sep}
         <View style={styles.latency}>
           <View style={styles.inlineBetween}>
-            <Text style={{ fontSize: 14, color: palette.ink }}>延迟</Text>
+            <Text style={{ fontSize: 14, color: palette.ink }}>{t("probe.latency")}</Text>
             <Text style={[styles.mono, { color: palette.ink }]}>
               p50 {report.latencyP50Ms ?? "-"} · p95 {report.latencyP95Ms ?? "-"} ms
             </Text>
           </View>
           <View
             style={[styles.axis, { backgroundColor: palette.card }]}
-            accessibilityLabel={`p50 ${p50} 毫秒，p95 ${p95} 毫秒，目标低于 300 毫秒`}
+            accessibilityLabel={t("probe.latencyLabel", { p50, p95, target: TARGET_MS })}
           >
             <View
               style={[
@@ -168,15 +176,15 @@ function ReportView({ report, duration }: { report: ProbeReport; duration: numbe
                 { right: pct(scale - TARGET_MS), color: palette.err },
               ]}
             >
-              目标 {TARGET_MS}
+              {t("probe.target", { target: TARGET_MS })}
             </Text>
             <Text style={[styles.axisLabel, { color: palette.mut }]}>{scale}ms</Text>
           </View>
         </View>
         {sep}
-        {row("续传补发的积压", String(report.backlogEvents))}
+        {row(t("probe.backlog"), String(report.backlogEvents))}
         {sep}
-        {row("时钟偏差", `${report.clockOffsetMs >= 0 ? "+" : ""}${report.clockOffsetMs} ms`)}
+        {row(t("probe.clockOffset"), `${report.clockOffsetMs >= 0 ? "+" : ""}${report.clockOffsetMs} ms`)}
       </View>
     </View>
   );
@@ -186,6 +194,7 @@ function ReportView({ report, duration }: { report: ProbeReport; duration: numbe
 export function ProbeBody({ url }: { url?: string }) {
   const { serverUrl } = useApp();
   const palette = usePalette();
+  const { t } = useTranslation();
   const [baseUrl, setBaseUrl] = useState(url || serverUrl);
   const [picking, setPicking] = useState(false);
   const [duration, setDuration] = useState<Duration>("60");
@@ -258,21 +267,19 @@ export function ProbeBody({ url }: { url?: string }) {
   return (
     <Page header={<SettingsBack />}>
       <View style={styles.head}>
-        <Pill label="开发者工具" tone="grey" height={26} />
+        <Pill label={t("probe.devTool")} tone="grey" height={26} />
         <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
-          连接测试
+          {t("probe.title")}
         </Text>
-        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut }}>
-          模拟一次长时间的流式输出，检查断线续传是否完整、延迟是否够低。服务端要开启探针接口（ENABLE_PROBE_ENDPOINTS）。
-        </Text>
+        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut }}>{t("probe.intro")}</Text>
       </View>
 
       <View style={[styles.controls, { backgroundColor: palette.bg2 }]}>
         <View style={{ gap: space.s }}>
-          <Text style={[styles.label, { color: palette.ink2 }]}>服务器</Text>
+          <Text style={[styles.label, { color: palette.ink2 }]}>{t("probe.server")}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`服务器 ${displayServer(baseUrl)}，更改`}
+            accessibilityLabel={t("server.rowLabel", { server: displayServer(baseUrl) })}
             disabled={running}
             onPress={() => setPicking(true)}
             style={[styles.select, { backgroundColor: palette.card, opacity: running ? 0.3 : 1 }]}
@@ -285,7 +292,7 @@ export function ProbeBody({ url }: { url?: string }) {
           </Pressable>
         </View>
         <Segmented
-          label="测试时长"
+          label={t("probe.duration")}
           value={duration}
           options={DURATIONS}
           onChange={setDuration}
@@ -294,14 +301,14 @@ export function ProbeBody({ url }: { url?: string }) {
         />
         <View style={styles.buttons}>
           <Button
-            label="开始"
+            label={t("probe.start")}
             icon="play"
             onPress={() => void start()}
             disabled={running}
             style={styles.flex}
           />
           <Button
-            label="模拟断线"
+            label={t("probe.drop")}
             icon="disconnect"
             variant="secondary"
             onGrey
@@ -310,7 +317,7 @@ export function ProbeBody({ url }: { url?: string }) {
             style={styles.flex}
           />
           <Button
-            label="停止"
+            label={t("common.stop")}
             icon="stop"
             variant={running ? "primary" : "secondary"}
             onGrey
@@ -324,7 +331,7 @@ export function ProbeBody({ url }: { url?: string }) {
       {progress ? (
         <>
           <SectionHeader
-            title="实时"
+            title={t("probe.live")}
             meta={
               <Pill
                 tone={liveTone}
@@ -334,11 +341,11 @@ export function ProbeBody({ url }: { url?: string }) {
                   <>
                     {running
                       ? live
-                        ? "接收中"
+                        ? t("probe.receiving")
                         : progress.state === "polling"
-                          ? "轮询中"
-                          : "重连中"
-                      : "已结束"}{" "}
+                          ? t("probe.polling")
+                          : t("probe.reconnecting")
+                      : t("probe.finished")}{" "}
                     · <Text style={{ fontFamily: font.mono }}>{clock(elapsed)}</Text>
                   </>
                 }
@@ -347,13 +354,13 @@ export function ProbeBody({ url }: { url?: string }) {
           />
           <View style={styles.tiles}>
             <View style={[styles.tile, { backgroundColor: palette.bg2 }]}>
-              <Text style={[styles.key, { color: palette.mut }]}>事件数</Text>
+              <Text style={[styles.key, { color: palette.mut }]}>{t("probe.events")}</Text>
               <Text style={[styles.value, { color: palette.ink }]}>
                 {progress.events.toLocaleString("en-US")}
               </Text>
             </View>
             <View style={[styles.tile, { backgroundColor: palette.bg2 }]}>
-              <Text style={[styles.key, { color: palette.mut }]}>重连次数</Text>
+              <Text style={[styles.key, { color: palette.mut }]}>{t("probe.reconnects")}</Text>
               <Text style={[styles.value, { color: palette.ink }]}>{progress.reconnects}</Text>
             </View>
           </View>
@@ -362,7 +369,7 @@ export function ProbeBody({ url }: { url?: string }) {
             onLayout={(e) => setWidth(e.nativeEvent.layout.width - space.l * 2)}
           >
             <View style={styles.inlineBetween}>
-              <Text style={[styles.key, { color: palette.mut }]}>最近延迟</Text>
+              <Text style={[styles.key, { color: palette.mut }]}>{t("probe.lastLatency")}</Text>
               <Text style={[styles.mono, { fontSize: 20, color: palette.ink }]}>
                 {progress.lastLatencyMs === null ? "-" : Math.round(progress.lastLatencyMs)}{" "}
                 <Text style={{ fontSize: 12, color: palette.mut }}>ms</Text>
@@ -372,7 +379,7 @@ export function ProbeBody({ url }: { url?: string }) {
           </View>
           {tail.length > 0 ? (
             <View style={[styles.tail, { backgroundColor: palette.bg2 }]}>
-              <Text style={[styles.key, { color: palette.mut, marginBottom: 6 }]}>最近 300 字</Text>
+              <Text style={[styles.key, { color: palette.mut, marginBottom: 6 }]}>{t("probe.tail")}</Text>
               <Text style={[styles.mono, { fontSize: 12, lineHeight: 19, color: palette.ink2 }]}>
                 {tail}
                 {running ? <Text style={{ color: palette.acc }}>▍</Text> : null}
@@ -382,7 +389,9 @@ export function ProbeBody({ url }: { url?: string }) {
         </>
       ) : null}
       {report ? <ReportView report={report.report} duration={report.duration} /> : null}
-      {error ? <Text style={[styles.note, { color: palette.err }]}>出错：{error}</Text> : null}
+      {error ? (
+        <Text style={[styles.note, { color: palette.err }]}>{t("probe.error", { error })}</Text>
+      ) : null}
       <DiagnosticsCard />
       <ServerSheet
         visible={picking}

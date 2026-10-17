@@ -74,7 +74,9 @@ def install_error_handlers(app: FastAPI) -> None:
         structlog.contextvars.bind_contextvars(
             error_code="VALIDATION_ERROR", invalid_fields=[".".join(e["loc"]) for e in errors]
         )
-        return problem(422, "VALIDATION_ERROR", "请求参数不正确", retryable=False, errors=errors)
+        return problem(
+            422, "VALIDATION_ERROR", "Invalid request parameters", retryable=False, errors=errors
+        )
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
@@ -88,4 +90,4 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def unexpected(request: Request, exc: Exception) -> JSONResponse:
         log.error("http.error", method=request.method, path=request.url.path, exc_info=exc)
-        return problem(500, "INTERNAL_ERROR", "服务端出错了", retryable=True)
+        return problem(500, "INTERNAL_ERROR", "Internal server error", retryable=True)

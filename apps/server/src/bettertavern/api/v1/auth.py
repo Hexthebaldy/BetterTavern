@@ -36,7 +36,7 @@ from bettertavern.services.auth_service import TokenPair, UserView
 from bettertavern.services.errors import AppError, Invalid, Unauthenticated
 from bettertavern.settings import Settings
 
-router = APIRouter(prefix="/v1", tags=["认证"])
+router = APIRouter(prefix="/v1", tags=["auth"])
 
 UserAgent = Annotated[str | None, Header()]
 
@@ -61,7 +61,7 @@ def _refresh_token(cookie: bool, body: RefreshIn | None, from_cookie: str | None
     if cookie:
         return from_cookie or None
     if body is None:
-        raise Invalid("缺少刷新令牌", field="refresh_token")
+        raise Invalid("Missing refresh token", field="refresh_token")
     return body.refresh_token
 
 
@@ -116,7 +116,7 @@ async def refresh(
     token = _refresh_token(cookie, body, refresh_cookie)
     try:
         if token is None:
-            raise Unauthenticated("登录已失效，请重新登录", code="REFRESH_INVALID")
+            raise Unauthenticated("Session expired, please sign in again", code="REFRESH_INVALID")
         user, tokens = await services.auth.refresh(token, user_agent)
     except AppError as exc:
         # 刷新被拒：让浏览器删掉没用的 Cookie，下次打开网页直接去登录页
@@ -145,12 +145,12 @@ async def logout(
     return response
 
 
-@router.get("/me", tags=["账户"])
+@router.get("/me", tags=["account"])
 async def me(user_id: UserId, services: ServicesDep) -> UserOut:
     return UserOut.model_validate(await services.auth.get_user(user_id))
 
 
-@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, tags=["账户"])
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, tags=["account"])
 async def delete_me(body: DeleteAccountIn, user_id: UserId, services: ServicesDep) -> Response:
     await services.auth.delete_account(user_id, body.password)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

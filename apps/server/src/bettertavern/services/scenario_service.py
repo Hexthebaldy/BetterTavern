@@ -132,7 +132,7 @@ def _card_view(row: repo.ScenarioRow) -> ScenarioCardView:
 def _display_name(name: str) -> str:
     name = strip_nul(name).strip()[:80]
     if not name:
-        raise Invalid("名字不能为空", field="display_name")
+        raise Invalid("The name can't be empty", field="display_name")
     return name
 
 
@@ -152,7 +152,9 @@ class ScenarioService:
                 reason=str(exc),
                 duration_ms=round((time.perf_counter() - started) * 1000),
             )
-            raise Invalid(f"角色卡导入失败：{exc}", code="CARD_INVALID") from exc
+            raise Invalid(
+                f"Couldn't import the character card: {exc}", code="CARD_INVALID"
+            ) from exc
         card_info = {
             "bytes": len(data),
             "spec": imported.card.spec,
@@ -208,11 +210,11 @@ class ScenarioService:
 
     async def row(self, user_id: str, scenario_id: str) -> repo.ScenarioRow:
         if not is_uuid(scenario_id):
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         async with self._engine.connect() as conn:
             row = await repo.get_scenario(conn, user_id, scenario_id)
         if row is None:
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         return row
 
     async def get(self, user_id: str, scenario_id: str) -> ScenarioView:
@@ -224,13 +226,13 @@ class ScenarioService:
     async def rename(self, user_id: str, scenario_id: str, name: str) -> ScenarioView:
         name = strip_nul(name).strip()[:80]
         if not name:
-            raise Invalid("名字不能为空", field="name")
+            raise Invalid("The name can't be empty", field="name")
         if not is_uuid(scenario_id):
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         async with self._engine.begin() as conn:
             row = await repo.rename_scenario(conn, user_id, scenario_id, name)
         if row is None:
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         return _view(row)
 
     async def card_detail(self, user_id: str, scenario_id: str) -> ScenarioCardView:
@@ -241,14 +243,14 @@ class ScenarioService:
     ) -> ScenarioCardView:
         name = _display_name(display_name)
         if not is_uuid(scenario_id):
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         async with self._engine.begin() as conn:
             row = await repo.get_scenario(conn, user_id, scenario_id)
             if row is None:
-                raise NotFound("剧本不存在")
+                raise NotFound("Scenario not found")
             if row.version != version:
                 raise Conflict(
-                    "这张角色卡在别处改过了，请重新加载后再改",
+                    "This character card was changed somewhere else; reload it before editing",
                     code="CARD_CHANGED",
                     version=row.version,
                 )
@@ -269,7 +271,7 @@ class ScenarioService:
             )
             if updated is None:  # 读完之后、写之前被别处改了
                 raise Conflict(
-                    "这张角色卡在别处改过了，请重新加载后再改",
+                    "This character card was changed somewhere else; reload it before editing",
                     code="CARD_CHANGED",
                     version=version + 1,
                 )
@@ -288,39 +290,41 @@ class ScenarioService:
     async def reset_card(self, user_id: str, scenario_id: str) -> ScenarioCardView:
         """恢复成导入时的内容（用 scenarios.raw 重新整理一遍）；显示名不变。"""
         if not is_uuid(scenario_id):
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         async with self._engine.begin() as conn:
             raw = await repo.get_scenario_raw(conn, user_id, scenario_id)
             if raw is None:
-                raise NotFound("剧本不存在")
+                raise NotFound("Scenario not found")
             try:
                 card = normalize_card(raw)
             except CardError as exc:  # 导入时整理成功过，不应该出现
-                raise Invalid(f"原始卡片无法恢复：{exc}", code="CARD_INVALID") from exc
+                raise Invalid(
+                    f"The original card can't be restored: {exc}", code="CARD_INVALID"
+                ) from exc
             row = await repo.reset_scenario_card(
                 conn, user_id, scenario_id, strip_nul(card.model_dump(mode="json"))
             )
         if row is None:
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         log.info("scenario.card_reset", scenario_id=scenario_id, version=row.version)
         return _card_view(row)
 
     async def delete(self, user_id: str, scenario_id: str) -> None:
         if not is_uuid(scenario_id):
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         async with self._engine.begin() as conn:
             blob = await repo.delete_scenario(conn, user_id, scenario_id)
             if blob is None:
-                raise NotFound("剧本不存在")
+                raise NotFound("Scenario not found")
             if blob:
                 await repo.delete_blob(conn, user_id, blob)
         log.info("scenario.deleted", scenario_id=scenario_id)
 
     async def blob(self, user_id: str, blob_id: str) -> BlobView:
         if not is_uuid(blob_id):
-            raise NotFound("文件不存在")
+            raise NotFound("File not found")
         async with self._engine.connect() as conn:
             row = await repo.get_blob(conn, user_id, blob_id)
         if row is None:
-            raise NotFound("文件不存在")
+            raise NotFound("File not found")
         return BlobView(mime=row.mime, data=row.data, sha256=row.sha256)

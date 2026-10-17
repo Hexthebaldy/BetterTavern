@@ -1,6 +1,7 @@
 /** 入口：恢复登录状态期间显示闪屏，之后按登录状态跳到故事列表或登录页 */
 
 import { Redirect } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Logo } from "../src/components/Logo.tsx";
@@ -17,6 +18,7 @@ export default function Index() {
 /** 闪屏：一竖一横两条浅线，交点处是标志 */
 function Splash() {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <View style={[styles.root, { backgroundColor: palette.bg }]}>
       <View style={[styles.vertical, { backgroundColor: palette.line }]} />
@@ -28,7 +30,7 @@ function Splash() {
         <Text style={[styles.title, { color: palette.ink }]}>BetterTavern</Text>
         <Text style={[styles.tagline, { color: palette.mut }]}>FIRST-PERSON FICTION</Text>
       </View>
-      <View style={styles.dots} accessibilityRole="progressbar" accessibilityLabel="正在恢复登录状态">
+      <View style={styles.dots} accessibilityRole="progressbar" accessibilityLabel={t("splash.restoring")}>
         <Dots cell={8} gap={6} />
       </View>
     </View>

@@ -12,6 +12,7 @@ import {
   type Ref,
   type TextareaHTMLAttributes,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Icon, type IconName } from "./Icon.tsx";
 import styles from "./controls.module.css";
@@ -20,9 +21,10 @@ export function cx(...names: (string | false | null | undefined)[]): string {
   return names.filter(Boolean).join(" ");
 }
 
-export function Dots({ label = "加载中" }: { label?: string }) {
+export function Dots({ label }: { label?: string }) {
+  const { t } = useTranslation();
   return (
-    <span className={styles.dots} role="status" aria-label={label}>
+    <span className={styles.dots} role="status" aria-label={label ?? t("common.loading")}>
       <span />
       <span />
       <span />
@@ -64,6 +66,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const arrow = between && trailingIcon;
+  const { t } = useTranslation();
   return (
     <button
       ref={ref}
@@ -81,7 +84,7 @@ export function Button({
       {...rest}
     >
       {busy ? (
-        <Dots label={`${label}中`} />
+        <Dots label={t("common.busy", { label })} />
       ) : (
         <>
           {icon ? <Icon name={icon} size={20} /> : null}
@@ -181,6 +184,7 @@ export function Field({
   ...input
 }: FieldProps) {
   const autoId = useId();
+  const { t } = useTranslation();
   const inputId = id ?? autoId;
   const messageId = `${inputId}-message`;
   const length = typeof input.value === "string" ? input.value.length : 0;
@@ -189,7 +193,7 @@ export function Field({
       <div className={styles.labelRow}>
         <label htmlFor={inputId} className={styles.label}>
           {label}
-          {optional ? <span className={styles.optional}> 可选</span> : null}
+          {optional ? <span className={styles.optional}> {t("common.optional")}</span> : null}
         </label>
         {counter && input.maxLength ? (
           <span className={styles.count}>
@@ -226,6 +230,7 @@ export function Field({
 /** 密码框：右侧的眼睛切换明文 */
 export function PasswordField(props: Omit<FieldProps, "type" | "trailing">) {
   const [reveal, setReveal] = useState(false);
+  const { t } = useTranslation();
   return (
     <Field
       {...props}
@@ -233,7 +238,7 @@ export function PasswordField(props: Omit<FieldProps, "type" | "trailing">) {
       trailing={
         <IconButton
           icon={reveal ? "eyeOff" : "eye"}
-          label={reveal ? "隐藏密码" : "显示密码"}
+          label={reveal ? t("auth.hidePassword") : t("auth.showPassword")}
           tone="plain"
           onClick={() => setReveal((r) => !r)}
         />
@@ -271,6 +276,7 @@ export function TextArea({
   ...input
 }: TextAreaProps) {
   const autoId = useId();
+  const { t } = useTranslation();
   const inputId = id ?? autoId;
   const messageId = `${inputId}-message`;
   const length = typeof input.value === "string" ? input.value.length : 0;
@@ -280,7 +286,7 @@ export function TextArea({
         <div className={styles.labelRow}>
           <label htmlFor={inputId} className={styles.label}>
             {label}
-            {optional ? <span className={styles.optional}> 可选</span> : null}
+            {optional ? <span className={styles.optional}> {t("common.optional")}</span> : null}
           </label>
         </div>
       )}
@@ -427,6 +433,7 @@ export function Notice({
   className?: string;
 }) {
   const action = actionLabel && onAction;
+  const { t } = useTranslation();
   return (
     <div
       role={tone === "info" ? "status" : "alert"}
@@ -448,7 +455,7 @@ export function Notice({
       {onClose ? (
         <IconButton
           icon="close"
-          label="关闭"
+          label={t("common.close")}
           iconSize={16}
           className={styles.noticeClose}
           onClick={onClose}

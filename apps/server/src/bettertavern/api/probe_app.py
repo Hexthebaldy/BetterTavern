@@ -41,10 +41,10 @@ def create_probe_app(
         try:
             data = json.loads(raw) if raw.strip() else {}
             if not isinstance(data, dict):
-                raise ProbeConfigError("请求体应该是 JSON 对象")
+                raise ProbeConfigError("The request body must be a JSON object")
             record = await service.start(ProbeConfig.from_mapping(data))
         except (json.JSONDecodeError, ProbeConfigError) as exc:
-            return problem(422, "VALIDATION_ERROR", "参数错误", detail=str(exc))
+            return problem(422, "VALIDATION_ERROR", "Invalid parameters", detail=str(exc))
         base = f"/v1/probe/streams/{record.stream_id}"
         return JSONResponse(
             {
@@ -59,7 +59,11 @@ def create_probe_app(
         stream_id = request.path_params["stream_id"]
         stream = service.stream(stream_id)
         if stream is None:
-            return problem(404, "NOT_FOUND", "事件流不存在或缓冲已过期，请改用轮询")
+            return problem(
+                404,
+                "NOT_FOUND",
+                "The event stream doesn't exist or its buffer expired; use polling instead",
+            )
         last_id = request.headers.get("last-event-id") or request.query_params.get("last_event_id")
         after = parse_last_event_id(last_id, stream_id)
         body = event_stream_body(
@@ -70,7 +74,7 @@ def create_probe_app(
     async def stream_status(request: Request) -> Response:
         record = service.record(request.path_params["stream_id"])
         if record is None:
-            return problem(404, "NOT_FOUND", "探针不存在")
+            return problem(404, "NOT_FOUND", "Probe not found")
         return JSONResponse(record.to_json(include_text=record.status == "completed"))
 
     async def server_time(request: Request) -> Response:

@@ -158,7 +158,7 @@ class JobWorker:
         handler = self._handlers.get(job.kind)
         if handler is None:
             # 只领取有处理器的 kind，正常不会走到这里；万一走到，还回去让别的 worker 处理
-            await self._queue.release(job, self._worker_id, f"没有处理器：{job.kind}")
+            await self._queue.release(job, self._worker_id, f"No handler: {job.kind}")
             return
         heartbeat = asyncio.create_task(self._heartbeat(job))
         started = time.perf_counter()
@@ -173,7 +173,7 @@ class JobWorker:
             # 停机时被取消：还回队列，不消耗重试次数
             log.info("job.released", reason="shutdown", duration_ms=elapsed())
             with contextlib.suppress(Exception):
-                await asyncio.shield(self._queue.release(job, self._worker_id, "worker 停止"))
+                await asyncio.shield(self._queue.release(job, self._worker_id, "worker stopped"))
             raise
         except PermanentJobError as exc:
             log.warning(

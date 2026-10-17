@@ -41,19 +41,19 @@ def decode_base64_json(payload: bytes) -> Any:
     try:
         raw = base64.b64decode(payload.strip(), validate=False)
     except (binascii.Error, ValueError) as exc:
-        raise CardError("角色卡数据不是有效的 base64") from exc
+        raise CardError("The card data isn't valid base64") from exc
     return loads(raw)
 
 
 def loads(raw: bytes) -> Any:
     if len(raw) > MAX_JSON_BYTES:
-        raise CardError("角色卡数据过大")
+        raise CardError("The card data is too large")
     try:
         return json.loads(raw.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise CardError("角色卡数据不是有效的 JSON") from exc
+        raise CardError("The card data isn't valid JSON") from exc
     except RecursionError as exc:  # 嵌套极深的 JSON
-        raise CardError("角色卡数据的嵌套层级过深") from exc
+        raise CardError("The card data is nested too deeply") from exc
 
 
 def _text(value: Any) -> str:
@@ -83,7 +83,7 @@ def detect_spec(data: Mapping[str, Any]) -> tuple[CardSpec, Mapping[str, Any]]:
         return "card_v2", inner  # 没写 spec 但结构是 V2
     if data.get("name") and any(k in data for k in ("description", "first_mes", "personality")):
         return "card_v1", data
-    raise CardError("无法识别的角色卡格式（不是 V1、V2 或 V3）")
+    raise CardError("Unrecognized card format (not V1, V2 or V3)")
 
 
 def _book(data: Mapping[str, Any]) -> tuple[str, tuple[LoreEntry, ...]]:
@@ -118,11 +118,11 @@ def _book(data: Mapping[str, Any]) -> tuple[str, tuple[LoreEntry, ...]]:
 
 def normalize_card(data: Any) -> CharacterCard:
     if not isinstance(data, Mapping):
-        raise CardError("角色卡数据应该是 JSON 对象")
+        raise CardError("The card data must be a JSON object")
     spec, fields = detect_spec(data)
     name = _text(fields.get("name")).strip()
     if not name:
-        raise CardError("角色卡缺少名字")
+        raise CardError("The card has no name")
     truncated: list[str] = []
     values: dict[str, str] = {}
     for key in TEXT_FIELDS:
@@ -147,5 +147,5 @@ def normalize_card(data: Any) -> CharacterCard:
         **values,
     )
     if card.total_chars() > MAX_TOTAL_CHARS:
-        raise CardError(f"角色卡文字总量超过 {MAX_TOTAL_CHARS} 字，太大了")
+        raise CardError(f"The card has more than {MAX_TOTAL_CHARS} characters of text")
     return card

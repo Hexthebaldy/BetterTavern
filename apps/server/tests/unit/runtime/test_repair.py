@@ -50,7 +50,7 @@ async def test_repair_timeout_falls_back() -> None:
     outcome = await finalize_director_output(parse, repair=slow, fallback=FALLBACK, timeout=0.05)
     assert outcome.options == FALLBACK
     assert outcome.stage is ParseStage.FALLBACK
-    assert any("超过" in note for note in outcome.notes)
+    assert any("took longer than" in note for note in outcome.notes)
 
 
 async def test_repair_error_falls_back() -> None:

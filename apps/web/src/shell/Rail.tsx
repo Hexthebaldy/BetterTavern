@@ -3,6 +3,7 @@
  * 当前故事的封面白底浮起，正在写的右上角有蓝点。
  */
 
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router";
 
 import { storyStatus } from "@bettertavern/core/play/storyStatus";
@@ -26,6 +27,7 @@ import styles from "./shell.module.css";
 
 export function Rail({ onExpand }: { onExpand: () => void }) {
   const { pathname } = useLocation();
+  const { t } = useTranslation();
   const { user } = useApp();
   const stories = useStories();
   const avatarOf = useAvatars();
@@ -34,11 +36,11 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
   const recent = byRecent(stories.data ?? []).slice(0, 4);
   const { ref, glass } = useGlass(NAV_ITEMS.find((item) => isActive(item, pathname))?.to ?? null);
   return (
-    <nav aria-label="主导航" className={cx(styles.rail, "surface-panel")}>
+    <nav aria-label={t("nav.main")} className={cx(styles.rail, "surface-panel")}>
       <Logo size={28} />
       <IconButton
         icon="sidebar"
-        label="展开侧栏"
+        label={t("nav.expandSidebar")}
         aria-keyshortcuts="["
         tone="plain"
         iconSize={20}
@@ -57,7 +59,7 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
             aria-current={active ? "page" : undefined}
           >
             <Icon name={item.icon} size={22} />
-            {item.label}
+            {t(`nav.${item.name}`)}
           </Link>
         );
       })}
@@ -72,7 +74,12 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
         />
       ))}
       {user ? (
-        <Link to="/settings/account" className={styles.railAccount} aria-label="账户" title={user.email}>
+        <Link
+          to="/settings/account"
+          className={styles.railAccount}
+          aria-label={t("settings.account")}
+          title={user.email}
+        >
           <Avatar user={user} />
         </Link>
       ) : null}

@@ -54,10 +54,10 @@ class AccessTokenSigner:
         except jwt.PyJWTError as exc:
             raise InvalidToken(str(exc)) from exc
         if claims.get("typ") != "access":
-            raise InvalidToken("令牌类型不对")
+            raise InvalidToken("Wrong token type")
         exp = int(claims["exp"])
         if exp <= int(self._clock()):
-            raise InvalidToken("令牌已过期")
+            raise InvalidToken("Token expired")
         return AccessClaims(user_id=str(claims["sub"]), expires_at=exp)
 
 

@@ -59,7 +59,7 @@ class SseDecoder:
                 events.append(event)
         del buf[:pos]
         if len(buf) > self._max_line:
-            raise SseLineTooLong(f"SSE 单行超过 {self._max_line} 字节")
+            raise SseLineTooLong(f"SSE line exceeds {self._max_line} bytes")
         return events
 
     def flush(self) -> list[SseEvent]:

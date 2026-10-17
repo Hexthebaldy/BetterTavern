@@ -41,14 +41,14 @@ def seal(keyring: Keyring, plaintext: bytes, *, aad: bytes) -> str:
 def key_id_of(token: str) -> str:
     parts = token.split(".")
     if len(parts) != 4 or parts[0] != VERSION:
-        raise DecryptionError("密文格式无效")
+        raise DecryptionError("Invalid ciphertext format")
     return parts[1]
 
 
 def unseal(keyring: Keyring, token: str, *, aad: bytes) -> bytes:
     parts = token.split(".")
     if len(parts) != 4 or parts[0] != VERSION:
-        raise DecryptionError("密文格式无效")
+        raise DecryptionError("Invalid ciphertext format")
     _, kid, wrapped_part, data_part = parts
     try:
         kek = keyring.get(kid)
@@ -60,7 +60,7 @@ def unseal(keyring: Keyring, token: str, *, aad: bytes) -> bytes:
         dek = AESGCM(kek).decrypt(wrapped[:_NONCE], wrapped[_NONCE:], _dek_aad(kid, aad))
         return AESGCM(dek).decrypt(data[:_NONCE], data[_NONCE:], aad)
     except (InvalidTag, ValueError) as exc:
-        raise DecryptionError("解密失败") from exc
+        raise DecryptionError("Decryption failed") from exc
 
 
 def seal_text(keyring: Keyring, text: str, *, aad: str) -> str:

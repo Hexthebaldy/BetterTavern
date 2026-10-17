@@ -172,7 +172,15 @@ export type TurnAction = {
   option_id?: string;
 };
 
-export type TurnError = { code: string; message: string; retryable: boolean; partial?: boolean };
+export type TurnError = {
+  code: string;
+  /** 服务端的说明（英文）；界面上显示 describeTurnError() 按错误码翻译的文字 */
+  message: string;
+  retryable: boolean;
+  partial?: boolean;
+  /** 服务商错误的类别（auth、billing、rate_limit……）；不是服务商错误时为 null，旧的服务端不带 */
+  reason?: string | null;
+};
 
 export type TurnStatus = "generating" | "replied" | "committed" | "failed" | "archived";
 
@@ -200,6 +208,8 @@ export type Playthrough = {
   /** ended：已经写完结局，不能再提交行动 */
   status: "building" | "active" | "ended";
   scenario_id: string | null;
+  /** 提示词的语言，开局时定下 */
+  language: "zh" | "en";
   protagonist_name: string;
   preferences: Partial<Preferences>;
   head_turn_id: string | null;

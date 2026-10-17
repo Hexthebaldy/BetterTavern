@@ -28,6 +28,7 @@ import {
   type ReactElement,
   type Ref,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FlatList,
   StyleSheet,
@@ -113,6 +114,7 @@ export function BookHeader({
   width: number;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <View style={[styles.book, { backgroundColor: palette.bg2 }]}>
       <Cover
@@ -127,7 +129,7 @@ export function BookHeader({
       {card || protagonist ? (
         <View style={styles.bookChips}>
           {card ? <Pill label={card} tone="card" height={26} /> : null}
-          {protagonist ? <Pill label={`我是 ${protagonist}`} tone="acc" height={26} /> : null}
+          {protagonist ? <Pill label={t("play.iAm", { name: protagonist })} tone="acc" height={26} /> : null}
         </View>
       ) : null}
     </View>
@@ -137,10 +139,11 @@ export function BookHeader({
 /** “我的行动”：和叙述同样的字，颜色浅一档，左边一道竖线；读屏时前面加上“我的行动：” */
 export function ActionNote({ text, narr }: { text: string; narr: Narr }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <View
       accessible
-      accessibilityLabel={`我的行动：${text}`}
+      accessibilityLabel={t("play.myAction", { text })}
       style={[styles.note, { borderLeftColor: palette.line2 }]}
     >
       <Text
@@ -175,6 +178,7 @@ function Narrative({
   interrupted?: boolean;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const parts = paragraphs(text);
   const caretHeight = Math.round((narr.style.fontSize ?? 17.5) * 1.15);
   if (parts.length === 0) {
@@ -205,7 +209,7 @@ function Narrative({
             {last && caret ? <Caret color={caret} height={caretHeight} /> : null}
             {last && interrupted ? (
               <View style={[styles.cutBox, { backgroundColor: palette.bg2 }]}>
-                <Text style={[styles.cut, { color: palette.mut }]}>中断</Text>
+                <Text style={[styles.cut, { color: palette.mut }]}>{t("play.interrupted")}</Text>
               </View>
             ) : null}
           </Text>
@@ -216,6 +220,8 @@ function Narrative({
 }
 
 const TurnBlock = memo(function TurnBlock({ turn, narr }: { turn: StoryTurn; narr: Narr }) {
+  // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
+  useTranslation();
   const note = actionNote(turn.action);
   return (
     <View style={styles.turn}>
@@ -228,6 +234,7 @@ const TurnBlock = memo(function TurnBlock({ turn, narr }: { turn: StoryTurn; nar
 /** 第一次开场：先搭建世界，再写开场。当前一步是白色的圆角行 */
 function OpeningSteps({ building }: { building: boolean }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const step = (label: string, state: "active" | "done" | "todo") => (
     <View style={[styles.stepRow, state === "active" ? { backgroundColor: palette.card } : null]}>
       {state === "active" ? (
@@ -255,12 +262,10 @@ function OpeningSteps({ building }: { building: boolean }) {
   return (
     <View accessibilityLiveRegion="polite">
       <View style={[styles.steps, { backgroundColor: palette.bg2 }]}>
-        {step(building ? "正在根据角色卡搭建世界…" : "搭建世界", building ? "active" : "done")}
-        {step(building ? "写开场" : "正在写开场…", building ? "todo" : "active")}
+        {step(building ? t("play.building") : t("play.buildWorld"), building ? "active" : "done")}
+        {step(building ? t("play.writeOpening") : t("play.writingOpeningStep"), building ? "todo" : "active")}
       </View>
-      <Text style={[styles.stepNote, { color: palette.mut }]}>
-        第一次开场比较慢。可以先离开，写好后会出现在“故事”里。
-      </Text>
+      <Text style={[styles.stepNote, { color: palette.mut }]}>{t("play.slowNote")}</Text>
     </View>
   );
 }
@@ -296,9 +301,10 @@ function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: P
 /** 写完结局：最后一段下面的结束标记 */
 function EndMark({ narr }: { narr: Narr }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <Text
-      accessibilityLabel="全文完"
+      accessibilityLabel={t("play.theEnd")}
       allowFontScaling={narr.scale}
       maxFontSizeMultiplier={narr.maxScale}
       style={[narr.style, styles.end, { color: palette.mut }]}
@@ -311,13 +317,14 @@ function EndMark({ narr }: { narr: Narr }) {
 /** 开场还没写（上次中断了） */
 function OpeningMissing() {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <View style={styles.missing}>
       <View style={[styles.missingIcon, { backgroundColor: palette.warnBg }]}>
         <Icon name="untested" size={18} color={palette.warn} />
       </View>
       <Text style={{ flex: 1, fontSize: 15, lineHeight: 24, color: palette.ink2 }}>
-        开场还没有写好，上次可能中断了。
+        {t("play.noOpening")}
       </Text>
     </View>
   );

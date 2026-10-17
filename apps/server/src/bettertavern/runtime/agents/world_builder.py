@@ -94,12 +94,15 @@ async def build_seed(
     cancel: CancelToken | None = None,
 ) -> WorldBuildResult:
     context = render_prompt_context(card, inp)
+    # 字段说明和工具说明随这一局的语言（runtime/prompts/<lang>/schema/seed.json）
+    schema_data = prompts.data("schema/seed")
+    notes: dict[str, str] = schema_data["fields"]
     rendered_hash: list[str] = []
 
     def build_messages(mode: StructuredMode) -> list[Message]:
         show_schema = mode in ("json_object", "prompt_json")
         prompt = prompts.render(
-            "world_builder", schema=schema_text(Seed) if show_schema else "", **context
+            "world_builder", schema=schema_text(Seed, notes) if show_schema else "", **context
         )
         rendered_hash.append(prompt.hash)
         return [Message(role="user", content=prompt.text)]
@@ -111,9 +114,10 @@ async def build_seed(
         model=route.model,
         output=Seed,
         name="seed",
-        description="互动小说的开局设定",
+        description=schema_data["description"],
         build_messages=build_messages,
         prompts=prompts,
+        schema_notes=notes,
         max_tokens=route.max_tokens,
         temperature=route.temperature,
         reasoning=route.reasoning(),

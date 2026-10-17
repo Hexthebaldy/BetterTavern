@@ -1,12 +1,14 @@
 /**
- * 存在设备上的界面偏好：最近用过的服务器、阅读设置、剧本库用网格还是列表、外观（主题）、
+ * 存在设备上的界面偏好：最近用过的服务器、阅读设置、剧本库用网格还是列表、外观（主题）、界面语言、
  * 平板阅读页的世界状态停靠面板开着还是收着（所有故事共用）。用 usePrefs() 取。
+ * 界面语言在这里跟着设置和系统语言切换（state/language.ts）。
  * 读取失败或内容不对时用默认值；写入失败只影响下次打开，不打断操作。
  * loaded 表示已经读过存储：根布局等它再收起启动画面，免得先按系统深浅画一帧再跳到用户选的主题。
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { parseLanguageSetting, type LanguageSetting } from "@bettertavern/core/i18n/index";
 import { DEFAULT_READING, parseReadingPrefs, type ReadingPrefs } from "@bettertavern/core/play/reading";
 
 import {
@@ -17,6 +19,7 @@ import {
 } from "../features/settings/servers.ts";
 import { loadPrefs, savePrefs } from "../storage/secure.ts";
 import { parseThemeSetting, type ThemeSetting } from "../theme/index.ts";
+import { useLanguageSync } from "./language.ts";
 
 export type LibraryView = "grid" | "list";
 
@@ -25,6 +28,7 @@ type Stored = {
   reading: ReadingPrefs;
   libraryView: LibraryView;
   theme: ThemeSetting;
+  language: LanguageSetting;
   /** 平板阅读页够宽（≥ 1100）时，世界状态停靠在右侧：开着还是收着 */
   worldDocked: boolean;
 };
@@ -34,6 +38,7 @@ const DEFAULTS: Stored = {
   reading: DEFAULT_READING,
   libraryView: "grid",
   theme: "system",
+  language: "system",
   worldDocked: false,
 };
 
@@ -48,6 +53,7 @@ function parse(raw: unknown): Stored {
     reading: parseReadingPrefs(r.reading),
     libraryView: r.libraryView === "list" ? "list" : "grid",
     theme: parseThemeSetting(r.theme),
+    language: parseLanguageSetting(r.language),
     worldDocked: r.worldDocked === true,
   };
 }
@@ -57,6 +63,7 @@ type PrefsValue = Stored & {
   loaded: boolean;
   setReading: (reading: ReadingPrefs) => void;
   setTheme: (theme: ThemeSetting) => void;
+  setLanguage: (language: LanguageSetting) => void;
   setLibraryView: (view: LibraryView) => void;
   setWorldDocked: (open: boolean) => void;
   /** 这个服务器刚用成功过 */
@@ -70,6 +77,7 @@ const PrefsContext = createContext<PrefsValue | null>(null);
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefs] = useState<Stored>(DEFAULTS);
   const [loaded, setLoaded] = useState(false);
+  useLanguageSync(prefs.language);
 
   useEffect(() => {
     let alive = true;
@@ -101,6 +109,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       loaded,
       setReading: (reading) => update((p) => ({ ...p, reading })),
       setTheme: (theme) => update((p) => ({ ...p, theme })),
+      setLanguage: (language) => update((p) => ({ ...p, language })),
       setLibraryView: (libraryView) => update((p) => ({ ...p, libraryView })),
       setWorldDocked: (worldDocked) => update((p) => ({ ...p, worldDocked })),
       serverUsed: (url) => update((p) => ({ ...p, servers: rememberServer(p.servers, url, new Date()) })),
@@ -113,6 +122,6 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 
 export function usePrefs(): PrefsValue {
   const value = useContext(PrefsContext);
-  if (!value) throw new Error("usePrefs 必须在 PrefsProvider 里使用");
+  if (!value) throw new Error("usePrefs must be used inside PrefsProvider");
   return value;
 }

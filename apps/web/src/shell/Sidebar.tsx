@@ -3,6 +3,7 @@
  * 整条侧栏都是链接。
  */
 
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router";
 
 import { Icon } from "../components/Icon.tsx";
@@ -28,9 +29,10 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
   const current = openStoryId(pathname);
   const { ref, glass } = useGlass(NAV_ITEMS.find((item) => isActive(item, pathname))?.to ?? null);
   const groups = recentGroups(stories.data ?? []);
+  const { t } = useTranslation();
   return (
     <nav
-      aria-label="主导航"
+      aria-label={t("nav.main")}
       className={cx(styles.sidebar, "surface-panel", overlay && styles.sidebarOverlay)}
     >
       <div className={styles.sidebarHead}>
@@ -38,7 +40,7 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
         <span className={styles.brand}>BetterTavern</span>
         <IconButton
           icon="sidebar"
-          label="收起侧栏"
+          label={t("nav.collapseSidebar")}
           aria-keyshortcuts="["
           tone="plain"
           diameter={36}
@@ -59,19 +61,19 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
               aria-current={active ? "page" : undefined}
             >
               <Icon name={item.icon} size={20} />
-              {item.label}
+              {t(`nav.${item.name}`)}
             </Link>
           );
         })}
       </div>
       <div className={styles.recentLabel}>
-        <span>最近的存档</span>
+        <span>{t("nav.recent")}</span>
         {stories.data ? <span className={styles.mono}>{stories.data.length}</span> : null}
       </div>
       <div className={styles.recentList}>
         {groups.map((group) => (
-          <section key={group.label} aria-label={group.label}>
-            <div className={styles.group}>{group.label}</div>
+          <section key={group.key} aria-label={t(`nav.recentGroups.${group.key}`)}>
+            <div className={styles.group}>{t(`nav.recentGroups.${group.key}`)}</div>
             {group.items.map((story) => (
               <StoryRow
                 key={story.id}
@@ -88,7 +90,7 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
         <Link to="/settings/account" className={styles.account}>
           <Avatar user={user} />
           <span className={styles.accountText}>
-            <span className={styles.accountName}>{user.display_name || "未设置昵称"}</span>
+            <span className={styles.accountName}>{user.display_name || t("nav.noNickname")}</span>
             <span className={cx(styles.accountEmail, styles.mono)}>{user.email}</span>
           </span>
         </Link>

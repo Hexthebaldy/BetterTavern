@@ -16,6 +16,7 @@
 import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Animated,
   Easing,
@@ -78,6 +79,7 @@ export function LargeHeader({
   children?: ReactNode;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { size } = useLayout();
   const sides = size === "compact" ? null : (frame ?? tabInsets(size));
@@ -99,7 +101,7 @@ export function LargeHeader({
       {count !== undefined ? (
         <View style={[styles.count, { backgroundColor: palette.bg2 }]}>
           <Text
-            accessibilityLabel={count === null ? undefined : `${count} 个`}
+            accessibilityLabel={count === null ? undefined : t("nav.count", { count })}
             style={{ fontFamily: font.mono, fontSize: 13, color: palette.ink2 }}
           >
             {count === null ? "–" : String(count)}
@@ -127,10 +129,11 @@ export function NavBar({
   const palette = usePalette();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <View style={[styles.nav, { paddingTop: insets.top + space.xs, backgroundColor: palette.bg }, style]}>
       <View style={styles.navSide}>
-        <IconButton icon="back" label="返回" onPress={onBack ?? (() => router.back())} />
+        <IconButton icon="back" label={t("common.back")} onPress={onBack ?? (() => router.back())} />
       </View>
       <Text accessibilityRole="header" numberOfLines={1} style={[styles.navTitle, { color: palette.ink }]}>
         {title}
@@ -149,9 +152,15 @@ export function BackBar({ onBack, right }: { onBack?: () => void; right?: ReactN
   const palette = usePalette();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <View style={[styles.back, { paddingTop: insets.top + space.s, backgroundColor: palette.bg }]}>
-      <IconButton icon="back" label="返回" diameter={size.touch} onPress={onBack ?? (() => router.back())} />
+      <IconButton
+        icon="back"
+        label={t("common.back")}
+        diameter={size.touch}
+        onPress={onBack ?? (() => router.back())}
+      />
       <View style={{ flex: 1 }} />
       {right}
     </View>

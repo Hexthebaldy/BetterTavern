@@ -7,6 +7,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
@@ -81,6 +82,7 @@ function Art() {
 export function AuthSplit({ form, footer }: { form: ReactNode; footer: ReactNode }) {
   const palette = usePalette();
   const { expanded, width, height } = useLayout();
+  const { t } = useTranslation();
   if (!expanded) {
     return (
       <>
@@ -105,9 +107,7 @@ export function AuthSplit({ form, footer }: { form: ReactNode; footer: ReactNode
             BetterTavern
           </Text>
         </View>
-        <Text style={[styles.caption, { color: palette.ink }]}>
-          导入一张角色卡，{"\n"}用第一人称把故事写下去。
-        </Text>
+        <Text style={[styles.caption, { color: palette.ink }]}>{t("auth.taglineLines")}</Text>
       </View>
       <View style={{ flex: 1 }}>
         {form}

@@ -1,19 +1,22 @@
 /**
  * 界面偏好（state/prefs.ts）：打开页面时从 localStorage 同步读出，改了立刻写回。
- * 别的标签页改了（外观、快捷键开关）这里跟着变。用 usePrefs() 取。
+ * 别的标签页改了（外观、语言、快捷键开关）这里跟着变。用 usePrefs() 取。界面语言在这里跟着设置切换（state/language.ts）。
  */
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import type { LanguageSetting } from "@bettertavern/core/i18n/index";
 import type { ReadingPrefs } from "@bettertavern/core/play/reading";
 import type { ThemeSetting } from "@bettertavern/design/themes";
 
 import { localStore } from "../storage/local.ts";
+import { useLanguageSync } from "./language.ts";
 import { parsePrefs, PREFS_KEY, type LibraryView, type WebPrefs } from "./prefs.ts";
 
 type PrefsValue = WebPrefs & {
   setReading: (reading: ReadingPrefs) => void;
   setTheme: (theme: ThemeSetting) => void;
+  setLanguage: (language: LanguageSetting) => void;
   setLibraryView: (view: LibraryView) => void;
   setWorldDocked: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -24,6 +27,7 @@ const PrefsContext = createContext<PrefsValue | null>(null);
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefs] = useState<WebPrefs>(() => parsePrefs(localStore.read(PREFS_KEY)));
+  useLanguageSync(prefs.language);
 
   useEffect(() => {
     localStore.write(PREFS_KEY, prefs);
@@ -43,6 +47,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       ...prefs,
       setReading: (reading) => set({ reading }),
       setTheme: (theme) => set({ theme }),
+      setLanguage: (language) => set({ language }),
       setLibraryView: (libraryView) => set({ libraryView }),
       setWorldDocked: (worldDocked) => set({ worldDocked }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
@@ -54,6 +59,6 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 
 export function usePrefs(): PrefsValue {
   const value = useContext(PrefsContext);
-  if (!value) throw new Error("usePrefs 必须在 PrefsProvider 里使用");
+  if (!value) throw new Error("usePrefs must be used inside PrefsProvider");
   return value;
 }

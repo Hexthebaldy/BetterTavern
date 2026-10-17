@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.story.language import DEFAULT_LANGUAGE, parse_language
 from bettertavern.domain.world.names import clean_display_name
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import story as repo
@@ -29,6 +30,7 @@ class NewPlaythrough:
     protagonist_summary: str = ""
     title: str | None = None
     preferences: dict[str, Any] | None = None
+    language: str = DEFAULT_LANGUAGE
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,12 +81,12 @@ class PlaythroughService:
     async def create(self, user_id: str, data: NewPlaythrough) -> tuple[PlaythroughView, TurnView]:
         name = clean_display_name(data.protagonist_name)
         if not name:
-            raise Invalid("请填写主角的名字", field="protagonist_name")
+            raise Invalid("Enter a name for the protagonist", field="protagonist_name")
         if not is_uuid(data.scenario_id):
-            raise NotFound("剧本不存在")
+            raise NotFound("Scenario not found")
         if await self._routes.resolve(user_id, RouteTask.DIRECTOR) is None:
             raise AppError(
-                "还没有配置导演用的模型，请先在设置里添加密钥并选择模型",
+                "No director model is set up yet. Add a key and choose a model in Settings",
                 code="ROUTE_MISSING",
                 status=409,
             )
@@ -100,14 +102,14 @@ class PlaythroughService:
         async with self._engine.begin() as conn:
             scenario = await library_repo.get_scenario(conn, user_id, data.scenario_id)
             if scenario is None:
-                raise NotFound("剧本不存在")
+                raise NotFound("Scenario not found")
             title = (data.title or "").strip()[:80] or scenario.name
             pt = await repo.insert_playthrough(
                 conn,
                 user_id=user_id,
                 scenario_id=scenario.id,
                 title=title,
-                language="zh",
+                language=parse_language(data.language),
                 settings=settings,
             )
             turn = await repo.insert_turn(
@@ -141,11 +143,11 @@ class PlaythroughService:
 
     async def _row(self, user_id: str, playthrough_id: str) -> repo.PlaythroughRow:
         if not is_uuid(playthrough_id):
-            raise NotFound("游玩记录不存在")
+            raise NotFound("Playthrough not found")
         async with self._engine.connect() as conn:
             pt = await repo.get_playthrough(conn, user_id, playthrough_id)
         if pt is None:
-            raise NotFound("游玩记录不存在")
+            raise NotFound("Playthrough not found")
         return pt
 
     async def get(self, user_id: str, playthrough_id: str) -> PlaythroughDetail:
@@ -170,13 +172,13 @@ class PlaythroughService:
     async def rename(self, user_id: str, playthrough_id: str, title: str) -> PlaythroughView:
         title = title.strip()[:80]
         if not title:
-            raise Invalid("标题不能为空", field="title")
+            raise Invalid("The title can't be empty", field="title")
         if not is_uuid(playthrough_id):
-            raise NotFound("游玩记录不存在")
+            raise NotFound("Playthrough not found")
         async with self._engine.begin() as conn:
             pt = await repo.rename_playthrough(conn, user_id, playthrough_id, title)
         if pt is None:
-            raise NotFound("游玩记录不存在")
+            raise NotFound("Playthrough not found")
         return PlaythroughView.of(pt)
 
     async def delete(self, user_id: str, playthrough_id: str) -> None:
@@ -185,7 +187,7 @@ class PlaythroughService:
             self._runners.cancel(pt.active_turn_id, "deleted")
         async with self._engine.begin() as conn:
             if not await repo.delete_playthrough(conn, user_id, playthrough_id):
-                raise NotFound("游玩记录不存在")
+                raise NotFound("Playthrough not found")
 
     async def world(self, user_id: str, playthrough_id: str, *, reveal: bool) -> WorldView:
         pt = await self._row(user_id, playthrough_id)

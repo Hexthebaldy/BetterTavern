@@ -4,6 +4,7 @@
  */
 
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
@@ -18,9 +19,10 @@ const MIN_PASSWORD = 8;
 const NAME_MAX = 40;
 
 function LengthBar({ length }: { length: number }) {
+  const { t } = useTranslation();
   const ratio = Math.min(length / MIN_PASSWORD, 1);
   return (
-    <div className={styles.lengthRow} aria-label={`已输入 ${length} 位，至少 ${MIN_PASSWORD} 位`}>
+    <div className={styles.lengthRow} aria-label={t("auth.passwordTyped", { length, min: MIN_PASSWORD })}>
       <div className={styles.track}>
         <div
           className={`${styles.fill} ${ratio >= 1 ? styles.enough : ""}`}
@@ -28,7 +30,7 @@ function LengthBar({ length }: { length: number }) {
         />
       </div>
       <span className={styles.meta}>
-        {length >= MIN_PASSWORD ? `${length} 位` : `${length} / ${MIN_PASSWORD}`}
+        {length >= MIN_PASSWORD ? t("auth.passwordLength", { count: length }) : `${length} / ${MIN_PASSWORD}`}
       </span>
     </div>
   );
@@ -43,7 +45,8 @@ export function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
-  useDocumentTitle("注册");
+  const { t } = useTranslation();
+  useDocumentTitle(t("auth.register"));
 
   const ready = !!email.trim() && password.length >= MIN_PASSWORD;
 
@@ -59,7 +62,7 @@ export function RegisterPage() {
       setBusy(false);
       const field = e instanceof ApiError ? e.field("field") : undefined;
       if (typeof field === "string") setFieldError({ field, message: describeError(e) });
-      else if (e instanceof ApiError && e.isNetwork) setError("连不上服务器，检查网络后再试。");
+      else if (e instanceof ApiError && e.isNetwork) setError(t("auth.cantConnect"));
       else setError(describeError(e));
     }
   };
@@ -69,13 +72,18 @@ export function RegisterPage() {
 
   return (
     <AuthLayout>
-      <IconButton icon="back" label="返回登录" className={styles.back} onClick={() => navigate("/login")} />
+      <IconButton
+        icon="back"
+        label={t("auth.backToLogin")}
+        className={styles.back}
+        onClick={() => navigate("/login")}
+      />
       <NarrowIntro />
-      <h1 className={styles.big}>创建账户</h1>
+      <h1 className={styles.big}>{t("auth.registerTitle")}</h1>
       {error ? <Notice message={error} onClose={() => setError(null)} /> : null}
       <form className={`${styles.form} ${styles.register}`} onSubmit={(e) => void submit(e)} noValidate>
         <Field
-          label="邮箱"
+          label={t("auth.email")}
           type="email"
           name="email"
           autoComplete="email"
@@ -88,17 +96,17 @@ export function RegisterPage() {
           error={errorFor("email")}
         />
         <PasswordField
-          label="密码"
+          label={t("auth.password")}
           name="new-password"
           autoComplete="new-password"
-          placeholder={`至少 ${MIN_PASSWORD} 位`}
+          placeholder={t("auth.passwordMin", { min: MIN_PASSWORD })}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={errorFor("password")}
           below={password.length > 0 ? <LengthBar length={password.length} /> : null}
         />
         <Field
-          label="昵称"
+          label={t("auth.nickname")}
           optional
           counter
           name="nickname"
@@ -110,7 +118,7 @@ export function RegisterPage() {
         />
         <Button
           type="submit"
-          label="注册并登录"
+          label={t("auth.registerAndLogin")}
           size="lg"
           between
           trailingIcon="arrowRight"

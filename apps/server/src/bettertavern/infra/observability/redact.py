@@ -95,7 +95,7 @@ def scrub_text(text: str, limit: int = VALUE_MAX_CHARS) -> str:
         text = pattern.sub(replacement, text)
     text = _EMAIL.sub(r"\1***@\2", text)
     if len(text) > limit:
-        text = f"{text[:limit]}…（截断，原长 {len(text)} 字）"
+        text = f"{text[:limit]}…(truncated, {len(text)} chars)"
     return text
 
 
@@ -105,7 +105,7 @@ def _scrub_value(value: Any, *, keep_story: bool, depth: int) -> Any:
     if value is None or isinstance(value, (bool, int, float)):
         return value
     if depth >= MAX_DEPTH:
-        return "[REDACTED:太深]"
+        return "[REDACTED:too deep]"
     if isinstance(value, Mapping):
         return _scrub_mapping(value, keep_story=keep_story, depth=depth + 1)
     if isinstance(value, (list, tuple, set, frozenset)):
@@ -114,7 +114,7 @@ def _scrub_value(value: Any, *, keep_story: bool, depth: int) -> Any:
             _scrub_value(v, keep_story=keep_story, depth=depth + 1) for v in items[:LIST_MAX_ITEMS]
         ]
         if len(items) > LIST_MAX_ITEMS:
-            out.append(f"…（另有 {len(items) - LIST_MAX_ITEMS} 项）")
+            out.append(f"…({len(items) - LIST_MAX_ITEMS} more)")
         return out
     # 其他对象按文字处理：repr 里也可能带着密钥
     return scrub_text(str(value))

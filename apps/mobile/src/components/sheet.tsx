@@ -24,6 +24,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Animated,
   Modal,
@@ -193,6 +194,7 @@ export function Sheet({
   }, [visible, wanted, anchor, above, windowWidth, windowHeight]);
 
   const closeRef = useRef(onClose);
+  const { t } = useTranslation();
   closeRef.current = onClose;
   const pan = useMemo(
     () =>
@@ -214,7 +216,7 @@ export function Sheet({
       <Text accessibilityRole="header" style={[styles.sheetTitle, { color: palette.ink }]}>
         {title}
       </Text>
-      <IconButton icon="close" label="关闭" size={18} diameter={36} onPress={onClose} />
+      <IconButton icon="close" label={t("common.close")} size={18} diameter={36} onPress={onClose} />
     </View>
   ) : null;
 
@@ -228,7 +230,12 @@ export function Sheet({
         },
       ]}
     >
-      <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="关闭" accessibilityRole="button" />
+      <Pressable
+        style={{ flex: 1 }}
+        onPress={onClose}
+        accessibilityLabel={t("common.close")}
+        accessibilityRole="button"
+      />
     </Animated.View>
   );
 
@@ -351,7 +358,7 @@ export function Sheet({
         >
           {header ?? titleRow ?? (
             <View style={styles.dialogClose}>
-              <IconButton icon="close" label="关闭" size={18} diameter={36} onPress={onClose} />
+              <IconButton icon="close" label={t("common.close")} size={18} diameter={36} onPress={onClose} />
             </View>
           )}
           {children}

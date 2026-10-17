@@ -4,6 +4,7 @@
  */
 
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
@@ -20,7 +21,8 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useDocumentTitle("登录");
+  const { t } = useTranslation();
+  useDocumentTitle(t("auth.login"));
 
   const ready = !!email.trim() && !!password;
 
@@ -33,18 +35,18 @@ export function LoginPage() {
       await signIn(await api.auth.login({ email: email.trim(), password }));
     } catch (e) {
       setBusy(false);
-      setError(e instanceof ApiError && e.isNetwork ? "连不上服务器，检查网络后再试。" : describeError(e));
+      setError(e instanceof ApiError && e.isNetwork ? t("auth.cantConnect") : describeError(e));
     }
   };
 
   return (
     <AuthLayout>
       <NarrowIntro lead />
-      <h1 className={styles.big}>继续你的故事</h1>
+      <h1 className={styles.big}>{t("auth.loginTitle")}</h1>
       {error ? <Notice message={error} onClose={() => setError(null)} /> : null}
       <form className={styles.form} onSubmit={(e) => void submit(e)} noValidate>
         <Field
-          label="邮箱"
+          label={t("auth.email")}
           type="email"
           name="email"
           autoComplete="email"
@@ -56,16 +58,16 @@ export function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
         />
         <PasswordField
-          label="密码"
+          label={t("auth.password")}
           name="password"
           autoComplete="current-password"
-          placeholder="输入密码"
+          placeholder={t("auth.passwordPlaceholder")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
         <Button
           type="submit"
-          label="登录"
+          label={t("auth.login")}
           size="lg"
           between
           trailingIcon="arrowRight"
@@ -74,7 +76,8 @@ export function LoginPage() {
           className={styles.submit}
         />
         <div className={styles.switch}>
-          还没有账户？<Link to="/register">注册</Link>
+          {t("auth.noAccount")}
+          <Link to="/register">{t("auth.register")}</Link>
         </div>
       </form>
     </AuthLayout>

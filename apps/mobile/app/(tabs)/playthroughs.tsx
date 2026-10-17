@@ -10,6 +10,7 @@
 
 import { useRouter } from "expo-router";
 import { useRef, type ReactNode } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
@@ -66,10 +67,11 @@ function StoryRow({
   onMenu: () => void;
 }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint="打开存档；长按可以重命名或删除"
+      accessibilityHint={t("stories.cardHint")}
       onPress={onOpen}
       onLongPress={onMenu}
       style={({ pressed }) => [
@@ -134,6 +136,7 @@ function Skeleton() {
 
 function Empty({ onImport }: { onImport: () => void }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   return (
     <View style={[styles.empty, { backgroundColor: palette.bg2 }]}>
       <Svg width="100%" height={150} viewBox="0 0 294 150" preserveAspectRatio="xMidYMid meet">
@@ -154,11 +157,9 @@ function Empty({ onImport }: { onImport: () => void }) {
         />
         <Circle cx={214} cy={40} r={10} fill={palette.acc} />
       </Svg>
-      <Text style={[styles.emptyTitle, { color: palette.ink }]}>还没有存档</Text>
-      <Text style={[styles.emptyText, { color: palette.mut }]}>
-        去“剧本”导入一张角色卡，设定你扮演的角色，第一段故事就会写出来。
-      </Text>
-      <Button label="去导入角色卡" trailingIcon="arrowRight" between onPress={onImport} />
+      <Text style={[styles.emptyTitle, { color: palette.ink }]}>{t("stories.emptyTitle")}</Text>
+      <Text style={[styles.emptyText, { color: palette.mut }]}>{t("stories.emptyText")}</Text>
+      <Button label={t("stories.emptyAction")} trailingIcon="arrowRight" between onPress={onImport} />
     </View>
   );
 }
@@ -252,6 +253,7 @@ export default function PlaythroughsScreen() {
   const router = useRouter();
   const palette = usePalette();
   const overlay = useOverlay();
+  const { t } = useTranslation();
   const { data, error, loading, refreshing, reload, refresh, setData } = useAsync(async () => {
     const [stories, scenarios] = await Promise.all([
       api.playthroughs.list(),
@@ -262,8 +264,8 @@ export default function PlaythroughsScreen() {
 
   const rename = async (story: Playthrough): Promise<void> => {
     const title = await overlay.prompt({
-      title: "重命名存档",
-      label: "存档名",
+      title: t("stories.renameTitle"),
+      label: t("stories.nameLabel"),
       initial: story.title,
       maxLength: 80,
     });
@@ -274,24 +276,24 @@ export default function PlaythroughsScreen() {
         (d) => d && { ...d, stories: d.stories.map((s) => (s.id === story.id ? { ...s, ...updated } : s)) },
       );
     } catch (e) {
-      overlay.toast(`重命名失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.renameFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
   const remove = async (story: Playthrough): Promise<void> => {
     const ok = await overlay.confirm({
-      title: `删除“${story.title}”？`,
-      message: "删除后这个存档的故事和世界状态都无法恢复。",
-      confirmLabel: "删除",
+      title: t("common.deleteConfirm", { name: story.title }),
+      message: t("stories.deleteMessage"),
+      confirmLabel: t("common.delete"),
       tone: "danger",
     });
     if (!ok) return;
     try {
       await api.playthroughs.remove(story.id);
       setData((d) => d && { ...d, stories: d.stories.filter((s) => s.id !== story.id) });
-      overlay.toast(`已删除“${story.title}”`);
+      overlay.toast(t("common.deleted", { name: story.title }));
     } catch (e) {
-      overlay.toast(`删除失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.deleteFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
@@ -301,8 +303,8 @@ export default function PlaythroughsScreen() {
     const key = await overlay.menu({
       title: story.title,
       items: [
-        { key: "rename", label: "重命名", icon: "write" },
-        { key: "delete", label: "删除", icon: "trash", danger: true },
+        { key: "rename", label: t("common.rename"), icon: "write" },
+        { key: "delete", label: t("common.delete"), icon: "trash", danger: true },
       ],
       anchor: anchor ? { current: anchor } : undefined,
       lifted: anchor ? <LiftedStory story={story} avatar={avatar} hero={hero ?? undefined} /> : undefined,
@@ -318,10 +320,16 @@ export default function PlaythroughsScreen() {
   // 平板上空状态、提示放在居中的内容栏里（≤ 640）
   const column: Insets | null = sides ? centerColumn(width, sides) : null;
   const stories = data?.stories;
-  const header = <LargeHeader title="存档" count={stories ? stories.length : null} />;
+  const header = <LargeHeader title={t("nav.saves")} count={stories ? stories.length : null} />;
   const swipeActions = (item: Playthrough) => [
-    { key: "rename", label: "重命名", icon: "write" as const, onPress: () => void rename(item) },
-    { key: "delete", label: "删除", icon: "trash" as const, danger: true, onPress: () => void remove(item) },
+    { key: "rename", label: t("common.rename"), icon: "write" as const, onPress: () => void rename(item) },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: "trash" as const,
+      danger: true,
+      onPress: () => void remove(item),
+    },
   ];
 
   if (!stories) {
@@ -337,14 +345,17 @@ export default function PlaythroughsScreen() {
             message={
               error instanceof ApiError && error.isNetwork ? (
                 <Text style={{ fontSize: 14, lineHeight: 20, color: palette.ink }}>
-                  连不上服务器 <Text style={{ fontFamily: font.mono }}>{displayServer(serverUrl)}</Text>
-                  ，列表没加载出来
+                  <Trans
+                    i18nKey="stories.offline"
+                    values={{ server: displayServer(serverUrl) }}
+                    components={{ mono: <Text style={{ fontFamily: font.mono }} /> }}
+                  />
                 </Text>
               ) : (
                 describeError(error)
               )
             }
-            actionLabel="重新加载"
+            actionLabel={t("common.reload")}
             onAction={() => void reload()}
             style={[styles.notice, column ? { marginLeft: column.left, marginRight: column.right } : null]}
           />
@@ -373,7 +384,7 @@ export default function PlaythroughsScreen() {
               <Notice
                 icon="offline"
                 message={describeError(error)}
-                actionLabel="重试"
+                actionLabel={t("common.retry")}
                 onAction={() => void reload()}
                 style={{ marginBottom: space.m }}
               />
@@ -413,7 +424,7 @@ export default function PlaythroughsScreen() {
             <Notice
               icon="offline"
               message={describeError(error)}
-              actionLabel="重试"
+              actionLabel={t("common.retry")}
               onAction={() => void reload()}
               style={{ marginBottom: space.s }}
             />

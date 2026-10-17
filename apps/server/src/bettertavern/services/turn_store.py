@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from bettertavern.domain.scenario.card import CharacterCard
+from bettertavern.domain.story.language import unnamed_protagonist
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
 from bettertavern.domain.world.plan import plan_world
 from bettertavern.domain.world.seed import Seed
@@ -183,7 +184,7 @@ class PgTurnStore:
             world = await load_world(conn, header.playthrough_id)
         seed = Seed.model_validate(pt.seed) if pt.seed else None
         protagonist = (pt.settings.get("protagonist") or {}).get("name") or (
-            seed.protagonist.name if seed else "我"
+            seed.protagonist.name if seed else unnamed_protagonist(pt.language)
         )
         return TurnContext(
             header=header,
@@ -299,7 +300,7 @@ class PgTurnStore:
         protagonist = pt.settings.get("protagonist") or {}
         return WorldBuildInput(
             card=card,
-            protagonist_name=str(protagonist.get("name") or "我"),
+            protagonist_name=str(protagonist.get("name") or unnamed_protagonist(pt.language)),
             protagonist_summary=str(protagonist.get("summary") or ""),
             preferences=Preferences.from_json(pt.settings.get("preferences")),
         )

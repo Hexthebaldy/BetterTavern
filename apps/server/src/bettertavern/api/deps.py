@@ -48,7 +48,7 @@ async def current_user(
         raise Unauthenticated()
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token.strip():
-        raise Unauthenticated("Authorization 头格式不对")
+        raise Unauthenticated("Malformed Authorization header")
     user_id = services.auth.authenticate(token.strip())
     bind_user(user_id)
     return user_id

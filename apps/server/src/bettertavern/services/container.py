@@ -10,7 +10,7 @@ from bettertavern.infra.crypto.keyring import AppSecrets
 from bettertavern.infra.crypto.tokens import AccessTokenSigner
 from bettertavern.providers import EndpointPolicy, ProviderHub
 from bettertavern.runtime.events.buffer import EventBufferRegistry
-from bettertavern.runtime.prompts import PromptLibrary
+from bettertavern.runtime.prompts import PromptBook
 from bettertavern.runtime.runner import RunnerConfig, TurnRunner, TurnRunnerPool
 
 from .auth_service import AuthService
@@ -51,9 +51,9 @@ def build_services(
     refresh_ttl_s: int,
     runner_config: RunnerConfig,
     instance_id: str,
-    prompts: PromptLibrary | None = None,
+    prompts: PromptBook | None = None,
 ) -> Services:
-    prompts = prompts or PromptLibrary("zh")
+    prompts = prompts or PromptBook()
     signer = AccessTokenSigner(secrets.auth_secret, ttl_s=access_ttl_s)
     routes = RouteService(engine, secrets.keyring, hub, policy)
     store = PgTurnStore(engine)

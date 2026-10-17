@@ -51,7 +51,7 @@ const TOP_LEVEL = new Set(["/playthroughs", "/library", "/settings"]);
 
 export function useShell(): ShellValue {
   const value = useContext(ShellContext);
-  if (!value) throw new Error("useShell 必须在 AppShell 里使用");
+  if (!value) throw new Error("useShell must be used inside AppShell");
   return value;
 }
 

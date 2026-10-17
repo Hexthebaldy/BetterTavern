@@ -63,7 +63,9 @@ class RequestContext:
             except Exception:
                 log.exception("http.error", method=scope["method"], path=scope["path"])
                 if status is None:
-                    response = problem(500, "INTERNAL_ERROR", "服务端出错了", retryable=True)
+                    response = problem(
+                        500, "INTERNAL_ERROR", "Internal server error", retryable=True
+                    )
                     await response(scope, receive, send_with_id)
             finally:
                 self._access_log(scope, status, started)

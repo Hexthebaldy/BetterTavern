@@ -4,11 +4,12 @@
  */
 
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
-import { MODEL_STATUS, modelTitle, statusKind } from "@bettertavern/core/settings/labels";
+import { modelStatusLabel, modelTitle, statusKind } from "@bettertavern/core/settings/labels";
 import { formatTokens } from "@bettertavern/core/utils/format";
 
 import { cx, Notice, Pill } from "../../components/controls.tsx";
@@ -21,12 +22,15 @@ import styles from "./settings.module.css";
 import { StatusPill } from "./StatusPill.tsx";
 
 function ModelRow({ route }: { route: ModelRoute }) {
+  const { t } = useTranslation();
   return (
     <Link
       to={`/settings/model/${encodeURIComponent(route.id)}`}
       state={{ from: "models" }}
       className={styles.modelRow}
-      aria-label={`${modelTitle(route)}${route.is_director ? "，导演" : ""}`}
+      aria-label={t(route.is_director ? "models.rowLabelDirector" : "models.rowLabel", {
+        name: modelTitle(route),
+      })}
     >
       <ProviderMark provider={route.provider} tone={route.is_director ? "ink" : "card"} />
       <span className={styles.rowText}>
@@ -36,11 +40,11 @@ function ModelRow({ route }: { route: ModelRoute }) {
             {route.label ? `${route.model} · ` : ""}•••• {route.key_last4} ·{" "}
             {formatTokens(route.window.model_window)}
           </span>
-          <StatusPill kind={statusKind(route.status)} label={MODEL_STATUS[route.status]} />
+          <StatusPill kind={statusKind(route.status)} label={modelStatusLabel(route.status)} />
         </span>
       </span>
       {route.is_director ? (
-        <Pill label="导演" tone="acc" />
+        <Pill label={t("models.directorPill")} tone="acc" />
       ) : (
         <Icon name="chevronRight" size={18} className={styles.chevron} />
       )}
@@ -49,6 +53,7 @@ function ModelRow({ route }: { route: ModelRoute }) {
 }
 
 export function ModelsBody({ titled = true }: { titled?: boolean }) {
+  const { t } = useTranslation();
   const routes = useModelRoutes();
   const providers = useProviders();
   const queries = useQueryClient();
@@ -56,15 +61,12 @@ export function ModelsBody({ titled = true }: { titled?: boolean }) {
   return (
     <div className={styles.body}>
       {titled ? <Title /> : null}
-      <BodyHead
-        title="模型"
-        lead="故事由你自己的模型来写。添加模型时把 Key 和模型一起配好，再选一个当导演；以后换导演点一下就行。"
-      />
+      <BodyHead title={t("models.title")} lead={t("models.intro")} />
       {routes.error || providers.error ? (
         <Notice
           icon="offline"
-          message={`模型列表没加载出来：${describeError(routes.error ?? providers.error)}`}
-          actionLabel="重试"
+          message={t("models.loadFailedWith", { error: describeError(routes.error ?? providers.error) })}
+          actionLabel={t("common.retry")}
           onAction={() => {
             void routes.refetch();
             void providers.refetch();
@@ -78,7 +80,7 @@ export function ModelsBody({ titled = true }: { titled?: boolean }) {
           ))}
         </div>
       ) : null}
-      <SectionHeader title="添加模型" />
+      <SectionHeader title={t("models.add")} />
       {providers.data && providers.data.length > 0 && routes.data ? (
         <AddModelForm
           providers={providers.data}
@@ -94,6 +96,7 @@ export function ModelsBody({ titled = true }: { titled?: boolean }) {
 }
 
 function Title() {
-  useDocumentTitle("模型");
+  const { t } = useTranslation();
+  useDocumentTitle(t("models.title"));
   return null;
 }

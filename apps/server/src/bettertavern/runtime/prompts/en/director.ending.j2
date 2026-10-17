@@ -1,0 +1,19 @@
+{# version: 1 #}
+{% if world_state %}
+{{ world_state }}
+
+{% endif %}
+{% if wish %}
+<ending-wish>
+{{ wish }}
+</ending-wish>
+{% endif %}
+The player has decided to end the story here. Continue from the last part and write the final part of the whole story as its ending:
+- Don't retell what has already happened;
+- Wrap up the main plot, answer the open questions and promises, and say where the main characters end up;
+- Give the protagonist a place to land: happy, bittersweet or open are all fine, but the reader should know the story is over;
+{% if wish %}
+- The ending the player hopes for is in <ending-wish>; follow that direction as long as it doesn't contradict what has happened or the world's setup;
+{% endif %}
+- Make it about two to three times as long as usual, in several paragraphs that close out the story.
+This is the last part and there will be no more choices: output only the <narrative> tag and the narration inside it, with no <options>.

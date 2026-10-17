@@ -4,8 +4,10 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { WorldEntity, WorldView } from "@bettertavern/core/api/types";
+import { lookup } from "@bettertavern/core/i18n/index";
 import { layoutGraph, NODE_HEIGHT, relLabel } from "@bettertavern/core/play/worldGraph";
 
 import { Chip, cx } from "../../components/controls.tsx";
@@ -15,19 +17,20 @@ import styles from "./world.module.css";
 export type Tab = "entities" | "links" | "facts";
 type Filter = "all" | "character" | "location" | "item" | "organization";
 
-const KIND: Record<string, { label: string; icon: IconName }> = {
-  character: { label: "人物", icon: "person" },
-  location: { label: "地点", icon: "place" },
-  item: { label: "物品", icon: "item" },
-  organization: { label: "组织", icon: "pair" },
+const KIND_ICONS: Record<string, IconName> = {
+  character: "person",
+  location: "place",
+  item: "item",
+  organization: "pair",
 };
 
-const DATA_LABELS: Record<string, string> = {
-  goal: "目标",
-  attitude: "态度",
-  speech_style: "说话方式",
-  stance: "立场",
-};
+/** 实体的类别：名字随界面语言，不认识的类别显示它的 id */
+function kindOf(kind: string): { label: string; icon: IconName } {
+  return { label: lookup(`world.kinds.${kind}`) ?? kind, icon: KIND_ICONS[kind] ?? "item" };
+}
+
+/** 卡片展开后列出的几项资料 */
+const DATA_KEYS = new Set(["goal", "attitude", "speech_style", "stance"]);
 
 function EntityRow({
   entity,
@@ -42,12 +45,13 @@ function EntityRow({
   open: boolean;
   onToggle: () => void;
 }) {
-  const kind = KIND[entity.kind] ?? { label: entity.kind, icon: "item" as const };
+  const { t } = useTranslation();
+  const kind = kindOf(entity.kind);
   const outgoing = view.links.filter((l) => l.src_id === entity.id && names.has(l.dst_id));
   const incoming = view.links.filter((l) => l.dst_id === entity.id && names.has(l.src_id));
   const details = Object.entries(entity.data).filter(
     (entry): entry is [string, string] =>
-      typeof entry[1] === "string" && entry[1].trim() !== "" && entry[0] in DATA_LABELS,
+      typeof entry[1] === "string" && entry[1].trim() !== "" && DATA_KEYS.has(entry[0]),
   );
   // 简介太长时收起只显示 3 行，点开看全文
   const expandable = outgoing.length + incoming.length + details.length > 0 || entity.summary.length > 60;
@@ -60,7 +64,11 @@ function EntityRow({
       <span className={styles.entityBody}>
         <span className={styles.entityTop}>
           <span className={styles.entityName}>{entity.name}</span>
-          {me ? <span className={styles.me}>我</span> : <span className={styles.kind}>{kind.label}</span>}
+          {me ? (
+            <span className={styles.me}>{t("world.me")}</span>
+          ) : (
+            <span className={styles.kind}>{kind.label}</span>
+          )}
           {expandable ? (
             <Icon name={open ? "chevronUp" : "chevronDown"} size={16} className={styles.chevron} />
           ) : null}
@@ -72,7 +80,7 @@ function EntityRow({
           <span className={styles.details}>
             {details.map(([key, value]) => (
               <span key={key}>
-                <span className={styles.kind}>{DATA_LABELS[key]} </span>
+                <span className={styles.kind}>{lookup(`world.attrs.${key}`) ?? key} </span>
                 {value}
               </span>
             ))}
@@ -113,6 +121,7 @@ function EntityRow({
 }
 
 export function Entities({ view, names }: { view: WorldView; names: Map<string, string> }) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<Filter>("all");
   const [open, setOpen] = useState<string | null>(null);
   const entities = view.entities
@@ -125,12 +134,12 @@ export function Entities({ view, names }: { view: WorldView; names: Map<string, 
   return (
     <>
       <div className={styles.filters}>
-        <Chip label="全部" selected={filter === "all"} onClick={() => setFilter("all")} />
+        <Chip label={t("world.all")} selected={filter === "all"} onClick={() => setFilter("all")} />
         {kinds.map((k) => (
           <Chip
             key={k}
-            label={KIND[k]?.label ?? k}
-            icon={KIND[k]?.icon}
+            label={kindOf(k).label}
+            icon={kindOf(k).icon}
             selected={filter === k}
             onClick={() => setFilter(k)}
           />
@@ -148,7 +157,7 @@ export function Entities({ view, names }: { view: WorldView; names: Map<string, 
           />
         ))}
       </div>
-      {shown.length === 0 ? <p className={styles.empty}>还没有记下什么。</p> : null}
+      {shown.length === 0 ? <p className={styles.empty}>{t("world.empty")}</p> : null}
     </>
   );
 }
@@ -163,11 +172,12 @@ export function Links({
   names: Map<string, string>;
   width: number;
 }) {
+  const { t } = useTranslation();
   const inner = width - 24;
   const height = 300;
   const graph = useMemo(() => layoutGraph(view.entities, view.links, inner, height), [view, inner]);
   const links = view.links.filter((l) => names.has(l.src_id) && names.has(l.dst_id));
-  if (links.length === 0) return <p className={styles.empty}>还没有记下人物和地点之间的关系。</p>;
+  if (links.length === 0) return <p className={styles.empty}>{t("world.noLinks")}</p>;
   return (
     <>
       <div className={styles.graph}>
@@ -176,7 +186,9 @@ export function Links({
           height={height}
           viewBox={`0 0 ${inner} ${height}`}
           role="img"
-          aria-label={`关系图：${graph.nodes.map((n) => n.label).join("、")}`}
+          aria-label={t("world.graph", {
+            nodes: graph.nodes.map((n) => n.label).join(t("common.listSeparator")),
+          })}
         >
           {graph.edges.map((e, i) => (
             <line
@@ -251,6 +263,7 @@ export function Facts({
   names: Map<string, string>;
   onReveal: () => void;
 }) {
+  const { t } = useTranslation();
   const facts = [...view.facts].sort(
     (a, b) => Number(a.secret) - Number(b.secret) || b.importance - a.importance,
   );
@@ -267,7 +280,7 @@ export function Facts({
             <span>{f.text}</span>
             {f.secret || f.entity_ids.length > 0 ? (
               <span className={styles.kind}>
-                {[f.secret ? "秘密 · 已揭示" : null, ...f.entity_ids.map((id) => names.get(id))]
+                {[f.secret ? t("world.secretRevealed") : null, ...f.entity_ids.map((id) => names.get(id))]
                   .filter(Boolean)
                   .join(" · ")}
               </span>
@@ -279,16 +292,16 @@ export function Facts({
         <button
           type="button"
           className={cx(styles.fact, styles.factSecret, styles.hidden)}
-          aria-label={`${view.hidden_facts} 条未揭示的秘密，揭示`}
+          aria-label={t("world.hiddenLabel", { count: view.hidden_facts })}
           onClick={onReveal}
         >
           <Icon name="lock" size={16} />
-          <span className={styles.flex}>{view.hidden_facts} 条秘密</span>
-          <span className={styles.revealPill}>揭示</span>
+          <span className={styles.flex}>{t("world.hidden", { count: view.hidden_facts })}</span>
+          <span className={styles.revealPill}>{t("world.reveal")}</span>
         </button>
       ) : null}
       {facts.length === 0 && view.hidden_facts === 0 ? (
-        <p className={styles.empty}>还没有记下事实。</p>
+        <p className={styles.empty}>{t("world.noFacts")}</p>
       ) : null}
     </div>
   );

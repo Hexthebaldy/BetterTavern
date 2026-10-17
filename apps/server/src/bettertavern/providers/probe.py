@@ -151,13 +151,21 @@ async def _check_stream(run: _Run) -> None:
                 continue
             run.failed("stream", error, started)
             return
-        run.record("stream", True, "收到文字" if got_text else "流正常结束但没有文字", started)
+        run.record(
+            "stream",
+            True,
+            "Text received" if got_text else "The stream ended normally without text",
+            started,
+        )
         if caps.stream_usage:
             run.record(
-                "stream_usage", got_usage, "流里带 usage" if got_usage else "流里没有 usage", None
+                "stream_usage",
+                got_usage,
+                "Usage in stream" if got_usage else "No usage in stream",
+                None,
             )
         else:
-            run.record("stream_usage", False, "后端不支持 stream_options", None)
+            run.record("stream_usage", False, "The backend doesn't support stream_options", None)
         return
 
 
@@ -198,10 +206,14 @@ async def _check_structured(run: _Run, name: str) -> None:
     if name == "tool_call":
         call = next((c for c in result.tool_calls if c.name == "report"), None)
         ok = call is not None and _json_ok(call.arguments)
-        run.record(name, ok, "返回了合法的工具调用" if ok else "没有返回合法的工具调用", started)
+        run.record(
+            name, ok, "Returned a valid tool call" if ok else "No valid tool call returned", started
+        )
     else:
         ok = _json_ok(result.text)
-        run.record(name, ok, "返回了合法的 JSON" if ok else "返回内容不是要求的 JSON", started)
+        run.record(
+            name, ok, "Returned valid JSON" if ok else "The reply isn't the required JSON", started
+        )
 
 
 async def _check_reasoning_toggle(run: _Run) -> None:
@@ -212,7 +224,7 @@ async def _check_reasoning_toggle(run: _Run) -> None:
     except ProviderError as error:
         run.failed("reasoning_toggle", error, started)
         return
-    run.record("reasoning_toggle", True, "可以关闭思考", started)
+    run.record("reasoning_toggle", True, "Thinking can be turned off", started)
 
 
 async def probe_model(
@@ -234,7 +246,9 @@ async def probe_model(
         steps.append(("reasoning_toggle", lambda: _check_reasoning_toggle(run)))
     for name, step in steps:
         if run.fatal is not None:
-            run.record(name, None, "未测：凭据、模型或端点不可用", None)
+            run.record(
+                name, None, "Not tested: the credential, model or endpoint is unavailable", None
+            )
             continue
         await step()
     return ProbeReport(

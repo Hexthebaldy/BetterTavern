@@ -5,6 +5,7 @@
 
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -25,6 +26,7 @@ export default function LoginScreen() {
   const palette = usePalette();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [reveal, setReveal] = useState(false);
@@ -47,7 +49,7 @@ export default function LoginScreen() {
       setBusy(false);
       if (e instanceof ApiError && e.isNetwork) {
         serverFailed(serverUrl);
-        setError("连不上服务器，检查地址或网络。");
+        setError(t("auth.cantConnect"));
         setServerOpen(true);
       } else {
         setError(describeError(e));
@@ -85,17 +87,13 @@ export default function LoginScreen() {
         {expanded ? null : <Logo />}
         <View style={{ gap: 10 }}>
           <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
-            继续你的故事
+            {t("auth.loginTitle")}
           </Text>
-          {expanded ? null : (
-            <Text style={[styles.lead, { color: palette.mut }]}>
-              导入一张角色卡，用第一人称把故事写下去。
-            </Text>
-          )}
+          {expanded ? null : <Text style={[styles.lead, { color: palette.mut }]}>{t("auth.tagline")}</Text>}
         </View>
         <View style={styles.form}>
           <Field
-            label="邮箱"
+            label={t("auth.email")}
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
@@ -105,10 +103,10 @@ export default function LoginScreen() {
             textContentType="username"
           />
           <Field
-            label="密码"
+            label={t("auth.password")}
             value={password}
             onChangeText={setPassword}
-            placeholder="输入密码"
+            placeholder={t("auth.passwordPlaceholder")}
             secureTextEntry={!reveal}
             autoComplete="current-password"
             textContentType="password"
@@ -116,7 +114,7 @@ export default function LoginScreen() {
             trailing={
               <IconButton
                 icon={reveal ? "eyeOff" : "eye"}
-                label={reveal ? "隐藏密码" : "显示密码"}
+                label={reveal ? t("auth.hidePassword") : t("auth.showPassword")}
                 tone="plain"
                 diameter={44}
                 color={palette.mut}
@@ -125,7 +123,7 @@ export default function LoginScreen() {
             }
           />
           <Button
-            label="登录"
+            label={t("auth.login")}
             trailingIcon="arrowRight"
             between
             onPress={() => void submit()}
@@ -134,15 +132,17 @@ export default function LoginScreen() {
             style={{ marginTop: space.s }}
           />
           <View style={styles.switch}>
-            <Text style={{ fontSize: 14, color: palette.mut }}>还没有账户？</Text>
+            <Text style={{ fontSize: 14, color: palette.mut }}>{t("auth.noAccount")}</Text>
             <Pressable
               accessibilityRole="link"
-              accessibilityLabel="注册"
+              accessibilityLabel={t("auth.register")}
               onPress={() => router.replace("/register")}
               hitSlop={8}
               style={styles.switchAction}
             >
-              <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>注册</Text>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
+                {t("auth.register")}
+              </Text>
             </Pressable>
           </View>
         </View>

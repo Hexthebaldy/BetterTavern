@@ -11,11 +11,13 @@
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
+import { currentLanguage, lookup } from "@bettertavern/core/i18n/index";
 import { pane } from "@bettertavern/design/layout";
 
 import { Cover } from "../../../src/components/Cover.tsx";
@@ -38,17 +40,10 @@ import { useLayout } from "../../../src/hooks/useLayout.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
 import { font, radius, size, space, type, usePalette } from "../../../src/theme/index.ts";
 
-/** 角色卡里可能被截断的字段 */
-const FIELD_NAMES: Record<string, string> = {
-  description: "描述",
-  personality: "性格",
-  scenario: "场景",
-  first_mes: "开场白",
-  mes_example: "对话示例",
-  system_prompt: "系统提示",
-  post_history_instructions: "历史后指令",
-  creator_notes: "作者备注",
-};
+/** 角色卡里可能被截断的字段的名字；不认识的字段显示它的 id */
+function fieldName(field: string): string {
+  return lookup(`scenario.fields.${field}`) ?? field;
+}
 
 function Stat({
   icon,
@@ -74,6 +69,7 @@ function Stat({
 
 function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void }) {
   const palette = usePalette();
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [clamped, setClamped] = useState(false);
   const truncated = scenario.truncated_fields;
@@ -81,14 +77,25 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
     <>
       <View style={styles.titleBlock}>
         <Text style={[styles.caption, { color: palette.mut }]}>
-          角色卡{scenario.creator ? ` · 作者 ${scenario.creator}` : ""}
-          {scenario.edited_at ? " · 已编辑" : ""}
+          {[
+            t("scenario.card"),
+            scenario.creator ? t("scenario.creator", { creator: scenario.creator }) : null,
+            scenario.edited_at ? t("scenario.edited") : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </Text>
         <View style={styles.titleRow}>
           <Text accessibilityRole="header" style={[styles.hero, { flex: 1, color: palette.ink }]}>
             {scenario.name}
           </Text>
-          <Button label="编辑角色卡" icon="write" variant="secondary" onPress={onEdit} style={styles.edit} />
+          <Button
+            label={t("scenario.editCard")}
+            icon="write"
+            variant="secondary"
+            onPress={onEdit}
+            style={styles.edit}
+          />
         </View>
         {scenario.tags.length > 0 ? (
           <View style={styles.tags}>
@@ -99,10 +106,10 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
         ) : null}
       </View>
       <View style={styles.stats}>
-        <Stat icon="world" value={scenario.book_entries} label="世界书条目" />
-        <Stat icon="greeting" value={1 + scenario.alternate_greetings} label="开场白" />
+        <Stat icon="world" value={scenario.book_entries} label={t("scenario.bookEntries")} />
+        <Stat icon="greeting" value={1 + scenario.alternate_greetings} label={t("scenario.greetings")} />
         {truncated.length > 0 ? (
-          <Stat icon="truncated" value={truncated.length} label="字段被截断" warn />
+          <Stat icon="truncated" value={truncated.length} label={t("scenario.truncatedFields")} warn />
         ) : null}
       </View>
       {scenario.description_preview || truncated.length > 0 ? (
@@ -127,7 +134,7 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
                   style={styles.expand}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
-                    {expanded ? "收起" : "展开全文"}
+                    {expanded ? t("scenario.collapse") : t("scenario.expand")}
                   </Text>
                   <Icon name={expanded ? "chevronUp" : "chevronDown"} size={16} color={palette.acc} />
                 </Pressable>
@@ -138,7 +145,9 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
             <View style={[styles.warn, { backgroundColor: palette.card }]}>
               <Icon name="alert" size={16} color={palette.warn} />
               <Text style={{ flex: 1, fontSize: 13, lineHeight: 19, color: palette.warn }}>
-                {truncated.map((f) => `“${FIELD_NAMES[f] ?? f}”`).join("、")}字段太长，只保留了前面的部分。
+                {t("scenario.truncatedNote", {
+                  fields: truncated.map((f) => `“${fieldName(f)}”`).join(t("common.listSeparator")),
+                })}
               </Text>
             </View>
           ) : null}
@@ -146,7 +155,7 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
       ) : null}
       {scenario.first_mes_preview ? (
         <View style={[styles.card, styles.greeting, { backgroundColor: palette.bg2 }]}>
-          <Text style={[styles.caption, { color: palette.mut }]}>原卡的开场白</Text>
+          <Text style={[styles.caption, { color: palette.mut }]}>{t("scenario.originalGreeting")}</Text>
           <Text
             numberOfLines={3}
             style={{ fontFamily: font.serif, fontSize: 14.5, lineHeight: 25, color: palette.mut }}
@@ -166,6 +175,7 @@ export default function ScenarioScreen() {
   const palette = usePalette();
   const overlay = useOverlay();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { width, expanded } = useLayout();
   const column = useColumnStyle();
   // 宽屏右栏底部浮着的摘要栏有多高：表单最后留出这么多
@@ -181,7 +191,11 @@ export default function ScenarioScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: palette.bg }}>
         <BackBar />
-        <ErrorState title="剧本没加载出来" message={describeError(error)} onRetry={() => void reload()} />
+        <ErrorState
+          title={t("scenario.loadFailed")}
+          message={describeError(error)}
+          onRetry={() => void reload()}
+        />
       </View>
     );
   }
@@ -195,6 +209,8 @@ export default function ScenarioScreen() {
         scenario_id: scenario.id,
         protagonist: { name: values.name, summary: values.summary },
         preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
+        // 提示词按当前的界面语言（docs/i18n.md 第 4 节）
+        language: currentLanguage(),
       });
       router.replace({ pathname: "/play/[id]", params: { id: created.playthrough.id } });
     } catch (e) {
@@ -205,18 +221,18 @@ export default function ScenarioScreen() {
 
   const remove = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: `删除剧本“${scenario.name}”？`,
-      message: "已有的存档不受影响。",
-      confirmLabel: "删除",
+      title: t("library.deleteConfirm", { name: scenario.name }),
+      message: t("library.deleteMessage"),
+      confirmLabel: t("common.delete"),
       tone: "danger",
     });
     if (!ok) return;
     try {
       await api.scenarios.remove(scenario.id);
-      overlay.toast(`已删除“${scenario.name}”`);
+      overlay.toast(t("common.deleted", { name: scenario.name }));
       router.back();
     } catch (e) {
-      overlay.toast(`删除失败：${describeError(e)}`, { icon: "alert" });
+      overlay.toast(t("common.deleteFailed", { error: describeError(e) }), { icon: "alert" });
     }
   };
 
@@ -242,7 +258,7 @@ export default function ScenarioScreen() {
       <View style={[styles.coverBar, { top: Math.max(insets.top - space.list, 0) + space.s }]}>
         <IconButton
           icon="back"
-          label="返回"
+          label={t("common.back")}
           tone="card"
           diameter={size.touch}
           onPress={() => router.back()}
@@ -253,9 +269,9 @@ export default function ScenarioScreen() {
   const startHead = (
     <View style={[styles.startHead, expanded ? { paddingTop: insets.top + space.l } : null]}>
       <Text accessibilityRole="header" style={[styles.startTitle, { color: palette.ink }]}>
-        开始新的故事
+        {t("start.title")}
       </Text>
-      <Text style={[styles.caption, { color: palette.mut }]}>只有第 1 步必填</Text>
+      <Text style={[styles.caption, { color: palette.mut }]}>{t("start.hint")}</Text>
     </View>
   );
   const form = (
@@ -269,7 +285,7 @@ export default function ScenarioScreen() {
   );
   const startButton = (
     <Button
-      label="开始故事"
+      label={t("start.button")}
       trailingIcon="arrowRight"
       between
       onPress={() => void start()}
@@ -280,8 +296,8 @@ export default function ScenarioScreen() {
   );
   const errorNotice = startError ? (
     <Notice
-      message={routeMissing ? "没有可用模型" : describeError(startError)}
-      actionLabel={routeMissing ? "去设置" : undefined}
+      message={routeMissing ? t("start.noModel") : describeError(startError)}
+      actionLabel={routeMissing ? t("start.goSettings") : undefined}
       onAction={routeMissing ? () => router.push("/settings/models") : undefined}
     />
   ) : null;
@@ -289,7 +305,7 @@ export default function ScenarioScreen() {
     <View
       style={[styles.summary, expanded ? { flex: 1 } : null]}
       accessible
-      accessibilityLabel={`将要开始：${summary.join("，")}`}
+      accessibilityLabel={t("start.willStart", { summary: summary.join(t("common.listSeparator")) })}
     >
       {summary.map((part) => (
         <Pill key={part} label={part} />
@@ -299,13 +315,13 @@ export default function ScenarioScreen() {
   const danger = (
     <View style={styles.danger}>
       <Button
-        label="删除剧本"
+        label={t("scenario.deleteScenario")}
         variant="danger"
         icon="trash"
         onPress={() => void remove()}
         style={{ alignSelf: "stretch" }}
       />
-      <Text style={[styles.caption, { color: palette.mut }]}>已有的存档不受影响。</Text>
+      <Text style={[styles.caption, { color: palette.mut }]}>{t("library.deleteMessage")}</Text>
     </View>
   );
 

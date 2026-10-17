@@ -4,6 +4,7 @@
  */
 
 import { useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
 
 import { diagnostics, exportText, localIso } from "@bettertavern/core/observability/log";
 
@@ -19,6 +20,7 @@ export function exportFileName(now: Date = new Date()): string {
 }
 
 export function Diagnostics() {
+  const { t } = useTranslation();
   const overlay = useOverlay();
   const count = useSyncExternalStore(
     (listener) => diagnostics.subscribe(listener),
@@ -41,9 +43,9 @@ export function Diagnostics() {
 
   const clear = async (): Promise<void> => {
     const ok = await overlay.confirm({
-      title: "清空诊断日志？",
-      message: "这个浏览器里保存的记录会全部删掉，服务器上的日志不受影响。",
-      confirmLabel: "清空",
+      title: t("diagnostics.clearTitle"),
+      message: t("diagnostics.clearMessageWeb"),
+      confirmLabel: t("diagnostics.clear"),
       tone: "danger",
     });
     if (ok) diagnostics.clear();
@@ -51,16 +53,13 @@ export function Diagnostics() {
 
   return (
     <div>
-      <SectionHeader title="诊断日志" meta={`${count} 条`} />
+      <SectionHeader title={t("diagnostics.title")} meta={t("diagnostics.count", { count })} />
       <div className={styles.formCard}>
-        <p className={styles.lead}>
-          这个浏览器里保留最近 500 条记录：失败和慢的请求、推送连接的断开和重连、回合状态的变化、页面报错。
-          不含故事内容和密钥，只存在这个浏览器里。出问题时导出来发给开发者，按里面的单号能在服务器日志里找到对应的记录。
-        </p>
+        <p className={styles.lead}>{t("diagnostics.aboutWeb")}</p>
         <div className={styles.probeButtons}>
-          <Button label="导出" icon="import" disabled={count === 0} onClick={download} />
+          <Button label={t("diagnostics.export")} icon="import" disabled={count === 0} onClick={download} />
           <Button
-            label="清空"
+            label={t("diagnostics.clear")}
             icon="trash"
             variant="secondary"
             disabled={count === 0}

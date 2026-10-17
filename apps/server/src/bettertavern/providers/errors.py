@@ -357,7 +357,7 @@ def classify_http_error(
         return make(ErrorClass.SERVER_ERROR)
     if 300 <= status < 400:
         error = make(ErrorClass.INVALID_RESPONSE)
-        error.message = f"端点返回了重定向（HTTP {status}），请检查基址"
+        error.message = f"The endpoint returned a redirect (HTTP {status}); check the base URL"
         return error
     return make(ErrorClass.UNKNOWN)
 
@@ -384,7 +384,7 @@ def classify_stream_error(
         error_class = ErrorClass.SERVER_ERROR
     return ProviderError(
         error_class,
-        message or "上游在流中途返回了错误",
+        message or "The upstream returned an error mid-stream",
         provider=provider,
         model=model,
         partial=partial,
@@ -404,13 +404,13 @@ def classify_exception(
         return exc
     if isinstance(exc, httpx.TimeoutException):
         error_class = ErrorClass.STREAM_INTERRUPTED if partial else ErrorClass.TIMEOUT
-        message = "等待上游超时"
+        message = "Timed out waiting for the upstream"
     elif isinstance(exc, httpx.ConnectError):
         error_class = ErrorClass.CONNECTION
-        message = f"无法连接到端点：{exc}"
+        message = f"Can't connect to the endpoint: {exc}"
     elif isinstance(exc, httpx.RemoteProtocolError | httpx.ReadError | httpx.WriteError):
         error_class = ErrorClass.STREAM_INTERRUPTED if partial else ErrorClass.CONNECTION
-        message = f"连接中断：{exc}"
+        message = f"Connection interrupted: {exc}"
     elif isinstance(exc, httpx.HTTPError):
         error_class = ErrorClass.CONNECTION
         message = str(exc) or type(exc).__name__

@@ -4,10 +4,12 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
 import type { WorldEntity, WorldView } from "@bettertavern/core/api/types";
+import { lookup } from "@bettertavern/core/i18n/index";
 import { layoutGraph, NODE_HEIGHT, relLabel } from "@bettertavern/core/play/worldGraph";
 
 import { Chip, Icon, Pill, useSheetSurfaces, type IconName } from "../../components/ui.tsx";
@@ -16,19 +18,20 @@ import { onColor, radius, space, useIsDark, usePalette } from "../../theme/index
 export type Tab = "entities" | "links" | "facts";
 type Filter = "all" | "character" | "location" | "item" | "organization";
 
-const KIND: Record<string, { label: string; icon: IconName }> = {
-  character: { label: "人物", icon: "person" },
-  location: { label: "地点", icon: "place" },
-  item: { label: "物品", icon: "item" },
-  organization: { label: "组织", icon: "pair" },
+const KIND_ICONS: Record<string, IconName> = {
+  character: "person",
+  location: "place",
+  item: "item",
+  organization: "pair",
 };
 
-const DATA_LABELS: Record<string, string> = {
-  goal: "目标",
-  attitude: "态度",
-  speech_style: "说话方式",
-  stance: "立场",
-};
+/** 实体的类别：名字随界面语言，不认识的类别显示它的 id */
+function kindOf(kind: string): { label: string; icon: IconName } {
+  return { label: lookup(`world.kinds.${kind}`) ?? kind, icon: KIND_ICONS[kind] ?? "item" };
+}
+
+/** 卡片展开后列出的几项资料 */
+const DATA_KEYS = new Set(["goal", "attitude", "speech_style", "stance"]);
 
 function EntityRow({
   entity,
@@ -45,12 +48,13 @@ function EntityRow({
 }) {
   const palette = usePalette();
   const surfaces = useSheetSurfaces();
-  const kind = KIND[entity.kind] ?? { label: entity.kind, icon: "item" as const };
+  const { t } = useTranslation();
+  const kind = kindOf(entity.kind);
   const outgoing = view.links.filter((l) => l.src_id === entity.id && names.has(l.dst_id));
   const incoming = view.links.filter((l) => l.dst_id === entity.id && names.has(l.src_id));
   const details = Object.entries(entity.data).filter(
     (entry): entry is [string, string] =>
-      typeof entry[1] === "string" && entry[1].trim() !== "" && entry[0] in DATA_LABELS,
+      typeof entry[1] === "string" && entry[1].trim() !== "" && DATA_KEYS.has(entry[0]),
   );
   // 简介太长时收起只显示 3 行，点开看全文
   const expandable = outgoing.length + incoming.length + details.length > 0 || entity.summary.length > 60;
@@ -82,7 +86,7 @@ function EntityRow({
       <View style={{ flex: 1, gap: open ? space.s : 2 }}>
         <View style={styles.entityTop}>
           <Text style={[styles.entityName, { color: palette.ink, flex: me ? 0 : 1 }]}>{entity.name}</Text>
-          {me ? <Pill label="我" tone="accSolid" height={20} /> : null}
+          {me ? <Pill label={t("world.me")} tone="accSolid" height={20} /> : null}
           {me ? <View style={{ flex: 1 }} /> : null}
           {me ? null : <Text style={[styles.kind, { color: palette.mut }]}>{kind.label}</Text>}
           {expandable ? (
@@ -101,7 +105,7 @@ function EntityRow({
           <View style={{ gap: 4 }}>
             {details.map(([key, value]) => (
               <Text key={key} style={{ fontSize: 13, lineHeight: 20, color: palette.ink }}>
-                <Text style={{ color: palette.mut }}>{DATA_LABELS[key]} </Text>
+                <Text style={{ color: palette.mut }}>{lookup(`world.attrs.${key}`) ?? key} </Text>
                 {value}
               </Text>
             ))}
@@ -131,6 +135,7 @@ export function Entities({
   const palette = usePalette();
   // 深色下面板比页面亮，未选中的标签改用更亮的 card 底；平板的灰底面板上也用 card 底
   const onGrey = useIsDark() || panel;
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<Filter>("all");
   const [open, setOpen] = useState<string | null>(null);
   const entities = view.entities
@@ -146,7 +151,7 @@ export function Entities({
         <Chip
           small
           onGrey={onGrey}
-          label="全部"
+          label={t("world.all")}
           selected={filter === "all"}
           onPress={() => setFilter("all")}
         />
@@ -155,8 +160,8 @@ export function Entities({
             key={k}
             small
             onGrey={onGrey}
-            label={KIND[k]?.label ?? k}
-            icon={KIND[k]?.icon}
+            label={kindOf(k).label}
+            icon={kindOf(k).icon}
             selected={filter === k}
             onPress={() => setFilter(k)}
           />
@@ -175,7 +180,7 @@ export function Entities({
         ))}
       </View>
       {shown.length === 0 ? (
-        <Text style={[styles.empty, { color: palette.mut }]}>还没有记下什么。</Text>
+        <Text style={[styles.empty, { color: palette.mut }]}>{t("world.empty")}</Text>
       ) : null}
     </View>
   );
@@ -193,19 +198,22 @@ export function Links({
 }) {
   const palette = usePalette();
   const surfaces = useSheetSurfaces();
+  const { t } = useTranslation();
   const width = panelWidth - space.list * 2;
   const height = 300;
   const graph = useMemo(() => layoutGraph(view.entities, view.links, width, height), [view, width]);
   const links = view.links.filter((l) => names.has(l.src_id) && names.has(l.dst_id));
   if (links.length === 0)
-    return <Text style={[styles.empty, { color: palette.mut }]}>还没有记下人物和地点之间的关系。</Text>;
+    return <Text style={[styles.empty, { color: palette.mut }]}>{t("world.noLinks")}</Text>;
   return (
     <View>
       <View style={[styles.graph, { backgroundColor: surfaces.fill }]}>
         <Svg
           width={width}
           height={height}
-          accessibilityLabel={`关系图：${graph.nodes.map((n) => n.label).join("、")}`}
+          accessibilityLabel={t("world.graph", {
+            nodes: graph.nodes.map((n) => n.label).join(t("common.listSeparator")),
+          })}
         >
           {graph.edges.map((e, i) => (
             <Line
@@ -291,6 +299,7 @@ export function Facts({
 }) {
   const palette = usePalette();
   const surfaces = useSheetSurfaces();
+  const { t } = useTranslation();
   const facts = [...view.facts].sort(
     (a, b) => Number(a.secret) - Number(b.secret) || b.importance - a.importance,
   );
@@ -313,7 +322,7 @@ export function Facts({
             {f.secret || f.entity_ids.length > 0 ? (
               <Text style={[styles.kind, { color: f.secret ? palette.warn : palette.mut }]}>
                 {[
-                  f.secret ? "秘密 · 已揭示" : null,
+                  f.secret ? t("world.secretRevealed") : null,
                   ...f.entity_ids.map((id) => names.get(id)).filter(Boolean),
                 ]
                   .filter(Boolean)
@@ -326,7 +335,7 @@ export function Facts({
       {view.hidden_facts > 0 ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${view.hidden_facts} 条未揭示的秘密，揭示`}
+          accessibilityLabel={t("world.hiddenLabel", { count: view.hidden_facts })}
           onPress={onReveal}
           style={({ pressed }) => [
             styles.fact,
@@ -335,14 +344,16 @@ export function Facts({
           ]}
         >
           <Icon name="lock" size={16} color={palette.warn} />
-          <Text style={{ flex: 1, fontSize: 13, color: palette.warn }}>{view.hidden_facts} 条秘密</Text>
+          <Text style={{ flex: 1, fontSize: 13, color: palette.warn }}>
+            {t("world.hidden", { count: view.hidden_facts })}
+          </Text>
           <View style={[styles.revealPill, { backgroundColor: surfaces.onFill }]}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: palette.warn }}>揭示</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: palette.warn }}>{t("world.reveal")}</Text>
           </View>
         </Pressable>
       ) : null}
       {facts.length === 0 && view.hidden_facts === 0 ? (
-        <Text style={[styles.empty, { color: palette.mut }]}>还没有记下事实。</Text>
+        <Text style={[styles.empty, { color: palette.mut }]}>{t("world.noFacts")}</Text>
       ) : null}
     </View>
   );

@@ -6,6 +6,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Logo } from "../../components/Logo.tsx";
 import styles from "./auth.module.css";
@@ -50,6 +51,7 @@ function Art() {
 }
 
 export function AuthLayout({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.page}>
       <aside className={styles.panel}>
@@ -58,11 +60,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <Logo size={40} label={null} />
           <span>BetterTavern</span>
         </div>
-        <p className={styles.caption}>
-          导入一张角色卡，
-          <br />
-          用第一人称把故事写下去。
-        </p>
+        <p className={styles.caption}>{t("auth.taglineLines")}</p>
       </aside>
       <div className={styles.formSide}>
         <div className={styles.column}>{children}</div>
@@ -73,10 +71,11 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
 /** 窄屏时表单上面的 Logo 和介绍（宽屏它们在插画区里） */
 export function NarrowIntro({ lead }: { lead?: boolean }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.narrowIntro}>
       <Logo size={48} />
-      {lead ? <p className={styles.lead}>导入一张角色卡，用第一人称把故事写下去。</p> : null}
+      {lead ? <p className={styles.lead}>{t("auth.tagline")}</p> : null}
     </div>
   );
 }

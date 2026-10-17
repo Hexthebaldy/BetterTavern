@@ -16,8 +16,6 @@ export { lightPalette, darkPalette, type Palette } from "@bettertavern/design/pa
 export {
   parseThemeSetting,
   resolveTheme,
-  settingLabel,
-  SYSTEM_SETTING,
   THEME_ORDER,
   THEMES,
   type Scheme,

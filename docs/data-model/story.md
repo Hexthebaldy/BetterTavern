@@ -20,7 +20,7 @@
 | `scenario_id` | uuid | 是 |  | → `scenarios.id`，被删除时置空 |
 | `title` | text | 否 |  | 标题，默认用剧本名，最多 80 字 |
 | `status` | text | 否 | `'building'` | `building` 表示世界还没建好，`active` 表示开局构建已完成，`ended` 表示已经写完结局（见下文“状态”） |
-| `language` | text | 否 | `'zh'` | 提示词的语言；M1 固定为 `zh` |
+| `language` | text | 否 | `'zh'` | 给 agent 的提示词用哪种语言：`zh` / `en`。开局时由客户端按界面语言传来，之后不变（见 [i18n.md](../i18n.md) 第 4 节） |
 | `settings` | jsonb | 否 | `'{}'` | 主角和偏好设置，结构见下文“JSON 列” |
 | `seed` | jsonb | 是 |  | 开局设定（WorldBuilder 或最小 Seed 的输出），结构见下文“JSON 列”；世界建好时写入 |
 | `seed_source` | text | 是 |  | `world_builder` 表示由模型生成。`minimal` 表示没有用模型生成：模型失败或超时、没有可用的路由时只用卡片原文；剧本已被删除时设定里只有主角 |
@@ -37,7 +37,7 @@
 | `updated_at` | timestamptz | 否 | `now()` | 改名、领取租约、世界建好、推进头部、释放租约时写入（续期不写）；游玩列表按它倒序排列 |
 
 约束与索引：
-- `status`、`seed_source` 的 CHECK。
+- `status`、`seed_source`、`language` 的 CHECK。
 - `playthroughs_user_idx (user_id, updated_at DESC)`。
 - `playthroughs_lease_idx (lease_expires_at) WHERE active_turn_id IS NOT NULL`：清理过期租约时用。
 
@@ -154,10 +154,10 @@
 和 SSE 事件 `turn.failed` 的 data 相同（租约在生成中途丢失时例外，见下文“并发控制”）。`code` 的取值见 [api/README.md 的“回合失败码”](../api/README.md#回合失败码)。
 
 ```json
-{ "code": "PROVIDER_ERROR", "message": "模型服务暂时繁忙，请稍后重试", "retryable": true, "partial": false }
+{ "code": "PROVIDER_ERROR", "message": "The model service is busy, please try again shortly", "retryable": true, "partial": false, "reason": "overloaded" }
 ```
 
-`partial` 为真时，`narrative` 里存着生成到一半的草稿。
+`partial` 为真时，`narrative` 里存着生成到一半的草稿。`message` 是英文说明；`reason` 是服务商错误的类别（`auth`、`billing`、`rate_limit` 等，取值同 `providers/errors.py` 的 `ErrorClass`），不是服务商错误时为 null，客户端按 `code` 和 `reason` 翻译成界面语言。这个字段加上之前写入的记录里没有 `reason`。
 
 ## 状态
 

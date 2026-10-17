@@ -5,10 +5,11 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelInfo, ModelRoute, Provider } from "@bettertavern/core/api/types";
-import { MANUAL_WINDOW_CHOICES, needsManualWindow } from "@bettertavern/core/settings/labels";
+import { manualWindowChoices, needsManualWindow } from "@bettertavern/core/settings/labels";
 
 import { Button, Checkbox, cx, Field, Notice } from "../../components/controls.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
@@ -26,6 +27,7 @@ function ProviderTile({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -35,7 +37,7 @@ function ProviderTile({
       onClick={onSelect}
     >
       <ProviderMark provider={provider.id} size={36} tone={selected ? "acc" : "grey"} />
-      {provider.requires_base_url ? "自定义兼容端点" : provider.display_name}
+      {provider.requires_base_url ? t("models.customProvider") : provider.display_name}
     </button>
   );
 }
@@ -49,6 +51,7 @@ export function AddModelForm({
   routes: ModelRoute[];
   onAdded: (route: ModelRoute) => void;
 }) {
+  const { t } = useTranslation();
   const { api } = useApp();
   const [provider, setProvider] = useState(providers[0]?.id ?? "");
   const [key, setKey] = useState("");
@@ -99,7 +102,7 @@ export function AddModelForm({
       const list = await api.models.preview(provider, { api_key: key.trim(), base_url: endpoint() });
       if (seq !== requestSeq.current) return;
       setModels(list);
-      if (list.length === 0) setListError("服务商没有返回模型列表");
+      if (list.length === 0) setListError(t("models.emptyList"));
     } catch (e) {
       if (seq !== requestSeq.current) return;
       setModels(null);
@@ -133,7 +136,7 @@ export function AddModelForm({
     setError(null);
     try {
       const tokens = askWindow
-        ? (MANUAL_WINDOW_CHOICES.find((c) => c.value === windowChoice)?.tokens ?? null)
+        ? (manualWindowChoices().find((c) => c.value === windowChoice)?.tokens ?? null)
         : null;
       const created = await api.models.create({
         provider,
@@ -161,8 +164,8 @@ export function AddModelForm({
     <div className={styles.addForm}>
       <div className={cx(styles.formCard, styles.addLeft)}>
         <div className={styles.formGroup}>
-          <span className={styles.formLabel}>服务商</span>
-          <div className={styles.providerTiles} role="radiogroup" aria-label="服务商">
+          <span className={styles.formLabel}>{t("models.provider")}</span>
+          <div className={styles.providerTiles} role="radiogroup" aria-label={t("models.provider")}>
             {providers.map((p) => (
               <ProviderTile
                 key={p.id}
@@ -174,25 +177,29 @@ export function AddModelForm({
           </div>
         </div>
         <KeyField
-          label="API Key"
+          label={t("models.apiKey")}
           value={key}
           onChange={(e) => {
             setKey(e.target.value);
             setModels(null);
           }}
           placeholder="sk-…"
-          hint="只发送这一次，之后只显示后四位。"
+          hint={t("models.keyHint")}
         />
         <div className={styles.formGroup}>
-          <span className={styles.formLabel}>端点地址</span>
+          <span className={styles.formLabel}>{t("models.endpoint")}</span>
           {needsUrl ? null : (
             <div className={styles.choice}>
-              <Checkbox label="使用官方地址" checked={official} onToggle={() => setOfficial((v) => !v)} />
+              <Checkbox
+                label={t("models.official")}
+                checked={official}
+                onToggle={() => setOfficial((v) => !v)}
+              />
             </div>
           )}
           {useOfficial ? null : (
             <Field
-              label="端点地址"
+              label={t("models.endpoint")}
               className={styles.hiddenLabel}
               value={baseUrl}
               onChange={(e) => {
@@ -204,10 +211,10 @@ export function AddModelForm({
               placeholder={selected?.default_base_url ?? "https://example.com/v1"}
             />
           )}
-          {needsUrl ? <p className={styles.note}>OpenAI 兼容接口的地址，通常以 /v1 结尾。</p> : null}
+          {needsUrl ? <p className={styles.note}>{t("models.endpointNote")}</p> : null}
         </div>
         <Button
-          label={models ? "重新获取模型列表" : "获取模型列表"}
+          label={models ? t("models.refetchList") : t("models.fetchList")}
           variant="secondary"
           icon="retry"
           busy={listing}
@@ -229,17 +236,15 @@ export function AddModelForm({
         />
         {askWindow ? (
           <div>
-            <SectionHeader title="上下文窗口" />
+            <SectionHeader title={t("models.contextWindow")} />
             <div className={styles.formCard}>
               <p className={styles.lead}>
-                {models
-                  ? "服务商的列表里没有这个模型能读多少。知道的话选一下；不知道就先按 32K 估计，之后服务商要是报“超长”会自动纠正。"
-                  : "还没获取模型列表，保存时会再查一次。查不到的话按这里选的算；不知道就先按 32K 估计。"}
+                {models ? t("models.windowAskListed") : t("models.windowAskUnlisted")}
               </p>
               <Segmented
-                label="上下文窗口"
+                label={t("models.contextWindow")}
                 value={windowChoice}
-                options={MANUAL_WINDOW_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
+                options={manualWindowChoices().map((c) => ({ value: c.value, label: c.label }))}
                 onChange={setWindowChoice}
                 mono
               />
@@ -248,12 +253,12 @@ export function AddModelForm({
         ) : null}
         <div className={styles.formCard}>
           <Field
-            label="备注名"
+            label={t("models.label")}
             optional
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             maxLength={60}
-            placeholder={chosen || "不填就显示模型名"}
+            placeholder={chosen || t("models.labelPlaceholder")}
           />
         </div>
       </div>
@@ -263,13 +268,13 @@ export function AddModelForm({
         <div className={styles.saveRow}>
           <div className={styles.choice}>
             <Checkbox
-              label={hasDirector ? "设为导演（替换现在的导演）" : "设为导演"}
+              label={hasDirector ? t("models.makeDirectorReplace") : t("models.makeDirector")}
               checked={director}
               onToggle={() => setDirector((v) => !v)}
             />
           </div>
           <Button
-            label="保存模型"
+            label={t("models.saveModel")}
             size="lg"
             between
             trailingIcon="arrowRight"

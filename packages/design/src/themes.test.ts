@@ -2,14 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { lightPalette } from "./palettes.ts";
-import {
-  parseThemeSetting,
-  resolveTheme,
-  settingLabel,
-  THEME_ORDER,
-  THEMES,
-  type ThemeId,
-} from "./themes.ts";
+import { parseThemeSetting, resolveTheme, THEME_ORDER, THEMES, type ThemeId } from "./themes.ts";
 
 describe("主题表", () => {
   it("存储里不认识的值退回跟随系统", () => {
@@ -28,11 +21,6 @@ describe("主题表", () => {
     assert.equal(resolveTheme("system", null), "light");
     assert.equal(resolveTheme("night", "light"), "night");
     assert.equal(resolveTheme("light", "dark"), "light");
-  });
-
-  it("设置里的名字", () => {
-    assert.equal(settingLabel("system"), "跟随系统");
-    assert.equal(settingLabel("night"), "夜间");
   });
 
   it("每个主题都排进了设置列表，色板字段齐全", () => {

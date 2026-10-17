@@ -242,7 +242,7 @@ export class SseClient {
         signal: connection.signal,
       });
       if (!response.ok) throw new HttpStatusError(response.status);
-      if (!response.body) throw new Error("响应没有 body，当前环境不支持流式读取");
+      if (!response.body) throw new Error("Response has no body: streaming is not supported here");
       this.setState("open");
       armIdleTimer();
       const parser = new SseParser();
@@ -265,7 +265,7 @@ export class SseClient {
         reader.cancel().catch(() => undefined);
       }
     } catch (error) {
-      if (stalled) throw new StalledError(`超过 ${idleTimeoutMs} 毫秒没有收到任何数据`);
+      if (stalled) throw new StalledError(`No data for ${idleTimeoutMs} ms`);
       throw error;
     } finally {
       if (timer !== undefined) clearTimeout(timer);
