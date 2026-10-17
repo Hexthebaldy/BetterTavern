@@ -1,6 +1,6 @@
 /**
  * 设置首页（左栏，同 App 的 app/(tabs)/settings.tsx）：最上面是导演模型卡片（没设置时是琥珀色的引导卡），
- * 下面“配置”“其他”两组，最后是版本号。每一项都是链接；宽屏两栏时打开着的那一项白底加 2px 蓝色内描边，
+ * 下面“配置”（第一行是登录的账户）“其他”两组，最后是版本号。每一项都是链接；宽屏两栏时打开着的那一项白底加 2px 蓝色内描边，
  * 导演模型卡片换成浅灰的。“外观”打开居中对话框（W16），选了立刻生效。
  */
 
@@ -194,6 +194,13 @@ export function SettingsList({ wide }: { wide: boolean }) {
 
       <div className={styles.groupLabel}>配置</div>
       <div className={styles.group}>
+        <Row
+          to="/settings/account"
+          title={name}
+          subtitle={user?.display_name ? user.email : undefined}
+          selected={current === "account"}
+          leading={<span className={styles.avatar}>{Array.from(name)[0] ?? "?"}</span>}
+        />
         {routes.data && !director ? (
           <Row
             to="/settings/models"
@@ -218,13 +225,6 @@ export function SettingsList({ wide }: { wide: boolean }) {
               )
             ) : null
           }
-        />
-        <Row
-          to="/settings/account"
-          title={name}
-          subtitle={user?.display_name ? user.email : undefined}
-          selected={current === "account"}
-          leading={<span className={styles.avatar}>{Array.from(name)[0] ?? "?"}</span>}
         />
       </div>
       <div className={styles.groupLabel}>其他</div>

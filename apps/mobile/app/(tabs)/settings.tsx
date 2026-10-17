@@ -1,5 +1,5 @@
 /**
- * 设置首页：最上面是墨色的导演模型卡片（没设置时是一张琥珀色的引导卡），下面两组：配置、其他。
+ * 设置首页：最上面是墨色的导演模型卡片（没设置时是一张琥珀色的引导卡），下面两组：配置（第一行是登录的账户）、其他。
  * “其他”里的“外观”打开主题面板（跟随系统 / 浅色 / 夜间），选了立刻生效；平板上它是居中对话框。
  *
  * 平板（theme/layout.ts）：中屏单栏，宽 640，居中，逐层进入，和手机一样；
@@ -248,6 +248,20 @@ export default function SettingsScreen() {
 
       <GroupLabel style={styles.label}>配置</GroupLabel>
       <Group>
+        <ListRow
+          key="account"
+          title={name}
+          subtitle={user?.display_name ? user.email : undefined}
+          leading={
+            <View style={[styles.avatar, { backgroundColor: palette.accBg }]}>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: palette.acc }}>
+                {[...name][0] ?? "?"}
+              </Text>
+            </View>
+          }
+          onPress={() => open({ screen: "account" })}
+          selected={isOpen("account")}
+        />
         {data && !director ? (
           <ListRow
             key="director"
@@ -278,20 +292,6 @@ export default function SettingsScreen() {
           }
           onPress={() => open({ screen: "models" })}
           selected={isOpen("models")}
-        />
-        <ListRow
-          key="account"
-          title={name}
-          subtitle={user?.display_name ? user.email : undefined}
-          leading={
-            <View style={[styles.avatar, { backgroundColor: palette.accBg }]}>
-              <Text style={{ fontSize: 15, fontWeight: "700", color: palette.acc }}>
-                {[...name][0] ?? "?"}
-              </Text>
-            </View>
-          }
-          onPress={() => open({ screen: "account" })}
-          selected={isOpen("account")}
         />
       </Group>
       <GroupLabel style={styles.label}>其他</GroupLabel>
