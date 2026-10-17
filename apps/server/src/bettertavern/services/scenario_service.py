@@ -1,4 +1,8 @@
-"""剧本库：导入角色卡（PNG 或 JSON），列表、详情、改名、删除，头像读取。"""
+"""剧本库：导入角色卡（PNG 或 JSON），列表、详情、改名、编辑卡片、恢复导入时的内容、删除，头像读取。
+
+编辑卡片带版本号：读取时拿到 version，保存时带回来，对不上（别的设备改过）就拒绝，免得互相覆盖。
+改名、编辑、恢复都会让版本号加 1。卡片只在开局搭建世界时读一次，所以改卡只影响之后开始的故事。
+"""
 
 from __future__ import annotations
 
@@ -12,11 +16,18 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.scenario.card import CharacterCard, display_text
-from bettertavern.importers.character_card import CardError, import_card
+from bettertavern.domain.scenario.edit import (
+    CardEdit,
+    EditError,
+    apply_edit,
+    book_in_order,
+    changed_fields,
+)
+from bettertavern.importers.character_card import CardError, import_card, normalize_card
 from bettertavern.infra.db.repositories import library as repo
 from bettertavern.infra.db.sqlutil import is_uuid
 
-from .errors import Invalid, NotFound
+from .errors import Conflict, Invalid, NotFound
 
 # 角色卡的文字不进日志，只记大小、格式、条目数和被截断的字段名
 log = structlog.get_logger(__name__)
@@ -37,9 +48,23 @@ class ScenarioView:
     book_entries: int
     alternate_greetings: int
     truncated_fields: list[str]
+    version: int
+    edited_at: datetime | None
     created_at: datetime
     updated_at: datetime
     duplicate: bool = False  # 导入时发现同一个文件已经导入过
+
+
+@dataclass(frozen=True, slots=True)
+class ScenarioCardView:
+    """编辑页用的完整卡片（只含能编辑的部分）；世界书按 order 排好"""
+
+    scenario_id: str
+    version: int
+    edited_at: datetime | None
+    display_name: str
+    card: CharacterCard
+    truncated_fields: list[str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,10 +109,31 @@ def _view(row: repo.ScenarioRow, *, duplicate: bool = False) -> ScenarioView:
         book_entries=len(card.book),
         alternate_greetings=len(card.alternate_greetings),
         truncated_fields=list(card.truncated),
+        version=row.version,
+        edited_at=row.edited_at,
         created_at=row.created_at,
         updated_at=row.updated_at,
         duplicate=duplicate,
     )
+
+
+def _card_view(row: repo.ScenarioRow) -> ScenarioCardView:
+    card = card_of(row)
+    return ScenarioCardView(
+        scenario_id=row.id,
+        version=row.version,
+        edited_at=row.edited_at,
+        display_name=row.name,
+        card=card.model_copy(update={"book": book_in_order(card.book)}),
+        truncated_fields=list(card.truncated),
+    )
+
+
+def _display_name(name: str) -> str:
+    name = strip_nul(name).strip()[:80]
+    if not name:
+        raise Invalid("名字不能为空", field="display_name")
+    return name
 
 
 class ScenarioService:
@@ -186,6 +232,78 @@ class ScenarioService:
         if row is None:
             raise NotFound("剧本不存在")
         return _view(row)
+
+    async def card_detail(self, user_id: str, scenario_id: str) -> ScenarioCardView:
+        return _card_view(await self.row(user_id, scenario_id))
+
+    async def update_card(
+        self, user_id: str, scenario_id: str, *, version: int, display_name: str, edit: CardEdit
+    ) -> ScenarioCardView:
+        name = _display_name(display_name)
+        if not is_uuid(scenario_id):
+            raise NotFound("剧本不存在")
+        async with self._engine.begin() as conn:
+            row = await repo.get_scenario(conn, user_id, scenario_id)
+            if row is None:
+                raise NotFound("剧本不存在")
+            if row.version != version:
+                raise Conflict(
+                    "这张角色卡在别处改过了，请重新加载后再改",
+                    code="CARD_CHANGED",
+                    version=row.version,
+                )
+            before = card_of(row)
+            try:
+                after = apply_edit(before, edit)
+            except EditError as exc:
+                raise Invalid(exc.message, field=exc.field) from exc
+            changed = changed_fields(before, after)
+            updated = await repo.update_scenario_card(
+                conn,
+                user_id,
+                scenario_id,
+                name=name,
+                card=after.model_dump(mode="json"),
+                card_changed=bool(changed),
+                expected_version=version,
+            )
+            if updated is None:  # 读完之后、写之前被别处改了
+                raise Conflict(
+                    "这张角色卡在别处改过了，请重新加载后再改",
+                    code="CARD_CHANGED",
+                    version=version + 1,
+                )
+        # 只记改了哪些字段和大小，不记内容
+        log.info(
+            "scenario.card_updated",
+            scenario_id=scenario_id,
+            version=updated.version,
+            changed=changed,
+            renamed=name != row.name,
+            book_entries=len(after.book),
+            total_chars=after.total_chars(),
+        )
+        return _card_view(updated)
+
+    async def reset_card(self, user_id: str, scenario_id: str) -> ScenarioCardView:
+        """恢复成导入时的内容（用 scenarios.raw 重新整理一遍）；显示名不变。"""
+        if not is_uuid(scenario_id):
+            raise NotFound("剧本不存在")
+        async with self._engine.begin() as conn:
+            raw = await repo.get_scenario_raw(conn, user_id, scenario_id)
+            if raw is None:
+                raise NotFound("剧本不存在")
+            try:
+                card = normalize_card(raw)
+            except CardError as exc:  # 导入时整理成功过，不应该出现
+                raise Invalid(f"原始卡片无法恢复：{exc}", code="CARD_INVALID") from exc
+            row = await repo.reset_scenario_card(
+                conn, user_id, scenario_id, strip_nul(card.model_dump(mode="json"))
+            )
+        if row is None:
+            raise NotFound("剧本不存在")
+        log.info("scenario.card_reset", scenario_id=scenario_id, version=row.version)
+        return _card_view(row)
 
     async def delete(self, user_id: str, scenario_id: str) -> None:
         if not is_uuid(scenario_id):

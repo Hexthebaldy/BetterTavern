@@ -136,6 +136,7 @@
 | `STALE_PARENT` | 409 | `parent_turn_id` 不是当前头部 | `head_turn_id` |
 | `OPENING_PENDING` | 409 | 开场还没完成就提交了行动 |  |
 | `STORY_ENDED` | 409 | 这局已经写完结局，不能再提交行动 |  |
+| `CARD_CHANGED` | 409 | 保存角色卡时版本号对不上：在别处改过了 | `version`（当前的版本号） |
 | `TURN_NOT_LOCAL` | 409 | 要停止的回合不在当前实例上 |  |
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体或文件超过限制 |  |
 | `VALIDATION_ERROR` | 422 | 参数不符合要求 | `errors`（模型校验）或 `field`（业务校验）；行动本身的校验错误两个都不带；探针接口用 `detail` |

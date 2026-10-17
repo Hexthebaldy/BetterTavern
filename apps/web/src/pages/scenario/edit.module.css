@@ -1,0 +1,131 @@
+/* 编辑角色卡与世界书条目：数值同 App 的 app/scenario/[id]/edit.tsx、BookEditor.tsx */
+
+/* ---- 版式：单栏，最宽 640，居中；顶上一条贴着 ---- */
+.page {
+  max-width: calc(var(--readable) + 24px);
+  margin: 0 auto;
+  padding: 0 12px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  margin: 0 -12px;
+  padding: 0 12px;
+  background: var(--bg);
+}
+.title {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+/* ---- 分节 ---- */
+.section {
+  padding-top: 20px;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 700;
+}
+.sectionRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sectionMeta {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+.note {
+  margin-top: -4px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--mut);
+}
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+/* ---- 世界书条目 ---- */
+.book {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.entry {
+  border-radius: var(--r-card);
+  background: var(--bg2);
+  overflow: hidden;
+}
+.entryHead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font: inherit;
+  text-align: left;
+}
+.entryIndex {
+  width: 24px;
+  flex: none;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.entryTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.entryOff {
+  color: var(--mut);
+}
+/* 胶囊默认贴着顶，在这一行里要居中 */
+.entryPill {
+  align-self: center;
+}
+.entryBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  font-size: 15px;
+  color: var(--ink);
+}
+.entryActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.spacer {
+  flex: 1;
+}

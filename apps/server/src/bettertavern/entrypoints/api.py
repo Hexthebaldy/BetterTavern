@@ -26,6 +26,7 @@ from bettertavern.api.v1.auth import router as auth_router
 from bettertavern.api.v1.health import router as health_router
 from bettertavern.api.v1.playthroughs import router as playthroughs_router
 from bettertavern.api.v1.routes import router as routes_router
+from bettertavern.api.v1.scenarios import CARD_PATH_PATTERN, MAX_CARD_BODY_BYTES
 from bettertavern.api.v1.scenarios import router as scenarios_router
 from bettertavern.importers.character_card import MAX_UPLOAD_BYTES
 from bettertavern.infra.crypto.keyring import load_secrets
@@ -156,7 +157,9 @@ def create_app(
     install_error_handlers(app)
     # 角色卡上传另算：16 MB 的文件加上 multipart 的边界和头
     app.add_middleware(
-        BodySizeLimit, limits={"/v1/scenarios/import": MAX_UPLOAD_BYTES + 256 * 1024}
+        BodySizeLimit,
+        limits={"/v1/scenarios/import": MAX_UPLOAD_BYTES + 256 * 1024},
+        patterns=[(CARD_PATH_PATTERN, MAX_CARD_BODY_BYTES)],
     )
     if settings.cors_origin_list:
         app.add_middleware(

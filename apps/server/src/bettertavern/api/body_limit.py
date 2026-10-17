@@ -7,7 +7,8 @@ FastAPI 在调用接口函数之前就会把请求体整个读进来（multipart
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import re
+from collections.abc import Mapping, Sequence
 
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -18,18 +19,34 @@ DEFAULT_LIMIT = 1024 * 1024
 
 
 class BodySizeLimit:
+    """limits 按完整路径配置；patterns 按正则配置（路径里带 id 的接口）；先查 limits"""
+
     def __init__(
-        self, app: ASGIApp, *, default: int = DEFAULT_LIMIT, limits: Mapping[str, int] | None = None
+        self,
+        app: ASGIApp,
+        *,
+        default: int = DEFAULT_LIMIT,
+        limits: Mapping[str, int] | None = None,
+        patterns: Sequence[tuple[str, int]] = (),
     ) -> None:
         self.app = app
         self.default = default
         self.limits = dict(limits or {})
+        self.patterns = [(re.compile(pattern), limit) for pattern, limit in patterns]
+
+    def limit_for(self, path: str) -> int:
+        if path in self.limits:
+            return self.limits[path]
+        for pattern, limit in self.patterns:
+            if pattern.match(path):
+                return limit
+        return self.default
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope["method"] in ("GET", "HEAD", "OPTIONS"):
             await self.app(scope, receive, send)
             return
-        limit = self.limits.get(scope["path"], self.default)
+        limit = self.limit_for(scope["path"])
         declared = _content_length(scope)
         if declared is not None and declared > limit:
             response = problem(413, "PAYLOAD_TOO_LARGE", _title(limit), retryable=False)

@@ -1,5 +1,5 @@
 /**
- * 共用控件：按钮、图标按钮、输入框、提示条、胶囊、加载点。外观和状态与 App 的 primitives、controls、feedback 对应，
+ * 共用控件：按钮、图标按钮、输入框、开关、提示条、胶囊、加载点。外观和状态与 App 的 primitives、controls、feedback 对应，
  * 悬停、按下、键盘焦点写在 controls.module.css 里，页面不再单独写。
  */
 
@@ -246,6 +246,8 @@ type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
   /** 标签只给读屏用，不显示 */
   hideLabel?: boolean;
+  /** 标签后面的“可选” */
+  optional?: boolean;
   /** 右下角显示“已输入 / 上限”（需要 maxLength） */
   counter?: boolean;
   hint?: string;
@@ -258,6 +260,7 @@ type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 export function TextArea({
   label,
   hideLabel,
+  optional,
   counter,
   hint,
   error,
@@ -277,6 +280,7 @@ export function TextArea({
         <div className={styles.labelRow}>
           <label htmlFor={inputId} className={styles.label}>
             {label}
+            {optional ? <span className={styles.optional}> 可选</span> : null}
           </label>
         </div>
       )}
@@ -308,6 +312,28 @@ export function TextArea({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** 开关：52×32 的胶囊，打开是强调色。外面包一个 label 写文字，点文字也能切换 */
+export function Toggle({
+  checked,
+  onChange,
+  className,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "onChange"> & {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <input
+      type="checkbox"
+      role="switch"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className={cx(styles.toggle, className)}
+      {...rest}
+    />
   );
 }
 

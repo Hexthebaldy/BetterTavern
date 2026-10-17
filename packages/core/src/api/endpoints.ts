@@ -16,6 +16,8 @@ import type {
   Provider,
   RouteParams,
   Scenario,
+  ScenarioCard,
+  ScenarioCardInput,
   Turn,
   TurnCreated,
   User,
@@ -126,6 +128,13 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
       list: () => client.get<Scenario[]>("/v1/scenarios"),
       get: (id: string) => client.get<Scenario>(`/v1/scenarios/${enc(id)}`),
       rename: (id: string, name: string) => client.patch<Scenario>(`/v1/scenarios/${enc(id)}`, { name }),
+      /** 编辑页：能编辑的那部分卡片和版本号 */
+      card: (id: string) => client.get<ScenarioCard>(`/v1/scenarios/${enc(id)}/card`),
+      /** 保存编辑；版本号对不上（别处改过）时是 409 CARD_CHANGED。整张卡可能接近 1 MB，超时放宽 */
+      saveCard: (id: string, input: ScenarioCardInput) =>
+        client.put<ScenarioCard>(`/v1/scenarios/${enc(id)}/card`, input, { timeoutMs: 60_000 }),
+      /** 恢复成导入时的内容（显示名不变） */
+      resetCard: (id: string) => client.post<ScenarioCard>(`/v1/scenarios/${enc(id)}/card/reset`),
       remove: (id: string) => client.delete<void>(`/v1/scenarios/${enc(id)}`),
       blobPath: (blobId: string) => `/v1/blobs/${enc(blobId)}`,
     },

@@ -1138,6 +1138,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | `/v1/model-routes*` | 设计里密钥（`/credentials`）和按 task 的路由（`PUT /model-routes`）分开；实现里合成一行一个模型，Key 和模型一次配好，所有 task 用导演那一行。响应带窗口校验结果 `window`：`model_window`、`source`（窗口从哪来）、`working_cap`、`max_tokens`、`effective_window`、`warnings`（`WINDOW_CLAMPED`） |
 | `POST /v1/providers/{provider}/models` | 用还没保存的 Key 拉模型列表，添加模型的表单在保存前用 |
 | `GET /v1/blobs/{id}` | 头像 |
+| `GET` / `PUT /v1/scenarios/{id}/card`、`POST /v1/scenarios/{id}/card/reset` | 导入后编辑角色卡、恢复导入时的内容（见下文“新增：导入后编辑角色卡”） |
 | 还没有 | `GET /me/export`、单局路由覆盖、`/options/regenerate`、`/regenerate`、`/rollback`、`/summary`、`/outline`、会话通道、`/metrics` |
 
 ### 新增的错误码
@@ -1147,6 +1148,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | `ROUTE_MISSING` | 409 | 还没有配置导演模型（创建游玩、提交行动时检查；生成时如果路由被删掉，也会以这个码结束回合） |
 | `OPENING_PENDING` | 409 | 开场还没有完成就提交了行动 |
 | `STORY_ENDED` | 409 | 这局已经写完结局，不能再提交行动 |
+| `CARD_CHANGED` | 409 | 保存角色卡时版本号对不上，在别处改过了 |
 | `OPENING_EXISTS` | 422 | 已经有开场了，又请求生成开场 |
 | `OPTION_NOT_FOUND` | 422 | `option_id` 不在父回合的选项里 |
 | `TURN_NOT_LOCAL` | 409 | 要取消的回合不在当前实例上；租约到期后会自动结束 |
@@ -1169,6 +1171,17 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
   日志 `director.parse` 的 `stage` 是 `ending`，结局里缺 `<options>` 不算修补。
 - 提交时推进头部的那条带围栏的 UPDATE 同时把 `playthroughs.status` 改成 `ended`（[data-model/story.md](data-model/story.md)），写一条 `playthrough.ended` 日志（只记字数）。
 - `ended` 之后不能再提交任何行动（409 `STORY_ENDED`），没有撤销。M2 的回退做好后，可以考虑让“退回到结局之前”把状态改回 `active`。
+
+### 新增：导入后编辑角色卡
+
+导入的角色卡可以编辑：角色名、描述、性格、情境、开场白、对话示例、标签，以及卡片自带的世界书条目（和以后单独的世界书模块无关）。
+接口见 [api/library.md](api/library.md)，表结构见 [data-model/library.md](data-model/library.md)。
+
+- 编辑规则在 `domain/scenario/edit.py`，上限和导入共用 `domain/scenario/card.py` 的常量。导入时超长截断，编辑时超长拒绝并指出字段。
+- 剧本有版本号 `version`，改名、编辑、恢复都加 1；保存时带回读取时的版本号，用带条件的 UPDATE 防止两台设备互相覆盖（409 `CARD_CHANGED`）。
+- 恢复导入时的内容不额外存东西：`scenarios.raw` 本来就保存着原始 JSON，重新跑一遍导入时的整理（`normalize_card`）。
+- 卡片只在开局搭建世界时读一次，所以编辑只影响之后开始的故事。
+- 日志 `scenario.card_updated` 只记改了哪些字段、条目数和总字数，`scenario.card_reset` 只记版本号，不记卡片内容。
 
 `turn.failed` 里新增的 code：`RUNNER_LOST`（租约过期被清理，或者提交时发现租约已被收回；可以重试）、`CANCELLED`（玩家停止或服务重启）、
 `NARRATIVE_MISSING`（模型没有写出叙述）、`INTERNAL_ERROR`。

@@ -1,15 +1,16 @@
 /**
  * 剧本详情：封面、角色卡概要、原卡的开场白，下面是“开始新的故事”的五步表单。
  * 开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
- * 右上角“更多”里可以重命名、删除剧本；删除按钮也在页面最底下。
+ * 剧本名右边是“编辑角色卡”（edit.tsx，剧本名也在那里改）；删除剧本的按钮在页面最底下。
+ * 编辑过的卡在标题上方标“已编辑”。从编辑页回来时重新加载（useAsync 在回到页面时会再取一次）。
  *
  * 平板（theme/layout.ts）：中屏单栏，宽 640，居中。宽屏两栏（设计稿 T12），两栏各自滚动：
- * 左栏宽 420 是封面（高 236，返回和“更多”浮在上面）、名字、标签、统计、简介、原卡开场白；
+ * 左栏宽 420 是封面（高 236，返回按钮浮在上面）、名字、标签、统计、简介、原卡开场白；
  * 右栏是开始新故事的五步，底部浮着一条摘要栏（已选项胶囊加“开始故事”），圆角 34，带投影。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -17,7 +18,7 @@ import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { pane } from "@bettertavern/design/layout";
 
-import { Cover } from "../../src/components/Cover.tsx";
+import { Cover } from "../../../src/components/Cover.tsx";
 import {
   BackBar,
   Button,
@@ -30,12 +31,12 @@ import {
   useColumnStyle,
   useOverlay,
   type IconName,
-} from "../../src/components/ui.tsx";
-import { StartForm, type StartValues } from "../../src/features/scenario/StartForm.tsx";
-import { useAsync } from "../../src/hooks/useAsync.ts";
-import { useLayout } from "../../src/hooks/useLayout.ts";
-import { useApp } from "../../src/state/AppProvider.tsx";
-import { font, radius, size, space, type, usePalette } from "../../src/theme/index.ts";
+} from "../../../src/components/ui.tsx";
+import { StartForm, type StartValues } from "../../../src/features/scenario/StartForm.tsx";
+import { useAsync } from "../../../src/hooks/useAsync.ts";
+import { useLayout } from "../../../src/hooks/useLayout.ts";
+import { useApp } from "../../../src/state/AppProvider.tsx";
+import { font, radius, size, space, type, usePalette } from "../../../src/theme/index.ts";
 
 /** 角色卡里可能被截断的字段 */
 const FIELD_NAMES: Record<string, string> = {
@@ -71,7 +72,7 @@ function Stat({
   );
 }
 
-function Overview({ scenario }: { scenario: Scenario }) {
+function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void }) {
   const palette = usePalette();
   const [expanded, setExpanded] = useState(false);
   const [clamped, setClamped] = useState(false);
@@ -81,10 +82,14 @@ function Overview({ scenario }: { scenario: Scenario }) {
       <View style={styles.titleBlock}>
         <Text style={[styles.caption, { color: palette.mut }]}>
           角色卡{scenario.creator ? ` · 作者 ${scenario.creator}` : ""}
+          {scenario.edited_at ? " · 已编辑" : ""}
         </Text>
-        <Text accessibilityRole="header" style={[styles.hero, { color: palette.ink }]}>
-          {scenario.name}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text accessibilityRole="header" style={[styles.hero, { flex: 1, color: palette.ink }]}>
+            {scenario.name}
+          </Text>
+          <Button label="编辑角色卡" icon="write" variant="secondary" onPress={onEdit} style={styles.edit} />
+        </View>
         {scenario.tags.length > 0 ? (
           <View style={styles.tags}>
             {scenario.tags.slice(0, 8).map((tag) => (
@@ -163,16 +168,9 @@ export default function ScenarioScreen() {
   const insets = useSafeAreaInsets();
   const { width, expanded } = useLayout();
   const column = useColumnStyle();
-  const moreButton = useRef<View>(null);
   // 宽屏右栏底部浮着的摘要栏有多高：表单最后留出这么多
   const [barHeight, setBarHeight] = useState(120);
-  const {
-    data: scenario,
-    error,
-    loading,
-    reload,
-    setData,
-  } = useAsync(() => api.scenarios.get(id), [api, id]);
+  const { data: scenario, error, loading, reload } = useAsync(() => api.scenarios.get(id), [api, id]);
   const [values, setValues] = useState<StartValues | null>(null);
   const [summary, setSummary] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
@@ -222,35 +220,7 @@ export default function ScenarioScreen() {
     }
   };
 
-  const rename = async (): Promise<void> => {
-    const name = await overlay.prompt({
-      title: "重命名剧本",
-      label: "剧本名",
-      initial: scenario.name,
-      maxLength: 80,
-    });
-    if (!name || name === scenario.name) return;
-    try {
-      const updated = await api.scenarios.rename(scenario.id, name);
-      setData(() => updated);
-    } catch (e) {
-      overlay.toast(`重命名失败：${describeError(e)}`, { icon: "alert" });
-    }
-  };
-
-  const more = async (): Promise<void> => {
-    const key = await overlay.menu({
-      title: scenario.name,
-      items: [
-        { key: "rename", label: "重命名剧本", icon: "write" },
-        { key: "delete", label: "删除剧本", icon: "trash", danger: true },
-      ],
-      // 平板上贴着“更多”按钮弹出
-      anchor: moreButton,
-    });
-    if (key === "rename") void rename();
-    if (key === "delete") void remove();
-  };
+  const edit = (): void => router.push({ pathname: "/scenario/[id]/edit", params: { id: scenario.id } });
 
   const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
   // 封面宽度：手机整屏减两边 12；中屏的居中栏最宽 640；宽屏左栏 420
@@ -268,7 +238,7 @@ export default function ScenarioScreen() {
         height={coverHeight}
         rounded={34}
       />
-      {/* 封面伸到状态栏下面，两个按钮避开刘海和灵动岛 */}
+      {/* 封面伸到状态栏下面，返回按钮避开刘海和灵动岛 */}
       <View style={[styles.coverBar, { top: Math.max(insets.top - space.list, 0) + space.s }]}>
         <IconButton
           icon="back"
@@ -276,14 +246,6 @@ export default function ScenarioScreen() {
           tone="card"
           diameter={size.touch}
           onPress={() => router.back()}
-        />
-        <IconButton
-          ref={moreButton}
-          icon="more"
-          label="更多：重命名、删除"
-          tone="card"
-          diameter={size.touch}
-          onPress={() => void more()}
         />
       </View>
     </View>
@@ -298,7 +260,6 @@ export default function ScenarioScreen() {
   );
   const form = (
     <StartForm
-      cardName={scenario.name}
       wide={expanded}
       onChange={(next, parts) => {
         setValues(next);
@@ -359,7 +320,7 @@ export default function ScenarioScreen() {
           contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}
         >
           {cover}
-          <Overview scenario={scenario} />
+          <Overview scenario={scenario} onEdit={edit} />
           {danger}
         </ScrollView>
         <View style={{ flex: 1 }}>
@@ -402,7 +363,7 @@ export default function ScenarioScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {cover}
-        <Overview scenario={scenario} />
+        <Overview scenario={scenario} onEdit={edit} />
         {startHead}
         {form}
         <View style={[styles.submit, { backgroundColor: palette.card, boxShadow: palette.shadowFloat }]}>
@@ -418,13 +379,7 @@ export default function ScenarioScreen() {
 
 const styles = StyleSheet.create({
   cover: { marginTop: space.list, marginHorizontal: space.list },
-  coverBar: {
-    position: "absolute",
-    left: space.m,
-    right: space.m,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
+  coverBar: { position: "absolute", left: space.m },
   titleBlock: { paddingTop: 22, paddingHorizontal: space.page, paddingBottom: space.l, gap: space.m },
   caption: { fontSize: 13, lineHeight: 19 },
   hero: { ...type.hero },
@@ -451,6 +406,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.input,
   },
   greeting: { paddingVertical: 18, gap: 6 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: space.m },
+  /** 剧本名右边的小按钮 */
+  edit: { height: 40, paddingHorizontal: space.l },
   startHead: {
     paddingTop: 40,
     paddingBottom: space.l,

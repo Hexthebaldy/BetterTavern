@@ -34,7 +34,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 | 布局系统：断点、侧栏、栏宽、阅读页、浮层、鼠标状态、键盘、网格、浏览器细节 | `WebSystem.png` | 本目录的 `layout.ts`、`tokens.css`；平板的 `src/theme/layout.ts` |
 | W01 登录（左右分栏、悬停）<br>W02 注册 + 服务器对话框 | `WebAuth.png` | `app/(auth)/*`、`src/components/AuthLayout.tsx`（插画区）、`ServerSetting.tsx` |
 | W03 故事网格 + 右键菜单<br>W04 剧本网格 + 拖放导入 | `WebHome.png` | `app/(tabs)/playthroughs.tsx`、`src/features/stories/StoryCards.tsx`（主卡和小卡）、`app/(tabs)/library.tsx`、`src/features/library/LibraryParts.tsx` |
-| W05 剧本详情两栏 | `WebScenario.png` | `app/scenario/[id].tsx`、`src/features/scenario/StartForm.tsx`、`startForm.ts` |
+| W05 剧本详情两栏 | `WebScenario.png` | `app/scenario/[id]/index.tsx`、`src/features/scenario/StartForm.tsx`、`startForm.ts` |
 | W06 阅读页空闲：侧栏 + 世界停靠，悬停选项<br>W07 生成中：1280，侧栏让位成导航条，世界的“关系”页，提示 | `WebPlay.png` | `app/play/[id]/index.tsx`；`src/features/play/` 里的 `StoryFeed`、`TurnActions`、`BottomBar`、`WorldSheet`、`WorldParts`、`worldGraph.ts`、`turnMachine.ts`、`usePlaySession.ts` |
 | W08 自己写（底栏原地展开），侧栏行悬停<br>W09 夜间 +“更多”菜单 | `WebPlay2.png` | `ActionParts.tsx`（`FreeInput`）、`MoreSheet.tsx`、`reading.ts` |
 | W10 事实 + 揭示秘密确认<br>W11 1024 下世界从右侧滑出，展开一个人物<br>W12 键盘快捷键 | `WebPlay3.png` | `WorldSheet.tsx`、`WorldParts.tsx`；快捷键对话框是网页端新加的 |
@@ -322,10 +322,10 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
     - 网格里的“正在导入”卡片显示当前这一张和进度“2 / 3”；
     - 全部完成后留在剧本库，浮条“导入了 3 张角色卡”，有失败的另外列出。
 - **剧本详情（W05）。** 同平板 T12：
-  - 左栏 420：封面 236 高，返回和“更多”浮在封面上；下面是名字、标签、统计、描述、原卡开场白；
+  - 左栏 420：封面 236 高，返回浮在封面上（设计稿里的“更多”已去掉）；下面是名字、标签、统计、描述、原卡开场白；
   - 右栏：开始新的故事的五步，底部浮着摘要栏（圆角 34，带阴影）；
   - 两栏各自滚动；
-  - 第 1 步的名字建议排在输入框右边，第 2 步的身份图块一行 4 个。
+  - 第 1 步的名字建议排在输入框右边（第 2 步的身份图块已去掉，只有输入框）。
 
 ### 9. 设置（W13–W17）
 

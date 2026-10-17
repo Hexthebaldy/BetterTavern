@@ -75,6 +75,7 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 | `(auth)/login`、`register` | 登录与注册 |  |
 | `(tabs)/library` | 剧本库 | 导入角色卡，列表，进入详情 |
 | `scenario/[id]` | 剧本详情 | 预览、设置主角名与偏好、开始 |
+| `scenario/[id]/edit` | 编辑角色卡 | 改角色信息和卡片自带的世界书，只影响之后开始的故事 |
 | `(tabs)/playthroughs` | 继续游玩 | 最近的故事 |
 | `play/[id]` | 阅读主屏 | 故事流、两个选项、自由输入、菜单（重新生成、回退、世界、时间线） |
 | `play/[id]/world` | 世界 | 按类型分页浏览实体；角色私有的秘密默认隐藏 |
@@ -95,7 +96,7 @@ apps/mobile/
 │   ├── _layout.tsx  index.tsx
 │   ├── (auth)/  login.tsx  register.tsx
 │   ├── (tabs)/  _layout.tsx  library.tsx  playthroughs.tsx  settings.tsx
-│   ├── scenario/[id].tsx
+│   ├── scenario/[id]/  index.tsx  edit.tsx
 │   ├── play/[id]/  index.tsx  world.tsx  timeline.tsx  outline.tsx
 │   └── settings/  models.tsx  model/[id].tsx  account.tsx
 ├── src/
@@ -149,7 +150,8 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | --- | --- |
 | `(auth)/login`、`(auth)/register` | 登录、注册；底部的服务器行打开服务器面板（最近用过的地址单选、输入新地址、测试连接），连不上时自动打开 |
 | `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 故事列表（左滑或长按：重命名、删除）、剧本库（网格 / 列表，导入角色卡，长按或左滑：重命名、删除）、设置首页（导演模型卡片） |
-| `scenario/[id]` | 剧本详情：封面、概要、原卡开场白；“开始新的故事”五步表单（名字建议、身份底稿、篇幅、文风标签、不想看到的勾选清单），拼回原来的字段 |
+| `scenario/[id]`（`scenario/[id]/index.tsx`） | 剧本详情：封面、概要（剧本名右边是“编辑角色卡”，改过的卡标“已编辑”）、原卡开场白；“开始新的故事”五步表单（名字建议、“这个角色是谁”输入框、篇幅、文风标签、不想看到的勾选清单），拼回原来的字段；页面最底下是删除剧本（剧本名在编辑页里改；封面上只有返回按钮，没有“更多”） |
+| `scenario/[id]/edit` | 编辑角色卡：剧本名、角色名、标签，描述、性格，情境、开场白，对话示例，卡片自带的世界书（条目收起显示名称和常驻 / 未启用 / 有问题的标记，展开改名称、关键词、内容、启用、常驻，上移、下移、删除）。保存前按和服务端相同的规则检查（`@bettertavern/core/scenario/cardEdit`），不合格的字段标红，之后每次修改重新检查；保存带版本号，别处改过（409 `CARD_CHANGED`）时问要不要重新加载；有没保存的修改时离开先问“放弃修改？”；页底“恢复导入时的内容” |
 | `play/[id]` | 阅读主屏；选项接在最新一段后面，跟着正文滚动；底部固定的操作栏左边是世界状态面板（人物与地点、关系图、事实，揭示秘密前确认），右边是“更多”（阅读设置：宋体 / 黑体、字号；重命名、写结局、删除故事），中间是“自己写…”或生成中的状态和“停止”，往上翻时右端多出一个回到最新的下箭头按钮；导航栏只有返回和标题 |
 | `settings/models` | 模型列表（导演那一行带标记）和添加模型：服务商图块 → Key（每次都新填，可粘贴；不列出已配置过的 Key）→ 端点（使用官方地址）→ 模型列表（Key 和端点填好后自动获取，也可以手动重新获取）、搜索兼手动输入 → 上下文窗口（只有服务商列表和内置资料都不知道时才让填，不知道就按 32K 估计）→ 备注名、是否设为导演 → 保存。一个 Key 配几个模型时每个模型一行 |
 | `settings/model/[id]` | 模型详情：服务商、Key、模型名、端点；测试这个模型（结果存在模型上）、设为导演；“能记住多少”格子图，标出窗口的来源（服务商提供、内置资料、你填的、按服务商报错纠正、估计值），估计值和手填的可以改；工作窗口上限、深度思考；编辑备注名、模型名和端点；更换 Key（别的模型也用这个 Key 时可以一起换）；取消导演；删除 |
@@ -211,6 +213,7 @@ packages/
 │   ├── auth/     session.ts                # SessionManager：令牌、单飞刷新
 │   ├── play/     turnMachine.ts  playSession.ts  reading.ts  worldGraph.ts  testing.ts（测试用的回合样本）
 │   ├── scenario/ startForm.ts              # 开始新故事的内置选项与拼接
+│   │             cardEdit.ts               # 编辑角色卡：草稿、上限（同服务端）、保存前检查、世界书条目移动
 │   ├── settings/ labels.ts  window.ts      # 模型状态、窗口来源的文案；“能记住多少”的格子
 │   ├── probe/    probeSession.ts           # 连接测试
 │   ├── observability/ log.ts  requests.ts  # 诊断日志：脱敏、请求记录
@@ -233,7 +236,7 @@ apps/mobile/
     │   │             ActionParts.tsx  WorldSheet.tsx  WorldParts.tsx  MoreSheet.tsx
     │   ├── stories/  StoryCards.tsx                   # 平板的故事卡片（网格小卡、主卡）
     │   ├── library/  LibraryParts.tsx                 # 剧本库的卡片、列表行、空状态
-    │   ├── scenario/ StartForm.tsx                    # 开始新故事的表单
+    │   ├── scenario/ StartForm.tsx  BookEditor.tsx    # 开始新故事的表单；编辑角色卡里的世界书
     │   ├── settings/ servers.ts  AddModelForm.tsx  ModelPicker.tsx  ModelSheets.tsx
     │   │             MemoryBlocks.tsx  ProbeResults.tsx  AppearanceSheet.tsx  nav.tsx  SettingsPane.tsx
     │   │             screens/（模型列表、模型详情、账户的页面主体）
@@ -265,7 +268,7 @@ apps/mobile/
 | --- | --- | --- |
 | 构建 | Vite + TypeScript（strict） | 开发和预览服务器把 `/v1`、`/health`、`/ready` 转给后端（默认 `http://localhost:8000`，`BT_API_URL` 可以改） |
 | 界面 | React 19，浏览器的 DOM 和 CSS | 不用 react-native-web：链接、表单自动填充、`:focus-visible`、悬停、右键菜单、拖放、选中复制都是浏览器原生的 |
-| 路由 | react-router 7 | 地址和 App 的 expo-router 一一对应：`/login`、`/register`、`/playthroughs`、`/library`、`/scenario/:id`、`/play/:id`、`/settings`、`/settings/models`、`/settings/model/:id`、`/settings/account`、`/dev/probe` |
+| 路由 | react-router 7 | 地址和 App 的 expo-router 一一对应：`/login`、`/register`、`/playthroughs`、`/library`、`/scenario/:id`、`/scenario/:id/edit`、`/play/:id`、`/settings`、`/settings/models`、`/settings/model/:id`、`/settings/account`、`/dev/probe` |
 | 服务端数据 | TanStack Query | 没有下拉刷新：回到标签页、窗口回到前台时自动刷新 |
 | 样式 | CSS Modules + CSS 变量 | 变量名同 `docs/design/ui/web/tokens.css`；色板由 `ThemeProvider` 从 `@bettertavern/design` 写到 `<html>` 上 |
 | 共用 | `@bettertavern/core`、`@bettertavern/design` | 接口客户端、SSE、会话、回合状态机、色板、布局函数、图标和封面的数据，和 App 是同一份代码（见第 3 节的“目录”） |
@@ -288,7 +291,8 @@ apps/mobile/
 | `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交；宽屏左边是插画区 |
 | `/playthroughs` | 故事（W03）：三列网格，最近一个故事放大成主卡（两列两行）；600–899 两列，手机一列 |
 | `/library` | 剧本库（W04）：网格按内容宽度 ÷ 240 取整（2–5 列）或限宽 640 的列表；导入按钮可以多选 |
-| `/scenario/:id` | 剧本详情（W05）：≥ 900 两栏各自滚动，右栏是开始新故事的五步，底部浮着摘要栏；更窄单栏 |
+| `/scenario/:id` | 剧本详情（W05）：≥ 900 两栏各自滚动，右栏是开始新故事的五步，底部浮着摘要栏；更窄单栏。剧本名右边进编辑角色卡；封面上只有返回按钮，删除剧本在概要下面（单栏时在最底下） |
+| `/scenario/:id/edit` | 编辑角色卡：单栏（≤ 640）居中，顶上一条（返回、标题、保存）贴着；内容和规则同 App 的 `scenario/[id]/edit`。没保存时站内跳转（侧栏、返回、浏览器后退）由路由的 blocker 先问，刷新或关标签页由浏览器提示（`beforeunload`） |
 | `/play/:id` | 阅读页（W06–W11）：书名页、故事流、选项（≥ 900 两列）、底部操作栏、世界状态（停靠 / 滑出）、更多（含写结局，行为同 App） |
 | `/settings` 及子页 | 设置（W13–W17）：≥ 900 两栏，左栏是设置首页，右栏是子页（模型、模型详情、账户、连接测试）；更窄逐层进入 |
 
@@ -330,7 +334,7 @@ apps/web/
 ├── e2e/                         # Playwright 端到端测试和测试用的角色卡
 └── src/
     ├── main.tsx                 # 诊断日志 → 数据缓存 → 界面偏好 → 主题 → 登录状态 → 路由
-    ├── app/       router.tsx  guards.tsx        # 路由表（阅读页、剧本详情、设置按需加载）；没登录去登录页、登录了不停在登录页
+    ├── app/       router.tsx  guards.tsx        # 路由表（阅读页、剧本详情、编辑角色卡、设置按需加载）；没登录去登录页、登录了不停在登录页
     ├── state/     AppProvider.tsx  PrefsProvider.tsx  prefs.ts   # 接口、会话（Cookie 模式）；浏览器里的界面偏好
     ├── storage/   local.ts                      # localStorage：存不进去、读不出来都当作没存过
     ├── observability/ setup.ts                 # 诊断日志接回、定时写入、页面报错

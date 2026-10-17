@@ -22,6 +22,8 @@ class ScenarioOut(Out):
     book_entries: int
     alternate_greetings: int
     truncated_fields: list[str]
+    version: int
+    edited_at: datetime | None
     created_at: datetime
     updated_at: datetime
     duplicate: bool = False
@@ -29,6 +31,63 @@ class ScenarioOut(Out):
 
 class ScenarioPatchIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+
+
+# 编辑角色卡：长度上限由 domain/scenario/edit.py 检查（超长时返回带 field 的 422），这里不重复限制；
+# 请求体整体不超过 4 MB（见 api/v1/scenarios.py 的 MAX_CARD_BODY_BYTES）
+
+
+class LoreEntryIn(BaseModel):
+    name: str = ""
+    keys: list[str] = Field(default_factory=list)
+    content: str = ""
+    enabled: bool = True
+    constant: bool = False
+
+
+class CharacterCardIn(BaseModel):
+    name: str
+    description: str = ""
+    personality: str = ""
+    scenario: str = ""
+    first_mes: str = ""
+    mes_example: str = ""
+    tags: list[str] = Field(default_factory=list)
+    book: list[LoreEntryIn] = Field(default_factory=list)
+
+
+class ScenarioCardIn(BaseModel):
+    version: int = Field(ge=1)
+    display_name: str
+    card: CharacterCardIn
+
+
+class LoreEntryOut(Out):
+    name: str
+    keys: list[str]
+    content: str
+    enabled: bool
+    constant: bool
+
+
+class CharacterCardOut(Out):
+    name: str
+    description: str
+    personality: str
+    scenario: str
+    first_mes: str
+    mes_example: str
+    tags: list[str]
+    book: list[LoreEntryOut]
+
+
+class ScenarioCardOut(Out):
+    scenario_id: str
+    version: int
+    edited_at: datetime | None
+    display_name: str
+    card: CharacterCardOut
+    truncated_fields: list[str]
 
 
 class ProtagonistIn(BaseModel):

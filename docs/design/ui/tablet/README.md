@@ -26,7 +26,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 | T03 宽屏故事网格 + 长按菜单 · T04 中屏深色两列 | `TabletStories.png` | `app/(tabs)/playthroughs.tsx`、`src/components/bars.tsx` |
 | T05 宽屏阅读空闲（选项两列）· T06 生成中 + 世界状态停靠 · T07 中屏阅读 | `TabletPlay.png` | `app/play/[id]/index.tsx`、`src/features/play/*` |
 | T08 “更多”贴按钮弹出 · T09 自己写 + 键盘 · T10 世界状态滑出 + 揭示确认 | `TabletPlay2.png` | `MoreSheet.tsx`、`BottomBar.tsx`、`WorldSheet.tsx` |
-| T11 宽屏剧本网格 · T12 剧本详情两栏 | `TabletLibrary.png` | `app/(tabs)/library.tsx`、`app/scenario/[id].tsx`、`src/features/scenario/StartForm.tsx` |
+| T11 宽屏剧本网格 · T12 剧本详情两栏 | `TabletLibrary.png` | `app/(tabs)/library.tsx`、`app/scenario/[id]/index.tsx`、`src/features/scenario/StartForm.tsx` |
 | T13 设置两栏 + 密钥详情 · T14 设置两栏 + 导演模型 · T15 中屏设置 + 外观对话框 | `TabletSettings.png` | `app/(tabs)/settings.tsx`、`src/features/settings/SettingsPane.tsx`、`screens/`、`AppearanceSheet.tsx` |
 
 ## 先改配置
@@ -144,11 +144,11 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 - **剧本网格列数：** 用 `libraryColumns()`，宽屏按内容宽度 ÷ 240 取整，最多 5 列，间距 16。列表视图在中屏和宽屏都限宽 640、居中。
 - **导入按钮：** 宽屏上从圆形 + 号换成带文字的胶囊“导入角色卡”。导入中的禁用态和提示浮条不变。
 - **剧本详情宽屏两栏：**
-  - 左栏宽 420：封面（236 高，返回和“更多”按钮浮在封面上）、名字、标签、统计、简介、原卡开场白；
+  - 左栏宽 420：封面（236 高，返回按钮浮在封面上；设计稿里的“更多”已去掉）、名字、标签、统计、简介、原卡开场白；
   - 右栏：开始新故事的 5 个步骤；
   - 两栏各自滚动；
   - 右栏底部浮着一条摘要栏（已选项胶囊加“开始故事”按钮），圆角 34，带投影；
-  - 第 2 步的身份图块一行排 4 个；第 1 步的名字建议排在输入框右侧。
+  - 第 1 步的名字建议排在输入框右侧（第 2 步的身份图块已去掉，只有输入框）。
 - **剧本详情中屏：** 单栏，宽 640，居中。
 
 ### 7. 设置（T13–T15）

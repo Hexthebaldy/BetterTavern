@@ -1,6 +1,6 @@
 /**
  * 路由：地址和 App 的 expo-router 一一对应，浏览器的前进、后退和 App 的导航一致。
- * 登录、注册之外的页面都在外壳（侧栏 / 导航条 / Tab 栏）里。阅读页、剧本详情、设置按需加载（首屏只带故事和剧本库）。
+ * 登录、注册之外的页面都在外壳（侧栏 / 导航条 / Tab 栏）里。阅读页、剧本详情、编辑角色卡、设置按需加载（首屏只带故事和剧本库）。
  */
 
 import { createBrowserRouter, Navigate } from "react-router";
@@ -34,6 +34,10 @@ export const router = createBrowserRouter([
       {
         path: "/scenario/:id",
         lazy: async () => ({ Component: (await import("../pages/scenario/ScenarioPage.tsx")).ScenarioPage }),
+      },
+      {
+        path: "/scenario/:id/edit",
+        lazy: async () => ({ Component: (await import("../pages/scenario/EditCardPage.tsx")).EditCardPage }),
       },
       {
         path: "/play/:id",

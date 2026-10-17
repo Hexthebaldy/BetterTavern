@@ -13,7 +13,7 @@ from .png import PNG_SIGNATURE, PngError, card_payload
 
 MAX_UPLOAD_BYTES = 16 * 1024 * 1024
 
-__all__ = ["MAX_UPLOAD_BYTES", "CardError", "ImportedCard", "import_card"]
+__all__ = ["MAX_UPLOAD_BYTES", "CardError", "ImportedCard", "import_card", "normalize_card"]
 
 
 @dataclass(frozen=True)

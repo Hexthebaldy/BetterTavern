@@ -76,6 +76,8 @@ class ScenarioRow:
     source_sha256: str | None
     card: dict[str, Any]
     avatar_blob_id: str | None
+    version: int
+    edited_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -89,13 +91,15 @@ class ScenarioRow:
             source_sha256=row["source_sha256"],
             card=as_json(row["card"], {}),
             avatar_blob_id=opt_str(row["avatar_blob_id"]),
+            version=row["version"],
+            edited_at=row["edited_at"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
 
 
 _SCENARIO_COLS = """id, user_id, name, source_kind, source_sha256, card, avatar_blob_id,
-    created_at, updated_at"""
+    version, edited_at, created_at, updated_at"""
 
 
 async def insert_scenario(
@@ -165,9 +169,66 @@ async def rename_scenario(
 ) -> ScenarioRow | None:
     row = await fetch_one(
         conn,
-        f"""UPDATE scenarios SET name = :name, updated_at = now()
+        f"""UPDATE scenarios SET name = :name, version = version + 1, updated_at = now()
             WHERE id = :id AND user_id = :u RETURNING {_SCENARIO_COLS}""",
         {"id": scenario_id, "u": user_id, "name": name},
+    )
+    return None if row is None else ScenarioRow.from_row(row)
+
+
+async def get_scenario_raw(conn: AsyncConnection, user_id: str, scenario_id: str) -> Any | None:
+    """导入时的原始 JSON（恢复卡片用）；剧本不存在时为 None。"""
+    row = await fetch_one(
+        conn,
+        "SELECT raw FROM scenarios WHERE id = :id AND user_id = :u",
+        {"id": scenario_id, "u": user_id},
+    )
+    return None if row is None else as_json(row["raw"])
+
+
+async def update_scenario_card(
+    conn: AsyncConnection,
+    user_id: str,
+    scenario_id: str,
+    *,
+    name: str,
+    card: dict[str, Any],
+    card_changed: bool,
+    expected_version: int,
+) -> ScenarioRow | None:
+    """保存编辑后的卡片和显示名，版本号加 1；卡片内容有改动才更新编辑时间（只改显示名不算）。
+    版本号对不上（别处改过）或剧本不存在时返回 None。"""
+    row = await fetch_one(
+        conn,
+        f"""UPDATE scenarios
+            SET name = :name, card = CAST(:card AS jsonb), version = version + 1,
+                edited_at = CASE WHEN :changed THEN now() ELSE edited_at END, updated_at = now()
+            WHERE id = :id AND user_id = :u AND version = :v
+            RETURNING {_SCENARIO_COLS}""",
+        {
+            "id": scenario_id,
+            "u": user_id,
+            "name": name,
+            "card": dumps(card),
+            "changed": card_changed,
+            "v": expected_version,
+        },
+    )
+    return None if row is None else ScenarioRow.from_row(row)
+
+
+async def reset_scenario_card(
+    conn: AsyncConnection, user_id: str, scenario_id: str, card: dict[str, Any]
+) -> ScenarioRow | None:
+    """卡片恢复成导入时的内容：显示名不变，版本号加 1，清掉编辑时间。"""
+    row = await fetch_one(
+        conn,
+        f"""UPDATE scenarios
+            SET card = CAST(:card AS jsonb), version = version + 1, edited_at = NULL,
+                updated_at = now()
+            WHERE id = :id AND user_id = :u
+            RETURNING {_SCENARIO_COLS}""",
+        {"id": scenario_id, "u": user_id, "card": dumps(card)},
     )
     return None if row is None else ScenarioRow.from_row(row)
 

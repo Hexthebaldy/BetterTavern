@@ -116,9 +116,51 @@ export type Scenario = {
   book_entries: number;
   alternate_greetings: number;
   truncated_fields: string[];
+  /** 版本号：改名、编辑卡片、恢复都会加 1；保存编辑时带回去 */
+  version: number;
+  /** 最近一次编辑卡片的时间；没编辑过（或恢复成导入时的内容之后）是 null */
+  edited_at: string | null;
   created_at: string;
   updated_at: string;
   duplicate: boolean;
+};
+
+/** 角色卡自带的世界书条目 */
+export type LoreEntry = {
+  name: string;
+  keys: string[];
+  content: string;
+  enabled: boolean;
+  constant: boolean;
+};
+
+/** 能编辑的那部分角色卡（原文，{{char}}、{{user}} 不替换） */
+export type CharacterCard = {
+  name: string;
+  description: string;
+  personality: string;
+  scenario: string;
+  first_mes: string;
+  mes_example: string;
+  tags: string[];
+  book: LoreEntry[];
+};
+
+/** GET / PUT /v1/scenarios/{id}/card 的响应 */
+export type ScenarioCard = {
+  scenario_id: string;
+  version: number;
+  edited_at: string | null;
+  display_name: string;
+  card: CharacterCard;
+  truncated_fields: string[];
+};
+
+/** PUT /v1/scenarios/{id}/card 的请求体：完整的可编辑内容，加读取时的版本号 */
+export type ScenarioCardInput = {
+  version: number;
+  display_name: string;
+  card: CharacterCard;
 };
 
 export type TurnOption = { id: string; text: string };

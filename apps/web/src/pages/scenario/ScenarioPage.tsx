@@ -2,10 +2,12 @@
  * 剧本详情（W05，同平板 T12）：封面、角色卡概要、原卡的开场白，以及“开始新的故事”的五步表单。
  * 开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
  *
- * - ≥ 900：两栏各自滚动。左栏 420 是封面（高 236，返回和“更多”浮在上面）、名字、标签、统计、简介、原卡开场白；
+ * - ≥ 900：两栏各自滚动。左栏 420 是封面（高 236，返回按钮浮在上面）、名字、标签、统计、简介、原卡开场白；
  *   右栏是五步表单，底部浮着摘要栏（已选项胶囊加“开始故事”），圆角 34，带投影。
  * - 更窄：单栏，最宽 640，居中。
- * 侧栏一直在，返回按钮回到剧本库。文案同 App 的 app/scenario/[id].tsx。
+ * 侧栏一直在，返回按钮回到剧本库。剧本名右边是“编辑角色卡”（EditCardPage.tsx，剧本名也在那里改），
+ * 改过的卡标题上方注明“已编辑”；删除剧本的按钮在概要下面（单栏时在页面最底下）。
+ * 文案同 App 的 app/scenario/[id]/index.tsx。
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +20,7 @@ import type { Scenario } from "@bettertavern/core/api/types";
 import { Cover } from "../../components/Cover.tsx";
 import { Button, cx, IconButton, Notice, Pill } from "../../components/controls.tsx";
 import { Icon, type IconName } from "../../components/Icon.tsx";
-import { useScenarioActions } from "../../data/scenarioActions.ts";
+import { scenarioPath, useScenarioActions } from "../../data/scenarioActions.ts";
 import { storiesKey } from "../../data/stories.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useWindowWidth } from "../../hooks/useWindowSize.ts";
@@ -87,13 +89,19 @@ function Description({ text }: { text: string }) {
   );
 }
 
-function Overview({ scenario }: { scenario: Scenario }) {
+function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void }) {
   const truncated = scenario.truncated_fields;
   return (
     <>
       <div className={styles.titleBlock}>
-        <span className={styles.caption}>角色卡{scenario.creator ? ` · 作者 ${scenario.creator}` : ""}</span>
-        <h1 className={styles.hero}>{scenario.name}</h1>
+        <span className={styles.caption}>
+          角色卡{scenario.creator ? ` · 作者 ${scenario.creator}` : ""}
+          {scenario.edited_at ? " · 已编辑" : ""}
+        </span>
+        <div className={styles.titleRow}>
+          <h1 className={styles.hero}>{scenario.name}</h1>
+          <Button label="编辑角色卡" icon="write" variant="secondary" size="sm" onClick={onEdit} />
+        </div>
         {scenario.tags.length > 0 ? (
           <div className={styles.tags}>
             {scenario.tags.slice(0, 8).map((tag) => (
@@ -140,7 +148,6 @@ export function ScenarioPage() {
   const actions = useScenarioActions();
   const width = useWindowWidth();
   const wide = width >= desktop.rail;
-  const more = useRef<HTMLButtonElement>(null);
   const query = useQuery({ queryKey: ["scenario", id], queryFn: () => api.scenarios.get(id) });
   const scenario = query.data;
   const [values, setValues] = useState<StartValues | null>(null);
@@ -183,6 +190,7 @@ export function ScenarioPage() {
     }
   };
 
+  const edit = (): void => void navigate(`${scenarioPath(scenario)}/edit`);
   const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
   const coverWidth = wide ? shell.scenarioInfo : Math.min(width - 24, shell.readable);
   const cover = (
@@ -202,16 +210,6 @@ export function ScenarioPage() {
           diameter={44}
           onClick={() => navigate("/library")}
         />
-        <IconButton
-          ref={more}
-          icon="more"
-          label="更多：重命名、删除"
-          tone="card"
-          diameter={44}
-          onClick={() =>
-            more.current && void actions.menu(scenario, { anchor: more.current }, { newTab: false })
-          }
-        />
       </div>
     </div>
   );
@@ -223,7 +221,6 @@ export function ScenarioPage() {
   );
   const form = (
     <StartForm
-      cardName={scenario.name}
       wide={wide}
       onChange={(next, parts) => {
         setValues(next);
@@ -275,7 +272,7 @@ export function ScenarioPage() {
       <div className={styles.split}>
         <aside className={styles.info}>
           {cover}
-          <Overview scenario={scenario} />
+          <Overview scenario={scenario} onEdit={edit} />
           {danger}
         </aside>
         <div className={styles.formColumn}>
@@ -297,7 +294,7 @@ export function ScenarioPage() {
   return (
     <div className={styles.single}>
       {cover}
-      <Overview scenario={scenario} />
+      <Overview scenario={scenario} onEdit={edit} />
       {startHead}
       {form}
       <div className={styles.submit}>

@@ -1,12 +1,12 @@
 /**
- * “开始新的故事”的五步表单：名字（建议标签 + 随机）、身份（图块 + 可改的底稿）、篇幅（行数图示）、
+ * “开始新的故事”的五步表单：名字（建议标签 + 随机）、这个角色是谁（一个多行输入框）、篇幅（行数图示）、
  * 文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）。只有第 1 步必填。
  * 选择最终拼回接口原来的字段，见 startForm.ts。
- * 宽屏的剧本详情两栏里（wide）：名字建议排在输入框右侧，身份图块一行排 4 个。
+ * 宽屏的剧本详情两栏里（wide）：名字建议排在输入框右侧。
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import type { Preferences } from "@bettertavern/core/api/types";
@@ -14,7 +14,6 @@ import {
   BOUNDARY_ITEMS,
   composeBoundaries,
   composeStyle,
-  IDENTITIES,
   LENGTH_LABELS,
   NAME_MAX,
   randomName,
@@ -25,7 +24,7 @@ import {
 } from "@bettertavern/core/scenario/startForm";
 
 import { Checkbox, Chip, Field, Icon, useOverlay } from "../../components/ui.tsx";
-import { font, onColor, radius, space, usePalette } from "../../theme/index.ts";
+import { font, radius, space, usePalette } from "../../theme/index.ts";
 
 export type StartValues = {
   name: string;
@@ -75,27 +74,23 @@ const LENGTH_GLYPHS: Record<Preferences["length"], { d: string; width: number }>
  * 表单本体：选择留在这里，变化时通过 onChange 报出拼好的字段和底部摘要的几段。
  */
 export function StartForm({
-  cardName,
   onChange,
   wide,
 }: {
-  cardName: string;
   onChange: (values: StartValues, summary: string[]) => void;
-  /** 宽屏两栏：名字建议放到输入框右边，身份图块一行 4 个 */
+  /** 宽屏两栏：名字建议放到输入框右边 */
   wide?: boolean;
 }) {
   const palette = usePalette();
   const overlay = useOverlay();
   const suggestions = useMemo(() => suggestNames(4), []);
   const [name, setName] = useState("");
-  const [identity, setIdentity] = useState<string | null>(null);
   const [summary, setSummary] = useState("");
   const [length, setLength] = useState<Preferences["length"]>("medium");
   const [styles_, setStyles] = useState<string[]>([]);
   const [customStyles, setCustomStyles] = useState<string[]>([]);
   const [bounds, setBounds] = useState<string[]>([]);
   const [customBounds, setCustomBounds] = useState<string[]>([]);
-  const summaryInput = useRef<TextInput>(null);
 
   // 选择变了就把拼好的值报给父组件
   const onChangeRef = useRef(onChange);
@@ -108,23 +103,10 @@ export function StartForm({
       style: composeStyle(styles_),
       boundaries: composeBoundaries(bounds),
     };
-    const identityLabel = IDENTITIES.find((i) => i.key === identity)?.label ?? null;
-    onChangeRef.current(
-      values,
-      summaryParts({ name, identity: identityLabel, length, styles: styles_, boundaries: bounds.length }),
-    );
-  }, [name, identity, summary, length, styles_, bounds]);
+    onChangeRef.current(values, summaryParts({ name, length, styles: styles_, boundaries: bounds.length }));
+  }, [name, summary, length, styles_, bounds]);
 
   const changeName = (text: string): void => setName(text);
-  const pickIdentity = (key: string | null): void => {
-    setIdentity(key);
-    const draft = key ? (IDENTITIES.find((i) => i.key === key)?.draft(cardName) ?? "") : "";
-    if (key) {
-      setSummary(draft);
-    } else {
-      summaryInput.current?.focus();
-    }
-  };
   const toggle = (list: string[], item: string): string[] =>
     list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 
@@ -185,46 +167,8 @@ export function StartForm({
       </Step>
 
       <Step n="2" title="这个角色是谁" optional="可选">
-        <View
-          style={[styles.tiles, wide ? { flexWrap: "nowrap" } : null]}
-          accessibilityRole="radiogroup"
-          accessibilityLabel="身份"
-        >
-          {[
-            ...IDENTITIES.map((i) => ({ key: i.key, label: i.label, icon: i.icon })),
-            { key: "", label: "自己写", icon: "write" as const },
-          ].map((i) => {
-            const on = i.key !== "" && identity === i.key;
-            return (
-              <Pressable
-                key={i.key || "custom"}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={i.label}
-                onPress={() => pickIdentity(i.key || null)}
-                style={({ pressed }) => [
-                  styles.tile,
-                  wide ? styles.tileWide : null,
-                  {
-                    backgroundColor: on ? palette.accBg : palette.card,
-                    boxShadow: on ? `inset 0 0 0 2px ${palette.acc}` : undefined,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                  },
-                ]}
-              >
-                <View style={[styles.tileIcon, { backgroundColor: on ? palette.acc : palette.bg2 }]}>
-                  <Icon name={i.icon} size={20} color={on ? onColor : i.key ? palette.ink : palette.mut} />
-                </View>
-                <Text style={{ fontSize: 14, lineHeight: 20, color: i.key ? palette.ink : palette.mut }}>
-                  {i.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
         <Field
-          ref={summaryInput}
-          label="补充描述"
+          label="这个角色是谁"
           hideLabel
           onGrey
           multiline
@@ -233,7 +177,6 @@ export function StartForm({
           onChangeText={setSummary}
           maxLength={SUMMARY_MAX}
           placeholder="身份、来历、和卡里角色的关系"
-          hint="选一个身份会自动填一句底稿，可以接着改。"
         />
       </Step>
 
@@ -332,14 +275,10 @@ const styles = StyleSheet.create({
   optional: { fontSize: 12.5, fontWeight: "400" },
   dice: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  tiles: { flexDirection: "row", flexWrap: "wrap", gap: space.s },
-  tile: { width: "48.5%", minHeight: 96, padding: 14, borderRadius: radius.card, gap: space.m },
-  tileWide: { width: undefined, flex: 1, minWidth: 0 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.s },
   /** 手机上：输入框和名字建议上下排，间距和步骤里其他内容一样 */
   nameColumn: { gap: 14 },
   nameChips: { flexDirection: "row", gap: 6 },
-  tileIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   lengths: { flexDirection: "row", padding: 4, gap: 4, borderRadius: 26 },
   length: { flex: 1, alignItems: "center", gap: 10, paddingTop: 16, paddingBottom: 12, borderRadius: 22 },
   checks: {

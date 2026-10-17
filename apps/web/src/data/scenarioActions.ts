@@ -1,5 +1,5 @@
 /**
- * 剧本的菜单和操作：剧本库的网格卡片、列表行、剧本详情的“更多”共用。文案同 App 的 app/(tabs)/library.tsx。
+ * 剧本的菜单和操作：剧本库的网格卡片、列表行用菜单，剧本详情用删除。文案同 App 的 app/(tabs)/library.tsx。
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -64,18 +64,12 @@ export function useScenarioActions() {
     }
   };
 
-  const menu = async (
-    scenario: Scenario,
-    place: MenuPlace,
-    options: { newTab?: boolean } = {},
-  ): Promise<void> => {
+  const menu = async (scenario: Scenario, place: MenuPlace): Promise<void> => {
     const key = await overlay.menu({
       label: scenario.name,
       place,
       items: [
-        ...(options.newTab === false
-          ? []
-          : [{ key: "newTab", label: "在新标签页打开", icon: "newTab" as const }]),
+        { key: "newTab", label: "在新标签页打开", icon: "newTab" },
         { key: "rename", label: "重命名", icon: "write" },
         { key: "delete", label: "删除", icon: "trash", danger: true, separated: true },
       ],

@@ -1,8 +1,8 @@
 /**
- * “开始新的故事”的五步表单（同 App 的 StartForm.tsx）：名字（建议标签 + 随机）、身份（图块 + 可改的底稿）、
+ * “开始新的故事”的五步表单（同 App 的 StartForm.tsx）：名字（建议标签 + 随机）、这个角色是谁（一个多行输入框）、
  * 篇幅（行数图示）、文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）。只有第 1 步必填。
  * 选择最终拼回接口原来的字段，见 @bettertavern/core 的 scenario/startForm.ts。
- * 宽屏（wide）：名字建议排在输入框右边，身份图块一行 4 个。
+ * 宽屏（wide）：名字建议排在输入框右边。
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -12,7 +12,6 @@ import {
   BOUNDARY_ITEMS,
   composeBoundaries,
   composeStyle,
-  IDENTITIES,
   LENGTH_LABELS,
   NAME_MAX,
   randomName,
@@ -23,7 +22,6 @@ import {
 } from "@bettertavern/core/scenario/startForm";
 
 import { Checkbox, Chip, cx, Field, IconButton, TextArea } from "../../components/controls.tsx";
-import { Icon } from "../../components/Icon.tsx";
 import { useOverlay } from "../../overlay/OverlayProvider.tsx";
 import styles from "./scenario.module.css";
 
@@ -69,30 +67,25 @@ const LENGTH_GLYPHS: Record<Preferences["length"], { d: string; width: number }>
 };
 
 export function StartForm({
-  cardName,
   onChange,
   wide,
 }: {
-  cardName: string;
   onChange: (values: StartValues, summary: string[]) => void;
   wide?: boolean;
 }) {
   const overlay = useOverlay();
   const suggestions = useMemo(() => suggestNames(4), []);
   const [name, setName] = useState("");
-  const [identity, setIdentity] = useState<string | null>(null);
   const [summary, setSummary] = useState("");
   const [length, setLength] = useState<Preferences["length"]>("medium");
   const [styleTags, setStyleTags] = useState<string[]>([]);
   const [customStyles, setCustomStyles] = useState<string[]>([]);
   const [bounds, setBounds] = useState<string[]>([]);
   const [customBounds, setCustomBounds] = useState<string[]>([]);
-  const summaryInput = useRef<HTMLTextAreaElement>(null);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   useEffect(() => {
-    const identityLabel = IDENTITIES.find((i) => i.key === identity)?.label ?? null;
     onChangeRef.current(
       {
         name: name.trim(),
@@ -101,15 +94,10 @@ export function StartForm({
         style: composeStyle(styleTags),
         boundaries: composeBoundaries(bounds),
       },
-      summaryParts({ name, identity: identityLabel, length, styles: styleTags, boundaries: bounds.length }),
+      summaryParts({ name, length, styles: styleTags, boundaries: bounds.length }),
     );
-  }, [name, identity, summary, length, styleTags, bounds]);
+  }, [name, summary, length, styleTags, bounds]);
 
-  const pickIdentity = (key: string | null): void => {
-    setIdentity(key);
-    if (key) setSummary(IDENTITIES.find((i) => i.key === key)?.draft(cardName) ?? "");
-    else summaryInput.current?.focus();
-  };
   const toggle = (list: string[], item: string): string[] =>
     list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
   const addUnique = (item: string) => (list: string[]) => (list.includes(item) ? list : [...list, item]);
@@ -162,39 +150,14 @@ export function StartForm({
       </Step>
 
       <Step n="2" title="这个角色是谁" optional="可选">
-        <div className={cx(styles.tiles, wide && styles.tilesWide)} role="radiogroup" aria-label="身份">
-          {[
-            ...IDENTITIES.map((i) => ({ key: i.key, label: i.label, icon: i.icon })),
-            { key: "", label: "自己写", icon: "write" as const },
-          ].map((i) => {
-            const on = i.key !== "" && identity === i.key;
-            return (
-              <button
-                key={i.key || "custom"}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                className={cx(styles.identity, on && styles.identityOn, !i.key && styles.identityCustom)}
-                onClick={() => pickIdentity(i.key || null)}
-              >
-                <span className={styles.identityIcon}>
-                  <Icon name={i.icon} size={20} />
-                </span>
-                {i.label}
-              </button>
-            );
-          })}
-        </div>
         <TextArea
-          ref={summaryInput}
-          label="补充描述"
+          label="这个角色是谁"
           hideLabel
           counter
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           maxLength={SUMMARY_MAX}
           placeholder="身份、来历、和卡里角色的关系"
-          hint="选一个身份会自动填一句底稿，可以接着改。"
         />
       </Step>
 

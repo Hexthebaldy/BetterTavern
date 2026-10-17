@@ -5,7 +5,6 @@ import {
   BOUNDARIES_MAX,
   composeBoundaries,
   composeStyle,
-  IDENTITIES,
   NAME_POOL,
   randomName,
   STYLE_MAX,
@@ -28,10 +27,6 @@ describe("开始新故事的表单", () => {
       );
   });
 
-  it("身份底稿带上角色卡的名字", () => {
-    assert.ok(IDENTITIES[0]?.draft("沈知微").includes("沈知微"));
-  });
-
   it("文风和边界用顿号连起来，超出上限的整项丢掉", () => {
     assert.equal(composeStyle(["克制", " 白描 ", ""]), "克制、白描");
     const long = Array.from({ length: 80 }, (_, i) => `风格${i}`);
@@ -43,18 +38,12 @@ describe("开始新故事的表单", () => {
 
   it("底部摘要分段", () => {
     assert.deepEqual(
-      summaryParts({
-        name: "林川",
-        identity: "过路的旅人",
-        length: "medium",
-        styles: ["克制", "白描"],
-        boundaries: 2,
-      }),
-      ["林川", "过路的旅人", "适中", "克制 · 白描", "避开 2 项"],
+      summaryParts({ name: "林川", length: "medium", styles: ["克制", "白描"], boundaries: 2 }),
+      ["林川", "适中", "克制 · 白描", "避开 2 项"],
     );
-    assert.deepEqual(
-      summaryParts({ name: " ", identity: null, length: "short", styles: [], boundaries: 0 }),
-      ["还没起名", "短"],
-    );
+    assert.deepEqual(summaryParts({ name: " ", length: "short", styles: [], boundaries: 0 }), [
+      "还没起名",
+      "短",
+    ]);
   });
 });

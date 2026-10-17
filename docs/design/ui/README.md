@@ -49,7 +49,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 | 登录 · 登录失败与服务器面板 · 注册 | `Auth.png` | `app/(auth)/*`、`src/components/ServerSetting.tsx`；闪屏 `app/index.tsx` 没有单独的画板，按本目录 token 画（标志、名称、一行副标题、三个圆点） |
 | 故事列表（含深色、下拉刷新、空状态、错误） | `Stories.png` | `app/(tabs)/playthroughs.tsx` |
 | 剧本库与导入 | `Library.png` | `app/(tabs)/library.tsx`、`src/features/library/`、`src/components/Cover.tsx`（图形在 `packages/design/src/cover.ts`） |
-| 剧本详情 · 开始新故事（整页） | `Scenario.png` | `app/scenario/[id].tsx`、`src/features/scenario/StartForm.tsx` |
+| 剧本详情 · 开始新故事（整页） | `Scenario.png` | `app/scenario/[id]/index.tsx`、`src/features/scenario/StartForm.tsx` |
 | 阅读页核心状态 | `Play.png` | `app/play/[id]/index.tsx`、`src/features/play/`（`StoryFeed.tsx`、`TurnActions.tsx`、`BottomBar.tsx`） |
 | 阅读页整页特殊状态 | `PlayStates.png` | 同上 |
 | 阅读页深色、“更多”菜单 | `PlayDark.png` | 同上，菜单是 `MoreSheet.tsx` |
@@ -191,10 +191,10 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 | --- | --- | --- | --- |
 | 登录、注册 | 服务器地址输入框 | 面板：最近用过的服务器单选 + “输入新地址” | 在本地记住最近用过的地址 |
 | 开始新故事 01 | 角色名输入框 | 输入框 + 名字建议标签 + 随机按钮 | 客户端内置一组名字 |
-| 开始新故事 02 | “这个角色是谁”多行输入 | 身份图块（选中后自动填一句底稿）+ 可编辑的多行框 | 内置身份和对应底稿 |
+| 开始新故事 02 | “这个角色是谁”多行输入 | 仍是一个多行输入框（设计稿里的身份图块已去掉） | 无 |
 | 开始新故事 03 | 短 / 适中 / 长 | 用行数图示的三格分段 | 无 |
 | 开始新故事 04 | 文风输入框 | 多选标签 + 自定义，拼成文本（≤200 字） | 内置标签列表 |
-| 开始新故事 05 | “不想看到”输入框 | 勾选清单 + 其他，拼成文本（≤300 字） | 内置清单 |
+| 开始新故事 05 | “不想看到”输入框 | 勾选清单 + 其他，拼成文本（≤300 字）；清单里没有设计稿的“伤害动物” | 内置清单 |
 | 添加模型 | 服务商分段 + 端点输入 + 模型名输入 | 服务商图块 + “使用官方地址”勾选；填好 Key 后自动获取模型列表单选，搜索框兼做手动输入 | 无 |
 | 连接测试 | 时长输入框 | 30s / 60s / 2m / 5m 分段 | 无 |
 | 阅读页 | 无 | “更多”菜单里的阅读设置 | 本地保存字体和字号 |
@@ -203,7 +203,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 ### 后端能力的入口
 
 - **世界状态：** 人物与地点、关系图、事实三页；主角不知道的秘密默认隐藏，揭示前要确认（琥珀色锁 → 确认框“会剧透” → 标为“秘密 · 已揭示”）。
-- **重命名：** 故事和剧本都可以重命名，入口是列表左滑或长按，以及阅读页、剧本详情的“更多”菜单。
+- **重命名：** 故事和剧本都可以重命名，入口是列表左滑或长按，以及阅读页的“更多”菜单；剧本详情里在“编辑角色卡”页改剧本名。
 - **编辑模型：** 改备注名、模型名和端点，入口是模型详情标题旁的铅笔；更换 Key 在详情页底部。
 - **导演模型：** 在模型列表或模型详情里设为导演；取消导演在模型详情页底部。
 
