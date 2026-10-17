@@ -240,8 +240,8 @@ function PlayPage({ id }: { id: string }) {
     }
     if (action === "rename") {
       const next = await overlay.prompt({
-        title: "重命名故事",
-        label: "故事标题",
+        title: "重命名存档",
+        label: "存档名",
         initial: shownTitle,
         maxLength: 80,
       });
@@ -302,7 +302,7 @@ function PlayPage({ id }: { id: string }) {
       {layout.nav === "tabbar" ? (
         <IconButton
           icon="back"
-          label="返回故事列表"
+          label="返回存档列表"
           className={styles.back}
           onClick={() => navigate("/playthroughs")}
         />

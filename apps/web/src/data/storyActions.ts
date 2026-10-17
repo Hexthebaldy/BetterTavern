@@ -32,8 +32,8 @@ export function useStoryActions() {
 
   const rename = async (story: Playthrough): Promise<void> => {
     const title = await overlay.prompt({
-      title: "重命名故事",
-      label: "故事标题",
+      title: "重命名存档",
+      label: "存档名",
       initial: story.title,
       maxLength: 80,
     });
@@ -50,7 +50,7 @@ export function useStoryActions() {
   const remove = async (story: Pick<Playthrough, "id" | "title">): Promise<void> => {
     const ok = await overlay.confirm({
       title: `删除“${story.title}”？`,
-      message: "删除后故事和世界状态都无法恢复。",
+      message: "删除后这个存档的故事和世界状态都无法恢复。",
       confirmLabel: "删除",
       tone: "danger",
     });

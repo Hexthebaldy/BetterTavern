@@ -1,10 +1,11 @@
 /**
- * 平板上的故事卡片（设计稿 T03、T04）：网格里的小卡，以及最近一个故事放大成的主卡。
+ * 平板上的存档卡片（设计稿 T03、T04）：网格里的小卡，以及最近一个存档放大成的主卡。
  * 数据和手机上的列表项一样；手机仍用 app/(tabs)/playthroughs.tsx 里的单列卡片。
+ * 两种卡片的第一行都是：标题、紧跟着的状态胶囊（已完结、正在写…），右端是更新时间。
  *
- * - 小卡：高 184，左上 56 的封面，旁边是标题和时间，下面是“正在写”胶囊和最新一段的前两行；
- * - 主卡：中屏占满一行、宽屏占两列，高两行；封面 132–148，标题 26，状态胶囊，最新一段用宋体 18/32 最多 4 行，
- *   底部是“继续读”按钮。
+ * - 小卡：高 184，第一行左边是 56 的方形封面；下面是最新一段的开头，最多 4 行，正好填满卡片；
+ * - 主卡：中屏占满一行、宽屏占两列，高两行；方形封面撑满卡片的高度（边长 = 卡片高 − 上下内边距），
+ *   右边第一行标题 26，下面最新一段用宋体 18/32，行数按封面的高度算，和封面一样高。整张卡都能点，没有按钮。
  * 长按时卡片抬起、下方弹出菜单（overlay.tsx 的 CardMenu），抬起的那张就是 lifted 再画一遍的同一张卡。
  */
 
@@ -16,18 +17,38 @@ import { storyStatus } from "@bettertavern/core/play/storyStatus";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../components/Cover.tsx";
-import { Icon, Pill } from "../../components/ui.tsx";
+import { Pill } from "../../components/ui.tsx";
 import { font, radius, size, space, usePalette } from "../../theme/index.ts";
 
 /** 小卡的高度；主卡高两格加中间的间距 */
 export const STORY_CARD_HEIGHT = 184;
+/** 主卡的内边距；封面边长 = 主卡高 − 2 × 内边距 */
+export const STORY_HERO_PADDING = space.page;
 
-function Status({ story }: { story: Playthrough }) {
+/** 状态胶囊，放在标题右边（Pill 默认贴着顶，这里在一行里居中） */
+export function StoryStatusPill({ story }: { story: Playthrough }) {
   const status = storyStatus(story);
-  if (status?.kind === "writing") return <Pill tone="acc" dot label={status.label} />;
-  if (status?.kind === "noOpening") return <Pill tone="warn" icon="untested" label={status.label} />;
-  if (status?.kind === "ended") return <Pill tone="card" icon="flag" label={status.label} />;
+  if (status?.kind === "writing") return <Pill tone="acc" dot label={status.label} style={styles.pill} />;
+  if (status?.kind === "noOpening")
+    return <Pill tone="warn" icon="untested" label={status.label} style={styles.pill} />;
+  if (status?.kind === "ended")
+    return <Pill tone="card" icon="flag" label={status.label} style={styles.pill} />;
   return null;
+}
+
+/** 第一行：标题、状态胶囊，右端是更新时间 */
+function TitleRow({ story, large }: { story: Playthrough; large?: boolean }) {
+  const palette = usePalette();
+  return (
+    <View style={[styles.titleRow, large ? null : { flex: 1 }]}>
+      <Text numberOfLines={1} style={[large ? styles.heroTitle : styles.title, { color: palette.ink }]}>
+        {story.title}
+      </Text>
+      <StoryStatusPill story={story} />
+      <View style={{ flex: 1 }} />
+      <Text style={[styles.time, { color: palette.mut }]}>{formatRelative(story.updated_at)}</Text>
+    </View>
+  );
 }
 
 /** 卡片外壳：灰卡、按下缩小；ref 给长按菜单量位置 */
@@ -52,7 +73,7 @@ function Shell({
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={story.title}
-      accessibilityHint="打开故事；长按可以重命名或删除"
+      accessibilityHint="打开存档；长按可以重命名或删除"
       onPress={onOpen}
       onLongPress={onMenu}
       style={({ pressed }) => [
@@ -107,16 +128,10 @@ export function StoryCardBody({ story, avatar }: { story: Playthrough; avatar: s
           height={size.cover}
           surface="card"
         />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={[styles.title, { color: palette.ink }]}>
-            {story.title}
-          </Text>
-          <Text style={[styles.time, { color: palette.mut }]}>{formatRelative(story.updated_at)}</Text>
-        </View>
+        <TitleRow story={story} />
       </View>
-      <Status story={story} />
       {story.head_excerpt ? (
-        <Text numberOfLines={2} style={[styles.excerpt, { color: palette.ink2 }]}>
+        <Text numberOfLines={4} style={[styles.excerpt, { color: palette.ink2 }]}>
           {story.head_excerpt}
         </Text>
       ) : null}
@@ -140,7 +155,7 @@ export function StoryHero({
   avatar: string | null;
   width: number;
   height: number;
-  /** 封面边长：宽屏 148，中屏 132 */
+  /** 封面边长：主卡高 − 2 × 内边距 */
   coverSize: number;
   onOpen: () => void;
   onMenu: () => void;
@@ -163,6 +178,11 @@ export function StoryHeroBody({
   coverSize: number;
 }) {
   const palette = usePalette();
+  // 摘要的行数：封面高度减去标题行和间距，按 32 的行高能放几行
+  const lines = Math.max(
+    2,
+    Math.floor((coverSize - HERO_TITLE_LINE - space.m - space.xs) / HERO_EXCERPT_LINE),
+  );
   return (
     <>
       <Cover
@@ -174,26 +194,12 @@ export function StoryHeroBody({
         rounded={radius.option}
       />
       <View style={styles.heroBody}>
-        <View style={styles.heroTitleRow}>
-          <Text numberOfLines={1} style={[styles.heroTitle, { color: palette.ink }]}>
-            {story.title}
-          </Text>
-          <Text style={[styles.time, { color: palette.mut }]}>{formatRelative(story.updated_at)}</Text>
-        </View>
-        <Status story={story} />
+        <TitleRow story={story} large />
         {story.head_excerpt ? (
-          <Text numberOfLines={4} style={[styles.heroExcerpt, { color: palette.narr }]}>
+          <Text numberOfLines={lines} style={[styles.heroExcerpt, { color: palette.narr }]}>
             {story.head_excerpt}
           </Text>
         ) : null}
-        <View style={{ flex: 1 }} />
-        {/* 整张卡都能点，这里只是看起来像按钮 */}
-        <View style={[styles.go, { backgroundColor: palette.pri }]} importantForAccessibility="no">
-          <Text style={{ fontSize: 15, fontWeight: "500", color: palette.onPri }}>继续读</Text>
-          <View style={[styles.goArrow, { backgroundColor: palette.arrowBg }]}>
-            <Icon name="arrowRight" size={18} color={palette.onPri} />
-          </View>
-        </View>
       </View>
     </>
   );
@@ -223,26 +229,35 @@ export function LiftedStory({
 
 export const STORY_HERO_RADIUS = radius.group;
 
+const HERO_TITLE_LINE = 34;
+const HERO_EXCERPT_LINE = 32;
+
 const styles = StyleSheet.create({
-  card: { padding: space.l, borderRadius: radius.option, gap: 10, overflow: "hidden" },
+  card: { padding: space.l, borderRadius: radius.option, gap: space.m, overflow: "hidden" },
   top: { flexDirection: "row", alignItems: "center", gap: 14 },
-  title: { fontSize: 17, lineHeight: 24, fontWeight: "700" },
+  titleRow: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: space.s },
+  title: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontWeight: "700" },
+  pill: { alignSelf: "center", flexShrink: 0 },
   time: { fontFamily: font.mono, fontSize: 11.5 },
   excerpt: { fontSize: 14, lineHeight: 21 },
-  hero: { flexDirection: "row", gap: space.page, padding: space.page, borderRadius: radius.group },
-  heroBody: { flex: 1, minWidth: 0, gap: space.m },
-  heroTitleRow: { flexDirection: "row", alignItems: "baseline", gap: space.m },
-  heroTitle: { flexShrink: 1, fontSize: 26, lineHeight: 34, fontWeight: "700", letterSpacing: -0.26 },
-  heroExcerpt: { marginTop: space.xs, fontFamily: font.serif, fontSize: 18, lineHeight: 32 },
-  go: {
-    alignSelf: "flex-start",
+  hero: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    height: 48,
-    paddingLeft: 20,
-    paddingRight: 6,
-    borderRadius: 24,
+    gap: space.page,
+    padding: STORY_HERO_PADDING,
+    borderRadius: radius.group,
   },
-  goArrow: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  heroBody: { flex: 1, minWidth: 0, gap: space.m },
+  heroTitle: {
+    flexShrink: 1,
+    fontSize: 26,
+    lineHeight: HERO_TITLE_LINE,
+    fontWeight: "700",
+    letterSpacing: -0.26,
+  },
+  heroExcerpt: {
+    marginTop: space.xs,
+    fontFamily: font.serif,
+    fontSize: 18,
+    lineHeight: HERO_EXCERPT_LINE,
+  },
 });

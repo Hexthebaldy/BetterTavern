@@ -1,5 +1,5 @@
 /**
- * 侧栏（≥ 1280，或窄屏点“展开”后盖在内容上）：顶部 Logo 和收起按钮，三项导航，最近的故事（单独滚动），最底下是账户。
+ * 侧栏（≥ 1280，或窄屏点“展开”后盖在内容上）：顶部 Logo 和收起按钮，三项导航，最近的存档（单独滚动），最底下是账户。
  * 整条侧栏都是链接。
  */
 
@@ -61,7 +61,7 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
         })}
       </div>
       <div className={styles.recentLabel}>
-        <span>最近的故事</span>
+        <span>最近的存档</span>
         {stories.data ? <span className={styles.mono}>{stories.data.length}</span> : null}
       </div>
       <div className={styles.recentList}>

@@ -24,7 +24,7 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="playthroughs" options={{ title: "故事" }} />
+      <Tabs.Screen name="playthroughs" options={{ title: "存档" }} />
       <Tabs.Screen name="library" options={{ title: "剧本" }} />
       <Tabs.Screen name="settings" options={{ title: "设置" }} />
     </Tabs>

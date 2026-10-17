@@ -50,7 +50,7 @@ BetterTavern 是一个手机上的互动小说 App。挑一张角色卡，给主
   <tr>
     <td align="center" width="33%"><img src="docs/images/readme/library.png" width="240" alt="剧本库"><br><sub>导入的角色卡都在剧本库里</sub></td>
     <td align="center" width="33%"><img src="docs/images/readme/scenario.png" width="240" alt="开始一个新故事"><br><sub>给主角起名字，开始故事</sub></td>
-    <td align="center" width="33%"><img src="docs/images/readme/stories.png" width="240" alt="故事列表"><br><sub>每个故事都从上次停下的地方接着读</sub></td>
+    <td align="center" width="33%"><img src="docs/images/readme/stories.png" width="240" alt="存档列表"><br><sub>每个故事都从上次停下的地方接着读</sub></td>
   </tr>
 </table>
 

@@ -1,9 +1,9 @@
 /**
- * 故事列表：每个故事一张灰色圆角卡片，最近玩过的在前。左滑或长按可以重命名、删除；
- * 正在生成的故事带一个蓝色“正在写”胶囊。封面跟着剧本：有图片就用图片，否则按剧本 ID 画几何封面。
- * 列表底部留出浮动标签栏的位置。
+ * 存档列表：每个存档一张灰色圆角卡片，最近玩过的在前。左滑或长按可以重命名、删除。
+ * 手机上一行：左边 72 的方形封面，和右边“标题 + 状态胶囊 + 右端的更新时间”加两行摘要一样高。
+ * 封面跟着剧本：有图片就用图片，否则按剧本 ID 画几何封面。列表底部留出浮动标签栏的位置。
  *
- * 平板（theme/layout.ts）：卡片排成网格，中屏 2 列、宽屏 3 列，间距 12；最近一个故事放大成主卡
+ * 平板（theme/layout.ts）：卡片排成网格，中屏 2 列、宽屏 3 列，间距 12；最近一个存档放大成主卡
  * （中屏占满一行、宽屏占两列，高两行）。中屏保留左滑；宽屏只用长按，卡片抬起、下方弹出菜单。
  * 加载失败、空状态放在居中的内容栏里，宽不超过 640。
  */
@@ -24,7 +24,6 @@ import {
   type Insets,
   type SizeClass,
 } from "@bettertavern/design/layout";
-import { storyStatus } from "@bettertavern/core/play/storyStatus";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../src/components/Cover.tsx";
@@ -33,7 +32,6 @@ import {
   Button,
   LargeHeader,
   Notice,
-  Pill,
   SkeletonLine,
   useOverlay,
   useTabBarSpace,
@@ -42,14 +40,19 @@ import { displayServer } from "../../src/features/settings/servers.ts";
 import {
   LiftedStory,
   STORY_CARD_HEIGHT,
+  STORY_HERO_PADDING,
   STORY_HERO_RADIUS,
   StoryCard,
   StoryHero,
+  StoryStatusPill,
 } from "../../src/features/stories/StoryCards.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { font, radius, size, space, usePalette } from "../../src/theme/index.ts";
+import { font, radius, space, usePalette } from "../../src/theme/index.ts";
+
+/** 手机列表行的封面边长：标题行 24 + 间距 6 + 两行摘要 2 × 21 */
+const ROW_COVER = 72;
 
 function StoryRow({
   story,
@@ -63,11 +66,10 @@ function StoryRow({
   onMenu: () => void;
 }) {
   const palette = usePalette();
-  const status = storyStatus(story);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint="打开故事；长按可以重命名或删除"
+      accessibilityHint="打开存档；长按可以重命名或删除"
       onPress={onOpen}
       onLongPress={onMenu}
       style={({ pressed }) => [
@@ -78,8 +80,8 @@ function StoryRow({
       <Cover
         seed={story.scenario_id ?? story.id}
         blobId={avatar}
-        width={size.cover}
-        height={size.cover}
+        width={ROW_COVER}
+        height={ROW_COVER}
         surface="card"
       />
       <View style={styles.rowBody}>
@@ -87,16 +89,14 @@ function StoryRow({
           <Text numberOfLines={1} style={[styles.title, { color: palette.ink }]}>
             {story.title}
           </Text>
+          <StoryStatusPill story={story} />
+          <View style={{ flex: 1 }} />
           <Text style={[styles.time, { color: palette.mut }]}>{formatRelative(story.updated_at)}</Text>
         </View>
-        {status?.kind === "writing" ? <Pill tone="acc" dot label={status.label} /> : null}
-        {status?.kind === "ended" ? <Pill tone="card" icon="flag" label={status.label} /> : null}
         {story.head_excerpt ? (
           <Text numberOfLines={2} style={[styles.excerpt, { color: palette.ink2 }]}>
             {story.head_excerpt}
           </Text>
-        ) : status?.kind === "noOpening" ? (
-          <Pill tone="warn" icon="untested" label={status.label} />
         ) : null}
       </View>
     </Pressable>
@@ -115,8 +115,8 @@ function Skeleton() {
         <View key={i} style={[styles.row, { opacity, backgroundColor: palette.bg2 }]}>
           <View
             style={{
-              width: size.cover,
-              height: size.cover,
+              width: ROW_COVER,
+              height: ROW_COVER,
               borderRadius: radius.cover,
               backgroundColor: palette.card,
             }}
@@ -154,7 +154,7 @@ function Empty({ onImport }: { onImport: () => void }) {
         />
         <Circle cx={214} cy={40} r={10} fill={palette.acc} />
       </Svg>
-      <Text style={[styles.emptyTitle, { color: palette.ink }]}>还没有故事</Text>
+      <Text style={[styles.emptyTitle, { color: palette.ink }]}>还没有存档</Text>
       <Text style={[styles.emptyText, { color: palette.mut }]}>
         去“剧本”导入一张角色卡，设定你扮演的角色，第一段故事就会写出来。
       </Text>
@@ -164,7 +164,7 @@ function Empty({ onImport }: { onImport: () => void }) {
 }
 
 /**
- * 平板的故事网格。主卡在左上：中屏占满一行，宽屏占两列，右边一列竖着放第 2、3 个故事；其余按列数往下排。
+ * 平板的存档网格。主卡在左上：中屏占满一行，宽屏占两列，右边一列竖着放第 2、3 个存档；其余按列数往下排。
  * 中屏的卡片仍可以左滑。
  */
 function StoryGrid({
@@ -190,7 +190,8 @@ function StoryGrid({
   const expanded = layoutSize === "expanded";
   const heroWidth = expanded ? cell * 2 + gap.card : contentWidth;
   const heroHeight = STORY_CARD_HEIGHT * 2 + gap.card;
-  const coverSize = expanded ? 148 : 132;
+  // 主卡的方形封面撑满卡片高度
+  const coverSize = heroHeight - STORY_HERO_PADDING * 2;
   const avatar = (s: Playthrough): string | null =>
     s.scenario_id ? (avatars.get(s.scenario_id) ?? null) : null;
   const keep = (id: string) => (node: View | null) => {
@@ -261,8 +262,8 @@ export default function PlaythroughsScreen() {
 
   const rename = async (story: Playthrough): Promise<void> => {
     const title = await overlay.prompt({
-      title: "重命名故事",
-      label: "故事标题",
+      title: "重命名存档",
+      label: "存档名",
       initial: story.title,
       maxLength: 80,
     });
@@ -280,7 +281,7 @@ export default function PlaythroughsScreen() {
   const remove = async (story: Playthrough): Promise<void> => {
     const ok = await overlay.confirm({
       title: `删除“${story.title}”？`,
-      message: "删除后故事和世界状态都无法恢复。",
+      message: "删除后这个存档的故事和世界状态都无法恢复。",
       confirmLabel: "删除",
       tone: "danger",
     });
@@ -317,7 +318,7 @@ export default function PlaythroughsScreen() {
   // 平板上空状态、提示放在居中的内容栏里（≤ 640）
   const column: Insets | null = sides ? centerColumn(width, sides) : null;
   const stories = data?.stories;
-  const header = <LargeHeader title="故事" count={stories ? stories.length : null} />;
+  const header = <LargeHeader title="存档" count={stories ? stories.length : null} />;
   const swipeActions = (item: Playthrough) => [
     { key: "rename", label: "重命名", icon: "write" as const, onPress: () => void rename(item) },
     { key: "delete", label: "删除", icon: "trash" as const, danger: true, onPress: () => void remove(item) },
@@ -438,9 +439,9 @@ export default function PlaythroughsScreen() {
 const styles = StyleSheet.create({
   list: { paddingHorizontal: space.list, paddingTop: space.s },
   row: { flexDirection: "row", gap: 14, padding: 14, borderRadius: radius.option },
-  rowBody: { flex: 1, minWidth: 0, gap: 5 },
-  rowTop: { flexDirection: "row", alignItems: "baseline", gap: 10 },
-  title: { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: "700" },
+  rowBody: { flex: 1, minWidth: 0, gap: 6 },
+  rowTop: { flexDirection: "row", alignItems: "center", gap: space.s },
+  title: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontWeight: "700" },
   time: { fontFamily: font.mono, fontSize: 11.5 },
   excerpt: { fontSize: 14, lineHeight: 21 },
   empty: {

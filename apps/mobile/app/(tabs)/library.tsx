@@ -124,7 +124,7 @@ export default function LibraryScreen() {
   const remove = async (s: Scenario): Promise<void> => {
     const ok = await overlay.confirm({
       title: `删除剧本“${s.name}”？`,
-      message: "已经开始的故事不受影响。",
+      message: "已有的存档不受影响。",
       confirmLabel: "删除",
       tone: "danger",
     });

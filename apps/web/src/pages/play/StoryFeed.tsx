@@ -146,7 +146,7 @@ function OpeningSteps({ building }: { building: boolean }) {
         {step(building ? "正在根据角色卡搭建世界…" : "搭建世界", building ? "active" : "done")}
         {step(building ? "写开场" : "正在写开场…", building ? "todo" : "active")}
       </div>
-      <p className={styles.stepNote}>第一次开场比较慢。可以先离开，写好后会出现在“故事”里。</p>
+      <p className={styles.stepNote}>第一次开场比较慢。可以先离开，写好后会出现在“存档”里。</p>
     </div>
   );
 }

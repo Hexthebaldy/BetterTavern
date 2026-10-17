@@ -11,7 +11,7 @@ export function NotFound() {
     <div className={styles.page}>
       <h1 className={styles.display}>找不到这个页面</h1>
       <p className={styles.lead}>
-        地址可能写错了，或者内容已经删掉。<Link to="/playthroughs">回到故事</Link>
+        地址可能写错了，或者内容已经删掉。<Link to="/playthroughs">回到存档</Link>
       </p>
     </div>
   );

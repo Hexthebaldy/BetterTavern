@@ -181,8 +181,8 @@ export default function PlayScreen() {
   const rename = async (): Promise<void> => {
     setMoreOpen(false);
     const next = await overlay.prompt({
-      title: "重命名故事",
-      label: "故事标题",
+      title: "重命名存档",
+      label: "存档名",
       initial: shownTitle,
       maxLength: 80,
     });
@@ -216,7 +216,7 @@ export default function PlayScreen() {
     setMoreOpen(false);
     const ok = await overlay.confirm({
       title: `删除“${shownTitle}”？`,
-      message: "删除后故事和世界状态都无法恢复。",
+      message: "删除后这个存档的故事和世界状态都无法恢复。",
       confirmLabel: "删除",
       tone: "danger",
     });

@@ -5,7 +5,7 @@ import type { IconName } from "@bettertavern/design/icons";
 export type NavItem = { to: string; label: string; icon: IconName; prefixes: string[] };
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/playthroughs", label: "故事", icon: "story", prefixes: ["/playthroughs"] },
+  { to: "/playthroughs", label: "存档", icon: "story", prefixes: ["/playthroughs"] },
   { to: "/library", label: "剧本", icon: "library", prefixes: ["/library", "/scenario"] },
   { to: "/settings", label: "设置", icon: "settings", prefixes: ["/settings", "/dev"] },
 ];

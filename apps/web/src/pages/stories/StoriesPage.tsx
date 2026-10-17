@@ -1,5 +1,5 @@
 /**
- * 故事（W03）：三列网格，最近一个故事放大成主卡占两列两行；600–899 两列，主卡占满一行；手机一列，没有主卡。
+ * 存档（W03）：三列网格，最近一个存档放大成主卡占两列两行；600–899 两列，主卡占满一行；手机一列，没有主卡。
  * 没有下拉刷新：回到标签页时自动刷新。空状态、加载失败的文案同 App 的 app/(tabs)/playthroughs.tsx。
  */
 
@@ -15,7 +15,6 @@ import { useStoryActions } from "../../data/storyActions.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useWindowWidth } from "../../hooks/useWindowSize.ts";
 import { byRecent } from "../../shell/recent.ts";
-import { desktop } from "../../theme/layout.ts";
 import pages from "../pages.module.css";
 import { StoryCard, StoryHero } from "./StoryCards.tsx";
 import styles from "./stories.module.css";
@@ -62,7 +61,7 @@ function Empty() {
         />
         <circle cx={214} cy={40} r={10} fill="var(--acc)" />
       </svg>
-      <h2 className={styles.emptyTitle}>还没有故事</h2>
+      <h2 className={styles.emptyTitle}>还没有存档</h2>
       <p className={styles.emptyText}>去“剧本”导入一张角色卡，设定你扮演的角色，第一段故事就会写出来。</p>
       <Button label="去导入角色卡" trailingIcon="arrowRight" between onClick={() => navigate("/library")} />
     </div>
@@ -70,7 +69,7 @@ function Empty() {
 }
 
 export function StoriesPage() {
-  useDocumentTitle("故事");
+  useDocumentTitle("存档");
   const stories = useStories();
   const avatarOf = useAvatars();
   const actions = useStoryActions();
@@ -87,7 +86,7 @@ export function StoriesPage() {
 
   return (
     <div className={pages.page}>
-      <PageHeader title="故事" count={list?.length ?? null} />
+      <PageHeader title="存档" count={list?.length ?? null} />
       {failure ? (
         <Notice
           icon="offline"
@@ -105,14 +104,7 @@ export function StoriesPage() {
         <Empty />
       ) : (
         <div className={styles.grid}>
-          {withHero ? (
-            <StoryHero
-              story={first}
-              avatar={avatarOf(first.scenario_id)}
-              coverSize={width >= desktop.rail ? 148 : 132}
-              onMenu={onMenu}
-            />
-          ) : null}
+          {withHero ? <StoryHero story={first} avatar={avatarOf(first.scenario_id)} onMenu={onMenu} /> : null}
           {(withHero ? others : list).map((story) => (
             <StoryCard key={story.id} story={story} avatar={avatarOf(story.scenario_id)} onMenu={onMenu} />
           ))}

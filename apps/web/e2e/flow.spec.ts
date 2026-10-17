@@ -24,7 +24,7 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await page.getByLabel("密码", { exact: true }).fill(password);
   await page.getByRole("button", { name: "注册并登录" }).click();
   await expect(page).toHaveURL(/\/playthroughs$/);
-  await expect(page.getByRole("heading", { name: "还没有故事" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "还没有存档" })).toBeVisible();
   expect(await page.evaluate(() => document.cookie)).toBe("");
   await page.reload();
   await expect(page).toHaveURL(/\/playthroughs$/);

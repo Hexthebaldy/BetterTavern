@@ -206,7 +206,7 @@ export default function ScenarioScreen() {
   const remove = async (): Promise<void> => {
     const ok = await overlay.confirm({
       title: `删除剧本“${scenario.name}”？`,
-      message: "已经开始的故事不受影响。",
+      message: "已有的存档不受影响。",
       confirmLabel: "删除",
       tone: "danger",
     });
@@ -305,7 +305,7 @@ export default function ScenarioScreen() {
         onPress={() => void remove()}
         style={{ alignSelf: "stretch" }}
       />
-      <Text style={[styles.caption, { color: palette.mut }]}>已经开始的故事不受影响。</Text>
+      <Text style={[styles.caption, { color: palette.mut }]}>已有的存档不受影响。</Text>
     </View>
   );
 

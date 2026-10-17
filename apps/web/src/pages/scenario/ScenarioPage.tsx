@@ -263,7 +263,7 @@ export function ScenarioPage() {
         className={styles.dangerButton}
         onClick={() => void actions.remove(scenario)}
       />
-      <span className={styles.caption}>已经开始的故事不受影响。</span>
+      <span className={styles.caption}>已有的存档不受影响。</span>
     </div>
   );
 

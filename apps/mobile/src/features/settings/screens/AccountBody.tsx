@@ -54,7 +54,7 @@ export function AccountBody() {
   const confirmDelete = async (): Promise<void> => {
     const ok = await overlay.confirm({
       title: "删除账户？",
-      message: "所有故事、剧本和模型（包括 Key）都会被永久删除，无法恢复。",
+      message: "所有存档、剧本和模型（包括 Key）都会被永久删除，无法恢复。",
       confirmLabel: "删除账户",
       tone: "danger",
     });
@@ -131,14 +131,14 @@ export function AccountBody() {
           {expanded ? (
             <View style={{ gap: space.m }}>
               <View style={styles.stats}>
-                {stat("story", counts?.stories, "故事")}
+                {stat("story", counts?.stories, "存档")}
                 {stat("library", counts?.scenarios, "剧本")}
                 {stat("key", counts?.models, "模型")}
               </View>
               <Text
                 style={{ fontSize: 14, lineHeight: 22, color: palette.ink2, paddingHorizontal: space.xs }}
               >
-                所有故事、剧本和模型（包括 Key）都会被永久删除，无法恢复。
+                所有存档、剧本和模型（包括 Key）都会被永久删除，无法恢复。
               </Text>
               {error ? <Notice message={error} /> : null}
               <Field

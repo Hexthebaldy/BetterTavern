@@ -57,7 +57,7 @@ export function useTabBarSpace(): { left: number; bottom: number } {
   return { left: 0, bottom: tabBarTop(insets.bottom) + space.l };
 }
 
-/** 一级页大标题：故事 / 剧本 / 设置 */
+/** 一级页大标题：存档 / 剧本 / 设置 */
 export function LargeHeader({
   title,
   count,
