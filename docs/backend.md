@@ -1071,12 +1071,13 @@ apps/server/
 2. `domain` 不 import 本项目的任何其他包，只用标准库和 pydantic，所以能脱离 FastAPI、数据库、LangGraph 单测。
 3. `providers` 不 import 本项目的任何其他包；只有 `runtime` 和 `services`（模型列表和探测在 `route_service`）可以使用它。
 4. `infra` 是叶子：可以 import `domain` 来映射对象，不能 import `runtime`、`services`、`api`。
-5. `runtime` 不直接访问数据库：它通过 `runtime/ports.py` 里的接口读写，具体实现由 `services` 和 `infra` 提供，在 `entrypoints/` 里注入。这是为了让 LangGraph 节点和 agent 能用内存假实现测试。
-6. `api` 不 import `infra.db.models`，只通过 `services` 访问数据。
-7. 提示词是数据文件：Python 里不写超过一行的提示词字符串，由测试扫描保证。
-8. 一个 agent 一个文件，agent 之间不互相 import，由 `graphs/` 编排。
-9. `vis` 是本机的只读调试工具：业务代码不 import 它，它也不 import `api`、`services`、`runtime`、`providers`，只读日志文件和数据库。
-10. 单个文件超过约 600 行就拆成门面加同级文件（借鉴 hermes-agent 的 `AGENTS.md`：Facade + siblings 布局与 Code Shape Rules）。
+5. `importers` 把外部格式（角色卡，以后还有世界书）翻译成 `domain` 的数据：本项目里只 import `domain`，PNG、各版本 JSON 这些格式细节不进 `domain`。
+6. `runtime` 不直接访问数据库：它通过 `runtime/ports.py` 里的接口读写，具体实现由 `services` 和 `infra` 提供，在 `entrypoints/` 里注入。这是为了让 LangGraph 节点和 agent 能用内存假实现测试。
+7. `api` 不 import `infra.db.models`，只通过 `services` 访问数据。
+8. 提示词是数据文件：Python 里不写超过一行的提示词字符串，由测试扫描保证。
+9. 一个 agent 一个文件，agent 之间不互相 import，由 `graphs/` 编排。
+10. `vis` 是本机的只读调试工具：业务代码不 import 它，它也不 import `api`、`services`、`runtime`、`providers`，只读日志文件和数据库。
+11. 单个文件超过约 600 行就拆成门面加同级文件（借鉴 hermes-agent 的 `AGENTS.md`：Facade + siblings 布局与 Code Shape Rules）。
 
 ### 扩展点速查
 
