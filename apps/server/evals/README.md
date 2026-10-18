@@ -18,7 +18,7 @@ DEEPSEEK_API_KEY=sk-... uv run python -m evals.director_compliance --provider de
 uv run python -m evals.director_compliance --help
 ```
 
-剧本在 `datasets/m0/tavern.yaml`（合成数据）；报告写到 `reports/`（不入库）。每次评测都会记录提示词模板的版本，
+剧本在 `datasets/m0/tavern.yaml`（合成数据，中文）；日文提示词用 `--scenario evals/datasets/m0/ryokan_ja.yaml`，剧本里的 `language` 决定提示词和默认选项的语言。报告写到 `reports/`（不入库）。每次评测都会记录提示词模板的版本，
 改了提示词之后用同样的参数再跑一次，对比两份报告。
 
 离线冒烟测试 `tests/e2e/test_director_eval_offline.py` 用假 LLM 服务把整条链路跑通，不需要密钥。

@@ -58,7 +58,7 @@ import {
 
 import { Cover } from "../../components/Cover.tsx";
 import { Icon, Pill } from "../../components/ui.tsx";
-import { font, radius, size, space, usePalette } from "../../theme/index.ts";
+import { radius, serifFor, size, space, usePalette } from "../../theme/index.ts";
 
 type Item = { key: string; turn: StoryTurn } | { key: "pending"; pending: PendingTurn };
 
@@ -71,8 +71,14 @@ function paragraphs(text: string): string[] {
     .filter((p) => p.length > 0);
 }
 
-/** 叙述正文的字体和字号：没设置字号时跟随系统的动态字体，放大到 24 为止 */
-export function useNarrativeStyle(prefs: ReadingPrefs): {
+/**
+ * 叙述正文的字体和字号：没设置字号时跟随系统的动态字体，放大到 24 为止。
+ * 宋体按这一局的语言选（language 是 playthroughs.language），不按界面语言。
+ */
+export function useNarrativeStyle(
+  prefs: ReadingPrefs,
+  language: string,
+): {
   style: TextStyle;
   scale: boolean;
   maxScale: number;
@@ -82,7 +88,7 @@ export function useNarrativeStyle(prefs: ReadingPrefs): {
     const size = readingSize(prefs);
     return {
       style: {
-        fontFamily: prefs.font === "serif" ? font.serif : undefined,
+        fontFamily: prefs.font === "serif" ? serifFor(language) : undefined,
         fontSize: size,
         lineHeight: lineHeightFor(size),
         letterSpacing: size * 0.01,
@@ -92,7 +98,7 @@ export function useNarrativeStyle(prefs: ReadingPrefs): {
       scale: prefs.size === null,
       maxScale: MAX_SIZE / BASE_SIZE,
     };
-  }, [prefs, palette]);
+  }, [prefs, palette, language]);
 }
 
 type Narr = ReturnType<typeof useNarrativeStyle>;
@@ -359,7 +365,7 @@ export function StoryFeed({
   /** 离开 / 回到最新位置（离底超过 80pt） */
   onAwayChange?: (away: boolean) => void;
 }) {
-  const narr = useNarrativeStyle(reading);
+  const narr = useNarrativeStyle(reading, state.language);
   const list = useRef<FlatList<Item>>(null);
   // 最后一项离操作栏 16
   const bottomSpace = bottomInset + space.l;

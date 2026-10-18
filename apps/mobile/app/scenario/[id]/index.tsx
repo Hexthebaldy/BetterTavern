@@ -158,7 +158,7 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
           <Text style={[styles.caption, { color: palette.mut }]}>{t("scenario.originalGreeting")}</Text>
           <Text
             numberOfLines={3}
-            style={{ fontFamily: font.serif, fontSize: 14.5, lineHeight: 25, color: palette.mut }}
+            style={{ fontSize: 14.5, lineHeight: 25, color: palette.mut }}
           >
             {scenario.first_mes_preview}
           </Text>

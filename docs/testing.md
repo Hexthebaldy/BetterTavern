@@ -172,7 +172,7 @@ make vis
 
 质量不能只靠单测，要用回放评估量化：
 
-- `evals/director_compliance.py`（M0）：在真实模型上连续跑 200 回合，统计导演协议无需修复与含修复的合规率、首 token 延迟和缓存命中，给出 go / no-go。
+- `evals/director_compliance.py`（M0）：在真实模型上连续跑 200 回合，统计导演协议无需修复与含修复的合规率、首 token 延迟和缓存命中，给出 go / no-go。剧本里的 `language` 决定用哪种语言的提示词：`datasets/m0/tavern.yaml` 是中文，`datasets/m0/ryokan_ja.yaml` 是日文。
 - `evals/replay.py`：回放一批剧情脚本（合成数据，或用户明确授权的匿名数据，放在 `datasets/`），在指定的模型组合下跑完整管线，输出：协议合规率与各级修复比例；两个选项之间的词面重叠率（衡量区分度）；StateKeeper 对照人工标注补丁的精确率与召回率；一致性探针（从状态表出若干事实问题，检查后续叙述是否与之矛盾，可选用 LLM 评审）；压缩保真度（对被折叠的回合出若干问答，只用“摘要加状态表”回答，统计正确率）；用量与延迟。
 - `evals/gate_eval.py`：对比 RuleGate 与 SmallLlmGate 的判定与人工标注，给出 `beat_done`、`deviation` 两个问题的精确率与召回率，用来定默认的置信度阈值；以后接入 Jev 时用同一套数据评估。
 - 提示词变更的门禁：模板头部有 `version`；PR 改了模板，CI 用假模型跑格式冒烟，维护者在本地用真模型跑 `replay`，把结果贴进 `docs/prompts/`。
@@ -200,9 +200,10 @@ make vis
 | `unit/importers/test_character_card.py` | PNG 的 tEXt 与压缩文本块、V3 优先于 V2、压缩炸弹、无效输入、V1 / V3 的 JSON、宏替换 |
 | `unit/domain/test_seed_and_plan.py` | Seed 规范化（名字与引用）、世界规划、最小 Seed、名字规范化、行动解析 |
 | `unit/runtime/test_context.py` | 状态块排版与秘密分区、预算降级、消息摆放、确定性、玩家文字跳不出围栏、紧急截断 |
-| `unit/runtime/test_prompt_languages.py` | 中文、英文两套提示词（[i18n.md](i18n.md) 第 4 节）：文件一一对应、模板用到的变量相同、数据文件的键相同、字段说明指向真实字段、两种语言都能渲染；英文的状态块和上下文是英文的 |
+| `unit/runtime/test_prompt_languages.py` | 中文、英文、日文三套提示词（[i18n.md](i18n.md) 第 4 节）：文件一一对应、模板用到的变量相同、数据文件的键相同、字段说明指向真实字段、每种语言都能渲染；英文、日文的状态块和上下文是各自的语言 |
+| `unit/domain/test_language.py` | 提示词语言的解析（认识的原样保留，不认识的按中文）、没有名字的主角按语言的兜底称呼 |
 | `unit/runtime/test_structured.py` | 结构化输出阶梯：校验失败带错误重试一次、不支持的级别跳过并缓存、降两级后放弃、传输错误上抛 |
-| `unit/runtime/test_runner.py` | 事件顺序与提交、选项修复与默认选项、首 token 前出错切 fallback、半截失败保留叙述、鉴权错误不重试（失败事件带 `reason`）、没有叙述、没有路由、提交被围栏拒绝、屏障超时、租约丢失时取消生成、开局构建、关闭时取消、英文的一局用英文提示词 |
+| `unit/runtime/test_runner.py` | 事件顺序与提交、选项修复与默认选项、首 token 前出错切 fallback、半截失败保留叙述、鉴权错误不重试（失败事件带 `reason`）、没有叙述、没有路由、提交被围栏拒绝、屏障超时、租约丢失时取消生成、开局构建、关闭时取消、英文和日文的一局用各自语言的提示词 |
 | `unit/api/test_body_limit.py`、`unit/api/test_probe_api.py` | 请求体大小限制；探针接口读不到真实回合的事件流 |
 | `unit/api/test_api_doc.py` | [docs/api/](api/README.md) 与 OpenAPI 一致（目录里的文件合在一起检查，每个接口和模型只能写一次）：接口齐全、鉴权与成功状态码、查询参数与请求头、每个请求和响应模型的字段与必填项 |
 | `integration/test_data_model_doc.py` | [docs/data-model/](data-model/README.md) 与迁移建出的表一致（同上）：表、列名、类型、可空、索引名 |
@@ -214,7 +215,7 @@ make vis
 
 `integration` 与 `e2e/test_m1_flow.py`、`e2e/test_web_auth.py` 需要 `BT_TEST_DATABASE_URL`（`make test-integration`），没有设置时跳过。
 
-客户端（仓库根目录 `npm test`，主要在 `packages/core`）：`i18n`（中英文资源的 key 一一对应、插值变量和组件标签一致、英文复数齐全、语言的解析和切换）、错误按错误码翻译（中英文）、`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
+客户端（仓库根目录 `npm test`，主要在 `packages/core`）：`i18n`（英文、日文资源的 key 都和中文一一对应、插值变量和组件标签一致、英文复数齐全、语言的解析和切换）、错误按错误码翻译（中、英、日）、`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
 `TURN_IN_PROGRESS` / `STALE_PARENT`、续传、轮询、失效登录）、`turnStream`（半截终止事件后的恢复）、`session`（单飞刷新、网页的 Cookie 模式）、`client`（401 重试、problem+json、
 Cookie 模式的请求头和请求体）。网页端（`apps/web`）自己的纯逻辑也在 `npm test` 里：桌面布局（`theme/layout.ts`：断点、阅读页让位、设置两栏、右键菜单和提示的位置、
 快捷键判断、标签页标题）、浏览器存储、界面偏好、最近故事分组、导入规则、跟随新文字、Enter 发送与输入法组字。App 的界面还没有自动化测试。

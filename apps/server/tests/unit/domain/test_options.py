@@ -26,3 +26,5 @@ def test_normalize_dedupes_and_limits() -> None:
 def test_fallback_options_default_to_chinese() -> None:
     assert fallback_options("zh") == fallback_options("xx")
     assert len(fallback_options("en")) == 2
+    japanese = fallback_options("ja")
+    assert len(japanese) == 2 and japanese != fallback_options("zh")

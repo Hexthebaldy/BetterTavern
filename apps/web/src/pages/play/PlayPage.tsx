@@ -317,7 +317,7 @@ function PlayPage({ id }: { id: string }) {
 
   if (state.phase === "loading" || state.phase === "load_failed") {
     return (
-      <div className={styles.page} style={frame}>
+      <div className={styles.page} style={frame} data-narr-font={reading.font}>
         {top}
         <div className={styles.feed}>
           {state.phase === "loading" ? (
@@ -335,7 +335,7 @@ function PlayPage({ id }: { id: string }) {
 
   const syncing = state.phase === "syncing";
   return (
-    <div className={styles.page} style={frame}>
+    <div className={styles.page} style={frame} data-narr-font={reading.font}>
       {top}
       {syncing ? (
         <div className={styles.syncing} role="alert">

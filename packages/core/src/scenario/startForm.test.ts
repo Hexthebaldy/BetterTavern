@@ -48,6 +48,23 @@ describe("开始新故事的表单", () => {
     ]);
   });
 
+  it("日文界面：日文名字、读点分隔、日文摘要", () => {
+    applyLanguage("ja");
+    try {
+      // 名字是汉字加假名，不出现中文专用的简体字
+      assert.ok(suggestNames(3, () => 0).every((n) => n.length > 0 && !/[们这说]/.test(n)));
+      assert.equal(composeStyle(["詩的", "軽やか"]), "詩的、軽やか");
+      assert.deepEqual(summaryParts({ name: "", length: "long", styles: ["詩的"], boundaries: 1 }), [
+        "名前はまだありません",
+        "長め",
+        "詩的",
+        "1 件を避ける",
+      ]);
+    } finally {
+      applyLanguage("zh");
+    }
+  });
+
   it("英文界面：英文名字、逗号分隔、英文摘要", () => {
     applyLanguage("en");
     try {

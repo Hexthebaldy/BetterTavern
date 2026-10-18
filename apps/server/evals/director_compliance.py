@@ -17,6 +17,10 @@
 
     uv run python -m evals.director_compliance --provider custom_openai \\
         --base-url http://localhost:11434/v1 --allow-private --model qwen3 --api-key-env OLLAMA_KEY
+
+剧本里的 language 决定用哪种语言的提示词和默认选项。日文的剧本：
+
+    uv run python -m evals.director_compliance ... --scenario evals/datasets/m0/ryokan_ja.yaml
 """
 
 from __future__ import annotations
@@ -39,6 +43,7 @@ from typing import Any
 import httpx
 import yaml
 
+from bettertavern.domain.story.language import parse_language
 from bettertavern.domain.story.options import fallback_options
 from bettertavern.providers import (
     HOT_PATH,
@@ -79,6 +84,7 @@ CONTINUE_ACTION = "我稍作停顿，留意周围的动静。"
 class Scenario:
     id: str
     title: str
+    language: str  # 提示词的语言：zh / en / ja
     world: str
     protagonist: dict[str, str]
     characters: list[dict[str, str]]
@@ -93,6 +99,7 @@ def load_scenario(path: Path) -> Scenario:
     return Scenario(
         id=data["id"],
         title=data["title"],
+        language=parse_language(data.get("language")),
         world=data["world"],
         protagonist=dict(data["protagonist"]),
         characters=[dict(c) for c in data.get("characters") or []],
@@ -200,8 +207,8 @@ class DirectorEval:
         self.config = config
         self.adapter = adapter
         self.caps = caps
-        self.prompts = prompts or PromptLibrary("zh")
         self.scenario = load_scenario(config.scenario_path)
+        self.prompts = prompts or PromptLibrary(self.scenario.language)
         self.cred = ResolvedCredential(
             credential_id="eval",
             provider=config.provider,
@@ -284,7 +291,7 @@ class DirectorEval:
 
         try:
             outcome = await finalize_director_output(
-                parse, repair=repair, fallback=fallback_options("zh")
+                parse, repair=repair, fallback=fallback_options(self.scenario.language)
             )
         except NarrativeMissing:
             record.error = "narrative_missing: 没有叙述"

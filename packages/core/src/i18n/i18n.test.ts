@@ -11,6 +11,7 @@ import {
   parseLanguageSetting,
   resolveLanguage,
 } from "./index.ts";
+import { ja } from "./ja/index.ts";
 import { zh } from "./zh/index.ts";
 
 type Tree = { [key: string]: string | Tree };
@@ -48,47 +49,54 @@ function variables(texts: Iterable<string>): string[] {
 }
 
 const zhKeys = byBase(flatten(zh as unknown as Tree));
-const enKeys = byBase(flatten(en as unknown as Tree));
+/** 其他语言，和每个复数 key 应有的形式：英文分单复数，日文和中文一样只有 other */
+const others = [
+  { lang: "en", keys: byBase(flatten(en as unknown as Tree)), plural: ["one", "other"] },
+  { lang: "ja", keys: byBase(flatten(ja as unknown as Tree)), plural: ["other"] },
+] as const;
 
 describe("资源", () => {
-  it("两种语言的 key 一一对应（复数后缀不算）", () => {
-    const missing = [...zhKeys.keys()].filter((k) => !enKeys.has(k));
-    const extra = [...enKeys.keys()].filter((k) => !zhKeys.has(k));
-    assert.deepEqual(missing, [], "英文缺少的 key");
-    assert.deepEqual(extra, [], "英文多出来的 key");
+  it("每种语言的 key 都和中文一一对应（复数后缀不算）", () => {
+    for (const { lang, keys } of others) {
+      const missing = [...zhKeys.keys()].filter((k) => !keys.has(k));
+      const extra = [...keys.keys()].filter((k) => !zhKeys.has(k));
+      assert.deepEqual(missing, [], `${lang} 缺少的 key`);
+      assert.deepEqual(extra, [], `${lang} 多出来的 key`);
+    }
   });
 
-  it("中文的复数只写 _other，英文对应写 _one 和 _other", () => {
+  it("中文的复数只写 _other；英文对应写 _one 和 _other，日文只写 _other", () => {
     for (const [base, forms] of zhKeys) {
       if (!forms.has("other")) continue;
       assert.deepEqual([...forms.keys()], ["other"], `${base} 的中文形式`);
-      assert.deepEqual([...(enKeys.get(base)?.keys() ?? [])].sort(), ["one", "other"], `${base} 的英文形式`);
+      for (const { lang, keys, plural } of others)
+        assert.deepEqual([...(keys.get(base)?.keys() ?? [])].sort(), [...plural], `${base} 的 ${lang} 形式`);
     }
   });
 
-  it("插值变量两边一致", () => {
+  it("插值变量和中文一致", () => {
     for (const [base, forms] of zhKeys) {
-      const other = enKeys.get(base);
-      assert.ok(other);
-      assert.deepEqual(variables(other.values()), variables(forms.values()), base);
+      for (const { lang, keys } of others) {
+        const other = keys.get(base);
+        assert.ok(other, `${lang} ${base}`);
+        assert.deepEqual(variables(other.values()), variables(forms.values()), `${lang} ${base}`);
+      }
     }
   });
 
-  it("文字里的组件标签（<mono>…</mono>）两边一致", () => {
+  it("文字里的组件标签（<mono>…</mono>）和中文一致", () => {
     const tags = (texts: Iterable<string>): string[] => {
       const names = new Set<string>();
       for (const text of texts) for (const m of text.matchAll(/<(\w+)>/g)) names.add(m[1]!);
       return [...names].sort();
     };
     for (const [base, forms] of zhKeys)
-      assert.deepEqual(tags(enKeys.get(base)!.values()), tags(forms.values()), base);
+      for (const { lang, keys } of others)
+        assert.deepEqual(tags(keys.get(base)!.values()), tags(forms.values()), `${lang} ${base}`);
   });
 
   it("没有空文字；用 | 分开的选项表没有空项", () => {
-    for (const [lang, keys] of [
-      ["zh", zhKeys],
-      ["en", enKeys],
-    ] as const) {
+    for (const [lang, keys] of [["zh", zhKeys] as const, ...others.map((o) => [o.lang, o.keys] as const)]) {
       for (const [base, forms] of keys) {
         for (const text of forms.values()) {
           assert.notEqual(text.trim(), "", `${lang} ${base}`);
@@ -104,13 +112,16 @@ describe("资源", () => {
 });
 
 describe("语言", () => {
-  it("系统语言：中文开头的用中文，其他一律英文", () => {
+  it("系统语言：中文、日文开头的各用各的，其他一律英文", () => {
     assert.equal(languageOf("zh-Hans-CN"), "zh");
     assert.equal(languageOf("zh_TW"), "zh");
     assert.equal(languageOf("ZH"), "zh");
+    assert.equal(languageOf("ja-JP"), "ja");
+    assert.equal(languageOf("JA_jp"), "ja");
     assert.equal(languageOf("en-US"), "en");
-    assert.equal(languageOf("ja-JP"), "en");
+    assert.equal(languageOf("ko-KR"), "en");
     assert.equal(languageOf("zhx"), "en");
+    assert.equal(languageOf("jav"), "en");
     assert.equal(languageOf(undefined), "en");
   });
 
@@ -120,11 +131,14 @@ describe("语言", () => {
     assert.equal(resolveLanguage("system", []), "en");
     assert.equal(resolveLanguage("zh", ["en-US"]), "zh");
     assert.equal(resolveLanguage("en", ["zh-CN"]), "en");
+    assert.equal(resolveLanguage("system", ["ja-JP", "en-US"]), "ja");
+    assert.equal(resolveLanguage("ja", ["zh-CN"]), "ja");
   });
 
   it("存储里不认识的设置退回跟随系统", () => {
     assert.equal(parseLanguageSetting("en"), "en");
     assert.equal(parseLanguageSetting("zh"), "zh");
+    assert.equal(parseLanguageSetting("ja"), "ja");
     for (const raw of ["fr", "", null, undefined, 1, {}]) assert.equal(parseLanguageSetting(raw), "system");
   });
 
@@ -137,6 +151,17 @@ describe("语言", () => {
       assert.equal(i18n.t("common.retry"), "Retry");
       assert.equal(i18n.t("start.avoid", { count: 1 }), "Avoid 1 item");
       assert.equal(i18n.t("start.avoid", { count: 2 }), "Avoid 2 items");
+    } finally {
+      applyLanguage("zh");
+    }
+    applyLanguage("ja");
+    try {
+      assert.equal(currentLanguage(), "ja");
+      assert.equal(i18n.t("common.retry"), "再試行");
+      // 日文没有单复数：1 和 2 都用 _other
+      assert.equal(i18n.t("start.avoid", { count: 1 }), "1 件を避ける");
+      assert.equal(i18n.t("start.avoid", { count: 2 }), "2 件を避ける");
+      assert.equal(lookup("errors.api.EMAIL_TAKEN"), "このメールアドレスはすでに登録されています");
     } finally {
       applyLanguage("zh");
     }

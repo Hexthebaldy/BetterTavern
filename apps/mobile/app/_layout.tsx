@@ -31,7 +31,9 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     [font.mono]: IBMPlexMono_400Regular,
     [font.monoMedium]: IBMPlexMono_500Medium,
+    // 正文宋体中文、日文各一份，启动时一起加载（都是本地文件）；按需加载会在第一次打开日文故事时先闪一帧系统字体
     [font.serif]: require("../assets/fonts/NotoSerifSC-Regular.ttf"),
+    [font.serifJa]: require("../assets/fonts/NotoSerifJP-Regular.ttf"),
   });
   const ready = fontsLoaded || fontError !== null;
 

@@ -7,7 +7,15 @@
  * 见 docs/client.md 第 1 节。
  */
 
-import type { NewAction, Turn, TurnAction, TurnError, TurnEvent, TurnOption } from "../api/types.ts";
+import type {
+  NewAction,
+  Playthrough,
+  Turn,
+  TurnAction,
+  TurnError,
+  TurnEvent,
+  TurnOption,
+} from "../api/types.ts";
 import { i18n } from "../i18n/index.ts";
 
 export type Phase =
@@ -55,6 +63,8 @@ export type PlayState = {
   /** 主角名和剧本 ID（阅读页顶上的书名页用；加载后才有） */
   protagonist: string;
   scenarioId: string | null;
+  /** 这一局的语言（开局时定下，和提示词同一种）：正文按它选字体；加载前按中文 */
+  language: Playthrough["language"];
   turns: StoryTurn[];
   pending: PendingTurn | null;
   error: TurnError | null;
@@ -70,6 +80,7 @@ export type PlayEvent =
       title?: string;
       protagonist?: string;
       scenarioId?: string | null;
+      language?: Playthrough["language"];
     }
   | { type: "load_failed"; error: TurnError }
   | { type: "submit"; submission: Submission; display: TurnAction | null }
@@ -86,6 +97,7 @@ export const initialPlayState: PlayState = {
   title: "",
   protagonist: "",
   scenarioId: null,
+  language: "zh",
   turns: [],
   pending: null,
   error: null,
@@ -136,6 +148,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
         title: event.title ?? state.title,
         protagonist: event.protagonist ?? state.protagonist,
         scenarioId: event.scenarioId !== undefined ? event.scenarioId : state.scenarioId,
+        language: event.language ?? state.language,
         turns,
         error: null,
         submission: null,

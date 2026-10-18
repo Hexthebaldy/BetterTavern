@@ -11,6 +11,7 @@
 import { memo, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { LANGUAGE_TAGS } from "@bettertavern/core/i18n/index";
 import {
   actionNote,
   isEnded,
@@ -34,8 +35,9 @@ function paragraphs(text: string): string[] {
 }
 
 /**
- * 正文的字体和字号：没设置字号时跟随浏览器字号（rem，以 17.5 为基准），设置后用固定的 px。
- * 写成 CSS 变量放在故事流上，叙述和“我的行动”都用它。
+ * 正文的字号：没设置字号时跟随浏览器字号（rem，以 17.5 为基准），设置后用固定的 px。
+ * 写成 CSS 变量放在阅读页上，叙述和“我的行动”都用它。宋体还是黑体不放在变量里，阅读页上标 data-narr-font：
+ * 字体组按语言分（tokens.css），要在正文所在的元素上按它的 lang 取，在外层取会拿到界面语言的那一组。
  */
 export function narrativeVars(prefs: ReadingPrefs): CSSProperties {
   const size = readingSize(prefs);
@@ -43,7 +45,6 @@ export function narrativeVars(prefs: ReadingPrefs): CSSProperties {
   return {
     "--narr-size": prefs.size === null ? `${size / 16}rem` : `${size}px`,
     "--narr-leading": `${ratio}`,
-    "--narr-font": prefs.font === "serif" ? "var(--font-serif)" : "var(--font-sans)",
   } as CSSProperties;
 }
 
@@ -78,11 +79,17 @@ export function BookHeader({
   );
 }
 
+/**
+ * 故事正文（叙述和“我的行动”）标上这一局的 lang（不跟界面语言）：读屏按它念，宋体按它选（tokens.css）。
+ * 只标正文段落，搭建世界、写开场这类提示是界面文字，跟页面的 lang。
+ */
+type StoryLang = { lang: string | undefined };
+
 /** “我的行动”：和叙述同样的字，颜色浅一档，左边一道竖线；读屏时前面加上“我的行动：” */
-function ActionNote({ text }: { text: string }) {
+function ActionNote({ text, lang }: { text: string } & StoryLang) {
   const { t } = useTranslation();
   return (
-    <p className={styles.note}>
+    <p className={styles.note} lang={lang}>
       <span className={styles.srOnly}>{t("play.myActionPrefix")}</span>
       {text}
     </p>
@@ -91,10 +98,11 @@ function ActionNote({ text }: { text: string }) {
 
 function Narrative({
   text,
+  lang,
   dim,
   caret,
   interrupted,
-}: {
+}: StoryLang & {
   text: string;
   dim?: boolean;
   /** 光标：live 是蓝色，waiting 是灰色（重连、等结果）；不传就不画 */
@@ -106,13 +114,18 @@ function Narrative({
   const caretNode = caret ? (
     <span className={cx(styles.caret, caret === "waiting" && styles.caretWaiting)} aria-hidden="true" />
   ) : null;
-  if (parts.length === 0) return caretNode ? <p className={styles.narrative}>{caretNode}</p> : null;
+  if (parts.length === 0)
+    return caretNode ? (
+      <p className={styles.narrative} lang={lang}>
+        {caretNode}
+      </p>
+    ) : null;
   return (
     <>
       {parts.map((p, i) => {
         const last = i === parts.length - 1;
         return (
-          <p key={i} className={cx(styles.narrative, "narrative", dim && styles.dim)}>
+          <p key={i} className={cx(styles.narrative, "narrative", dim && styles.dim)} lang={lang}>
             {p}
             {last ? caretNode : null}
             {last && interrupted ? <span className={styles.cut}>{t("play.interrupted")}</span> : null}
@@ -123,14 +136,14 @@ function Narrative({
   );
 }
 
-const TurnBlock = memo(function TurnBlock({ turn }: { turn: StoryTurn }) {
+const TurnBlock = memo(function TurnBlock({ turn, lang }: { turn: StoryTurn } & StoryLang) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
   useTranslation();
   const note = actionNote(turn.action);
   return (
     <section className={cx(styles.turn, styles.settled)}>
-      {note ? <ActionNote text={note} /> : null}
-      <Narrative text={turn.narrative} />
+      {note ? <ActionNote text={note} lang={lang} /> : null}
+      <Narrative text={turn.narrative} lang={lang} />
     </section>
   );
 });
@@ -158,7 +171,7 @@ function OpeningSteps({ building }: { building: boolean }) {
   );
 }
 
-function PendingBlock({ pending, phase }: { pending: PendingTurn; phase: Phase }) {
+function PendingBlock({ pending, phase, lang }: { pending: PendingTurn; phase: Phase } & StoryLang) {
   const failed = phase === "failed";
   const opening = pending.action?.source === "opening";
   const note = actionNote(pending.action);
@@ -172,9 +185,10 @@ function PendingBlock({ pending, phase }: { pending: PendingTurn; phase: Phase }
     return <OpeningSteps building={pending.buildingWorld} />;
   return (
     <section className={styles.turn}>
-      {note ? <ActionNote text={note} /> : null}
+      {note ? <ActionNote text={note} lang={lang} /> : null}
       <Narrative
         text={pending.narrative}
+        lang={lang}
         dim={failed}
         caret={caret}
         interrupted={failed && pending.narrative.length > 0}
@@ -208,13 +222,14 @@ export function StoryFeed({
 }) {
   const { t } = useTranslation();
   const missingOpening = state.turns.length === 0 && state.phase === "idle";
+  const lang = LANGUAGE_TAGS[state.language];
   return (
     <>
       {header}
       {state.turns.map((turn) => (
-        <TurnBlock key={turn.id} turn={turn} />
+        <TurnBlock key={turn.id} turn={turn} lang={lang} />
       ))}
-      {state.pending ? <PendingBlock pending={state.pending} phase={state.phase} /> : null}
+      {state.pending ? <PendingBlock pending={state.pending} phase={state.phase} lang={lang} /> : null}
       {missingOpening ? <OpeningMissing /> : null}
       {isEnded(state) ? (
         <p className={styles.end} aria-label={t("play.theEnd")}>

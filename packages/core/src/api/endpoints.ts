@@ -59,7 +59,7 @@ export type NewPlaythrough = {
   title?: string;
   preferences?: Partial<Preferences>;
   /** 这一局给 agent 的提示词用哪种语言：传当前的界面语言（docs/i18n.md 第 4 节）；不传按 zh */
-  language?: "zh" | "en";
+  language?: "zh" | "en" | "ja";
 };
 
 const enc = encodeURIComponent;

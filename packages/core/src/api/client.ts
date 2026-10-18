@@ -308,7 +308,7 @@ function unexpected(error: ApiError): boolean {
 
 /**
  * 界面上显示的错误文字，按错误码翻译成界面语言（docs/i18n.md 第 3 节）。服务端的说明（message）是英文：
- * 只在英文界面、又没有对应的翻译时直接用；中文界面这时按 HTTP 状态码给一句通用的。
+ * 只在英文界面、又没有对应的翻译时直接用；中文、日文界面这时按 HTTP 状态码给一句通用的，不夹英文。
  */
 export function describeError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -341,7 +341,7 @@ function apiErrorText(error: ApiError): string {
 
 /**
  * 回合失败（turn.failed 事件、回合详情里的 error）的说明：先按服务商错误的原因（reason），
- * 再按回合失败码，最后按接口错误码；都没有时英文界面用服务端的说明，中文界面说“生成失败”。
+ * 再按回合失败码，最后按接口错误码；都没有时英文界面用服务端的说明，中文、日文界面说“生成失败”。
  */
 export function describeTurnError(error: Pick<TurnError, "code" | "message" | "reason">): string {
   return (

@@ -1,5 +1,5 @@
 /**
- * 界面语言（docs/i18n.md）：设置是跟随系统、中文或 English，存在界面偏好里（PrefsProvider）。
+ * 界面语言（docs/i18n.md）：设置是跟随系统、中文、English 或日本語，存在界面偏好里（PrefsProvider）。
  * 这个模块一加载就按系统语言初始化，偏好读出来之前的那几帧也是对的语言（启动画面挡着，用户看不到）；
  * 之后 useLanguageSync() 跟着设置和系统语言切换。
  */

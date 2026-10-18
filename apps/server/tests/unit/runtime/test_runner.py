@@ -282,6 +282,18 @@ async def test_english_playthrough_uses_english_prompts() -> None:
     assert store.committed
 
 
+async def test_japanese_playthrough_uses_japanese_prompts() -> None:
+    hub, adapters = scripted_hub("fake")
+    adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
+    store = FakeStore()
+    await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub, language="ja")
+    messages = adapters["fake"].requests[0].messages
+    assert messages[0].content.startswith("あなたは一人称で語られるインタラクティブ小説の監督です")
+    assert messages[-1].content.endswith("選択肢はちょうど2つにすること。）")
+    assert "导演" not in messages[0].content and "You are" not in messages[0].content
+    assert store.committed
+
+
 async def test_missing_narrative_fails_the_turn() -> None:
     hub, adapters = scripted_hub("fake")
     adapters["fake"].streams.append(StreamScript(["   "]))

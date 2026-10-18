@@ -1,0 +1,34 @@
+{
+  "preamble": "以下は現在の世界の状態です（資料であり、プレイヤーの新しい入力ではありません）。語りはこれと矛盾してはなりません。",
+  "section": "【{title}】",
+  "sections": {
+    "scene": "場面",
+    "hero": "主人公（自分）",
+    "present": "その場にいる人物",
+    "roster": "ほかの人物と場所（名簿）",
+    "known": "プレイヤーが知っている事実",
+    "secret": "監督のみ閲覧可（人物だけが知る秘密。直接書かないこと）"
+  },
+  "scene": {
+    "location": "場所：{value}",
+    "time": "時間：{value}",
+    "goal": "主人公の現在の目的：{value}"
+  },
+  "items": "所持品：{value}",
+  "details": {
+    "goal": "目的：{value}",
+    "attitude": "主人公への態度：{value}",
+    "speech_style": "話し方：{value}"
+  },
+  "kinds": {
+    "character": "人物",
+    "item": "アイテム",
+    "location": "場所",
+    "organization": "組織",
+    "world": "世界"
+  },
+  "kind": "（{kind}）",
+  "describe": "：{value}",
+  "join_details": "／",
+  "join_names": "、"
+}

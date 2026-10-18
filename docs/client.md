@@ -18,7 +18,7 @@
 | 本地存储 | expo-sqlite（历史缓存）、expo-secure-store（令牌） | 缓存随时可丢，服务端才是权威 |
 | API 客户端 | `openapi-fetch` + 生成的类型 | 来自 `packages/api-contract`（[backend.md 第 9 节](backend.md)） |
 | 流式 | `expo/fetch` 加自写 `SseClient` | 见下 |
-| 国际化 | i18next + react-i18next + expo-localization | 中文、英文两种界面语言，资源和网页端共用（`packages/core/src/i18n/`），见 [i18n.md](i18n.md) |
+| 国际化 | i18next + react-i18next + expo-localization | 中文、英文、日文三种界面语言，资源和网页端共用（`packages/core/src/i18n/`），见 [i18n.md](i18n.md) |
 | 文件导入 | expo-document-picker | 角色卡原样上传，服务端解析 PNG 里的 `chara` 文本块，客户端不带 PNG 解析器 |
 | 测试 | `node --test`（纯逻辑）、Jest、React Native Testing Library、MSW、Maestro | [testing.md 第 1 节](testing.md) |
 
@@ -155,11 +155,11 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | `settings/models` | 模型列表（导演那一行带标记）和添加模型：服务商图块（DeepSeek、OpenAI、Grok、Hugging Face、自定义兼容端点，一行三块；圆标里是各家的标志，取自 Lobe Icons，形状数据在 `@bettertavern/design/providerLogos`，自定义端点写 { }）→ Key（每次都新填，可粘贴；不列出已配置过的 Key）→ 端点（使用官方地址）→ 模型列表（Key 和端点填好后自动获取，也可以手动重新获取）、搜索兼手动输入 → 上下文窗口（只有服务商列表和内置资料都不知道时才让填，不知道就按 32K 估计）→ 备注名、是否设为导演 → 保存。一个 Key 配几个模型时每个模型一行 |
 | `settings/model/[id]` | 模型详情：服务商、Key、模型名、端点；测试这个模型（结果存在模型上）、设为导演；“能记住多少”格子图，标出窗口的来源（服务商提供、内置资料、你填的、按服务商报错纠正、估计值），估计值和手填的可以改；工作窗口上限、深度思考；编辑备注名、模型名和端点；更换 Key（别的模型也用这个 Key 时可以一起换）；取消导演；删除 |
 | `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、模型数，输入密码确认） |
-| 设置首页的“语言” | 选择面板（手机是底部面板，平板是对话框）：跟随系统（下面注明系统语言）、中文、English；“中文”“English”用各自的语言写 |
+| 设置首页的“语言” | 选择面板（手机是底部面板，平板是对话框）：跟随系统（下面注明系统语言）、中文、English、日本語；每种语言用它自己的文字写 |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
 
 界面按 [design/ui/](design/ui/README.md) 的设计稿实现（“白 / 柔线 / 大圆角”，第一版正式界面；交互规则也在那份 README 里）。
-界面文字有中文和英文，在“设置 → 语言”里选：跟随系统（系统语言是中文时用中文，其他用英文）、中文、English，存在设备上，选了立刻生效；
+界面文字有中文、英文和日文，在“设置 → 语言”里选：跟随系统（系统语言是中文时用中文，是日文时用日文，其他用英文）、中文、English、日本語，存在设备上，选了立刻生效；
 开局时把当前的界面语言传给服务端，决定这一局的提示词用哪种语言（[i18n.md](i18n.md)）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `packages/design/src/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）。
 选中标签的图标和文字是 `#5B7CFF`（色板的 `tabOn`），底下是一块选中框，切换时滑到新标签（宽屏的竖向导航栏上下滑）：
 iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）——整条标签栏是一块玻璃，页面内容从下面透出来，选中框是另一块透明玻璃；
@@ -216,7 +216,7 @@ iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）—�
 packages/
 ├── core/src/                  # @bettertavern/core
 │   ├── api/      client.ts  endpoints.ts  types.ts  events.ts  turnStream.ts  sse/（SseParser、SseClient）
-│   ├── i18n/     index.ts  zh/  en/        # 界面文字：共用的 i18next 实例、按领域分文件的中英文资源（docs/i18n.md）
+│   ├── i18n/     index.ts  zh/  en/  ja/   # 界面文字：共用的 i18next 实例、按领域分文件的中、英、日资源（docs/i18n.md）
 │   ├── auth/     session.ts                # SessionManager：令牌、单飞刷新
 │   ├── play/     turnMachine.ts  playSession.ts  reading.ts  worldGraph.ts  testing.ts（测试用的回合样本）
 │   ├── scenario/ startForm.ts              # 开始新故事的内置选项与拼接
@@ -253,7 +253,7 @@ apps/mobile/
     │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx  AuthLayout.tsx
     ├── hooks/      useAsync.ts  useKeyboardLift.ts  useLayout.ts
     ├── observability/ persist.ts  setup.ts  # 诊断日志存文件、启动时安装
-    ├── theme/      index.ts                # 设计 token 的出口：共用的色板、主题表和 tokens，加上字体族
+    ├── theme/      index.ts  fonts.ts      # 设计 token 的出口：共用的色板、主题表和 tokens；字体族和按语言选正文宋体（fonts.ts）
     │               ThemeProvider.tsx       # usePalette()、RaisedSurface
     └── utils/      orientation.ts
 ```
@@ -262,8 +262,10 @@ apps/mobile/
 `PlaySession`（加载、幂等重试、409 的处理、续传、轮询）、`SessionManager`、`ApiClient`、诊断日志，以及开始表单的拼接、窗口格子、
 关系图布局、阅读字号、数字格式；`packages/design`：平板断点与栏宽、主题、几何封面；`apps/mobile`：最近用过的服务器。
 
-**字体**：界面用系统黑体，不打包；等宽字用 `@expo-google-fonts/ibm-plex-mono`；叙述用思源宋体的 GB2312 子集（`assets/fonts/NotoSerifSC-Regular.ttf`，约 3.2 MB，OFL 许可）。
-子集的字符表由 `scripts/font-subset-chars.py` 生成，再用 fonttools 的 `pyftsubset` 从完整字体裁出；GB2312 以外的生僻字退回系统字体显示。
+**字体**：界面用系统黑体，不打包；等宽字用 `@expo-google-fonts/ibm-plex-mono`；叙述用思源宋体的子集，中文、日文各一份（OFL 许可）：
+简体中文版的 GB2312 子集（`assets/fonts/NotoSerifSC-Regular.ttf`，约 3.2 MB）和日文版的 JIS X 0208 子集（`assets/fonts/NotoSerifJP-Regular.ttf`，约 3.3 MB）。
+正文按这一局的语言选（`theme/fonts.ts` 的 `serifFor()`，日文的局用日文子集，其他用中文子集），不按界面语言；剧本详情页的原始开场白（角色卡原文）用系统字体。
+子集的字符表由 `scripts/font-subset-chars.py` 生成（`--set jis` 是日文），再用 fonttools 的 `pyftsubset` 从完整字体裁出；字符集以外的生僻字退回系统字体显示。详见 [i18n.md](i18n.md) 第 3 节“字体”。
 
 ## 4 网页端（`apps/web`）
 
@@ -371,4 +373,4 @@ apps/web/
 ### 还没做的
 
 - 在 Safari 和 Firefox 里过一遍验证清单（设计稿 README 最后一节）：本机只自动跑了 Chrome；`E2E_ALL_BROWSERS=1` 可以加跑 WebKit 和 Firefox。
-- 字体：叙述用系统的宋体（Songti SC、思源宋体），没有像 App 那样打包思源宋体子集；等宽字没有打包 IBM Plex Mono。
+- 字体：叙述用系统的宋体（Songti SC、思源宋体；日文是 Hiragino Mincho、Yu Mincho 等），没有像 App 那样打包思源宋体子集；正文元素标上这一局的 `lang`，`tokens.css` 按它选中文或日文的字体组（[i18n.md](i18n.md) 第 3 节“字体”）；等宽字没有打包 IBM Plex Mono。

@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import type { Playthrough } from "@bettertavern/core/api/types";
+import { LANGUAGE_TAGS } from "@bettertavern/core/i18n/index";
 import { storyStatus } from "@bettertavern/core/play/storyStatus";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
@@ -120,7 +121,12 @@ export function StoryHero({
       />
       <div className={styles.heroBody}>
         <TitleRow story={story} hero />
-        {story.head_excerpt ? <p className={styles.heroExcerpt}>{story.head_excerpt}</p> : null}
+        {story.head_excerpt ? (
+          // 摘录是故事正文：按这一局的语言标 lang，宋体跟着它选
+          <p className={styles.heroExcerpt} lang={LANGUAGE_TAGS[story.language]}>
+            {story.head_excerpt}
+          </p>
+        ) : null}
       </div>
     </CardFrame>
   );

@@ -139,6 +139,7 @@ export class PlaySession {
         title: detail.playthrough.title,
         protagonist: detail.playthrough.protagonist_name,
         scenarioId: detail.playthrough.scenario_id,
+        language: detail.playthrough.language,
       });
       const pending = this.state.pending;
       if (this.state.phase === "streaming" && pending?.turnId) this.attach(pending.turnId);

@@ -179,9 +179,24 @@
 }
 
 /* ---------- 字体与字号 ---------- */
-:root {
+/*
+ * 无衬线和宋体按语言分两组（docs/i18n.md 第 3 节“字体”），网页不打包字体，用系统里装的。
+ * 按 lang 属性切换：<html lang> 跟界面语言；故事正文另标 lang（这一局的语言），所以正文跟故事语言走。
+ * 中文和英文用中文这一组（拉丁字母取自同一套字体）；日文把日文字体排在前面，汉字按日文的写法画。
+ */
+:root,
+:lang(zh),
+:lang(en) {
   --font-sans: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+}
+:lang(ja) {
+  --font-sans:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui,
+    sans-serif;
+  --font-serif: "Noto Serif JP", "Source Han Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+}
+:root {
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   /* 叙述：17.5 / 31。跟随浏览器字号时用 rem（以 16px 为 1rem），固定字号时用 px */
   --narr-size: 1.09375rem;

@@ -94,10 +94,14 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 480px;
 }
+/* 阅读设置选了黑体（阅读页上的 data-narr-font）；字体组在正文元素上按它的 lang 取 */
+[data-narr-font="sans"] :is(.narrative, .note, .end) {
+  font-family: var(--font-sans);
+}
 .narrative {
   margin: 0 0 16px;
   padding: 0 24px;
-  font-family: var(--narr-font, var(--font-serif));
+  font-family: var(--font-serif);
   font-size: var(--narr-size);
   line-height: var(--narr-leading);
   letter-spacing: var(--narr-tracking);
@@ -114,7 +118,7 @@
   margin: 4px 24px 16px;
   padding-left: 14px;
   border-left: 3px solid var(--line2);
-  font-family: var(--narr-font, var(--font-serif));
+  font-family: var(--font-serif);
   font-size: var(--narr-size);
   line-height: var(--narr-leading);
   letter-spacing: var(--narr-tracking);
@@ -208,7 +212,7 @@
 .end {
   margin: 0;
   padding: 8px 24px 0;
-  font-family: var(--narr-font, var(--font-serif));
+  font-family: var(--font-serif);
   font-size: var(--narr-size);
   line-height: var(--narr-leading);
   letter-spacing: 2px;

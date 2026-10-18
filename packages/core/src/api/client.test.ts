@@ -312,6 +312,27 @@ describe("错误说明按错误码翻译", () => {
     }
   });
 
+  it("日文界面：按错误码翻译，没有对应翻译时按状态码，不夹服务端的英文", () => {
+    applyLanguage("ja");
+    try {
+      assert.equal(
+        describeError(serverError(409, "EMAIL_TAKEN", "Email taken")),
+        "このメールアドレスはすでに登録されています",
+      );
+      const unknownField = serverError(422, "VALIDATION_ERROR", "Tags can have at most 32 items", {
+        field: "tags",
+      });
+      assert.equal(describeError(unknownField), "入力内容に誤りがあります");
+      assert.equal(
+        describeError(serverError(418, "TEAPOT", "I'm a teapot")),
+        "サーバーがエラーを返しました（HTTP 418）",
+      );
+      assert.equal(describeTurnError({ code: "SOMETHING_NEW", message: "Server said so" }), "生成に失敗しました");
+    } finally {
+      applyLanguage("zh");
+    }
+  });
+
   it("回合失败：先看原因，再看失败码", () => {
     const billing = { code: "PROVIDER_ERROR", message: "Out of credit", reason: "billing" };
     assert.equal(describeTurnError(billing), "模型服务商提示额度不足或欠费");

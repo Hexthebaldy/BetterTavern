@@ -20,14 +20,15 @@ import {
 
 import { MenuGroup, MenuItem, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
-import { font, onColor, space, usePalette } from "../../theme/index.ts";
+import { font, onColor, serifFor, space, usePalette } from "../../theme/index.ts";
 
 /** 字号轨道两头的留白 */
 const TRACK_PADDING = 14;
 
 function FontChoice() {
   const palette = usePalette();
-  const { t } = useTranslation();
+  // 样字是界面文字（“宋”“明”），按界面语言选宋体
+  const { t, i18n } = useTranslation();
   const surfaces = useSheetSurfaces();
   const { reading, setReading } = usePrefs();
   const option = (value: ReadingFont, glyph: string, label: string) => {
@@ -48,7 +49,7 @@ function FontChoice() {
           style={{
             fontSize: 20,
             color: fg,
-            fontFamily: value === "serif" ? font.serif : undefined,
+            fontFamily: value === "serif" ? serifFor(i18n.language) : undefined,
             fontWeight: value === "sans" ? "700" : "400",
           }}
         >

@@ -188,7 +188,8 @@
   padding-bottom: 18px;
 }
 .greetingText {
-  font-family: var(--font-serif);
+  /* 角色卡原文，语言不定：用无衬线，缺字交给浏览器回退 */
+  font-family: var(--font-sans);
   font-size: 14.5px;
   line-height: 25px;
   color: var(--mut);

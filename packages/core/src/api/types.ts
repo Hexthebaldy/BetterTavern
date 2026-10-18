@@ -209,7 +209,7 @@ export type Playthrough = {
   status: "building" | "active" | "ended";
   scenario_id: string | null;
   /** 提示词的语言，开局时定下 */
-  language: "zh" | "en";
+  language: "zh" | "en" | "ja";
   protagonist_name: string;
   preferences: Partial<Preferences>;
   head_turn_id: string | null;

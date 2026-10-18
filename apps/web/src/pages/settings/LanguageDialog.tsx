@@ -1,13 +1,18 @@
 /**
- * 语言（同 App 的 LanguageSheet）：跟随系统、中文、English。点一下立刻生效，对话框不关，能直接看到效果。
- * “中文”“English”用各自的语言写，不翻译；“跟随系统”下面注明浏览器现在是哪种语言。
+ * 语言（同 App 的 LanguageSheet）：跟随系统、中文、English、日本語。点一下立刻生效，对话框不关，能直接看到效果。
+ * 每种语言用它自己的文字写，不翻译；“跟随系统”下面注明浏览器现在是哪种语言。
  * 界面语言只决定界面文字和新开故事的提示词语言，不影响已有的存档（docs/i18n.md）。
  */
 
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { LANGUAGE_NAMES, LANGUAGES, type LanguageSetting } from "@bettertavern/core/i18n/index";
+import {
+  LANGUAGE_NAMES,
+  LANGUAGE_TAGS,
+  LANGUAGES,
+  type LanguageSetting,
+} from "@bettertavern/core/i18n/index";
 
 import { Button, cx } from "../../components/controls.tsx";
 import { Dialog } from "../../overlay/Dialog.tsx";
@@ -41,7 +46,7 @@ export function LanguageDialog({ onClose }: { onClose: () => void }) {
               type="button"
               role="radio"
               aria-checked={on}
-              lang={option.value === "system" ? undefined : option.value === "zh" ? "zh-CN" : "en"}
+              lang={option.value === "system" ? undefined : LANGUAGE_TAGS[option.value]}
               className={cx(styles.themeOption, on && styles.themeOn)}
               onClick={() => setLanguage(option.value)}
             >

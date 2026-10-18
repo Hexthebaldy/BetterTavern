@@ -81,6 +81,40 @@ def test_state_block_follows_the_language() -> None:
     assert en.startswith("<world-state>\nThis is the current world state")
 
 
+def test_state_block_in_japanese() -> None:
+    ja = render_state_block(WORLD, PromptLibrary("ja"))
+    assert ja.startswith("<world-state>\n以下は現在の世界の状態です")
+    assert "【その場にいる人物】\n- 老周" in ja and "主人公への態度：警惕" in ja
+    assert "北境商会（組織）" in ja
+    # 秘密那一节的标题和系统提示词里说的“監督のみ閲覧可”是同一个说法
+    assert "監督のみ閲覧可" in PromptLibrary("ja").render("director.system", **system_values()).text
+
+
+def test_japanese_context_is_japanese_and_deterministic() -> None:
+    assembler = ContextAssembler(PromptLibrary("ja"))
+    first = assembler.assemble(context(history=2), 64_000)
+    second = ContextAssembler(PromptLibrary("ja")).assemble(context(history=2), 64_000)
+    assert first.messages == second.messages
+    system = first.messages[0].content
+    assert system.startswith("あなたは一人称で語られるインタラクティブ小説の監督です")
+    assert "1回あたり200〜400字程度" in system
+    assert "灰石镇" in system  # 故事设定原样带上，不翻译
+    assert first.messages[-1].content.endswith("選択肢はちょうど2つにすること。）")
+
+
+def system_values() -> dict[str, Any]:
+    return {
+        "protagonist": {"name": "林川", "description": ""},
+        "title": "",
+        "world": "",
+        "rules": [],
+        "characters": [],
+        "style": "",
+        "boundaries": "",
+        "length": "medium",
+    }
+
+
 def test_english_context_is_english_and_deterministic() -> None:
     assembler = ContextAssembler(PromptLibrary("en"))
     first = assembler.assemble(context(history=2), 64_000)

@@ -17,7 +17,7 @@ export type WebPrefs = {
   reading: ReadingPrefs;
   libraryView: LibraryView;
   theme: ThemeSetting;
-  /** 界面语言：跟随系统（浏览器）、中文、English */
+  /** 界面语言：跟随系统（浏览器）、中文、English、日本語 */
   language: LanguageSetting;
   /** 阅读页够宽时世界状态停靠在右侧：开着还是收着（所有故事共用） */
   worldDocked: boolean;

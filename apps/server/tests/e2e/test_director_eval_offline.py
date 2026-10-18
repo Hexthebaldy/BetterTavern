@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from bettertavern.providers.transport import EndpointPolicy, build_http_client
-from evals.director_compliance import EvalConfig, TurnRecord, run_eval, summarize
+from evals.director_compliance import EVALS_ROOT, EvalConfig, TurnRecord, run_eval, summarize
 from tests.fakes.llm_server import (
     JsonReply,
     RecordedRequest,
@@ -105,3 +105,24 @@ def test_summary_verdicts() -> None:
     assert summary["compliance_with_repair"] == 0.995
     assert summary["verdict"] == "go"
     assert summary["errors"] == {"timeout": 1}
+
+
+async def test_japanese_scenario_uses_japanese_prompts(
+    client: httpx.AsyncClient, fake_llm: RunningFakeLLM
+) -> None:
+    fake_llm.app.default_reply = ScriptedDirector()
+    config = EvalConfig(
+        provider="custom_openai",
+        model="fake-model",
+        api_key="sk-fake-0000000000",
+        base_url=fake_llm.base_url,
+        turns=3,
+        history_turns=2,
+        scenario_path=EVALS_ROOT / "datasets" / "m0" / "ryokan_ja.yaml",
+    )
+    report = await run_eval(config, client=client)
+    assert report["summary"]["turns"] == 3
+    director = [r for r in fake_llm.app.chat_requests if r.body.get("stream")][-1]
+    messages = director.body["messages"]
+    assert messages[0]["content"].startswith("あなたは一人称で語られる")
+    assert messages[-1]["content"].endswith("選択肢はちょうど2つにすること。）")

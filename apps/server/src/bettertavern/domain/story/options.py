@@ -15,6 +15,7 @@ _WHITESPACE = re.compile(r"\s+")
 FALLBACK_OPTIONS: Mapping[str, tuple[str, str]] = {
     "zh": ("先观察一下周围的情况", "按自己的想法继续行动"),
     "en": ("Take a moment to look around", "Press on with my own plan"),
+    "ja": ("まずは周りの様子をうかがう", "自分の考えどおりに進む"),
 }
 
 

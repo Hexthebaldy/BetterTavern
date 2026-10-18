@@ -9,7 +9,7 @@
  *
  * 颜色和投影随主题变：色板、主题表在 @bettertavern/design 的 palettes.ts、themes.ts，页面用 usePalette() 取当前主题的色板。
  * 圆角、字号、间距、尺寸不随主题变，在 @bettertavern/design 的 tokens.ts（和网页端共用）；这里统一转出，页面只从这里导入。
- * 字体族名是 React Native 加载字体用的键，只在手机端，留在这里。
+ * 字体族名是 React Native 加载字体用的键，只在手机端，在 fonts.ts（正文宋体按语言选也在那里）。
  */
 
 export { lightPalette, darkPalette, type Palette } from "@bettertavern/design/palettes";
@@ -35,12 +35,4 @@ export {
 
 export { onColor, radius, size, space, stroke, type } from "@bettertavern/design/tokens";
 
-/**
- * 字体族。sans 用系统字体（不打包）；mono 用 IBM Plex Mono；serif 用思源宋体的 GB2312 子集
- * （assets/fonts，生成方法见 scripts/font-subset-chars.py）。名字与根布局 useFonts 的键一致。
- */
-export const font = {
-  mono: "IBMPlexMono_400Regular",
-  monoMedium: "IBMPlexMono_500Medium",
-  serif: "NotoSerifSC-Regular",
-};
+export { font, serifFor } from "./fonts.ts";

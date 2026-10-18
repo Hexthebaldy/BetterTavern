@@ -1,0 +1,9 @@
+{# version: 1 #}
+{% if world_state is defined and world_state %}
+{{ world_state }}
+
+{% endif %}
+<player-action>
+{{ action }}
+</player-action>
+（<narrative> と <options> の形式で返答し、選択肢はちょうど2つにすること。）

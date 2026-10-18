@@ -19,7 +19,7 @@ import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Pill } from "../../components/ui.tsx";
-import { font, radius, size, space, usePalette } from "../../theme/index.ts";
+import { font, radius, serifFor, size, space, usePalette } from "../../theme/index.ts";
 
 /** 小卡的高度；主卡高两格加中间的间距 */
 export const STORY_CARD_HEIGHT = 184;
@@ -198,7 +198,10 @@ export function StoryHeroBody({
       <View style={styles.heroBody}>
         <TitleRow story={story} large />
         {story.head_excerpt ? (
-          <Text numberOfLines={lines} style={[styles.heroExcerpt, { color: palette.narr }]}>
+          <Text
+            numberOfLines={lines}
+            style={[styles.heroExcerpt, { color: palette.narr, fontFamily: serifFor(story.language) }]}
+          >
             {story.head_excerpt}
           </Text>
         ) : null}
@@ -258,7 +261,6 @@ const styles = StyleSheet.create({
   },
   heroExcerpt: {
     marginTop: space.xs,
-    fontFamily: font.serif,
     fontSize: 18,
     lineHeight: HERO_EXCERPT_LINE,
   },

@@ -36,7 +36,7 @@ flowchart LR
 | 任务队列 | Postgres 表队列，`JobQueue` 接口 | 与业务写入同事务入队，无需双写；以后可换 Taskiq / Celery |
 | 事件总线 | `EventBus` 接口：进程内 + PG NOTIFY，Redis Streams 可选 | token 流续传与跨进程通知 |
 | LLM 调用 | 自有 provider 层（httpx + 自写 SSE 解析） | 见第 8 节 |
-| 提示词 | Jinja2 模板文件，按语言分目录（中文、英文，按这一局的语言选） | 模板可单独评测和替换 |
+| 提示词 | Jinja2 模板文件，按语言分目录（中文、英文、日文，按这一局的语言选） | 模板可单独评测和替换 |
 | 密钥 | `cryptography`，AES-GCM 信封加密 | 见第 11 节 |
 | 可观测 | structlog + OpenTelemetry | 见[testing.md 第 1 节](testing.md) |
 | 工程 | uv + 锁文件，ruff，pyright，pytest | hermes-agent 对直接依赖精确锁定，并把 provider 专属依赖放进 extras，我们照此办理 |
@@ -613,12 +613,12 @@ class Seed(BaseModel):
 
 所有提示词是 `runtime/prompts/<lang>/<name>.j2` 模板文件，不写在 Python 字符串里；模板头部有 `version`，渲染结果的哈希写入 `agent_runs.prompt_hash`，评测时可以按版本对比。渲染必须是确定性的（第 4 节的缓存要求），模板里不允许调用时间和随机函数。
 
-现在有中文（`zh`）和英文（`en`）两套，文件一一对应（[i18n.md](i18n.md) 第 4 节）：
+现在有中文（`zh`）、英文（`en`）和日文（`ja`）三套，文件一一对应（[i18n.md](i18n.md) 第 4 节）：
 
 - 一局用哪套由 `playthroughs.language` 决定：开局时客户端传当前的界面语言，之后不变。runtime 的 `PromptBook` 按回合头里的语言取 `PromptLibrary`，开局世界构建、导演、选项修补、结构化输出重试都用同一种语言。
 - 拼进上下文的固定文字也随语言：篇幅说明、“未提供”写在 `director.system.j2` 里；状态块的标签和标点在 `state_block.json`；WorldBuilder 结构化输出的字段说明在 `schema/seed.json`（`domain/world/seed.py` 里不写说明）。
 - 提示词里不规定故事正文用什么语言，正文一般跟着提示词、角色卡和玩家输入的语言。
-- `tests/unit/runtime/test_prompt_languages.py` 检查两套的文件、模板变量、数据文件的键一致，且都能渲染。
+- `tests/unit/runtime/test_prompt_languages.py` 检查每种语言的文件、模板变量、数据文件的键和中文一致，且都能渲染。
 
 ## 7 回退与重新生成
 

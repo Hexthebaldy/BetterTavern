@@ -6,21 +6,23 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 
-PromptLanguage = Literal["zh", "en"]
+PromptLanguage = Literal["zh", "en", "ja"]
 
-PROMPT_LANGUAGES: tuple[PromptLanguage, ...] = ("zh", "en")
+PROMPT_LANGUAGES: tuple[PromptLanguage, ...] = ("zh", "en", "ja")
 DEFAULT_LANGUAGE: PromptLanguage = "zh"
+
+# 没有名字时怎么称呼主角（开局时名字必填，只在旧数据里兜底）
+_UNNAMED: dict[str, str] = {"zh": "我", "en": "I", "ja": "私"}
 
 
 def parse_language(value: object) -> PromptLanguage:
     """库里或请求里的值；不认识的按默认语言"""
-    if value == "en":
-        return "en"
+    if value in PROMPT_LANGUAGES:
+        return cast(PromptLanguage, value)
     return DEFAULT_LANGUAGE
 
 
 def unnamed_protagonist(language: str) -> str:
-    """没有名字时怎么称呼主角（开局时名字必填，只在旧数据里兜底）"""
-    return "I" if language == "en" else "我"
+    return _UNNAMED.get(language, _UNNAMED[DEFAULT_LANGUAGE])

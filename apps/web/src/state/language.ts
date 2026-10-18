@@ -1,5 +1,5 @@
 /**
- * 界面语言（docs/i18n.md）：设置是跟随系统、中文或 English，存在界面偏好里（state/prefs.ts）。
+ * 界面语言（docs/i18n.md）：设置是跟随系统、中文、English 或日本語，存在界面偏好里（state/prefs.ts）。
  * 跟随系统时看浏览器的语言列表（navigator.languages）；浏览器换了语言（languagechange 事件）跟着变。
  * 偏好从 localStorage 同步读出，入口在首屏渲染前就调用 applyLanguageSetting()，不会先闪一帧别的语言。
  */
@@ -8,6 +8,7 @@ import { useLayoutEffect, useSyncExternalStore } from "react";
 
 import {
   applyLanguage,
+  LANGUAGE_TAGS,
   languageOf,
   resolveLanguage,
   type Language,
@@ -33,7 +34,7 @@ export function useSystemLanguage(): Language {
 export function applyLanguageSetting(setting: LanguageSetting): Language {
   const language = resolveLanguage(setting, browserTags());
   applyLanguage(language);
-  document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+  document.documentElement.lang = LANGUAGE_TAGS[language];
   return language;
 }
 

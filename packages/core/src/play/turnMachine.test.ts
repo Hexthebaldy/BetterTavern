@@ -67,7 +67,8 @@ describe("turnMachine", () => {
     assert.equal(headTurn(state)?.seq, 1);
   });
 
-  it("加载时记下标题、主角名和剧本；重新加载没带的字段保留原值", () => {
+  it("加载时记下标题、主角名、剧本和这一局的语言；重新加载没带的字段保留原值", () => {
+    assert.equal(initialPlayState.language, "zh");
     let state = run([
       {
         type: "loaded",
@@ -77,11 +78,13 @@ describe("turnMachine", () => {
         title: "雨夜渡口",
         protagonist: "林川",
         scenarioId: "s1",
+        language: "ja",
       },
     ]);
-    assert.deepEqual([state.title, state.protagonist, state.scenarioId], ["雨夜渡口", "林川", "s1"]);
+    const fields = (s: typeof state) => [s.title, s.protagonist, s.scenarioId, s.language];
+    assert.deepEqual(fields(state), ["雨夜渡口", "林川", "s1", "ja"]);
     state = playReducer(state, { type: "loaded", turns: [makeTurn(0)], active: null, lastFailed: null });
-    assert.deepEqual([state.title, state.protagonist, state.scenarioId], ["雨夜渡口", "林川", "s1"]);
+    assert.deepEqual(fields(state), ["雨夜渡口", "林川", "s1", "ja"]);
   });
 
   it("有进行中的回合就进入 streaming，叙述从空开始拼（事件流会从头重放）", () => {

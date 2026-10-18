@@ -172,7 +172,7 @@ async def test_ending_closes_the_story(running: Running) -> None:
         auth = {"Authorization": f"Bearer {token}"}
         files = {"file": ("card.json", json.dumps(CARD).encode(), "application/json")}
         scenario = (await client.post("/v1/scenarios/import", headers=auth, files=files)).json()
-        # 提示词的语言只认 zh、en
+        # 提示词的语言只认 zh、en、ja
         r = await client.post(
             "/v1/playthroughs",
             headers=auth,

@@ -39,7 +39,7 @@
 | `protagonist` | [`ProtagonistIn`](#protagonistin) | 是 | 玩家扮演的主角 |
 | `title` | string / null | 否 | 标题，最多 80 个字符；不填时用剧本名 |
 | `preferences` | [`PreferencesIn`](#preferencesin) | 否 | 叙述偏好，不传就全部用默认值 |
-| `language` | string | 否 | 这一局给 agent 的提示词用哪种语言：`zh`（默认）/ `en`。客户端传当前的界面语言；之后不能改，也不影响故事正文用什么语言（见 [i18n.md](../i18n.md) 第 4 节） |
+| `language` | string | 否 | 这一局给 agent 的提示词用哪种语言：`zh`（默认）/ `en` / `ja`。客户端传当前的界面语言；之后不能改，也不影响故事正文用什么语言（见 [i18n.md](../i18n.md) 第 4 节） |
 
 #### `ProtagonistIn`
 
@@ -236,7 +236,7 @@
 | `title` | string | 标题 |
 | `status` | string | `building`（世界还没建好）/ `active` / `ended`（已经写完结局，不能再提交行动） |
 | `scenario_id` | string / null | 剧本；剧本被删除后为 null |
-| `language` | string | 提示词的语言：`zh` / `en`，开局时定下 |
+| `language` | string | 提示词的语言：`zh` / `en` / `ja`，开局时定下 |
 | `protagonist_name` | string | 主角的名字 |
 | `preferences` | object | 叙述偏好 `{"length", "style", "boundaries"}`，含义同 [`PreferencesIn`](#preferencesin) |
 | `head_turn_id` | string / null | 头部回合，也就是最新一个完成的回合；开场完成前为 null |
