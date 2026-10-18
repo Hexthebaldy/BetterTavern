@@ -1,11 +1,26 @@
-"""OpenAI、xAI（Grok）两家的 profile：请求体的改写、模型列表的过滤、能力表里的窗口和推理强度。"""
+"""OpenAI、xAI（Grok）、Gemini 的 profile：请求体的改写、模型列表的过滤、
+能力表里的窗口和推理强度。"""
 
 from __future__ import annotations
 
-from bettertavern.providers.base import ChatRequest, Message, ReasoningConfig
+import json
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+from bettertavern.domain.world.seed import Seed
+from bettertavern.providers.base import (
+    ChatRequest,
+    ForcedTool,
+    Message,
+    ReasoningConfig,
+    ResponseFormat,
+    ToolSpec,
+)
 from bettertavern.providers.capabilities import load_rules, resolve_capabilities
 from bettertavern.providers.openai_compat import OpenAICompatAdapter
-from bettertavern.providers.profiles import BUILTIN_PROFILES, OPENAI, XAI
+from bettertavern.providers.profiles import BUILTIN_PROFILES, GEMINI, OPENAI, XAI
+from bettertavern.providers.profiles.gemini import inline_refs
 from bettertavern.providers.registry import default_registry
 
 RULES = load_rules()
@@ -31,6 +46,7 @@ def test_registry_order_matches_the_provider_tiles() -> None:
         "deepseek",
         "openai",
         "xai",
+        "gemini",
         "huggingface",
         "custom_openai",
     ]
@@ -38,6 +54,11 @@ def test_registry_order_matches_the_provider_tiles() -> None:
     assert registry.get("xai").display_name == "Grok"
     assert registry.get("openai").default_base_url == "https://api.openai.com/v1"
     assert registry.get("xai").default_base_url == "https://api.x.ai/v1"
+    assert registry.get("gemini").display_name == "Gemini"
+    assert (
+        registry.get("gemini").default_base_url
+        == "https://generativelanguage.googleapis.com/v1beta/openai"
+    )
 
 
 # ---- OpenAI ----------------------------------------------------------------------------
@@ -179,3 +200,140 @@ def test_xai_windows_from_the_table() -> None:
     )
     assert resolve_capabilities("xai", "grok-build-0.1", RULES).context_window == 256_000
     assert resolve_capabilities("xai", "grok-4.7", RULES).structured == ("json_schema",)
+
+
+# ---- Gemini ----------------------------------------------------------------------------
+
+
+def gemini_body(model: str, **kwargs: Any) -> dict[str, Any]:
+    adapter = OpenAICompatAdapter(GEMINI, client=None)  # type: ignore[arg-type]
+    caps = resolve_capabilities("gemini", model, RULES)
+    return adapter.build_body(request(model, **kwargs), caps, stream=False)
+
+
+def test_gemini_thinking_off_sends_the_lowest_level_with_headroom() -> None:
+    # 3.8 Flash 关不掉思考、不认 minimal：发 low，输出上限加上思考余量
+    body = gemini_body("gemini-3.8-flash", reasoning=ReasoningConfig(enabled=False))
+    assert body["reasoning_effort"] == "low"
+    assert body["max_tokens"] == 256 + 2048
+    # 3.6 Flash 认 minimal
+    body = gemini_body("gemini-3.6-flash", reasoning=ReasoningConfig(enabled=False))
+    assert body["reasoning_effort"] == "minimal"
+    # 2.5 Flash 能关：发 none，不加余量
+    body = gemini_body("gemini-2.5-flash", reasoning=ReasoningConfig(enabled=False))
+    assert body["reasoning_effort"] == "none"
+    assert body["max_tokens"] == 256
+    # 2.5 Pro 关不掉
+    body = gemini_body("gemini-2.5-pro", reasoning=ReasoningConfig(enabled=False))
+    assert body["reasoning_effort"] == "low"
+
+
+def test_gemini_thinking_on_uses_the_model_default_with_more_headroom() -> None:
+    body = gemini_body("gemini-4-argon", reasoning=ReasoningConfig(enabled=True))
+    assert "reasoning_effort" not in body
+    assert body["max_tokens"] == 256 + 16384
+    # 余量加上去也不超过模型的输出上限
+    body = gemini_body("gemini-4-argon", max_tokens=60000, reasoning=ReasoningConfig(enabled=True))
+    assert body["max_tokens"] == 65536
+    # 指定了这个模型认的档就照发
+    body = gemini_body("gemini-4-argon", reasoning=ReasoningConfig(enabled=True, effort="high"))
+    assert body["reasoning_effort"] == "high"
+
+
+def test_gemini_drops_sampling_only_on_models_that_ignore_it() -> None:
+    for model in ("gemini-4-argon", "gemini-3.8-flash", "gemini-3.6-flash"):
+        body = gemini_body(model, temperature=0.9, top_p=0.95)
+        assert "temperature" not in body and "top_p" not in body, model
+    for model in ("gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-2.5-flash"):
+        body = gemini_body(model, temperature=0.9, top_p=0.95)
+        assert body["temperature"] == 0.9 and body["top_p"] == 0.95, model
+
+
+def _has_ref(value: Any) -> bool:
+    return "$ref" in json.dumps(value) or "$defs" in json.dumps(value)
+
+
+class _Place(BaseModel):
+    name: str
+
+
+class _Story(BaseModel):
+    home: _Place = Field(description="where it starts")
+    places: list[_Place] = []
+
+
+def test_gemini_inlines_schema_refs() -> None:
+    schema = _Story.model_json_schema()
+    assert _has_ref(schema)
+    flat = inline_refs(schema)
+    assert not _has_ref(flat)
+    # 和 $ref 写在一起的字段说明保留下来
+    assert flat["properties"]["home"]["description"] == "where it starts"
+    assert flat["properties"]["home"]["properties"]["name"]["type"] == "string"
+    assert flat["properties"]["places"]["items"]["properties"]["name"]["type"] == "string"
+    # 开局用的 Seed 整个展开得开
+    assert not _has_ref(inline_refs(Seed.model_json_schema()))
+    # 自引用展开不完：原样返回
+    loop = {
+        "$defs": {"Node": {"type": "object", "properties": {"next": {"$ref": "#/$defs/Node"}}}},
+        "$ref": "#/$defs/Node",
+    }
+    assert inline_refs(loop) == loop
+
+
+def test_gemini_request_schemas_are_inlined() -> None:
+    schema = _Story.model_json_schema()
+    body = gemini_body(
+        "gemini-3.8-flash",
+        response_format=ResponseFormat(type="json_schema", schema=schema, name="story"),
+    )
+    assert not _has_ref(body["response_format"])
+    body = gemini_body(
+        "gemini-3.8-flash",
+        tools=[ToolSpec(name="story", description="", parameters=schema)],
+        tool_choice=ForcedTool("story"),
+    )
+    assert not _has_ref(body["tools"])
+    # 原来的 schema 没被改动
+    assert _has_ref(schema)
+
+
+def test_gemini_lists_only_chat_models() -> None:
+    ids = [
+        "models/gemini-4-argon",
+        "gemini-3.8-flash",
+        "models/gemini-3.1-pro-preview",
+        "gemini-flash-latest",
+        "models/gemini-3.1-pro-preview-customtools",
+        "models/gemini-3.1-flash-lite-image",
+        "models/gemini-embedding-001",
+        "models/gemini-2.5-flash-preview-tts",
+        "models/gemini-live-2.5-flash",
+        "models/gemini-2.5-flash-native-audio",
+        "models/gemini-robotics-er-2-preview",
+        "models/gemini-2.5-computer-use-preview-10-2025",
+        "models/imagen-4.0-generate-001",
+        "models/veo-3.0-generate-001",
+        "models/gemma-3-27b-it",
+    ]
+    assert listed(GEMINI, ids) == [
+        "gemini-4-argon",
+        "gemini-3.8-flash",
+        "gemini-3.1-pro-preview",
+        "gemini-flash-latest",
+    ]
+
+
+def test_gemini_windows_from_the_table() -> None:
+    caps = resolve_capabilities("gemini", "gemini-3.8-flash", RULES)
+    assert caps.context_window == 1_048_576
+    assert caps.max_output == 65_536
+    assert caps.structured == ("json_schema",)
+    assert caps.reasoning.efforts == ("low", "medium", "high")
+    assert resolve_capabilities("gemini", "gemini-3-flash-preview", RULES).reasoning.efforts[0] == (
+        "minimal"
+    )
+    # 列表里出现的别名（gemini-flash-latest）不知道是哪个模型：用整家都认的档
+    latest = resolve_capabilities("gemini", "gemini-flash-latest", RULES)
+    assert latest.reasoning.efforts == ("low", "medium", "high")
+    assert latest.sampling.temperature

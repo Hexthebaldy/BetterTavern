@@ -146,6 +146,24 @@ _CONTEXT_PATTERNS = (
     "token limit",
     "tokens exceed",
     "`max_new_tokens` must be",  # TGI
+    # Gemini：The input token count (N) exceeds the maximum number of tokens allowed (M)
+    "input token count",
+    "context is too long",  # Gemini 的 500：Your input context is too long
+)
+# 有的服务商（Gemini）Key 无效时回 400 而不是 401
+_AUTH_PATTERNS = (
+    "api key not valid",
+    "api_key_invalid",
+    "api key expired",
+    "api_key_expired",
+    "reported as leaked",
+)
+# 服务商不对服务器所在的地区开放（Gemini 不对中国大陆、香港、澳门开放）：并进“服务商的其他错误”。
+# 先认出来，免得文字里的 not supported、billing 把它归成“模型不支持某功能”或“额度不足”
+_REGION_PATTERNS = (
+    "location is not supported",
+    "not available in your country",
+    "not available in your region",
 )
 _MODEL_PATTERNS = (
     "model not found",
@@ -218,6 +236,7 @@ _CONTEXT_LIMIT_PATTERNS = (
     re.compile(r"context (?:length|window) (?:is|of) (\d[\d,]*)"),
     re.compile(r"max_new_tokens`? must be <= ?(\d[\d,]*)"),
     re.compile(r"(?:limit|maximum) of (\d[\d,]*) tokens"),
+    re.compile(r"maximum number of tokens allowed \(?(\d[\d,]*)"),  # Gemini
 )
 _MIN_CONTEXT_LIMIT = 1024
 _MAX_CONTEXT_LIMIT = 10_000_000
@@ -338,6 +357,10 @@ def classify_http_error(
     if status == 404:
         return make(ErrorClass.MODEL_NOT_FOUND)
     if status in (400, 422):
+        if _contains(text, _AUTH_PATTERNS):
+            return make(ErrorClass.AUTH)
+        if _contains(text, _REGION_PATTERNS):
+            return make(ErrorClass.UNKNOWN)
         if _contains(text, _CONTEXT_PATTERNS):
             return make(ErrorClass.CONTEXT_OVERFLOW)
         if _contains(text, _MODEL_PATTERNS):
@@ -351,6 +374,8 @@ def classify_http_error(
         if _contains(text, _FORMAT_PATTERNS):
             return make(ErrorClass.FORMAT_ERROR)
         return make(ErrorClass.UNKNOWN)
+    if 500 <= status < 600 and _contains(text, _CONTEXT_PATTERNS):
+        return make(ErrorClass.CONTEXT_OVERFLOW)
     if status in (503, 529) or "overloaded" in text:
         return make(ErrorClass.OVERLOADED)
     if 500 <= status < 600:

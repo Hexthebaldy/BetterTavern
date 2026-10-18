@@ -119,6 +119,42 @@
 - match: { provider: xai, model: 'grok-build-*' }
   caps: { context_window: 256000 }
 
+# Gemini（Google）：走 OpenAI 兼容接口。窗口、输出上限、思考档位取自 https://ai.google.dev/gemini-api/docs/models、
+# /thinking、/openai（2026-10）。兼容接口的模型列表不给窗口；现有文本模型都是 1,048,576 / 65,536。
+# 思考关不掉（只有 2.5 Flash 系列能发 none）：“深度思考”关着时 profile 发 efforts 里最低的一档，
+# 所以 efforts 只写这个模型认的档（3.8 Flash 发 minimal 会报错）。整家的默认是每个模型都认的 low / medium / high。
+# Gemini 4 和 3.6 及以后忽略 temperature、top_p（以后会报 400），这些模型关掉采样参数。
+- match: { provider: gemini }
+  caps:
+    context_window: 1048576
+    max_output: 65536
+    structured: [json_schema]
+    reasoning: { control: effort, efforts: [low, medium, high] }
+    roles: { system: true, alternation: loose }
+
+- match: { provider: gemini, model: 'gemini-4*' }
+  caps: { sampling: { temperature: false, top_p: false } }
+
+- match: { provider: gemini, model: 'gemini-3.8*' }
+  caps: { sampling: { temperature: false, top_p: false } }
+
+- match: { provider: gemini, model: 'gemini-3.6*' }
+  caps:
+    sampling: { temperature: false, top_p: false }
+    reasoning: { control: effort, efforts: [minimal, low, medium, high] }
+
+- match: { provider: gemini, model: 'gemini-3.5-flash-lite*' }
+  caps: { reasoning: { control: effort, efforts: [minimal, low, medium, high] } }
+
+- match: { provider: gemini, model: 'gemini-3.1-flash-lite*' }
+  caps: { reasoning: { control: effort, efforts: [minimal, low, medium, high] } }
+
+- match: { provider: gemini, model: 'gemini-3-flash*' }
+  caps: { reasoning: { control: effort, efforts: [minimal, low, medium, high] } }
+
+- match: { provider: gemini, model: 'gemini-2.5-flash*' }   # 2.5 Flash、Flash-Lite 能关思考
+  caps: { reasoning: { control: effort, efforts: [none, low, medium, high] } }
+
 - match: { provider: huggingface }
   caps:
     structured: []                         # 保守：只走 prompt_json，探测通过再升级

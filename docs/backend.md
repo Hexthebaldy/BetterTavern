@@ -11,7 +11,7 @@ flowchart LR
   client["RN 客户端<br/>阅读剧情、点选项或自由输入"] -- "REST 提交行动 / SSE 接收事件" --> api["api 进程（FastAPI）<br/>鉴权、读接口、热路径导演生成、SSE 推流"]
   api <--> pg[("PostgreSQL（唯一事实来源）<br/>回合、世界状态、摘要、大纲<br/>任务队列 SKIP LOCKED、LISTEN/NOTIFY")]
   worker["worker 进程<br/>post_turn_graph：state / summary / outline 三条车道"] <--> pg
-  api --> llm["模型服务商（用户自带密钥）<br/>DeepSeek、OpenAI、Grok、Hugging Face、自定义 OpenAI 兼容端点"]
+  api --> llm["模型服务商（用户自带密钥）<br/>DeepSeek、OpenAI、Grok、Gemini、Hugging Face、自定义 OpenAI 兼容端点"]
   worker --> llm
   api -. 可选 .-> redis[("Redis<br/>多实例时缓冲 token 流")]
 ```
@@ -69,7 +69,7 @@ flowchart LR
 | 表 | 关键列 | 说明 |
 | --- | --- | --- |
 | `users` | id, email, password\_hash, locale, settings jsonb, created\_at | v1 邮箱加密码，短期访问令牌加刷新令牌（`refresh_tokens` 表） |
-| `model_routes` | id, user\_id, label, provider（deepseek / openai / xai / huggingface / custom\_openai；新厂商在注册表里加）, base\_url, api\_key\_enc, key\_id, extra\_headers\_enc, extra\_body jsonb, model, listed\_window, manual\_window, learned\_window, params jsonb, caps\_override jsonb, probe jsonb, status, is\_director, fallback\_route\_id | 一行是玩家配好的一个模型：Key、端点、模型名、窗口和写法设置放在一起，换导演时不用重新配。密钥信封加密；`probe` 是能力探测结果（第 8 节）；`extra_body` / `extra_headers_enc` 用来给请求追加自定义字段和请求头（思路参考 ST 的 custom\_include\_body / custom\_include\_headers）。每个用户最多一行是导演，其他 task 都用导演这一行（以后要给 StateKeeper 等单独配模型时再加按 task 的分配） |
+| `model_routes` | id, user\_id, label, provider（deepseek / openai / xai / gemini / huggingface / custom\_openai；新厂商在注册表里加）, base\_url, api\_key\_enc, key\_id, extra\_headers\_enc, extra\_body jsonb, model, listed\_window, manual\_window, learned\_window, params jsonb, caps\_override jsonb, probe jsonb, status, is\_director, fallback\_route\_id | 一行是玩家配好的一个模型：Key、端点、模型名、窗口和写法设置放在一起，换导演时不用重新配。密钥信封加密；`probe` 是能力探测结果（第 8 节）；`extra_body` / `extra_headers_enc` 用来给请求追加自定义字段和请求头（思路参考 ST 的 custom\_include\_body / custom\_include\_headers）。每个用户最多一行是导演，其他 task 都用导演这一行（以后要给 StateKeeper 等单独配模型时再加按 task 的分配） |
 
 ### B 剧本库
 
@@ -663,7 +663,7 @@ class Seed(BaseModel):
 
 ## 8 Provider 层
 
-Provider 层只做一件事：把与厂商无关的请求变成该厂商的 HTTP 请求，并把响应流还原成统一事件。它不含任何剧情逻辑，也是 runtime 里唯一允许访问外部模型服务的地方。设计只参考 SillyTavern 服务端适配各家模型接口的思路，代码用 Python 自行编写，不移植；v1 适配 DeepSeek、Hugging Face 和自定义 OpenAI 兼容端点，厂商之间的差异都收在“厂商配置”里，以后适配大量厂商时不用改 runtime。
+Provider 层只做一件事：把与厂商无关的请求变成该厂商的 HTTP 请求，并把响应流还原成统一事件。它不含任何剧情逻辑，也是 runtime 里唯一允许访问外部模型服务的地方。设计只参考 SillyTavern 服务端适配各家模型接口的思路，代码用 Python 自行编写，不移植；现在适配 DeepSeek、OpenAI、Grok（xAI）、Gemini、Hugging Face 和自定义 OpenAI 兼容端点，都走 OpenAI 兼容接口，厂商之间的差异都收在“厂商配置”里，以后适配大量厂商时不用改 runtime。
 
 ### 对 SillyTavern 的参考与取舍
 
@@ -714,9 +714,9 @@ class ProviderAdapter(Protocol):
 
 1. 兼容 OpenAI 协议，只是基址、认证、模型名不同：写一个 profile（几行声明），在 `capabilities.yaml` 加一条规则，在 `tests/contract/<name>/` 放录制夹具，注册即可，不写 HTTP 代码。
 2. 兼容 OpenAI 协议，但字段有差异（推理内容字段名、usage 字段、请求体多或少几个字段）：在 profile 里实现对应的钩子（`prepare_body`、`parse_usage`、`parse_reasoning`）。
-3. 协议不兼容（例如 Anthropic、Gemini 的原生接口）：实现 `ProviderAdapter` 协议（`build_body`、`stream`、`complete`、`list_models`），在 profile 里指明用哪个 Adapter。
+3. 协议不兼容（例如 Anthropic 的原生接口；Gemini 有官方的 OpenAI 兼容接口，走第 2 档）：实现 `ProviderAdapter` 协议（`build_body`、`stream`、`complete`、`list_models`），在 profile 里指明用哪个 Adapter。
 
-三档共用同一套外围能力：SSRF 防护、并发限流、错误分类与重试、能力探测、用量归一，它们都在 Adapter 外面，新厂商自动获得。设置页的厂商下拉由注册表生成，不写死。厂商多了以后，纯声明式的 profile 可以改放 YAML 文件，由注册表启动时加载。v1 注册 `deepseek`、`huggingface` 和 `custom_openai` 三个 profile。`custom_openai` 没有默认基址，由玩家填写；它的能力全靠探测，探测之前按 `capabilities.yaml` 的兜底规则保守处理，窗口由玩家在路由里确认。
+三档共用同一套外围能力：SSRF 防护、并发限流、错误分类与重试、能力探测、用量归一，它们都在 Adapter 外面，新厂商自动获得。设置页的厂商下拉由注册表生成，不写死。厂商多了以后，纯声明式的 profile 可以改放 YAML 文件，由注册表启动时加载。现在注册了 `deepseek`、`openai`、`xai`、`gemini`、`huggingface`、`custom_openai` 六个 profile（顺序就是设置页服务商图块的顺序）。`custom_openai` 没有默认基址，由玩家填写；它的能力全靠探测，探测之前按 `capabilities.yaml` 的兜底规则保守处理，窗口由玩家在路由里确认。
 
 ### DeepSeek 与 Hugging Face 的差异
 
@@ -745,6 +745,25 @@ class ProviderAdapter(Protocol):
 | 输出上限 | `max_tokens` 已废弃、o 系列不认，profile 一律改成 `max_completion_tokens` | `max_tokens` |
 | 推理控制 | `reasoning_effort`，各模型取值不同（能力表里逐个列）；有 `none` 的模型在“深度思考”关掉时发 `none`；推理开着时去掉 `temperature`、`top_p` | 推理关不掉；只有 4.5 / 4.6 / 4.7 收 `reasoning_effort`（low / medium / high / xhigh，4.5 没有 xhigh）；推理模型不收 `stop`、`presence_penalty`、`frequency_penalty`，profile 去掉 |
 | 结构化输出 | json\_schema（官方支持；线上失败按负缓存降级） | 同左 |
+
+### Gemini 的差异
+
+以下事实来自 2026-10 读取的 ai.google.dev 文档（OpenAI 兼容、模型、思考、故障排查、安全设置、可用地区）。
+Gemini 另有原生的 generateContent 接口（官方已标为旧版）和新的 Interactions 接口；这里走官方的 OpenAI 兼容接口，属于“新增一家厂商”的第 2 档，差异在 `profiles/gemini.py` 和能力表里。
+
+| 项 | 做法 |
+| --- | --- |
+| 基址 | `https://generativelanguage.googleapis.com/v1beta/openai`，Bearer 认证 |
+| 模型 | 正式版 gemini-4-argon、3.8-flash、3.6-flash、3.5-flash-lite、3.1-flash-lite；预览版 3.1-pro-preview、3-flash-preview；2.5 系列只对以前用过的账号开放。窗口都是 1,048,576，最大输出 65,536 |
+| 列表 | 兼容接口的 `/models` 不给窗口，模型名可能带 `models/` 前缀：去掉前缀，只留 `gemini-*` 的对话模型（去掉嵌入、图片、语音、实时、机器人、computer-use、customtools），窗口按能力表 |
+| 推理控制 | `reasoning_effort`（minimal / low / medium / high），各模型认哪几档写在能力表里（3.8 Flash 发 minimal 会报错）。Gemini 3 及以后、2.5 Pro 关不掉思考，只有 2.5 Flash 系列能发 `none`：“深度思考”关着时发这个模型最低的一档，开着时不发，用模型的默认档 |
+| 输出上限 | 思考用掉的 token 算在输出上限里：会思考时在 `max_tokens` 上加一段余量（最低档 2048，默认档 16384），合计不超过 65,536。不加的话，修选项（256）、连接测试（64）这种小请求会被思考吃光、返回空。正文长度仍由提示词和导演的总字数上限管 |
+| 采样 | Gemini 4 和 3.6 及以后忽略 `temperature`、`top_p`（官方说以后会报 400），能力表里对这些模型关掉 |
+| 结构化输出 | json\_schema。文档没说清是否支持 `$defs` / `$ref`，而开局的 `Seed` 用到它们：profile 发出前就地展开（有自引用的原样发）。强制工具调用文档没提，等探测确认 |
+| 安全过滤 | 2.5 及以后默认关闭（儿童安全这类核心保护始终开着），兼容接口也设不了，不处理 |
+| 错误 | Key 无效回 400（`API key not valid`、`API_KEY_INVALID`），归为 auth；超窗是 400 的“The input token count (N) exceeds the maximum number of tokens allowed (M)”或 500 的“Your input context is too long”，归为 context\_overflow，能取出上限 M；所在地区不支持归为服务商的其他错误（unknown）。错误体有时整个包在一个数组里，`extract_error_text` 能读 |
+| 地区 | 不对中国大陆、香港、澳门开放，按服务器的出网地址判断。在本机经代理出网时（例如 Clash 的 TUN / fake-ip 模式，域名解析到 198.18.x.x），要打开 `ALLOW_PRIVATE_ENDPOINTS` 才能通过 SSRF 校验 |
+| 需要实测确认 | 文档没写：模型列表里模型名的格式、用量字段（缓存命中、思考 token 有没有返回）、超窗和地区报错的原文 |
 
 ### 能力表与探测
 
@@ -795,13 +814,13 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 
 | 类别 | 典型信号 | 动作 |
 | --- | --- | --- |
-| auth | 401、403 | 不重试；模型标 invalid，提示检查密钥 |
+| auth | 401、403；400 且信息说 Key 无效（Gemini） | 不重试；模型标 invalid，提示检查密钥 |
 | billing | 402、额度不足 | 不重试；走 fallback 路由；提示额度 |
 | rate\_limit | 429 | 退避（遵守 Retry-After）后重试，再走 fallback |
 | overloaded | 503、529、overloaded 字样 | 退避重试，再走 fallback |
 | server\_error | 500、502、504 | 退避重试，再走 fallback |
 | timeout | 连接或首包超时 | 退避重试一次，再走 fallback |
-| context\_overflow | 400 且信息含 context length 一类 | 紧急截断（目标 85%）后重试一次（第 5 节） |
+| context\_overflow | 400 且信息含 context length 一类；5xx 且信息说上下文太长（Gemini） | 紧急截断（目标 85%）后重试一次（第 5 节） |
 | payload\_too\_large | 413 | 同上 |
 | model\_not\_found | 404 | 不重试；提示检查模型名 |
 | content\_policy\_blocked | `finish_reason = content_filter` 或策略类 400 | 不重试；提示玩家换个行动或重新生成 |
@@ -1029,7 +1048,7 @@ apps/server/
 │   │
 │   ├── providers/                      # 模型服务适配，第 9 节
 │   │   ├── base.py  profile.py  registry.py  hub.py  openai_compat.py  cancel.py
-│   │   ├── profiles/  deepseek.py  openai.py  xai.py  huggingface.py  custom_openai.py   # 每家厂商一个文件
+│   │   ├── profiles/  deepseek.py  openai.py  xai.py  gemini.py  huggingface.py  custom_openai.py   # 每家厂商一个文件
 │   │   ├── capabilities.py  capabilities.yaml  probe.py
 │   │   ├── message_transforms.py  sse_parser.py  errors.py  retry.py
 │   │   ├── transport.py  limiter.py  usage.py
@@ -1156,7 +1175,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | 方法与路径 | 说明 |
 | --- | --- |
 | `GET /v1/me` | 当前用户 |
-| `GET /v1/providers` | 可选的服务商：DeepSeek、OpenAI、Grok（xAI）、Hugging Face、自定义 OpenAI 兼容端点（`requires_base_url`） |
+| `GET /v1/providers` | 可选的服务商：DeepSeek、OpenAI、Grok（xAI）、Gemini、Hugging Face、自定义 OpenAI 兼容端点（`requires_base_url`） |
 | `/v1/model-routes*` | 设计里密钥（`/credentials`）和按 task 的路由（`PUT /model-routes`）分开；实现里合成一行一个模型，Key 和模型一次配好，所有 task 用导演那一行。响应带窗口校验结果 `window`：`model_window`、`source`（窗口从哪来）、`working_cap`、`max_tokens`、`effective_window`、`warnings`（`WINDOW_CLAMPED`） |
 | `POST /v1/providers/{provider}/models` | 用还没保存的 Key 拉模型列表，添加模型的表单在保存前用 |
 | `GET /v1/blobs/{id}` | 头像 |

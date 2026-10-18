@@ -1,6 +1,6 @@
 /** 设置页共用的小件：服务商标记、API Key 输入框、分节标题、页头 */
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { providerLogo } from "@bettertavern/design/providerLogos";
 
@@ -11,7 +11,8 @@ export type MarkTone = "ink" | "acc" | "card" | "grey";
 
 /**
  * 服务商的圆形标记（同 App 的 KeyParts.tsx）：有标志的画标志（@bettertavern/design 的 providerLogos.ts，
- * 品牌原色；单色标志用 currentColor），没有的（自定义端点）写 { }。ink = 正在用作导演，acc = 选中的服务商。
+ * 品牌原色；单色标志用 currentColor；带渐变的路径按渐变填，例如 Gemini），没有的（自定义端点）写 { }。
+ * ink = 正在用作导演，acc = 选中的服务商。
  * 有标志时选中也不把圆涂成蓝色（DeepSeek 的蓝色标志会看不见），选中靠图块自己的浅蓝底和描边。
  */
 export function ProviderMark({
@@ -24,6 +25,8 @@ export function ProviderMark({
   tone?: MarkTone;
 }) {
   const logo = providerLogo(provider);
+  // 渐变的 id 在整个页面里要唯一：同一页上可能有好几个同一家的标记
+  const gradientId = useId().replace(/[^\w-]/g, "");
   const shown: MarkTone = logo && tone === "acc" ? "card" : tone;
   const glyph = Math.round(size * 0.56);
   return (
@@ -34,8 +37,31 @@ export function ProviderMark({
     >
       {logo ? (
         <svg width={glyph} height={glyph} viewBox={logo.viewBox} fillRule={logo.fillRule}>
+          <defs>
+            {logo.paths.map((p, i) =>
+              p.gradient ? (
+                <linearGradient
+                  key={i}
+                  id={`${gradientId}-${i}`}
+                  gradientUnits="userSpaceOnUse"
+                  x1={p.gradient.x1}
+                  y1={p.gradient.y1}
+                  x2={p.gradient.x2}
+                  y2={p.gradient.y2}
+                >
+                  {p.gradient.stops.map((stop, j) => (
+                    <stop key={j} offset={stop.offset} stopColor={stop.color} stopOpacity={stop.opacity} />
+                  ))}
+                </linearGradient>
+              ) : null,
+            )}
+          </defs>
           {logo.paths.map((p, i) => (
-            <path key={i} d={p.d} fill={p.fill ?? "currentColor"} />
+            <path
+              key={i}
+              d={p.d}
+              fill={p.gradient ? `url(#${gradientId}-${i})` : (p.fill ?? "currentColor")}
+            />
           ))}
         </svg>
       ) : (

@@ -14,7 +14,7 @@
 
 ### `GET /v1/providers`
 
-可以选择的服务商：DeepSeek、OpenAI、Grok（xAI）、Hugging Face、自定义的 OpenAI 兼容端点（按这个顺序返回）。
+可以选择的服务商：DeepSeek、OpenAI、Grok（xAI）、Gemini、Hugging Face、自定义的 OpenAI 兼容端点（按这个顺序返回）。
 
 - 鉴权：需要
 - 成功：`200`，返回 [`ProviderOut`](#providerout) 数组。
@@ -191,9 +191,9 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `id` | string | `deepseek` / `openai` / `xai` / `huggingface` / `custom_openai` |
+| `id` | string | `deepseek` / `openai` / `xai` / `gemini` / `huggingface` / `custom_openai` |
 | `display_name` | string | 显示名，例如 `DeepSeek` |
-| `default_base_url` | string / null | 默认的接口地址：DeepSeek 是 `https://api.deepseek.com`，OpenAI 是 `https://api.openai.com/v1`，Grok 是 `https://api.x.ai/v1`，Hugging Face 是 `https://router.huggingface.co/v1`，自定义端点为 null |
+| `default_base_url` | string / null | 默认的接口地址：DeepSeek 是 `https://api.deepseek.com`，OpenAI 是 `https://api.openai.com/v1`，Grok 是 `https://api.x.ai/v1`，Gemini 是 `https://generativelanguage.googleapis.com/v1beta/openai`，Hugging Face 是 `https://router.huggingface.co/v1`，自定义端点为 null |
 | `requires_base_url` | boolean | 为真时必须填 `base_url`（自定义端点） |
 
 ### `ModelOut`

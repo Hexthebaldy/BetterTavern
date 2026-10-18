@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import email.utils
+import json
 import time
 
 import httpx
@@ -147,6 +148,11 @@ def test_classify_exception() -> None:
         ("Input validation error: `inputs` tokens + `max_new_tokens` must be <= 8192.", 8192),
         ("prompt exceeds the context window of 131,072 tokens", 131072),
         ("prompt is too long: exceeds the limit of 65536 tokens", 65536),
+        (
+            "The input token count (1234567) exceeds the maximum number of tokens allowed "
+            "(1048576).",
+            1048576,
+        ),
         ("context length exceeded", None),
         ("maximum context length is 12 tokens", None),
     ],
@@ -160,3 +166,79 @@ def test_context_limit_from_overflow_messages(message: str, expected: int | None
 def test_context_limit_only_for_overflow() -> None:
     error = classify_http_error(429, {"error": {"message": "limit of 65536 tokens per minute"}})
     assert error.context_limit is None
+
+
+def gemini_error(code: int, message: str, status: str, reason: str | None = None) -> bytes:
+    """Gemini 的错误体（适配器读到的原始字节）；OpenAI 兼容接口有时整个包在一个数组里"""
+    error: dict[str, object] = {"code": code, "message": message, "status": status}
+    if reason is not None:
+        error["details"] = [{"@type": "type.googleapis.com/google.rpc.ErrorInfo", "reason": reason}]
+    return json.dumps([{"error": error}]).encode()
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "expected"),
+    [
+        (
+            400,
+            gemini_error(
+                400,
+                "API key not valid. Please pass a valid API key.",
+                "INVALID_ARGUMENT",
+                "API_KEY_INVALID",
+            ),
+            ErrorClass.AUTH,
+        ),
+        (
+            400,
+            gemini_error(
+                400, "User location is not supported for the API use.", "FAILED_PRECONDITION"
+            ),
+            ErrorClass.UNKNOWN,
+        ),
+        (
+            400,
+            gemini_error(
+                400,
+                "Gemini API free tier is not available in your country. "
+                "Please enable billing on your project in Google AI Studio.",
+                "FAILED_PRECONDITION",
+            ),
+            ErrorClass.UNKNOWN,
+        ),
+        (
+            400,
+            gemini_error(
+                400,
+                "The input token count (1100000) exceeds the maximum number of tokens allowed "
+                "(1048576).",
+                "INVALID_ARGUMENT",
+            ),
+            ErrorClass.CONTEXT_OVERFLOW,
+        ),
+        (
+            500,
+            gemini_error(500, "Your input context is too long.", "INTERNAL"),
+            ErrorClass.CONTEXT_OVERFLOW,
+        ),
+        (
+            500,
+            gemini_error(500, "An internal error has occurred.", "INTERNAL"),
+            ErrorClass.SERVER_ERROR,
+        ),
+        (
+            503,
+            gemini_error(503, "The model is overloaded. Please try again later.", "UNAVAILABLE"),
+            ErrorClass.OVERLOADED,
+        ),
+        (
+            429,
+            gemini_error(
+                429, "Resource has been exhausted (e.g. check quota).", "RESOURCE_EXHAUSTED"
+            ),
+            ErrorClass.RATE_LIMIT,
+        ),
+    ],
+)
+def test_gemini_errors(status: int, body: bytes, expected: ErrorClass) -> None:
+    assert classify_http_error(status, body).error_class is expected
