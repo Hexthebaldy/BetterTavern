@@ -73,11 +73,14 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await expect(optionA).toBeVisible({ timeout: 30_000 });
   await expect(page).toHaveTitle(/^(?!●).* · BetterTavern$/);
 
-  // ---- 按 A 选第一个选项：那一句作为“我的行动”出现，接着写出下一段 ----
-  // 选项按钮里是字母键、读屏用的“A：”和选项文字，取最后那段文字
+  // ---- 按 A 只选中第一个选项（不发出），再按 Enter 发出：那一句作为“我的行动”出现，接着写出下一段 ----
+  // 选项按钮里是字母键、读屏用的“A：”和选项文字，取最后那段文字（选中前取，选中后右端会多一段提示）
   const picked = await optionA.evaluate((el) => el.lastElementChild?.lastChild?.textContent?.trim() ?? "");
   expect(picked).not.toBe("");
   await page.keyboard.press("a");
+  await expect(page.getByText("已选中 A，按 Enter 发出")).toBeAttached();
+  await expect(page.locator("p", { hasText: `我的行动：${picked}` })).toHaveCount(0);
+  await page.keyboard.press("Enter");
   await expect(page.locator("p", { hasText: `我的行动：${picked}` })).toBeVisible();
   await expect(optionA).toBeVisible({ timeout: 30_000 });
 
