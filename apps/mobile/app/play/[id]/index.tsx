@@ -2,7 +2,7 @@
  * 阅读主屏：导航栏（返回、标题）、故事流、底部固定的操作栏。离开页面只断开连接，服务端的生成继续，回来时会接上。
  * - 选项接在最新一段后面（TurnActions.tsx），跟着正文滚动，不挡正文；
  * - 操作栏（BottomBar.tsx）左边“世界”，右边“更多”，中间是“自己写…”、生成中的状态和“停止”，
- *   或者往上翻时的“回到最新”。量出它的高度，故事流的底部按它留白。
+ *   或者往上翻时的“回到最新”。量出它的高度，故事流的底部按它留白。发出行动后回到最新并重新跟随。
  * 输入框的开关、草稿、是否离开了最新位置都放在这一页，旋转、分屏时都不会丢；草稿每个故事一份存在手机上（useDraft）。
  * 自己写的行动没能变成回合（失败后换个行动、故事在别处被推进）时，文字回到输入框并展开。
  * “停止”：记下点的是哪一轮。服务端停下之前按钮是“正在停止…”；停下后失败卡是灰色的“已停止”；没停成时浮条说明原因。
@@ -20,7 +20,7 @@ import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
-import type { Scenario } from "@bettertavern/core/api/types";
+import type { NewAction, Scenario } from "@bettertavern/core/api/types";
 import {
   canAct,
   headTurn,
@@ -207,6 +207,16 @@ export default function PlayScreen() {
 
   const shownTitle = title ?? state.title;
 
+  // 每次提交（自己写、选项、开场、重试、写结局）之后都回到最新并继续跟随：往上翻着重读时发出的行动也看得到
+  const submit = (action: NewAction): void => {
+    controls.submit(action);
+    feed.current?.jumpToLatest();
+  };
+  const retry = (): void => {
+    controls.retry();
+    feed.current?.jumpToLatest();
+  };
+
   const rename = async (): Promise<void> => {
     setMoreOpen(false);
     const next = await overlay.prompt({
@@ -238,8 +248,7 @@ export default function PlayScreen() {
       multiline: true,
     });
     if (wish === null) return;
-    controls.submit({ source: "ending", text: wish });
-    feed.current?.jumpToLatest();
+    submit({ source: "ending", text: wish });
   };
 
   const remove = async (): Promise<void> => {
@@ -285,7 +294,7 @@ export default function PlayScreen() {
   const send = (text: string): void => {
     setWriting(false);
     setDraft("");
-    controls.submit({ source: "text", text });
+    submit({ source: "text", text });
   };
   const stop = (): void => {
     const turnId = state.pending?.turnId;
@@ -314,7 +323,7 @@ export default function PlayScreen() {
             footer={
               <TurnActions
                 state={state}
-                controls={controls}
+                controls={{ ...controls, submit, retry }}
                 onOpenSettings={() => router.push("/settings/models")}
                 onPicked={() => setWriting(false)}
                 stopped={stoppedByPlayer(state, stopTurn)}

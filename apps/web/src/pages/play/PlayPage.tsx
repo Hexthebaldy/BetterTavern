@@ -6,7 +6,7 @@
  *   阅读栏和底栏在剩下的宽度里重新居中；侧栏展开放不下、收成导航条就放得下时，打开世界让侧栏临时收成导航条；
  *   其余从右侧滑出。停靠的开关记在浏览器里，打开别的故事时保持。
  * - 页面整个滚动（浏览器的查找、滚动条都是原生的）；停在底部时跟着新文字滚，往上翻就停下，
- *   操作栏中间多出“回到最新”。草稿存在浏览器里，每个故事一份。
+ *   操作栏中间多出“回到最新”；发出行动后回到最新并重新跟随。草稿存在浏览器里，每个故事一份。
  *   自己写的行动没能变成回合（失败后换个行动、故事在别处被推进）时，文字回到输入框并展开。
  * - “停止”：记下点的是哪一轮。服务端停下之前按钮是“正在停止…”；停下后失败卡是灰色的“已停止”；
  *   没停成时浮条说明原因，按钮恢复。
@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
+import type { NewAction } from "@bettertavern/core/api/types";
 import { readableColumn } from "@bettertavern/design/layout";
 import {
   canAct,
@@ -229,6 +230,19 @@ function PlayPage({ id }: { id: string }) {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduced ? "auto" : "smooth" });
   }, []);
+  // 每次提交（自己写、选项、开场、重试、写结局）之后都回到最新并继续跟随：往上翻着重读时发出的行动也看得到
+  const { submit: submitAction, retry: retryTurn } = controls;
+  const submit = useCallback(
+    (action: NewAction) => {
+      submitAction(action);
+      jumpToLatest();
+    },
+    [submitAction, jumpToLatest],
+  );
+  const retry = useCallback(() => {
+    retryTurn();
+    jumpToLatest();
+  }, [retryTurn, jumpToLatest]);
 
   // ---- 阅读区的位置（世界停靠时让出右边）----
   const area = readingArea(width, layout.nav, layout.world);
@@ -281,17 +295,17 @@ function PlayPage({ id }: { id: string }) {
   const send = (text: string): void => {
     setWriting(false);
     setDraft("");
-    controls.submit({ source: "text", text });
+    submit({ source: "text", text });
     focusBar();
   };
   const pickOption = useCallback(
     (optionId: string) => {
       setWriting(false);
       setArmed(null);
-      controls.submit({ source: "option", option_id: optionId });
+      submit({ source: "option", option_id: optionId });
       focusBar();
     },
-    [controls, focusBar],
+    [submit, focusBar],
   );
 
   const onMore = async (action: MoreAction): Promise<void> => {
@@ -314,8 +328,7 @@ function PlayPage({ id }: { id: string }) {
         multiline: true,
       });
       if (wish === null) return;
-      controls.submit({ source: "ending", text: wish });
-      jumpToLatest();
+      submit({ source: "ending", text: wish });
     }
     if (action === "rename") {
       const next = await overlay.prompt({
@@ -449,7 +462,7 @@ function PlayPage({ id }: { id: string }) {
           footer={
             <TurnActions
               state={state}
-              controls={controls}
+              controls={{ ...controls, submit, retry }}
               twoColumns={width >= desktop.rail}
               onOpenSettings={() => navigate("/settings/models")}
               armed={armed}
