@@ -43,6 +43,8 @@ export const play: Messages<typeof source> = {
     send: "Send",
     noModel: "No model available. Add a key first, then choose a director model.",
     unfinished: "This part didn't finish: {{error}}",
+    notSent: "Not sent: {{error}}",
+    resend: "Send again",
     changeAction: "Try another action",
     goModels: "Set up models",
     iAm: "I'm {{name}}",

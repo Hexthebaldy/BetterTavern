@@ -43,6 +43,8 @@ export const play: MessagesOtherOnly<typeof source> = {
     send: "送信",
     noModel: "使えるモデルがありません。先にキーを追加し、監督用のモデルを選んでください。",
     unfinished: "この場面は最後まで書けませんでした：{{error}}",
+    notSent: "送信できませんでした：{{error}}",
+    resend: "もう一度送信",
     changeAction: "別の行動にする",
     goModels: "モデルを設定する",
     iAm: "私は {{name}}",

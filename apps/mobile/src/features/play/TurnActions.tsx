@@ -19,6 +19,7 @@ import {
   canRetry,
   headTurn,
   needsOpening,
+  unsentSubmission,
   type PlayState,
 } from "@bettertavern/core/play/turnMachine";
 
@@ -63,6 +64,8 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
   if (state.phase === "failed" && state.error) {
     const routeMissing = state.error.code === "ROUTE_MISSING";
     const opening = state.turns.length === 0;
+    // 请求从没被服务端接收（断网、超时）：说“没发出去”，按钮是“重新发送”，玩家不会以为是模型出了问题
+    const notSent = unsentSubmission(state) !== null;
     content = (
       <View style={styles.column}>
         <View style={[styles.failCard, { backgroundColor: palette.errBg }]} accessibilityRole="alert">
@@ -70,9 +73,11 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
           <Text style={{ flex: 1, fontSize: 14, lineHeight: 21, color: palette.err }}>
             {routeMissing
               ? t("play.noModel")
-              : state.pending?.narrative
-                ? t("play.unfinished", { error: describeTurnError(state.error) })
-                : describeTurnError(state.error)}
+              : notSent
+                ? t("play.notSent", { error: describeTurnError(state.error) })
+                : state.pending?.narrative
+                  ? t("play.unfinished", { error: describeTurnError(state.error) })
+                  : describeTurnError(state.error)}
           </Text>
         </View>
         <View style={styles.buttons}>
@@ -85,7 +90,12 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
           {routeMissing ? (
             <Button label={t("play.goModels")} onPress={onOpenSettings} style={styles.flex} />
           ) : canRetry(state) ? (
-            <Button label={t("common.retry")} icon="retry" onPress={controls.retry} style={styles.flex} />
+            <Button
+              label={notSent ? t("play.resend") : t("common.retry")}
+              icon="retry"
+              onPress={controls.retry}
+              style={styles.flex}
+            />
           ) : null}
         </View>
       </View>

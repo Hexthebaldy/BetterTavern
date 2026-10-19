@@ -7,6 +7,7 @@ import {
   ApiError,
   describeError,
   describeTurnError,
+  networkError,
   type HttpFetch,
   type HttpRequestInit,
   type HttpResponse,
@@ -327,7 +328,10 @@ describe("错误说明按错误码翻译", () => {
         describeError(serverError(418, "TEAPOT", "I'm a teapot")),
         "サーバーがエラーを返しました（HTTP 418）",
       );
-      assert.equal(describeTurnError({ code: "SOMETHING_NEW", message: "Server said so" }), "生成に失敗しました");
+      assert.equal(
+        describeTurnError({ code: "SOMETHING_NEW", message: "Server said so" }),
+        "生成に失敗しました",
+      );
     } finally {
       applyLanguage("zh");
     }
@@ -352,6 +356,27 @@ describe("错误说明按错误码翻译", () => {
         describeTurnError(billing),
         "The model provider says you're out of credit or have an unpaid balance.",
       );
+    } finally {
+      applyLanguage("zh");
+    }
+  });
+
+  it("回合失败：连不上、超时、看不懂、代理错误页按客户端自己的错误码说，不说“生成失败”", () => {
+    const turn = (code: string, message = "") => describeTurnError({ code, message });
+    assert.equal(turn("NETWORK", "Can't reach the server"), "连不上服务器，请检查网络和服务器地址");
+    assert.equal(turn("TIMEOUT", "Server timed out"), "服务器响应超时");
+    assert.equal(turn("BAD_RESPONSE"), "服务器返回的内容无法解析");
+    assert.equal(turn("HTTP_502", "HTTP 502"), "服务器暂时不可用");
+    assert.equal(turn("HTTP_418", "HTTP 418"), "服务器返回了错误（HTTP 418）");
+    assert.equal(turn("SOMETHING_NEW", "x"), "生成失败");
+    applyLanguage("en");
+    try {
+      // 英文界面也用翻译，不显示原始说明
+      assert.equal(turn("NETWORK", "Can't reach the server"), describeError(networkError(null, false)));
+      assert.notEqual(turn("NETWORK", "Can't reach the server"), "Can't reach the server");
+      assert.equal(turn("TIMEOUT", "Server timed out"), describeError(networkError(null, true)));
+      assert.equal(turn("HTTP_502", "HTTP 502"), "The server is temporarily unavailable.");
+      assert.equal(turn("SOMETHING_NEW", "Server said so"), "Server said so");
     } finally {
       applyLanguage("zh");
     }

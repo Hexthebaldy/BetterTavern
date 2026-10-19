@@ -15,6 +15,7 @@ import {
   canRetry,
   headTurn,
   needsOpening,
+  unsentSubmission,
   type PlayState,
 } from "@bettertavern/core/play/turnMachine";
 
@@ -98,6 +99,8 @@ export function TurnActions({
   if (state.phase === "failed" && state.error) {
     const routeMissing = state.error.code === "ROUTE_MISSING";
     const opening = state.turns.length === 0;
+    // 请求从没被服务端接收（断网、超时）：说“没发出去”，按钮是“重新发送”，玩家不会以为是模型出了问题
+    const notSent = unsentSubmission(state) !== null;
     return (
       <div className={styles.area}>
         <div className={styles.failCard} role="alert">
@@ -105,9 +108,11 @@ export function TurnActions({
           <span>
             {routeMissing
               ? t("play.noModel")
-              : state.pending?.narrative
-                ? t("play.unfinished", { error: describeTurnError(state.error) })
-                : describeTurnError(state.error)}
+              : notSent
+                ? t("play.notSent", { error: describeTurnError(state.error) })
+                : state.pending?.narrative
+                  ? t("play.unfinished", { error: describeTurnError(state.error) })
+                  : describeTurnError(state.error)}
           </span>
         </div>
         <div className={styles.failButtons}>
@@ -119,7 +124,11 @@ export function TurnActions({
           {routeMissing ? (
             <Button label={t("play.goModels")} onClick={onOpenSettings} />
           ) : canRetry(state) ? (
-            <Button label={t("common.retry")} icon="retry" onClick={controls.retry} />
+            <Button
+              label={notSent ? t("play.resend") : t("common.retry")}
+              icon="retry"
+              onClick={controls.retry}
+            />
           ) : null}
         </div>
       </div>

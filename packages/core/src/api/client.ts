@@ -321,10 +321,23 @@ export function describeError(error: unknown): string {
   return i18n.t("errors.generic");
 }
 
+/**
+ * 客户端自己产生的错误码对应的说明：连不上（NETWORK）、超时（TIMEOUT）、返回内容看不懂（BAD_RESPONSE）、
+ * 代理返回的非 JSON 错误页（HTTP_<状态码>）。不是这些码时返回 null。接口错误和回合错误共用。
+ */
+function clientErrorText(code: string): string | null {
+  if (code === "NETWORK") return i18n.t("errors.network");
+  if (code === "TIMEOUT") return i18n.t("errors.timeout");
+  if (code === "BAD_RESPONSE") return i18n.t("errors.badResponse");
+  const http = /^HTTP_(\d{3})$/.exec(code);
+  if (!http) return null;
+  const status = Number(http[1]);
+  return lookup(`errors.status.${status}`) ?? i18n.t("errors.httpStatus", { status });
+}
+
 function apiErrorText(error: ApiError): string {
-  if (error.code === "NETWORK") return i18n.t("errors.network");
-  if (error.code === "TIMEOUT") return i18n.t("errors.timeout");
-  if (error.code === "BAD_RESPONSE") return i18n.t("errors.badResponse");
+  const own = clientErrorText(error.code);
+  if (own) return own;
   const english = currentLanguage() === "en" && error.problem !== null && error.message !== "";
   if (error.code === "VALIDATION_ERROR") {
     // 业务校验带 field：按字段说；不认识的字段，英文界面用服务端更具体的说明
@@ -341,13 +354,15 @@ function apiErrorText(error: ApiError): string {
 
 /**
  * 回合失败（turn.failed 事件、回合详情里的 error）的说明：先按服务商错误的原因（reason），
- * 再按回合失败码，最后按接口错误码；都没有时英文界面用服务端的说明，中文、日文界面说“生成失败”。
+ * 再按回合失败码，再按接口错误码，再按客户端自己的错误码（连不上、超时……，三种界面语言都用翻译，不用原始说明）；
+ * 都没有时英文界面用服务端的说明，中文、日文界面说“生成失败”。
  */
 export function describeTurnError(error: Pick<TurnError, "code" | "message" | "reason">): string {
   return (
     (error.reason ? lookup(`errors.reason.${error.reason}`) : null) ??
     lookup(`errors.turn.${error.code}`) ??
     lookup(`errors.api.${error.code}`) ??
+    clientErrorText(error.code) ??
     (currentLanguage() === "en" && error.message ? error.message : i18n.t("errors.turnFailed"))
   );
 }
