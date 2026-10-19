@@ -25,6 +25,7 @@ import type { NewAction } from "@bettertavern/core/api/types";
 import { readableColumn } from "@bettertavern/design/layout";
 import {
   canAct,
+  canWrite,
   headTurn,
   isEnded,
   isLive,
@@ -349,6 +350,7 @@ function PlayPage({ id }: { id: string }) {
   };
 
   // ---- 键盘：A–D 选中、Enter 发出、Esc 取消，/、W、End ----
+  const { dismissError } = controls;
   const keyState = useRef({ state, writing, moreOpen, armed });
   keyState.current = { state, writing, moreOpen, armed };
   useEffect(() => {
@@ -392,8 +394,10 @@ function PlayPage({ id }: { id: string }) {
         // 只选中，不发出：直接打拼音时以 a–d 开头的字母不会替玩家选了选项
         event.preventDefault();
         setArmed(action.arm);
-      } else if (event.key === "/" && canAct(s) && s.turns.length > 0 && !w) {
+      } else if (event.key === "/" && canWrite(s) && !w) {
+        // 和“自己写…”一样：一轮失败后也能按，等于“换个行动”再展开
         event.preventDefault();
+        if (s.phase === "failed") dismissError();
         setWriting(true);
       } else if (event.key.toLowerCase() === "w") {
         event.preventDefault();
@@ -402,7 +406,7 @@ function PlayPage({ id }: { id: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [singleKeys, jumpToLatest, toggleWorld, pickOption]);
+  }, [singleKeys, jumpToLatest, toggleWorld, pickOption, dismissError]);
 
   const top = (
     <div className={styles.top}>
