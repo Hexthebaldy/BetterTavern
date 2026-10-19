@@ -512,6 +512,9 @@ describe("turnMachine", () => {
       assert.equal(withReturnedText("", "推开门"), "推开门");
       assert.equal(withReturnedText("  ", "推开门"), "推开门");
       assert.equal(withReturnedText("再看看", "推开门"), "推开门\n\n再看看");
+      // 草稿里已经有这段（退回后没发、页面重新加载过）：不再放一遍
+      assert.equal(withReturnedText("推开门", "推开门"), "推开门");
+      assert.equal(withReturnedText("推开门\n\n再看看", "推开门"), "推开门\n\n再看看");
     });
 
     it("“自己写…”：失败后也能点（等于换个行动），开场失败、故事结束时不能", () => {

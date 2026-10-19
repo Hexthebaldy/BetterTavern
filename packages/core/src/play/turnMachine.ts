@@ -331,9 +331,14 @@ export function canWrite(state: PlayState): boolean {
   return state.phase === "failed" && state.turns.length > 0 && !isEnded(state);
 }
 
-/** 退回来的文字放进输入框：草稿里已经有字时不覆盖，退回的放在前面，空一行 */
+/**
+ * 退回来的文字放进输入框：草稿里已经有字时不覆盖，退回的放在前面，空一行。
+ * 草稿里已经有这段（例如上次退回后没发，页面又重新加载了）就不再放一遍。
+ */
 export function withReturnedText(draft: string, returned: string): string {
-  return draft.trim() ? `${returned}\n\n${draft}` : returned;
+  if (!draft.trim()) return returned;
+  if (draft.includes(returned.trim())) return draft;
+  return `${returned}\n\n${draft}`;
 }
 
 /** 可以提交新的行动（空闲，或上一轮失败后换一个行动） */
