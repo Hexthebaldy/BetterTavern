@@ -49,6 +49,8 @@ export type PromptOptions = {
   confirmLabel?: string;
   /** 可以不填：空着也能确认，这时返回空串 */
   optional?: boolean;
+  /** 多行（写结局的方向这类长文字）：回车换行，Ctrl / ⌘ + Enter 等于点确认 */
+  multiline?: boolean;
 };
 
 export type MenuOptions = { label: string; items: MenuItem[]; place: MenuPlace };
@@ -233,12 +235,19 @@ function PromptDialog({
 }) {
   const [draft, setDraft] = useState(options.initial ?? "");
   const { t } = useTranslation();
+  const multiline = options.multiline === true;
   const input = useRef<HTMLInputElement>(null);
+  const area = useRef<HTMLTextAreaElement>(null);
   const text = draft.trim();
   const ready = text.length > 0 || options.optional === true;
-  useEffect(() => input.current?.select(), []);
+  useEffect(() => {
+    input.current?.select();
+    // 多行时光标放在末尾，不全选
+    const node = area.current;
+    node?.setSelectionRange(node.value.length, node.value.length);
+  }, []);
   return (
-    <Dialog label={options.title} onClose={() => onSettle(null)} initialFocus={input}>
+    <Dialog label={options.title} onClose={() => onSettle(null)} initialFocus={multiline ? area : input}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -253,15 +262,35 @@ function PromptDialog({
           onCancel={() => onSettle(null)}
           onConfirm={() => ready && onSettle(text)}
         >
-          <input
-            ref={input}
-            className={styles.promptInput}
-            aria-label={options.label}
-            value={draft}
-            maxLength={options.maxLength}
-            placeholder={options.placeholder}
-            onChange={(event) => setDraft(event.target.value)}
-          />
+          {multiline ? (
+            <textarea
+              ref={area}
+              rows={4}
+              className={cx(styles.promptInput, styles.promptMultiline)}
+              aria-label={options.label}
+              value={draft}
+              maxLength={options.maxLength}
+              placeholder={options.placeholder}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                // 回车换行；Ctrl / ⌘ + Enter 等于点确认
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  if (ready) onSettle(text);
+                }
+              }}
+            />
+          ) : (
+            <input
+              ref={input}
+              className={styles.promptInput}
+              aria-label={options.label}
+              value={draft}
+              maxLength={options.maxLength}
+              placeholder={options.placeholder}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+          )}
         </DialogCard>
       </form>
     </Dialog>

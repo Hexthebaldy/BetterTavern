@@ -86,6 +86,16 @@
   font-size: 16px;
   text-align: left;
 }
+/* 多行（写结局的方向）：4 行起，最多约 8 行，超出后在框里滚动 */
+.promptMultiline {
+  height: auto;
+  max-height: 220px;
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+}
 
 /* ---- 菜单 ---- */
 .menuLayer {

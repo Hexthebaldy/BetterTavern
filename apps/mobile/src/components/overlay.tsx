@@ -55,6 +55,8 @@ export type PromptOptions = {
   confirmLabel?: string;
   /** 可以不填：空着也能确认，这时返回空串 */
   optional?: boolean;
+  /** 多行（写结局的方向这类长文字）：回车换行，不提交，只有点确认才提交 */
+  multiline?: boolean;
 };
 
 export type MenuOptions = {
@@ -242,6 +244,7 @@ function PromptDialog({
   const palette = usePalette();
   const { t } = useTranslation();
   const text = draft.trim();
+  const multiline = options.multiline === true;
   // 先收起键盘再关对话框：输入框带着焦点被拿掉的话，iOS 会把键盘留在屏幕上，页面上又没有输入框能让它收回去
   const finish = (value: string | null): void => {
     Keyboard.dismiss();
@@ -266,10 +269,16 @@ function PromptDialog({
         placeholder={options.placeholder}
         placeholderTextColor={palette.mut}
         accessibilityLabel={options.label}
-        returnKeyType="done"
-        onSubmitEditing={() => (text || options.optional) && finish(text)}
+        // 多行时回车只换行：很多人点键盘上的“完成”只是想收起键盘，不能因此就提交
+        {...(multiline
+          ? { multiline: true, submitBehavior: "newline" as const, textAlignVertical: "top" as const }
+          : {
+              returnKeyType: "done" as const,
+              onSubmitEditing: () => (text || options.optional) && finish(text),
+            })}
         style={[
           styles.promptInput,
+          multiline ? styles.promptMultiline : styles.promptSingle,
           { color: palette.ink, backgroundColor: palette.bg2, boxShadow: `inset 0 0 0 2px ${palette.acc}` },
         ]}
       />
@@ -509,12 +518,14 @@ const styles = StyleSheet.create({
   cardMenu: { position: "absolute", borderRadius: radius.group, padding: space.s },
   promptInput: {
     alignSelf: "stretch",
-    height: 52,
     borderRadius: radius.input,
     paddingHorizontal: space.l,
     fontSize: 16,
     marginTop: space.xs,
   },
+  promptSingle: { height: 52 },
+  /** 多行：3 到 6 行高，超出后在框里滚动 */
+  promptMultiline: { minHeight: 22 * 3 + 24, maxHeight: 22 * 6 + 24, lineHeight: 22, paddingVertical: 12 },
   toast: {
     position: "absolute",
     left: space.page,

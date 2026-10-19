@@ -225,6 +225,7 @@ export default function PlayScreen() {
       maxLength: 2000,
       confirmLabel: t("play.writeEnding"),
       optional: true,
+      multiline: true,
     });
     if (wish === null) return;
     controls.submit({ source: "ending", text: wish });
