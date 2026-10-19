@@ -1,7 +1,8 @@
 /**
  * 接在故事流最后一段后面的内容（同 App 的 TurnActions.tsx），跟着正文一起滚动：
  * - 空闲：模型给的选项（圆角灰卡，左边 A / B 字母键；≥ 900 两列，最小高 76，奇数个时最后一项占满一行）；
- * - 开场没写：“开始故事”；失败：错误卡片加重试 / 换个行动（没有模型时去设置）。
+ * - 开场没写：“开始故事”；失败：错误卡片加重试 / 换个行动（没有模型时去设置）；
+ *   玩家自己点“停止”停下的：灰色的“已停止”，重试叫“重新写这一段”。
  * 生成中、同步中这里什么都没有：状态、“停止”、“自己写…”在底部的操作栏（BottomBar.tsx）。
  */
 
@@ -82,10 +83,13 @@ export function TurnActions({
   onOpenSettings,
   onPick,
   armed,
+  stopped,
   twoColumns,
 }: {
   state: PlayState;
   controls: PlayControls;
+  /** 这次失败是玩家自己点“停止”停下的（core 的 stoppedByPlayer） */
+  stopped: boolean;
   onOpenSettings: () => void;
   /** 点了一个选项：直接发出（输入框开着时顺手收起，草稿留着） */
   onPick: (optionId: string) => void;
@@ -103,18 +107,25 @@ export function TurnActions({
     const notSent = unsentSubmission(state) !== null;
     return (
       <div className={styles.area}>
-        <div className={styles.failCard} role="alert">
-          <Icon name="alert" size={20} />
-          <span>
-            {routeMissing
-              ? t("play.noModel")
-              : notSent
-                ? t("play.notSent", { error: describeTurnError(state.error) })
-                : state.pending?.narrative
-                  ? t("play.unfinished", { error: describeTurnError(state.error) })
-                  : describeTurnError(state.error)}
-          </span>
-        </div>
+        {stopped ? (
+          <div className={cx(styles.failCard, styles.stoppedCard)}>
+            <Icon name="stop" size={20} />
+            <span>{t("play.stopped")}</span>
+          </div>
+        ) : (
+          <div className={styles.failCard} role="alert">
+            <Icon name="alert" size={20} />
+            <span>
+              {routeMissing
+                ? t("play.noModel")
+                : notSent
+                  ? t("play.notSent", { error: describeTurnError(state.error) })
+                  : state.pending?.narrative
+                    ? t("play.unfinished", { error: describeTurnError(state.error) })
+                    : describeTurnError(state.error)}
+            </span>
+          </div>
+        )}
         <div className={styles.failButtons}>
           <Button
             label={opening ? t("common.close") : t("play.changeAction")}
@@ -125,7 +136,7 @@ export function TurnActions({
             <Button label={t("play.goModels")} onClick={onOpenSettings} />
           ) : canRetry(state) ? (
             <Button
-              label={notSent ? t("play.resend") : t("common.retry")}
+              label={notSent ? t("play.resend") : stopped ? t("play.regenerate") : t("common.retry")}
               icon="retry"
               onClick={controls.retry}
             />

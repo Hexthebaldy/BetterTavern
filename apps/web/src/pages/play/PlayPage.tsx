@@ -8,6 +8,8 @@
  * - 页面整个滚动（浏览器的查找、滚动条都是原生的）；停在底部时跟着新文字滚，往上翻就停下，
  *   操作栏中间多出“回到最新”。草稿存在浏览器里，每个故事一份。
  *   自己写的行动没能变成回合（失败后换个行动、故事在别处被推进）时，文字回到输入框并展开。
+ * - “停止”：记下点的是哪一轮。服务端停下之前按钮是“正在停止…”；停下后失败卡是灰色的“已停止”；
+ *   没停成时浮条说明原因，按钮恢复。
  * - 键盘：A–D 选中选项（高亮，不发出）、Enter 发出选中的那一项、Esc 或点别处取消选中，/ 自己写，W 世界状态，
  *   End 回到最新（单键快捷键可以在快捷键对话框里关掉）。发出行动后焦点放到底栏上，Esc 收起输入框后回到“自己写…”。
  * - 标签页标题：“书名 · BetterTavern”，生成中在前面加“● ”。
@@ -20,7 +22,15 @@ import { useNavigate, useParams } from "react-router";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import { readableColumn } from "@bettertavern/design/layout";
-import { headTurn, isEnded, isLive, canAct, withReturnedText } from "@bettertavern/core/play/turnMachine";
+import {
+  canAct,
+  headTurn,
+  isEnded,
+  isLive,
+  isStopping,
+  stoppedByPlayer,
+  withReturnedText,
+} from "@bettertavern/core/play/turnMachine";
 
 import { Button, IconButton } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -254,6 +264,20 @@ function PlayPage({ id }: { id: string }) {
     return () => window.removeEventListener("pointerdown", clear);
   }, [armed]);
 
+  // 玩家点了“停止”的那一轮（停下前“正在停止…”，停下后失败卡是灰色的“已停止”）；重新加载页面就忘了
+  const [stopTurn, setStopTurn] = useState<string | null>(null);
+  const stop = (): void => {
+    const turnId = state.pending?.turnId;
+    if (!turnId) return;
+    setStopTurn(turnId);
+    // 按钮马上变成禁用的“正在停止…”：焦点放到底栏上，不掉到页面上
+    focusBar();
+    controls.cancel().catch((e: unknown) => {
+      setStopTurn(null);
+      overlay.toast(t("play.stopFailed", { error: describeError(e) }), { icon: "alert" });
+    });
+  };
+
   const send = (text: string): void => {
     setWriting(false);
     setDraft("");
@@ -430,6 +454,7 @@ function PlayPage({ id }: { id: string }) {
               onOpenSettings={() => navigate("/settings/models")}
               armed={armed}
               onPick={pickOption}
+              stopped={stoppedByPlayer(state, stopTurn)}
             />
           }
         />
@@ -437,7 +462,6 @@ function PlayPage({ id }: { id: string }) {
       <BottomBar
         barRef={bar}
         state={state}
-        controls={controls}
         writing={writing}
         onWrite={() => {
           // 失败后点“自己写…”等于“换个行动”：自己写的那段会退回输入框
@@ -453,6 +477,8 @@ function PlayPage({ id }: { id: string }) {
         onDraft={setDraft}
         onSend={send}
         away={away}
+        stopping={isStopping(state, stopTurn)}
+        onStop={stop}
         onJumpToLatest={jumpToLatest}
         onOpenWorld={toggleWorld}
         onOpenMore={() => setMoreOpen((open) => !open)}

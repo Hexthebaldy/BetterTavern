@@ -370,6 +370,23 @@ export function isBusy(state: PlayState): boolean {
   return LIVE.has(state.phase) || state.phase === "loading" || state.phase === "syncing";
 }
 
+/**
+ * 玩家点了“停止”（stopTurnId 是点的时候那一轮），服务端还没停下：“停止”按钮显示“正在停止…”并禁用。
+ * 这一轮不再进行（停下、写完或失败）就不算了，不用另外复位。
+ */
+export function isStopping(state: PlayState, stopTurnId: string | null): boolean {
+  return stopTurnId != null && isLive(state) && state.pending?.turnId === stopTurnId;
+}
+
+/**
+ * 这次失败是玩家自己点“停止”停下的：失败卡换成中性的“已停止”。
+ * 服务重启等原因造成的 CANCELLED（玩家没点停止，或者页面重新加载过）不算。
+ */
+export function stoppedByPlayer(state: PlayState, stopTurnId: string | null): boolean {
+  if (state.phase !== "failed" || stopTurnId == null || state.pending?.turnId !== stopTurnId) return false;
+  return state.error?.code === "CANCELLED" || state.error?.reason === "cancelled";
+}
+
 /** 失败后“重试”要提交的行动：与失败的那一轮相同 */
 export function retryAction(state: PlayState): NewAction | null {
   if (state.phase !== "failed" || !state.pending?.action) return null;

@@ -1,7 +1,8 @@
 /**
  * 接在故事流最后一段后面的内容，跟着正文一起滚动，不固定在屏幕底部挡住正文：
  * - 空闲：模型给的选项（圆角灰卡，左边 A / B 圆形字母键）；
- * - 开场没写：“开始故事”；失败：错误卡片加重试 / 换个行动（没有模型时去设置）。
+ * - 开场没写：“开始故事”；失败：错误卡片加重试 / 换个行动（没有模型时去设置）；
+ *   玩家自己点“停止”停下的：灰色的“已停止”，重试叫“重新写这一段”。
  * 生成中、同步中这里什么都没有：状态、“停止”、“自己写…”和世界、更多两个按钮都在底部的操作栏（BottomBar.tsx）。
  * 选了选项之后，那一句会立刻作为“我的行动”出现在故事流里。
  *
@@ -39,6 +40,8 @@ type Props = {
   onOpenSettings: () => void;
   /** 选了一个选项（输入框开着时顺手收起，草稿留着） */
   onPicked: () => void;
+  /** 这次失败是玩家自己点“停止”停下的（core 的 stoppedByPlayer） */
+  stopped: boolean;
   /** 阅读区的宽度（世界状态停靠时比窗口窄）：宽屏两列选项按它算 */
   available: number;
 };
@@ -52,7 +55,7 @@ export function TurnActions(props: Props) {
   );
 }
 
-function Actions({ state, controls, onOpenSettings, onPicked, available }: Props) {
+function Actions({ state, controls, onOpenSettings, onPicked, stopped, available }: Props) {
   const palette = usePalette();
   const surfaces = useSheetSurfaces();
   const { size: layoutSize } = useLayout();
@@ -68,18 +71,27 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
     const notSent = unsentSubmission(state) !== null;
     content = (
       <View style={styles.column}>
-        <View style={[styles.failCard, { backgroundColor: palette.errBg }]} accessibilityRole="alert">
-          <Icon name="alert" size={20} color={palette.err} />
-          <Text style={{ flex: 1, fontSize: 14, lineHeight: 21, color: palette.err }}>
-            {routeMissing
-              ? t("play.noModel")
-              : notSent
-                ? t("play.notSent", { error: describeTurnError(state.error) })
-                : state.pending?.narrative
-                  ? t("play.unfinished", { error: describeTurnError(state.error) })
-                  : describeTurnError(state.error)}
-          </Text>
-        </View>
+        {stopped ? (
+          <View style={[styles.failCard, { backgroundColor: surfaces.fill }]}>
+            <Icon name="stop" size={20} color={palette.mut} />
+            <Text style={{ flex: 1, fontSize: 14, lineHeight: 21, color: palette.mut }}>
+              {t("play.stopped")}
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.failCard, { backgroundColor: palette.errBg }]} accessibilityRole="alert">
+            <Icon name="alert" size={20} color={palette.err} />
+            <Text style={{ flex: 1, fontSize: 14, lineHeight: 21, color: palette.err }}>
+              {routeMissing
+                ? t("play.noModel")
+                : notSent
+                  ? t("play.notSent", { error: describeTurnError(state.error) })
+                  : state.pending?.narrative
+                    ? t("play.unfinished", { error: describeTurnError(state.error) })
+                    : describeTurnError(state.error)}
+            </Text>
+          </View>
+        )}
         <View style={styles.buttons}>
           <Button
             label={opening ? t("common.close") : t("play.changeAction")}
@@ -91,7 +103,7 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
             <Button label={t("play.goModels")} onPress={onOpenSettings} style={styles.flex} />
           ) : canRetry(state) ? (
             <Button
-              label={notSent ? t("play.resend") : t("common.retry")}
+              label={notSent ? t("play.resend") : stopped ? t("play.regenerate") : t("common.retry")}
               icon="retry"
               onPress={controls.retry}
               style={styles.flex}

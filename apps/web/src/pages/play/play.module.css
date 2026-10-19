@@ -352,6 +352,11 @@
   font-size: 14px;
   line-height: 21px;
 }
+/* 玩家自己点“停止”停下的：灰底灰字、停止图标，不像出错 */
+.stoppedCard {
+  background: var(--fill);
+  color: var(--mut);
+}
 .failButtons {
   display: flex;
   gap: 8px;
@@ -492,7 +497,7 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .writePill:not(:disabled):hover,
-  .stop:hover,
+  .stop:not(:disabled):hover,
   .collapse:hover {
     background: var(--hover);
   }
@@ -593,6 +598,23 @@
   color: var(--ink);
   font-size: 15px;
   flex: none;
+}
+.stop:disabled {
+  color: var(--mut);
+  cursor: default;
+}
+.spinner {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
 }
 
 /* 自己写（W08） */

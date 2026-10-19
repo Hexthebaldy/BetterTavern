@@ -14,9 +14,11 @@ import {
   initialPlayState,
   isBusy,
   isEnded,
+  isStopping,
   needsOpening,
   playReducer,
   retryAction,
+  stoppedByPlayer,
   unsentSubmission,
   withReturnedText,
   type PlayEvent,
@@ -533,6 +535,70 @@ describe("turnMachine", () => {
       );
       assert.ok(!canWrite(openingFailed));
       assert.ok(!canWrite(submitOption(idleWithTwoTurns())));
+    });
+  });
+
+  describe("玩家点了停止", () => {
+    function streamingTurn(): { state: PlayState; turnId: string } {
+      const turn = chosen();
+      const state = run(
+        [{ type: "submitted", turn }, stream({ event: "narrative.delta", data: { text: "半截" } })],
+        submitOption(idleWithTwoTurns()),
+      );
+      return { state, turnId: turn.id };
+    }
+    const cancelled = (data: { code: string; reason?: string }): PlayEvent =>
+      stream({ event: "turn.failed", data: { message: "x", retryable: true, partial: true, ...data } });
+
+    it("点了以后、停下之前是“正在停止”；这一轮不再进行就不算了", () => {
+      const { state, turnId } = streamingTurn();
+      assert.ok(isStopping(state, turnId));
+      assert.ok(!isStopping(state, null));
+      assert.ok(!isStopping(state, "另一轮"));
+      assert.ok(!isStopping(playReducer(state, cancelled({ code: "CANCELLED" })), turnId));
+      const completed = playReducer(
+        state,
+        stream({
+          event: "turn.completed",
+          data: {
+            turn: {
+              id: turnId,
+              seq: 2,
+              attempt: 1,
+              status: "committed",
+              narrative: "半截",
+              options: opts(2),
+              options_source: "model",
+              state_lag: false,
+            },
+            usage: null,
+          },
+        }),
+      );
+      assert.ok(!isStopping(completed, turnId));
+    });
+
+    it("自己停下的（CANCELLED 或 reason cancelled）算“已停止”，可以重新写，半截叙述留着", () => {
+      const { state, turnId } = streamingTurn();
+      const stopped = playReducer(state, cancelled({ code: "CANCELLED" }));
+      assert.ok(stoppedByPlayer(stopped, turnId));
+      assert.ok(canRetry(stopped));
+      assert.equal(stopped.pending?.narrative, "半截");
+      assert.ok(
+        stoppedByPlayer(
+          playReducer(state, cancelled({ code: "PROVIDER_ERROR", reason: "cancelled" })),
+          turnId,
+        ),
+      );
+    });
+
+    it("没点停止（服务重启）、别的失败、点的是另一轮：仍是普通失败", () => {
+      const { state, turnId } = streamingTurn();
+      const stopped = playReducer(state, cancelled({ code: "CANCELLED" }));
+      assert.ok(!stoppedByPlayer(stopped, null));
+      assert.ok(!stoppedByPlayer(stopped, "另一轮"));
+      assert.ok(!stoppedByPlayer(playReducer(state, cancelled({ code: "PROVIDER_ERROR" })), turnId));
+      assert.ok(!stoppedByPlayer(state, turnId));
     });
   });
 });

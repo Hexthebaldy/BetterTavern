@@ -19,7 +19,8 @@ export type PlayControls = {
   state: PlayState;
   submit: (action: NewAction) => void;
   retry: () => void;
-  cancel: () => void;
+  /** 停止生成；没停成时 reject，页面用浮条说明原因 */
+  cancel: () => Promise<void>;
   dismissError: () => void;
   reload: () => void;
   /** 取走退回来的自己写的文字（state.returned），放回输入框；取走后清掉 */
@@ -91,7 +92,9 @@ export function usePlaySession(playthroughId: string): PlayControls {
 
   const submit = useCallback((action: NewAction) => void sessionRef.current?.submit(action), []);
   const retry = useCallback(() => void sessionRef.current?.retry(), []);
-  const cancel = useCallback(() => void sessionRef.current?.cancel(), []);
+  const cancel = useCallback(async () => {
+    await sessionRef.current?.cancel();
+  }, []);
   const dismissError = useCallback(() => sessionRef.current?.dismissError(), []);
   const reload = useCallback(() => void sessionRef.current?.load(), []);
   const takeReturned = useCallback(() => sessionRef.current?.takeReturned() ?? null, []);

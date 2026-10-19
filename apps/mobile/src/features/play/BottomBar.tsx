@@ -5,7 +5,7 @@
  * - 空闲：“自己写…”（有草稿时显示草稿），点一下原地展开成输入框，跟着键盘浮起；发送或收起后缩回来；
  *   一轮失败后（不是开场失败）也能点，等于“换个行动”再展开；
  * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色。
- *   这些状态只在这里显示，正文里不重复；
+ *   这些状态只在这里显示，正文里不重复；点了“停止”到服务端真正停下之间，按钮是转圈的“正在停止…”，不能再点；
  * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）；
  * - 写完结局：旗子和灰字“故事已完结”，不能再写。
  * 往上翻离开了最新位置（超过 80pt）时，中间这一格的右端滑出一个下箭头圆按钮（灰底，和世界、更多一样），“自己写…”跟着变窄；
@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState, type Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { actionPanelFrame } from "@bettertavern/design/layout";
@@ -35,11 +35,9 @@ import { Icon, IconButton, PageSurfaces, useSheetSurfaces, type IconName } from 
 import { useKeyboardLift } from "../../hooks/useKeyboardLift.ts";
 import { space, usePalette } from "../../theme/index.ts";
 import { FreeInput } from "./ActionParts.tsx";
-import type { PlayControls } from "./usePlaySession.ts";
 
 type Props = {
   state: PlayState;
-  controls: PlayControls;
   /** 输入框展开着 */
   writing: boolean;
   onWrite: () => void;
@@ -49,6 +47,9 @@ type Props = {
   onSend: (text: string) => void;
   /** 离开了最新位置 */
   away: boolean;
+  /** 点了“停止”，服务端还没停下（core 的 isStopping） */
+  stopping: boolean;
+  onStop: () => void;
   onJumpToLatest: () => void;
   onOpenWorld: () => void;
   onOpenMore: () => void;
@@ -75,7 +76,6 @@ export function BottomBar(props: Props) {
 
 function Bar({
   state,
-  controls,
   writing,
   onWrite,
   onCloseWrite,
@@ -83,6 +83,8 @@ function Bar({
   onDraft,
   onSend,
   away,
+  stopping,
+  onStop,
   onJumpToLatest,
   onOpenWorld,
   onOpenMore,
@@ -109,7 +111,7 @@ function Bar({
   const enabled = canAct(state);
   const live = isLive(state);
   const cancellable = live && state.pending?.turnId != null && state.phase !== "submitting";
-  const stop = cancellable ? <StopButton onPress={controls.cancel} /> : null;
+  const stop = cancellable ? <StopButton stopping={stopping} onPress={onStop} /> : null;
 
   let middle;
   if (live) {
@@ -342,14 +344,17 @@ function JumpButton({ shown, live, onPress }: { shown: boolean; live: boolean; o
   );
 }
 
-function StopButton({ onPress }: { onPress: () => void }) {
+function StopButton({ stopping, onPress }: { stopping: boolean; onPress: () => void }) {
   const palette = usePalette();
   const { t } = useTranslation();
   const surfaces = useSheetSurfaces();
+  const label = stopping ? t("play.stopping") : t("common.stop");
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t("common.stop")}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: stopping, busy: stopping }}
+      disabled={stopping}
       onPress={onPress}
       style={({ pressed }) => [
         styles.stop,
@@ -359,8 +364,12 @@ function StopButton({ onPress }: { onPress: () => void }) {
         },
       ]}
     >
-      <Icon name="stop" size={16} />
-      <Text style={{ fontSize: 15, color: palette.ink }}>{t("common.stop")}</Text>
+      {stopping ? (
+        <ActivityIndicator size="small" color={palette.mut} style={styles.spinner} />
+      ) : (
+        <Icon name="stop" size={16} />
+      )}
+      <Text style={{ fontSize: 15, color: stopping ? palette.mut : palette.ink }}>{label}</Text>
     </Pressable>
   );
 }
@@ -397,4 +406,6 @@ const styles = StyleSheet.create({
     paddingRight: 18,
     borderRadius: 22,
   },
+  /** 系统转圈比图标大一点：缩到和停止图标一样占 16 */
+  spinner: { width: 16, height: 16, transform: [{ scale: 0.8 }] },
 });

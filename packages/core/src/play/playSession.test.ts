@@ -58,6 +58,7 @@ class FakeApi implements PlayApi {
   turnResults: (Turn | Error)[] = [];
   submitted: Submitted[] = [];
   cancelled: string[] = [];
+  cancelError: Error | null = null;
   detailCalls = 0;
 
   async detail(): Promise<PlaythroughDetail> {
@@ -89,6 +90,7 @@ class FakeApi implements PlayApi {
 
   async cancel(turnId: string): Promise<Turn> {
     this.cancelled.push(turnId);
+    if (this.cancelError) throw this.cancelError;
     return makeTurn(9);
   }
 }
@@ -433,6 +435,27 @@ describe("PlaySession", () => {
     });
     await tick();
     assert.equal(session.getState().phase, "failed");
+  });
+
+  it("停止没成功：错误交给页面说明原因，这一轮照常等事件流", async () => {
+    const { api, streams, session } = setup();
+    const active = makeTurn(2, { status: "generating", narrative: "", options: [] });
+    api.detailQueue = [detail(makeTurn(1), { active_turn: active })];
+    api.historyQueue = [[makeTurn(0), makeTurn(1)]];
+    api.cancelError = new ApiError("Turn is not on this instance", {
+      status: 409,
+      code: "TURN_NOT_LOCAL",
+      retryable: false,
+    });
+    await session.load();
+    await assert.rejects(session.cancel(), (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.code, "TURN_NOT_LOCAL");
+      return true;
+    });
+    assert.equal(session.getState().phase, "streaming");
+    streams[0]!.emit({ event: "narrative.delta", data: { text: "接着写" } });
+    assert.equal(session.getState().pending?.narrative, "接着写");
   });
 
   it("离开页面后关闭连接，之后的事件不再改变状态", async () => {

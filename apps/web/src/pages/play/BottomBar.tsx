@@ -4,6 +4,7 @@
  * - 空闲：“自己写…”（有草稿时显示草稿，桌面上右端有键帽 /），点一下原地展开成输入框（W08）；
  *   一轮失败后（不是开场失败）也能点，等于“换个行动”再展开；
  * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色；
+ *   点了“停止”到服务端真正停下之间，按钮是转圈的“正在停止…”，不能再点；
  * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）；
  * - 写完结局：旗子和灰字“故事已完结”，不能再写。
  * 离开了最新位置时，中间这一格右端展开一个下箭头圆按钮（灰底，生成中带蓝点），“自己写…”跟着变窄。
@@ -26,7 +27,6 @@ import { cx, IconButton } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
 import styles from "./play.module.css";
 import { isSendKey } from "./reading.ts";
-import type { PlayControls } from "./usePlaySession.ts";
 
 const MAX_TEXT = 2000;
 
@@ -56,6 +56,16 @@ function LiveStatus({ state }: { state: PlayState }) {
       <span className={styles.liveDot} />
       <span className={styles.statusText}>{label}</span>
     </div>
+  );
+}
+
+/** 一直在转的圆弧（“正在停止…”） */
+function Spinner() {
+  return (
+    <svg className={styles.spinner} width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx={8} cy={8} r={6} fill="none" stroke="currentColor" strokeOpacity={0.25} strokeWidth={2} />
+      <path d="M8 2a6 6 0 016 6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -126,7 +136,6 @@ function FreeInput({
 
 export function BottomBar({
   state,
-  controls,
   writing,
   onWrite,
   onCloseWrite,
@@ -134,6 +143,8 @@ export function BottomBar({
   onDraft,
   onSend,
   away,
+  stopping,
+  onStop,
   onJumpToLatest,
   onOpenWorld,
   onOpenMore,
@@ -145,7 +156,6 @@ export function BottomBar({
   announcement,
 }: {
   state: PlayState;
-  controls: PlayControls;
   writing: boolean;
   onWrite: () => void;
   onCloseWrite: () => void;
@@ -153,6 +163,9 @@ export function BottomBar({
   onDraft: (text: string) => void;
   onSend: (text: string) => void;
   away: boolean;
+  /** 点了“停止”，服务端还没停下（core 的 isStopping） */
+  stopping: boolean;
+  onStop: () => void;
   onJumpToLatest: () => void;
   onOpenWorld: () => void;
   onOpenMore: () => void;
@@ -180,9 +193,9 @@ export function BottomBar({
       <>
         <LiveStatus state={state} />
         {cancellable ? (
-          <button type="button" className={styles.stop} onClick={controls.cancel}>
-            <Icon name="stop" size={16} />
-            {t("common.stop")}
+          <button type="button" className={styles.stop} disabled={stopping} onClick={onStop}>
+            {stopping ? <Spinner /> : <Icon name="stop" size={16} />}
+            {stopping ? t("play.stopping") : t("common.stop")}
           </button>
         ) : null}
       </>

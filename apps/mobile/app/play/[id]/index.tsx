@@ -5,6 +5,7 @@
  *   或者往上翻时的“回到最新”。量出它的高度，故事流的底部按它留白。
  * 输入框的开关、草稿、是否离开了最新位置都放在这一页，旋转、分屏时都不会丢；草稿每个故事一份存在手机上（useDraft）。
  * 自己写的行动没能变成回合（失败后换个行动、故事在别处被推进）时，文字回到输入框并展开。
+ * “停止”：记下点的是哪一轮。服务端停下之前按钮是“正在停止…”；停下后失败卡是灰色的“已停止”；没停成时浮条说明原因。
  *
  * 平板（theme/layout.ts）：正文收进最宽 640 的阅读栏，操作栏的内容宽 672、同一条中线；
  * 世界状态在阅读页宽 ≥ 1100 时停靠在右侧，阅读栏和操作栏在剩下的宽度里居中，世界按钮显示为选中，
@@ -20,7 +21,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
-import { canAct, headTurn, isEnded, withReturnedText } from "@bettertavern/core/play/turnMachine";
+import {
+  canAct,
+  headTurn,
+  isEnded,
+  isStopping,
+  stoppedByPlayer,
+  withReturnedText,
+} from "@bettertavern/core/play/turnMachine";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
 
 import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
@@ -121,6 +129,8 @@ export default function PlayScreen() {
   const feed = useRef<StoryFeedHandle>(null);
   // 自己写：输入框展开着没有、草稿
   const [writing, setWriting] = useState(false);
+  // 玩家点了“停止”的那一轮（停下前“正在停止…”，停下后失败卡是灰色的“已停止”）；重新进页面就忘了
+  const [stopTurn, setStopTurn] = useState<string | null>(null);
   const [draft, setDraft] = useDraft(id);
   // 往上翻离开了最新位置：操作栏中间换成“回到最新”
   const [away, setAway] = useState(false);
@@ -277,6 +287,15 @@ export default function PlayScreen() {
     setDraft("");
     controls.submit({ source: "text", text });
   };
+  const stop = (): void => {
+    const turnId = state.pending?.turnId;
+    if (!turnId) return;
+    setStopTurn(turnId);
+    controls.cancel().catch((e: unknown) => {
+      setStopTurn(null);
+      overlay.toast(t("play.stopFailed", { error: describeError(e) }), { icon: "alert" });
+    });
+  };
   return (
     // 左边是阅读区（导航栏、故事流、操作栏），停靠时右边是世界状态；手机上只有阅读区
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: palette.bg }}>
@@ -298,6 +317,7 @@ export default function PlayScreen() {
                 controls={controls}
                 onOpenSettings={() => router.push("/settings/models")}
                 onPicked={() => setWriting(false)}
+                stopped={stoppedByPlayer(state, stopTurn)}
                 available={available}
               />
             }
@@ -322,7 +342,6 @@ export default function PlayScreen() {
           ) : null}
           <BottomBar
             state={state}
-            controls={controls}
             writing={writing}
             onWrite={() => {
               // 失败后点“自己写…”等于“换个行动”：自己写的那段会退回输入框
@@ -334,6 +353,8 @@ export default function PlayScreen() {
             onDraft={setDraft}
             onSend={send}
             away={away}
+            stopping={isStopping(state, stopTurn)}
+            onStop={stop}
             onJumpToLatest={() => feed.current?.jumpToLatest()}
             onOpenWorld={toggleWorld}
             onOpenMore={() => setMoreOpen(true)}

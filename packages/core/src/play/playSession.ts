@@ -197,15 +197,14 @@ export class PlaySession {
     return returned;
   }
 
-  /** 停止生成：服务端结束后事件流会送来 turn.failed（CANCELLED） */
+  /**
+   * 停止生成：服务端结束后事件流会送来 turn.failed（CANCELLED）。
+   * 没停成（不在当前服务实例上、断网等）时把错误抛给页面说明原因；界面继续等事件流。
+   */
   async cancel(): Promise<void> {
     const turnId = this.state.pending?.turnId;
     if (!turnId) return;
-    try {
-      await this.deps.api.cancel(turnId);
-    } catch {
-      // 不在当前服务实例上等情况：租约到期后会自动结束，界面继续等事件流
-    }
+    await this.deps.api.cancel(turnId);
   }
 
   private async send(submission: Submission): Promise<void> {
