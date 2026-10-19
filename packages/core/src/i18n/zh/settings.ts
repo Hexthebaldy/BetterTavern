@@ -99,6 +99,7 @@ export const settings = {
     available_other: "{{count}} 个可用",
     search: "搜索或输入模型名",
     listErrorHint: "{{error}}。可以直接在上面输入模型名。",
+    keyRejectedHint: "服务商拒绝了这个 Key：检查是否复制完整、服务商有没有选对",
     listLabel: "模型",
     useTyped: "使用“{{name}}”",
     shown: "显示 {{shown}} / {{total}}，最多 {{max}} 个",

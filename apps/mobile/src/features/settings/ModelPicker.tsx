@@ -1,6 +1,7 @@
 /**
  * 添加模型时的选模型：服务商返回的模型单选列表（最多显示 40 个），搜索框兼做手动输入，右边重新获取。
  * 每个模型右边是它的上下文长度（服务商列表或内置资料给的）。
+ * 获取失败的说明由表单拼好传进来（listError）；Key 或端点有错（fieldError）时错误显示在那两个输入框上，这里不再提示手填模型名。
  */
 
 import { useMemo } from "react";
@@ -19,6 +20,7 @@ export function ModelPicker({
   models,
   listing,
   listError,
+  fieldError,
   query,
   onQuery,
   chosen,
@@ -27,7 +29,10 @@ export function ModelPicker({
 }: {
   models: ModelInfo[] | null;
   listing: boolean;
+  /** 选模型卡里显示的获取失败说明（已经拼好，可能带“可以直接输入模型名”） */
   listError: string | null;
+  /** Key 或端点有错：错误显示在输入框上，这里不提示手填模型名 */
+  fieldError: boolean;
   query: string;
   onQuery: (text: string) => void;
   chosen: string;
@@ -78,9 +83,7 @@ export function ModelPicker({
             {listing ? <Dots cell={4} gap={3} /> : <Icon name="retry" size={18} />}
           </Pressable>
         </View>
-        {listError ? (
-          <Notice message={t("models.listErrorHint", { error: listError })} style={{ borderRadius: 18 }} />
-        ) : null}
+        {listError ? <Notice message={listError} style={{ borderRadius: 18 }} /> : null}
         <View accessibilityRole="radiogroup" accessibilityLabel={t("models.listLabel")} style={{ gap: 4 }}>
           {manual ? (
             <ModelRow
@@ -107,7 +110,7 @@ export function ModelPicker({
           </Text>
         ) : listing ? (
           <Text style={[styles.footnote, { color: palette.mut }]}>{t("models.fetching")}</Text>
-        ) : listError ? null : (
+        ) : listError || fieldError ? null : (
           <Text style={[styles.footnote, { color: palette.mut }]}>{t("models.fetchHint")}</Text>
         )}
       </View>

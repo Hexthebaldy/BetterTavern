@@ -2,6 +2,8 @@
  * 添加模型：服务商 → 新的 Key → 端点 → 模型列表自动获取，选一个
  * （搜索框兼做手动输入）→ 上下文窗口（只有服务商列表和内置资料都不知道时才出现）→ 备注名、是否设为导演 → 保存。
  * Key、模型、窗口一次存好；之后换导演只是在模型列表里点一下。
+ * 获取列表出错时按 core 的 listErrorKind 分开显示：Key 被拒、地址不允许显示在对应的输入框上，这时不能保存（手填模型名也没用），
+ * 改了那个输入就清掉；连不上只在选模型卡里说原因；其他错误和空列表仍提示可以直接手填模型名。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +13,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelInfo, ModelRoute, Provider } from "@bettertavern/core/api/types";
 import { manualWindowChoices, needsManualWindow } from "@bettertavern/core/settings/labels";
+import { listErrorKind } from "@bettertavern/core/settings/listError";
 
 import { KeyField, ProviderMark } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, SectionHeader, Segmented } from "../../components/ui.tsx";
@@ -75,6 +78,9 @@ export function AddModelForm({
   const [models, setModels] = useState<ModelInfo[] | null>(null);
   const [listing, setListing] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  // 获取列表时发现 Key、端点本身有问题：错误显示在输入框上
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [windowChoice, setWindowChoice] = useState("unknown");
@@ -97,6 +103,8 @@ export function AddModelForm({
     setKey("");
     setModels(null);
     setListError(null);
+    setKeyError(null);
+    setUrlError(null);
     setQuery("");
     setPicked(null);
   }, [provider]);
@@ -115,15 +123,21 @@ export function AddModelForm({
     const seq = ++requestSeq.current;
     setListing(true);
     setListError(null);
+    setKeyError(null);
+    setUrlError(null);
     try {
       const list = await api.models.preview(provider, { api_key: key.trim(), base_url: endpoint() });
       if (seq !== requestSeq.current) return;
       setModels(list);
-      if (list.length === 0) setListError(t("models.emptyList"));
+      if (list.length === 0) setListError(t("models.listErrorHint", { error: t("models.emptyList") }));
     } catch (e) {
       if (seq !== requestSeq.current) return;
       setModels(null);
-      setListError(describeError(e));
+      const kind = listErrorKind(e);
+      if (kind === "key") setKeyError(t("models.keyRejectedHint"));
+      else if (kind === "endpoint" && !useOfficial) setUrlError(describeError(e));
+      else if (kind === "network") setListError(describeError(e));
+      else setListError(t("models.listErrorHint", { error: describeError(e) }));
     } finally {
       if (seq === requestSeq.current) setListing(false);
     }
@@ -211,10 +225,12 @@ export function AddModelForm({
             onChangeText={(text) => {
               setKey(text);
               setModels(null);
+              setKeyError(null);
             }}
             placeholder="sk-…"
             hint={t("models.keyHint")}
             hintIcon="lock"
+            error={keyError}
           />
         </View>
 
@@ -224,7 +240,10 @@ export function AddModelForm({
             <Pressable
               accessibilityRole="checkbox"
               accessibilityState={{ checked: official }}
-              onPress={() => setOfficial((v) => !v)}
+              onPress={() => {
+                setOfficial((v) => !v);
+                setUrlError(null);
+              }}
               style={[styles.choice, { backgroundColor: palette.card }]}
             >
               <CheckMark checked={official} />
@@ -240,7 +259,9 @@ export function AddModelForm({
               onChangeText={(text) => {
                 setBaseUrl(text);
                 setModels(null);
+                setUrlError(null);
               }}
+              error={urlError}
               mono
               autoCapitalize="none"
               autoCorrect={false}
@@ -267,6 +288,7 @@ export function AddModelForm({
         models={models}
         listing={listing}
         listError={listError}
+        fieldError={keyError !== null || urlError !== null}
         query={query}
         onQuery={onQuery}
         chosen={chosen}
@@ -319,7 +341,7 @@ export function AddModelForm({
           between
           onPress={() => void save()}
           busy={busy}
-          disabled={!chosen || !keyReady || !urlReady}
+          disabled={!chosen || !keyReady || !urlReady || keyError !== null || urlError !== null}
         />
       </View>
     </View>

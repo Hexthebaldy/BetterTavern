@@ -2,6 +2,8 @@
  * 添加模型（W13，同 App 的 AddModelForm）：服务商 → 新的 Key → 端点 → 模型列表自动获取，选一个
  * （搜索框兼做手动输入）→ 上下文窗口（只有服务商列表和内置资料都不知道时才出现）→ 备注名、是否设为导演 → 保存。
  * 右栏够宽时分两栏：左边服务商、Key、端点；右边选择模型、备注名；下面一整行是“设为导演”和“保存模型”。
+ * 获取列表出错时按 core 的 listErrorKind 分开显示：Key 被拒、地址不允许显示在对应的输入框上，这时不能保存（手填模型名也没用），
+ * 改了那个输入就清掉；连不上只在选模型卡里说原因；其他错误和空列表仍提示可以直接手填模型名。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelInfo, ModelRoute, Provider } from "@bettertavern/core/api/types";
 import { manualWindowChoices, needsManualWindow } from "@bettertavern/core/settings/labels";
+import { listErrorKind } from "@bettertavern/core/settings/listError";
 
 import { Button, Checkbox, cx, Field, Notice } from "../../components/controls.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
@@ -60,6 +63,9 @@ export function AddModelForm({
   const [models, setModels] = useState<ModelInfo[] | null>(null);
   const [listing, setListing] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  // 获取列表时发现 Key、端点本身有问题：错误显示在输入框上
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [windowChoice, setWindowChoice] = useState("unknown");
@@ -82,6 +88,8 @@ export function AddModelForm({
     setKey("");
     setModels(null);
     setListError(null);
+    setKeyError(null);
+    setUrlError(null);
     setQuery("");
     setPicked(null);
   }, [provider]);
@@ -98,15 +106,21 @@ export function AddModelForm({
     const seq = ++requestSeq.current;
     setListing(true);
     setListError(null);
+    setKeyError(null);
+    setUrlError(null);
     try {
       const list = await api.models.preview(provider, { api_key: key.trim(), base_url: endpoint() });
       if (seq !== requestSeq.current) return;
       setModels(list);
-      if (list.length === 0) setListError(t("models.emptyList"));
+      if (list.length === 0) setListError(t("models.listErrorHint", { error: t("models.emptyList") }));
     } catch (e) {
       if (seq !== requestSeq.current) return;
       setModels(null);
-      setListError(describeError(e));
+      const kind = listErrorKind(e);
+      if (kind === "key") setKeyError(t("models.keyRejectedHint"));
+      else if (kind === "endpoint" && !useOfficial) setUrlError(describeError(e));
+      else if (kind === "network") setListError(describeError(e));
+      else setListError(t("models.listErrorHint", { error: describeError(e) }));
     } finally {
       if (seq === requestSeq.current) setListing(false);
     }
@@ -182,9 +196,11 @@ export function AddModelForm({
           onChange={(e) => {
             setKey(e.target.value);
             setModels(null);
+            setKeyError(null);
           }}
           placeholder="sk-…"
           hint={t("models.keyHint")}
+          error={keyError}
         />
         <div className={styles.formGroup}>
           <span className={styles.formLabel}>{t("models.endpoint")}</span>
@@ -193,7 +209,10 @@ export function AddModelForm({
               <Checkbox
                 label={t("models.official")}
                 checked={official}
-                onToggle={() => setOfficial((v) => !v)}
+                onToggle={() => {
+                  setOfficial((v) => !v);
+                  setUrlError(null);
+                }}
               />
             </div>
           )}
@@ -205,7 +224,9 @@ export function AddModelForm({
               onChange={(e) => {
                 setBaseUrl(e.target.value);
                 setModels(null);
+                setUrlError(null);
               }}
+              error={urlError}
               type="url"
               spellCheck={false}
               placeholder={selected?.default_base_url ?? "https://example.com/v1"}
@@ -228,6 +249,7 @@ export function AddModelForm({
           models={models}
           listing={listing}
           listError={listError}
+          fieldError={keyError !== null || urlError !== null}
           query={query}
           onQuery={onQuery}
           chosen={chosen}
@@ -279,7 +301,7 @@ export function AddModelForm({
             between
             trailingIcon="arrowRight"
             busy={busy}
-            disabled={!chosen || !keyReady || !urlReady}
+            disabled={!chosen || !keyReady || !urlReady || keyError !== null || urlError !== null}
             className={styles.saveButton}
             onClick={() => void save()}
           />

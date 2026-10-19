@@ -86,7 +86,7 @@ export const settings: Messages<typeof source> = {
     endpointNote: "The URL of an OpenAI-compatible API, usually ending in /v1.",
     fetchList: "Get model list",
     refetchList: "Get model list again",
-    emptyList: "The provider didn't return any models",
+    emptyList: "The provider didn't return any models.",
     contextWindow: "Context window",
     windowAskListed:
       "The provider's list doesn't say how much this model can read. Choose it if you know; otherwise 32K is assumed for now and corrected automatically if the provider reports the context is too long.",
@@ -104,6 +104,7 @@ export const settings: Messages<typeof source> = {
     available_other: "{{count}} available",
     search: "Search or type a model name",
     listErrorHint: "{{error}} You can type a model name above.",
+    keyRejectedHint: "The provider rejected this key. Check that you copied all of it and picked the right provider.",
     listLabel: "Models",
     useTyped: "Use “{{name}}”",
     shown: "Showing {{shown}} of {{total}}, up to {{max}}",

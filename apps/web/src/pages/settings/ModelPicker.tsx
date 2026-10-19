@@ -1,6 +1,7 @@
 /**
  * 添加模型时的选模型（同 App 的 ModelPicker）：服务商返回的模型单选列表（最多显示 40 个），搜索框兼做手动输入，
  * 右边重新获取。每个模型右边是它的上下文长度。
+ * 获取失败的说明由表单拼好传进来（listError）；Key 或端点有错（fieldError）时错误显示在那两个输入框上，这里不再提示手填模型名。
  */
 
 import { useMemo } from "react";
@@ -48,6 +49,7 @@ export function ModelPicker({
   models,
   listing,
   listError,
+  fieldError,
   query,
   onQuery,
   chosen,
@@ -56,7 +58,10 @@ export function ModelPicker({
 }: {
   models: ModelInfo[] | null;
   listing: boolean;
+  /** 选模型卡里显示的获取失败说明（已经拼好，可能带“可以直接输入模型名”） */
   listError: string | null;
+  /** Key 或端点有错：错误显示在输入框上，这里不提示手填模型名 */
+  fieldError: boolean;
   query: string;
   onQuery: (text: string) => void;
   chosen: string;
@@ -100,7 +105,7 @@ export function ModelPicker({
             {listing ? <Dots /> : <Icon name="retry" size={18} />}
           </button>
         </div>
-        {listError ? <Notice message={t("models.listErrorHint", { error: listError })} /> : null}
+        {listError ? <Notice message={listError} /> : null}
         <div role="radiogroup" aria-label={t("models.listLabel")} className={styles.options}>
           {manual ? (
             <ModelOption
@@ -125,7 +130,7 @@ export function ModelPicker({
             ? t("models.shown", { shown: shown.length, total: models.length, max: MAX_LISTED })
             : listing
               ? t("models.fetching")
-              : listError
+              : listError || fieldError
                 ? ""
                 : t("models.fetchHint")}
         </p>

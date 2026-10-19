@@ -102,6 +102,7 @@ export const settings: MessagesOtherOnly<typeof source> = {
     available_other: "{{count}} 件利用可能",
     search: "検索するかモデル名を入力",
     listErrorHint: "{{error}}。上の欄にモデル名を直接入力することもできます。",
+    keyRejectedHint: "プロバイダーがこのキーを拒否しました。キーを最後までコピーしたか、プロバイダーの選択が合っているかを確認してください",
     listLabel: "モデル",
     useTyped: "「{{name}}」を使う",
     shown: "{{shown}} / {{total}} 件を表示（最大 {{max}} 件）",
