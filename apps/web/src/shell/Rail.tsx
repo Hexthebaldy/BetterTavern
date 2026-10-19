@@ -21,7 +21,7 @@ import { useContextMenu } from "../overlay/useContextMenu.ts";
 import { useApp } from "../state/AppProvider.tsx";
 import { Avatar } from "./Avatar.tsx";
 import { useGlass } from "./glass.tsx";
-import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
+import { isActive, isCurrentPage, NAV_ITEMS, openStoryId, scrollToTop } from "./nav.ts";
 import { byRecent } from "./recent.ts";
 import styles from "./shell.module.css";
 
@@ -55,6 +55,11 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
             key={item.to}
             ref={ref(item.to)}
             to={item.to}
+            onClick={(e) => {
+              if (!isCurrentPage(item, pathname)) return;
+              e.preventDefault();
+              scrollToTop();
+            }}
             className={cx(styles.railItem, active && styles.railItemOn)}
             aria-current={active ? "page" : undefined}
           >

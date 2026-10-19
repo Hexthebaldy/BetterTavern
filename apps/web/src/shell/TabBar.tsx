@@ -6,7 +6,7 @@ import { Link, useLocation } from "react-router";
 import { Icon } from "../components/Icon.tsx";
 import { cx } from "../components/controls.tsx";
 import { useGlass } from "./glass.tsx";
-import { isActive, NAV_ITEMS } from "./nav.ts";
+import { isActive, isCurrentPage, NAV_ITEMS, scrollToTop } from "./nav.ts";
 import styles from "./shell.module.css";
 
 export function TabBar() {
@@ -23,6 +23,11 @@ export function TabBar() {
             key={item.to}
             ref={ref(item.to)}
             to={item.to}
+            onClick={(e) => {
+              if (!isCurrentPage(item, pathname)) return;
+              e.preventDefault();
+              scrollToTop();
+            }}
             className={cx(styles.tab, active && styles.tabOn)}
             aria-current={active ? "page" : undefined}
           >

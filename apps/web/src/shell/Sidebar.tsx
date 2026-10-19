@@ -15,7 +15,7 @@ import { useStoryActions } from "../data/storyActions.ts";
 import { useApp } from "../state/AppProvider.tsx";
 import { Avatar } from "./Avatar.tsx";
 import { useGlass } from "./glass.tsx";
-import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
+import { isActive, isCurrentPage, NAV_ITEMS, openStoryId, scrollToTop } from "./nav.ts";
 import { recentGroups } from "./recent.ts";
 import styles from "./shell.module.css";
 import { StoryRow } from "./StoryRow.tsx";
@@ -57,6 +57,11 @@ export function Sidebar({ onCollapse, overlay }: { onCollapse: () => void; overl
               key={item.to}
               ref={ref(item.to)}
               to={item.to}
+              onClick={(e) => {
+                if (!isCurrentPage(item, pathname)) return;
+                e.preventDefault();
+                scrollToTop();
+              }}
               className={cx(styles.navItem, active && styles.navItemOn)}
               aria-current={active ? "page" : undefined}
             >

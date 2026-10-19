@@ -20,6 +20,17 @@ export function isActive(item: NavItem, pathname: string): boolean {
   return item.prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+/** 点的就是当前这一页（不是它下面的子页）：不换页，滚回顶部 */
+export function isCurrentPage(item: NavItem, pathname: string): boolean {
+  return pathname === item.to || pathname === `${item.to}/`;
+}
+
+/** 平滑滚回页面顶部；系统要求减少动态效果时直接跳过去 */
+export function scrollToTop(): void {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+}
+
 /** 当前打开的故事（阅读页的地址 /play/:id） */
 export function openStoryId(pathname: string): string | null {
   const match = /^\/play\/([^/]+)/.exec(pathname);

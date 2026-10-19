@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
+import { isActive, isCurrentPage, NAV_ITEMS, openStoryId } from "./nav.ts";
 
 const [stories, library, settings] = NAV_ITEMS;
 
@@ -14,6 +14,14 @@ describe("导航的选中项", () => {
     assert.equal(isActive(settings, "/dev/probe"), true);
     assert.equal(isActive(stories, "/play/p1"), false);
     assert.equal(isActive(library, "/libraryx"), false);
+  });
+
+  it("点当前这一页才算回顶部；在子页上点是回到这一级", () => {
+    assert.ok(stories && settings);
+    assert.equal(isCurrentPage(stories, "/playthroughs"), true);
+    assert.equal(isCurrentPage(stories, "/playthroughs/"), true);
+    assert.equal(isCurrentPage(settings, "/settings/models"), false);
+    assert.equal(isCurrentPage(stories, "/library"), false);
   });
 
   it("阅读页的地址里取出故事 ID", () => {

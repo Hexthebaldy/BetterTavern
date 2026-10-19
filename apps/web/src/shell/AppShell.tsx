@@ -4,6 +4,7 @@
  * 形态由 theme/layout.ts 的 navMode(窗口宽度, 用户收起了侧栏) 决定，拖动窗口时即时切换，页面不卸载。
  * 窄于 1280 时“展开”打开的侧栏盖在内容上（带遮罩），点遮罩、按 Esc、点了侧栏里的一项都会收回。
  * 阅读页打开世界、侧栏放不下时，用 useNavOverride 临时收成导航条（用户的“收起”设置不变）。
+ * 换页时回到顶部、后退时恢复位置（ScrollRestoration）；点当前所在的导航项平滑滚回顶部（nav.ts 的 isCurrentPage）。
  */
 
 import {
@@ -15,7 +16,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { Outlet, useLocation } from "react-router";
+import { Outlet, ScrollRestoration, useLocation } from "react-router";
 
 import { useWindowWidth } from "../hooks/useWindowSize.ts";
 import { ImportProvider } from "../import/ImportProvider.tsx";
@@ -140,6 +141,9 @@ export function AppShell() {
                 <Sidebar overlay onCollapse={() => setOverlay(false)} />
               </>
             ) : null}
+            {/* 换页回到顶部，后退恢复原来的位置。放在 main 前面：它的 layout effect 先执行，
+                阅读页自己滚到最新的 layout effect 在后面，不会被拉回顶部 */}
+            <ScrollRestoration />
             <main className={styles.main} id="main">
               <Outlet />
             </main>
