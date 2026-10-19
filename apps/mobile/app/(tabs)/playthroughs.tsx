@@ -6,12 +6,22 @@
  * 平板（theme/layout.ts）：卡片排成网格，中屏 2 列、宽屏 3 列，间距 12；最近一个存档放大成主卡
  * （中屏占满一行、宽屏占两列，高两行）。中屏保留左滑；宽屏只用长按，卡片抬起、下方弹出菜单。
  * 加载失败、空状态放在居中的内容栏里，宽不超过 640。
+ * 有故事正在写（开场或下一段）时，页面在前台每 5 秒重新取一次列表，写好后卡片自己变过来。
  */
 
-import { useRouter } from "expo-router";
-import { useRef, type ReactNode } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useRef, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  AppState,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
@@ -25,6 +35,7 @@ import {
   type Insets,
   type SizeClass,
 } from "@bettertavern/design/layout";
+import { listRefreshInterval } from "@bettertavern/core/play/storyStatus";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../src/components/Cover.tsx";
@@ -261,6 +272,28 @@ export default function PlaythroughsScreen() {
     ]);
     return { stories, avatars: new Map(scenarios.map((s) => [s.id, s.avatar_blob_id])) };
   }, [api]);
+
+  // 有故事正在写：页面获得焦点、App 在前台时定时重新取；离开页面、退到后台就停
+  const interval = listRefreshInterval(data?.stories);
+  useFocusEffect(
+    useCallback(() => {
+      if (interval === false) return;
+      let timer: ReturnType<typeof setInterval> | null = null;
+      const start = (): void => {
+        if (timer === null) timer = setInterval(() => void reload(), interval);
+      };
+      const stop = (): void => {
+        if (timer !== null) clearInterval(timer);
+        timer = null;
+      };
+      if (AppState.currentState === "active") start();
+      const sub = AppState.addEventListener("change", (next) => (next === "active" ? start() : stop()));
+      return () => {
+        stop();
+        sub.remove();
+      };
+    }, [interval, reload]),
+  );
 
   const rename = async (story: Playthrough): Promise<void> => {
     const title = await overlay.prompt({

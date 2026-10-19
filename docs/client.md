@@ -149,7 +149,7 @@ M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读�
 | 路由 | 页面 |
 | --- | --- |
 | `(auth)/login`、`(auth)/register` | 登录、注册；底部的服务器行打开服务器面板（最近用过的地址单选、输入新地址、测试连接），连不上时自动打开 |
-| `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 存档列表（界面上叫“存档”；每行方形封面 72，标题后面跟状态胶囊，右上角是更新时间，下面两行摘要；左滑或长按：重命名、删除）、剧本库（网格 / 列表，导入角色卡，长按或左滑：重命名、删除）、设置首页（导演模型卡片） |
+| `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 存档列表（界面上叫“存档”；每行方形封面 72，标题后面跟状态胶囊，右上角是更新时间，下面两行摘要；左滑或长按：重命名、删除；有故事正在写时，页面在前台每 5 秒重新取一次列表）、剧本库（网格 / 列表，导入角色卡，长按或左滑：重命名、删除）、设置首页（导演模型卡片） |
 | `scenario/[id]`（`scenario/[id]/index.tsx`） | 剧本详情：封面、概要（剧本名右边是“编辑角色卡”，改过的卡标“已编辑”）、原卡开场白；“开始新的故事”五步表单（名字建议、“这个角色是谁”输入框、篇幅、文风标签、不想看到的勾选清单），拼回原来的字段；页面最底下是删除剧本（剧本名在编辑页里改；封面上只有返回按钮，没有“更多”） |
 | `scenario/[id]/edit` | 编辑角色卡：剧本名、角色名、标签，描述、性格，情境、开场白，对话示例，卡片自带的世界书（条目收起显示名称和常驻 / 未启用 / 有问题的标记，展开改名称、关键词、内容、启用、常驻，上移、下移、删除）。保存前按和服务端相同的规则检查（`@bettertavern/core/scenario/cardEdit`），不合格的字段标红，之后每次修改重新检查；保存带版本号，别处改过（409 `CARD_CHANGED`）时问要不要重新加载；有没保存的修改时离开先问“放弃修改？”；页底“恢复导入时的内容” |
 | `play/[id]` | 阅读主屏；选项接在最新一段后面，跟着正文滚动；底部固定的操作栏左边是世界状态面板（人物与地点、关系图、事实，揭示秘密前确认），右边是“更多”（阅读设置：宋体 / 黑体、字号；重命名、写结局、删除故事），中间是“自己写…”或生成中的状态和“停止”，往上翻时右端多出一个回到最新的下箭头按钮；导航栏只有返回和标题 |
@@ -283,7 +283,7 @@ apps/mobile/
 | 构建 | Vite + TypeScript（strict） | 开发和预览服务器把 `/v1`、`/health`、`/ready` 转给后端（默认 `http://localhost:8000`，`BT_API_URL` 可以改） |
 | 界面 | React 19，浏览器的 DOM 和 CSS | 不用 react-native-web：链接、表单自动填充、`:focus-visible`、悬停、右键菜单、拖放、选中复制都是浏览器原生的 |
 | 路由 | react-router 7 | 地址和 App 的 expo-router 一一对应：`/login`、`/register`、`/playthroughs`、`/library`、`/scenario/:id`、`/scenario/:id/edit`、`/play/:id`、`/settings`、`/settings/models`、`/settings/model/:id`、`/settings/account`、`/dev/probe` |
-| 服务端数据 | TanStack Query | 没有下拉刷新：回到标签页、窗口回到前台时自动刷新 |
+| 服务端数据 | TanStack Query | 没有下拉刷新：回到标签页、窗口回到前台时自动刷新；存档列表里有故事正在写时每 5 秒重新取一次（`listRefreshInterval`） |
 | 样式 | CSS Modules + CSS 变量 | 变量名同 `docs/design/ui/web/tokens.css`；色板由 `ThemeProvider` 从 `@bettertavern/design` 写到 `<html>` 上 |
 | 共用 | `@bettertavern/core`、`@bettertavern/design` | 接口客户端、SSE、会话、回合状态机、色板、布局函数、图标和封面的数据，和 App 是同一份代码（见第 3 节的“目录”） |
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { storyStatus } from "./storyStatus.ts";
+import { listRefreshInterval, storyStatus, WRITING_REFRESH_MS } from "./storyStatus.ts";
 
 const idle = {
   status: "active",
@@ -35,5 +35,14 @@ describe("storyStatus", () => {
 
   it("写完结局：已完结", () => {
     assert.deepEqual(storyStatus({ ...idle, status: "ended" }), { kind: "ended", label: "已完结" });
+  });
+});
+
+describe("listRefreshInterval", () => {
+  it("有故事正在写时定时刷新，没有时不刷新", () => {
+    assert.equal(listRefreshInterval([idle, { ...idle, active_turn_id: "t10" }]), WRITING_REFRESH_MS);
+    assert.equal(listRefreshInterval([idle, idle]), false);
+    assert.equal(listRefreshInterval([]), false);
+    assert.equal(listRefreshInterval(undefined), false);
   });
 });
