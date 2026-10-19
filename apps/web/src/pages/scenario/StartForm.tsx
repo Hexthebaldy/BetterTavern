@@ -3,6 +3,7 @@
  * 篇幅（行数图示）、文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）。只有第 1 步必填。
  * 选择最终拼回接口原来的字段，见 @bettertavern/core 的 scenario/startForm.ts。
  * 宽屏（wide）：名字建议排在输入框右边。
+ * 填了一半的内容按剧本存在这个标签页的内存里（不写浏览器存储）：去设置配好模型再回来时还在，开始成功后删掉。
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -60,6 +61,23 @@ function Step({
   );
 }
 
+/** 每个剧本填了一半的表单（只在这个标签页的内存里） */
+type Filled = {
+  name: string;
+  summary: string;
+  length: Preferences["length"];
+  styleTags: string[];
+  customStyles: string[];
+  bounds: string[];
+  customBounds: string[];
+};
+const filled = new Map<string, Filled>();
+
+/** 开始成功后忘掉这个剧本填过的表单 */
+export function forgetStartForm(scenarioId: string): void {
+  filled.delete(scenarioId);
+}
+
 /** 篇幅图示：几行圆头的横线，越长行数越多 */
 const LENGTH_GLYPHS: Record<Preferences["length"], { d: string; width: number }> = {
   short: { d: "M2 4h32M2 11h20", width: 2.4 },
@@ -68,9 +86,11 @@ const LENGTH_GLYPHS: Record<Preferences["length"], { d: string; width: number }>
 };
 
 export function StartForm({
+  scenarioId,
   onChange,
   wide,
 }: {
+  scenarioId: string;
   onChange: (values: StartValues, summary: string[]) => void;
   wide?: boolean;
 }) {
@@ -80,13 +100,17 @@ export function StartForm({
   const suggestions = useMemo(() => suggestNames(4), [i18n.language]);
   const builtinTags = useMemo(() => builtinStyles(), [i18n.language]);
   const avoidItems = useMemo(() => boundaryItems(), [i18n.language]);
-  const [name, setName] = useState("");
-  const [summary, setSummary] = useState("");
-  const [length, setLength] = useState<Preferences["length"]>("medium");
-  const [styleTags, setStyleTags] = useState<string[]>([]);
-  const [customStyles, setCustomStyles] = useState<string[]>([]);
-  const [bounds, setBounds] = useState<string[]>([]);
-  const [customBounds, setCustomBounds] = useState<string[]>([]);
+  const [saved] = useState(() => filled.get(scenarioId));
+  const [name, setName] = useState(saved?.name ?? "");
+  const [summary, setSummary] = useState(saved?.summary ?? "");
+  const [length, setLength] = useState<Preferences["length"]>(saved?.length ?? "medium");
+  const [styleTags, setStyleTags] = useState<string[]>(saved?.styleTags ?? []);
+  const [customStyles, setCustomStyles] = useState<string[]>(saved?.customStyles ?? []);
+  const [bounds, setBounds] = useState<string[]>(saved?.bounds ?? []);
+  const [customBounds, setCustomBounds] = useState<string[]>(saved?.customBounds ?? []);
+  useEffect(() => {
+    filled.set(scenarioId, { name, summary, length, styleTags, customStyles, bounds, customBounds });
+  }, [scenarioId, name, summary, length, styleTags, customStyles, bounds, customBounds]);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;

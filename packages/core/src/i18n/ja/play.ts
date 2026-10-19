@@ -41,7 +41,7 @@ export const play: MessagesOtherOnly<typeof source> = {
     inputLabel: "自分がすること",
     left: "残り {{n}}",
     send: "送信",
-    noModel: "使えるモデルがありません。先にキーを追加し、監督用のモデルを選んでください。",
+    noModel: "監督用のモデルがまだありません。設定でモデルを追加し、監督にしてください。",
     unfinished: "この場面は最後まで書けませんでした：{{error}}",
     notSent: "送信できませんでした：{{error}}",
     resend: "もう一度送信",

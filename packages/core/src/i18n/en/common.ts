@@ -95,7 +95,7 @@ export const common: Messages<typeof source> = {
       METHOD_NOT_ALLOWED: "The request was invalid.",
       EMAIL_TAKEN: "That email is already registered.",
       CREDENTIAL_UNREADABLE: "This model's key can't be read. Please enter the key again.",
-      ROUTE_MISSING: "No director model yet. Add a key and choose a model in Settings.",
+      ROUTE_MISSING: "No director model yet. Add a model in Settings and make it the director.",
       TURN_IN_PROGRESS: "The previous part is still being written.",
       STALE_PARENT: "This story moved on somewhere else. Please refresh.",
       OPENING_PENDING: "The opening isn't finished yet.",
@@ -143,7 +143,7 @@ export const common: Messages<typeof source> = {
       CONTENT_BLOCKED: "The provider's content policy blocked this part.",
       ENDPOINT_NOT_ALLOWED: "This endpoint isn't allowed.",
       CONTEXT_TOO_LARGE: "The context doesn't fit in the model's window. Try a model with a larger window.",
-      ROUTE_MISSING: "No director model yet. Add a key and choose a model in Settings.",
+      ROUTE_MISSING: "No director model yet. Add a model in Settings and make it the director.",
       CREDENTIAL_UNREADABLE: "This model's key can't be read. Please enter the key again.",
       NARRATIVE_MISSING: "The director didn't write anything this time. Please try again.",
       GENERATION_TIMEOUT:

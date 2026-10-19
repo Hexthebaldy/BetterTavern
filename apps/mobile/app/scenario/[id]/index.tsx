@@ -3,21 +3,24 @@
  * 开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
  * 剧本名右边是“编辑角色卡”（edit.tsx，剧本名也在那里改）；删除剧本的按钮在页面最底下。
  * 编辑过的卡在标题上方标“已编辑”。从编辑页回来时重新加载（useAsync 在回到页面时会再取一次）。
+ * 还没有导演模型时，“开始新的故事”标题下面先有一条琥珀色提示和“去设置”；每次回到页面重新取模型列表，
+ * 配好导演后提示消失，之前点“开始故事”留下的 ROUTE_MISSING 红条也清掉。
  *
  * 平板（theme/layout.ts）：中屏单栏，宽 640，居中。宽屏两栏（设计稿 T12），两栏各自滚动：
  * 左栏宽 420 是封面（高 236，返回按钮浮在上面）、名字、标签、统计、简介、原卡开场白；
  * 右栏是开始新故事的五步，底部浮着一条摘要栏（已选项胶囊加“开始故事”），圆角 34，带投影。
  */
 
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
-import type { Scenario } from "@bettertavern/core/api/types";
+import type { ModelRoute, Scenario } from "@bettertavern/core/api/types";
 import { currentLanguage, lookup } from "@bettertavern/core/i18n/index";
+import { needsDirector } from "@bettertavern/core/scenario/startForm";
 import { pane } from "@bettertavern/design/layout";
 
 import { Cover } from "../../../src/components/Cover.tsx";
@@ -168,6 +171,10 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
   );
 }
 
+function isRouteMissing(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "ROUTE_MISSING";
+}
+
 export default function ScenarioScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { api } = useApp();
@@ -185,6 +192,29 @@ export default function ScenarioScreen() {
   const [summary, setSummary] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<Error | null>(null);
+  // 有没有导演模型：每次回到页面重新取；取不到当“不知道”，不提示，仍靠服务端的 ROUTE_MISSING 兜底
+  const [routes, setRoutes] = useState<ModelRoute[] | undefined>(undefined);
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      api.models.list().then(
+        (list) => {
+          if (alive) setRoutes(list);
+        },
+        () => {
+          if (alive) setRoutes(undefined);
+        },
+      );
+      return () => {
+        alive = false;
+      };
+    }, [api]),
+  );
+  const noDirector = needsDirector(routes);
+  useEffect(() => {
+    // 每次取到列表都看一眼：配好了导演，之前点“开始故事”留下的 ROUTE_MISSING 红条不再挂着
+    if (routes?.some((route) => route.is_director)) setStartError((e) => (isRouteMissing(e) ? null : e));
+  }, [routes]);
 
   if (loading && !scenario) return <Loading />;
   if (!scenario) {
@@ -238,7 +268,7 @@ export default function ScenarioScreen() {
 
   const edit = (): void => router.push({ pathname: "/scenario/[id]/edit", params: { id: scenario.id } });
 
-  const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
+  const routeMissing = isRouteMissing(startError);
   // 封面宽度：手机整屏减两边 12；中屏的居中栏最宽 640；宽屏左栏 420
   const coverWidth = expanded
     ? pane.scenarioInfo
@@ -274,6 +304,15 @@ export default function ScenarioScreen() {
       <Text style={[styles.caption, { color: palette.mut }]}>{t("start.hint")}</Text>
     </View>
   );
+  const directorNotice = noDirector ? (
+    <Notice
+      tone="warn"
+      message={t("start.needDirector")}
+      actionLabel={t("start.goSettings")}
+      onAction={() => router.push("/settings/models")}
+      style={styles.directorNotice}
+    />
+  ) : null;
   const form = (
     <StartForm
       wide={expanded}
@@ -294,13 +333,15 @@ export default function ScenarioScreen() {
       style={styles.startButton}
     />
   );
-  const errorNotice = startError ? (
-    <Notice
-      message={routeMissing ? t("start.noModel") : describeError(startError)}
-      actionLabel={routeMissing ? t("start.goSettings") : undefined}
-      onAction={routeMissing ? () => router.push("/settings/models") : undefined}
-    />
-  ) : null;
+  // 上面已经提示了没有导演：点“开始故事”报的 ROUTE_MISSING 不再重复一遍
+  const errorNotice =
+    startError && !(routeMissing && noDirector) ? (
+      <Notice
+        message={routeMissing ? t("start.noModel") : describeError(startError)}
+        actionLabel={routeMissing ? t("start.goSettings") : undefined}
+        onAction={routeMissing ? () => router.push("/settings/models") : undefined}
+      />
+    ) : null;
   const pills = (
     <View
       style={[styles.summary, expanded ? { flex: 1 } : null]}
@@ -345,6 +386,7 @@ export default function ScenarioScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {startHead}
+            {directorNotice}
             {form}
           </ScrollView>
           <View
@@ -381,6 +423,7 @@ export default function ScenarioScreen() {
         {cover}
         <Overview scenario={scenario} onEdit={edit} />
         {startHead}
+        {directorNotice}
         {form}
         <View style={[styles.submit, { backgroundColor: palette.card, boxShadow: palette.shadowFloat }]}>
           {errorNotice}
@@ -435,6 +478,8 @@ const styles = StyleSheet.create({
     gap: space.s,
   },
   startTitle: { fontSize: 26, lineHeight: 32, fontWeight: "700", letterSpacing: -0.5 },
+  /** 和表单的每一步一样离屏幕 12，下面空 8 */
+  directorNotice: { marginHorizontal: space.list, marginBottom: space.s },
   submit: {
     marginTop: space.l,
     marginHorizontal: space.list,

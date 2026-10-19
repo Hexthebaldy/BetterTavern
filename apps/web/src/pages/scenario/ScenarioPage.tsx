@@ -7,21 +7,24 @@
  * - 更窄：单栏，最宽 640，居中。
  * 侧栏一直在，返回按钮回到剧本库。剧本名右边是“编辑角色卡”（EditCardPage.tsx，剧本名也在那里改），
  * 改过的卡标题上方注明“已编辑”；删除剧本的按钮在概要下面（单栏时在页面最底下）。
+ * 还没有导演模型时，“开始新的故事”标题下面先有一条琥珀色提示和“去设置”；填了一半的表单在这个标签页里留着，配好回来还在。
  * 文案同 App 的 app/scenario/[id]/index.tsx。
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { currentLanguage, lookup } from "@bettertavern/core/i18n/index";
+import { needsDirector } from "@bettertavern/core/scenario/startForm";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Button, cx, IconButton, Notice, Pill } from "../../components/controls.tsx";
 import { Icon, type IconName } from "../../components/Icon.tsx";
+import { useModelRoutes } from "../../data/models.ts";
 import { scenarioPath, useScenarioActions } from "../../data/scenarioActions.ts";
 import { storiesKey } from "../../data/stories.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -29,7 +32,11 @@ import { useWindowWidth } from "../../hooks/useWindowSize.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { desktop, shell } from "../../theme/layout.ts";
 import styles from "./scenario.module.css";
-import { StartForm, type StartValues } from "./StartForm.tsx";
+import { forgetStartForm, StartForm, type StartValues } from "./StartForm.tsx";
+
+function isRouteMissing(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "ROUTE_MISSING";
+}
 
 /** 角色卡里可能被截断的字段 */
 function fieldName(field: string): string {
@@ -166,6 +173,14 @@ export function ScenarioPage() {
   const [startError, setStartError] = useState<unknown>(null);
   const { t } = useTranslation();
   useDocumentTitle(scenario?.name ?? t("nav.library"));
+  // 有没有导演模型：取不到列表时不提示，仍靠服务端的 ROUTE_MISSING 兜底；回到页面时 react-query 会重新取
+  const routes = useModelRoutes();
+  const noDirector = needsDirector(routes.data);
+  const hasDirector = routes.data?.some((route) => route.is_director) ?? false;
+  useEffect(() => {
+    // 每次取到列表都看一眼：配好了导演，之前点“开始故事”留下的 ROUTE_MISSING 不再挂着
+    if (hasDirector) setStartError((e: unknown) => (isRouteMissing(e) ? null : e));
+  }, [hasDirector, routes.dataUpdatedAt]);
 
   if (!scenario) {
     return (
@@ -195,6 +210,7 @@ export function ScenarioPage() {
         // 提示词按当前的界面语言（docs/i18n.md 第 4 节）
         language: currentLanguage(),
       });
+      forgetStartForm(scenario.id);
       void queries.invalidateQueries({ queryKey: storiesKey });
       navigate(`/play/${encodeURIComponent(created.playthrough.id)}`, { replace: true });
     } catch (e) {
@@ -204,7 +220,7 @@ export function ScenarioPage() {
   };
 
   const edit = (): void => void navigate(`${scenarioPath(scenario)}/edit`);
-  const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
+  const routeMissing = isRouteMissing(startError);
   const coverWidth = wide ? shell.scenarioInfo : Math.min(width - 24, shell.readable);
   const cover = (
     <div className={styles.cover}>
@@ -232,8 +248,18 @@ export function ScenarioPage() {
       <span className={styles.caption}>{t("start.hint")}</span>
     </div>
   );
+  const directorNotice = noDirector ? (
+    <Notice
+      tone="warn"
+      message={t("start.needDirector")}
+      actionLabel={t("start.goSettings")}
+      onAction={() => navigate("/settings/models")}
+      className={styles.directorNotice}
+    />
+  ) : null;
   const form = (
     <StartForm
+      scenarioId={scenario.id}
       wide={wide}
       onChange={(next, parts) => {
         setValues(next);
@@ -241,13 +267,15 @@ export function ScenarioPage() {
       }}
     />
   );
-  const errorNotice = startError ? (
-    <Notice
-      message={routeMissing ? t("start.noModel") : describeError(startError)}
-      actionLabel={routeMissing ? t("start.goSettings") : undefined}
-      onAction={routeMissing ? () => navigate("/settings/models") : undefined}
-    />
-  ) : null;
+  // 上面已经提示了没有导演：点“开始故事”报的 ROUTE_MISSING 不再重复一遍
+  const errorNotice =
+    startError && !(routeMissing && noDirector) ? (
+      <Notice
+        message={routeMissing ? t("start.noModel") : describeError(startError)}
+        actionLabel={routeMissing ? t("start.goSettings") : undefined}
+        onAction={routeMissing ? () => navigate("/settings/models") : undefined}
+      />
+    ) : null;
   const pills = (
     <div
       className={styles.summary}
@@ -294,6 +322,7 @@ export function ScenarioPage() {
         <div className={styles.formColumn}>
           <div className={styles.formScroll}>
             {startHead}
+            {directorNotice}
             {form}
           </div>
           <div className={styles.floatingBar}>
@@ -312,6 +341,7 @@ export function ScenarioPage() {
       {cover}
       <Overview scenario={scenario} onEdit={edit} />
       {startHead}
+      {directorNotice}
       {form}
       <div className={styles.submit}>
         {errorNotice}

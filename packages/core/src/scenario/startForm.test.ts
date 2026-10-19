@@ -7,6 +7,7 @@ import {
   composeBoundaries,
   composeStyle,
   namePool,
+  needsDirector,
   randomName,
   STYLE_MAX,
   suggestNames,
@@ -83,5 +84,14 @@ describe("开始新故事的表单", () => {
     } finally {
       applyLanguage("zh");
     }
+  });
+});
+
+describe("needsDirector", () => {
+  it("取到了列表、没有导演时提示；有导演或取不到列表时不提示", () => {
+    assert.equal(needsDirector([]), true);
+    assert.equal(needsDirector([{ is_director: false }, { is_director: false }]), true);
+    assert.equal(needsDirector([{ is_director: false }, { is_director: true }]), false);
+    assert.equal(needsDirector(undefined), false);
   });
 });

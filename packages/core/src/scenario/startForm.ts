@@ -2,9 +2,10 @@
  * “开始新的故事”表单的内置选项，以及把选择拼回接口字段的规则。
  *
  * 选择控件最终仍拼成原来的字段：主角名、主角简介（≤400 字）、篇幅、文风（≤200 字）、内容边界（≤300 字）。
+ * 还没有导演模型时，表单上面先提示（needsDirector），不等点了“开始故事”才由服务端报 ROUTE_MISSING。
  */
 
-import type { Preferences } from "../api/types.ts";
+import type { ModelRoute, Preferences } from "../api/types.ts";
 import { i18n } from "../i18n/index.ts";
 
 export const NAME_MAX = 40;
@@ -87,4 +88,12 @@ export function summaryParts(form: {
   if (form.styles.length > 0) parts.push(form.styles.join(" · "));
   if (form.boundaries > 0) parts.push(i18n.t("start.avoid", { count: form.boundaries }));
   return parts;
+}
+
+/**
+ * 剧本页要不要提前提示“还没有导演模型”：取到了模型列表、里面没有导演时才提示。
+ * 取不到列表（undefined）时不提示，仍靠服务端的 ROUTE_MISSING 兜底。
+ */
+export function needsDirector(routes: readonly Pick<ModelRoute, "is_director">[] | undefined): boolean {
+  return routes !== undefined && !routes.some((route) => route.is_director);
 }

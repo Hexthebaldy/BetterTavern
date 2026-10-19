@@ -39,7 +39,7 @@ export const play = {
     inputLabel: "我要做的事",
     left: "剩 {{n}}",
     send: "发送",
-    noModel: "没有可用模型。先添加密钥，再选一个导演模型。",
+    noModel: "还没有导演模型。先在设置里添加模型，再设为导演。",
     unfinished: "这一段没写完：{{error}}",
     notSent: "没发出去：{{error}}",
     resend: "重新发送",

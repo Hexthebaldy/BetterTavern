@@ -220,6 +220,9 @@
 .split .startHead {
   padding-top: 28px;
 }
+.directorNotice {
+  margin-bottom: 8px;
+}
 .startTitle {
   font-size: 26px;
   line-height: 32px;
