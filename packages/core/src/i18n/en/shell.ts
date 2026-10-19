@@ -33,7 +33,7 @@ export const shell: Messages<typeof source> = {
     reading: "Reading",
     app: "Interface",
     items: {
-      pick: "Pick a choice",
+      pick: "Select an option, then press Enter to send",
       write: "Write your own",
       send: "Send",
       newline: "New line",

@@ -8,6 +8,7 @@ import {
   navMode,
   navWidth,
   optionIndexForKey,
+  optionKeyAction,
   pageFrame,
   readingArea,
   readingLayout,
@@ -152,6 +153,22 @@ describe("键盘快捷键", () => {
     assert.equal(optionIndexForKey("c", 2), null);
     assert.equal(optionIndexForKey("D", 4), 3);
     assert.equal(optionIndexForKey("x", 4), null);
+  });
+
+  it("单键选项：字母只选中，Enter 发出选中的那一项，Esc 取消；没选中时 Enter、Esc 与选项无关", () => {
+    assert.deepEqual(optionKeyAction("b", null, 2), { arm: 1 });
+    // 再按另一个字母，选中换成那一个
+    assert.deepEqual(optionKeyAction("a", 1, 2), { arm: 0 });
+    assert.deepEqual(optionKeyAction("Enter", 1, 2), { send: 1 });
+    assert.deepEqual(optionKeyAction("Escape", 1, 2), { clear: true });
+    assert.equal(optionKeyAction("Enter", null, 2), null);
+    assert.equal(optionKeyAction("Escape", null, 2), null);
+    // 打拼音“wo da”：d 超出两个选项不算，a 只选中
+    assert.equal(optionKeyAction("d", null, 2), null);
+    assert.deepEqual(optionKeyAction("a", null, 2), { arm: 0 });
+    // 选项变少了，原来选中的超出范围：当作没选中
+    assert.equal(optionKeyAction("Enter", 3, 2), null);
+    assert.equal(optionKeyAction("x", null, 4), null);
   });
 
   it("快捷键表里单键的那些可以被开关关掉", () => {

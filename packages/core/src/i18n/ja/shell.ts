@@ -32,7 +32,7 @@ export const shell: MessagesOtherOnly<typeof source> = {
     reading: "読む",
     app: "画面",
     items: {
-      pick: "選択肢を選ぶ",
+      pick: "選択肢を選び、Enter で送信",
       write: "自分で書く",
       send: "送信",
       newline: "改行",

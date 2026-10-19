@@ -141,6 +141,8 @@ export function BottomBar({
   moreActive,
   moreRef,
   barRef,
+  writeRef,
+  announcement,
 }: {
   state: PlayState;
   controls: PlayControls;
@@ -159,7 +161,12 @@ export function BottomBar({
   /** “更多”菜单开着 */
   moreActive: boolean;
   moreRef: Ref<HTMLButtonElement>;
+  /** 底栏本身：发出行动后焦点放在这里（tabIndex -1），按 Tab 从底栏开始 */
   barRef: Ref<HTMLDivElement>;
+  /** “自己写…”：Esc 收起输入框后焦点回到这里 */
+  writeRef: Ref<HTMLButtonElement>;
+  /** 读屏要听到的状态（例如键盘选中了哪个选项）；视觉上隐藏 */
+  announcement: string;
 }) {
   const { t } = useTranslation();
   if (state.phase === "loading" || state.phase === "load_failed") return null;
@@ -199,6 +206,7 @@ export function BottomBar({
   } else {
     middle = (
       <button
+        ref={writeRef}
         type="button"
         className={styles.writePill}
         disabled={!canWrite(state)}
@@ -217,7 +225,10 @@ export function BottomBar({
 
   const expanded = writing && enabled;
   return (
-    <div ref={barRef} className={styles.bar} role="toolbar" aria-label={t("play.toolbar")}>
+    <div ref={barRef} className={styles.bar} role="toolbar" tabIndex={-1} aria-label={t("play.toolbar")}>
+      <span className={styles.srOnly} aria-live="polite">
+        {announcement}
+      </span>
       <div className={styles.barInner}>
         {expanded ? (
           <FreeInput

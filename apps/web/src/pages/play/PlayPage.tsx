@@ -8,7 +8,8 @@
  * - 页面整个滚动（浏览器的查找、滚动条都是原生的）；停在底部时跟着新文字滚，往上翻就停下，
  *   操作栏中间多出“回到最新”。草稿存在浏览器里，每个故事一份。
  *   自己写的行动没能变成回合（失败后换个行动、故事在别处被推进）时，文字回到输入框并展开。
- * - 键盘：A–D 选选项，/ 自己写，W 世界状态，End 回到最新（单键快捷键可以在快捷键对话框里关掉）。
+ * - 键盘：A–D 选中选项（高亮，不发出）、Enter 发出选中的那一项、Esc 或点别处取消选中，/ 自己写，W 世界状态，
+ *   End 回到最新（单键快捷键可以在快捷键对话框里关掉）。发出行动后焦点放到底栏上，Esc 收起输入框后回到“自己写…”。
  * - 标签页标题：“书名 · BetterTavern”，生成中在前面加“● ”。
  */
 
@@ -36,7 +37,7 @@ import {
   acceptsSingleKey,
   desktop,
   navMode,
-  optionIndexForKey,
+  optionKeyAction,
   readingArea,
   readingLayout,
   shell,
@@ -228,11 +229,46 @@ function PlayPage({ id }: { id: string }) {
     "--bar": `${barHeight}px`,
   } as CSSProperties;
 
+  // 发出行动后焦点放到底栏上（输入框、选项按钮都被拿掉了，焦点不能掉到页面上）
+  const focusBar = useCallback(() => bar.current?.focus({ preventScroll: true }), []);
+  // Esc 或“收起”关掉输入框后，焦点回到“自己写…”
+  const writeButton = useRef<HTMLButtonElement>(null);
+  const refocusWrite = useRef(false);
+  const closeWrite = (): void => {
+    setWriting(false);
+    refocusWrite.current = true;
+  };
+  useEffect(() => {
+    if (writing || !refocusWrite.current) return;
+    refocusWrite.current = false;
+    writeButton.current?.focus();
+  }, [writing]);
+
+  // 键盘选中的选项（A–D 选中，Enter 才发出）：离开空闲、选项变了、点页面别处都取消
+  const [armed, setArmed] = useState<number | null>(null);
+  useEffect(() => setArmed(null), [state.phase, head?.id]);
+  useEffect(() => {
+    if (armed === null) return;
+    const clear = (): void => setArmed(null);
+    window.addEventListener("pointerdown", clear);
+    return () => window.removeEventListener("pointerdown", clear);
+  }, [armed]);
+
   const send = (text: string): void => {
     setWriting(false);
     setDraft("");
     controls.submit({ source: "text", text });
+    focusBar();
   };
+  const pickOption = useCallback(
+    (optionId: string) => {
+      setWriting(false);
+      setArmed(null);
+      controls.submit({ source: "option", option_id: optionId });
+      focusBar();
+    },
+    [controls, focusBar],
+  );
 
   const onMore = async (action: MoreAction): Promise<void> => {
     setMoreOpen(false);
@@ -275,16 +311,34 @@ function PlayPage({ id }: { id: string }) {
     }
   };
 
-  // ---- 键盘：A–D、/、W、End ----
-  const keyState = useRef({ state, writing, moreOpen });
-  keyState.current = { state, writing, moreOpen };
+  // ---- 键盘：A–D 选中、Enter 发出、Esc 取消，/、W、End ----
+  const keyState = useRef({ state, writing, moreOpen, armed });
+  keyState.current = { state, writing, moreOpen, armed };
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
-      const { state: s, writing: w } = keyState.current;
+      const { state: s, writing: w, armed: a } = keyState.current;
       if (event.key === "End" && !isTyping(event.target)) {
         event.preventDefault();
         jumpToLatest();
+        return;
+      }
+      const options = s.phase === "idle" ? (headTurn(s)?.options ?? []) : [];
+      if (
+        (event.key === "Enter" || event.key === "Escape") &&
+        !isTyping(event.target) &&
+        !event.isComposing
+      ) {
+        const action = optionKeyAction(event.key, a, options.length);
+        if (action && "send" in action) {
+          const option = options[action.send];
+          if (!option || !canAct(s)) return;
+          event.preventDefault();
+          pickOption(option.id);
+        } else if (action && "clear" in action) {
+          event.preventDefault();
+          setArmed(null);
+        }
         return;
       }
       const single = acceptsSingleKey({
@@ -296,14 +350,11 @@ function PlayPage({ id }: { id: string }) {
         alt: event.altKey,
       });
       if (!single) return;
-      const options = s.phase === "idle" ? (headTurn(s)?.options ?? []) : [];
-      const index = optionIndexForKey(event.key, options.length);
-      if (index !== null && canAct(s)) {
-        const option = options[index];
-        if (!option) return;
+      const action = optionKeyAction(event.key, a, options.length);
+      if (action && "arm" in action && canAct(s)) {
+        // 只选中，不发出：直接打拼音时以 a–d 开头的字母不会替玩家选了选项
         event.preventDefault();
-        setWriting(false);
-        controls.submit({ source: "option", option_id: option.id });
+        setArmed(action.arm);
       } else if (event.key === "/" && canAct(s) && s.turns.length > 0 && !w) {
         event.preventDefault();
         setWriting(true);
@@ -314,7 +365,7 @@ function PlayPage({ id }: { id: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [singleKeys, controls, jumpToLatest, toggleWorld]);
+  }, [singleKeys, jumpToLatest, toggleWorld, pickOption]);
 
   const top = (
     <div className={styles.top}>
@@ -377,7 +428,8 @@ function PlayPage({ id }: { id: string }) {
               controls={controls}
               twoColumns={width >= desktop.rail}
               onOpenSettings={() => navigate("/settings/models")}
-              onPicked={() => setWriting(false)}
+              armed={armed}
+              onPick={pickOption}
             />
           }
         />
@@ -392,7 +444,11 @@ function PlayPage({ id }: { id: string }) {
           if (state.phase === "failed") controls.dismissError();
           setWriting(true);
         }}
-        onCloseWrite={() => setWriting(false)}
+        onCloseWrite={closeWrite}
+        writeRef={writeButton}
+        announcement={
+          armed !== null ? t("play.optionArmedLabel", { key: String.fromCharCode(65 + armed) }) : ""
+        }
         draft={draft}
         onDraft={setDraft}
         onSend={send}

@@ -229,6 +229,21 @@ export function optionIndexForKey(key: string, optionCount: number): number | nu
   return index >= 0 && index < optionCount ? index : null;
 }
 
+/**
+ * 单键选项（阅读页）：A–D 只选中（高亮），Enter 发出选中的那一项，Esc 取消选中。
+ * 直接打拼音时，以 a–d 开头的字母不会替玩家把选项发出去。返回要做的事；null 表示这个键与选项无关。
+ * armed 是现在选中的第几项（没有选中为 null）；超出选项个数的当作没选中。
+ */
+export type OptionKeyAction = { arm: number } | { send: number } | { clear: true } | null;
+
+export function optionKeyAction(key: string, armed: number | null, optionCount: number): OptionKeyAction {
+  const current = armed !== null && armed < optionCount ? armed : null;
+  if (key === "Enter") return current === null ? null : { send: current };
+  if (key === "Escape") return current === null ? null : { clear: true };
+  const index = optionIndexForKey(key, optionCount);
+  return index === null ? null : { arm: index };
+}
+
 /** 标签页标题：生成中在前面加一个“●”，切到别的标签页也能看见故事还在写 */
 export function documentTitle(storyTitle: string | null, generating: boolean): string {
   const base = storyTitle ? `${storyTitle} · BetterTavern` : "BetterTavern";

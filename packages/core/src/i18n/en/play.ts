@@ -34,6 +34,8 @@ export const play: Messages<typeof source> = {
     latest: "Jump to latest",
     latestNew: "Jump to latest, new content",
     optionLabel: "{{key}}: {{text}}",
+    optionArmed: "<kbd>Enter</kbd> to send",
+    optionArmedLabel: "{{key}} selected. Press Enter to send.",
     chooseHint: "Choose this action",
     inputPlaceholder: "I… (write what you do, in the first person)",
     inputLabel: "What I do",

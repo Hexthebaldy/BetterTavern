@@ -307,8 +307,37 @@
 .option:disabled {
   opacity: 0.32;
 }
+/* 用键盘选中（A–D）：和按下时一样的浅蓝底、蓝色内描边、蓝色字母圆，但不缩小；右端提示按 Enter 发出 */
+.optionArmed {
+  background: var(--acc-bg);
+  box-shadow: inset 0 0 0 2px var(--acc);
+}
+.optionArmed .key {
+  background: var(--acc);
+  color: var(--bg);
+}
+.armedHint {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--acc);
+}
+.armedHint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--acc);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
 @media (hover: hover) and (pointer: fine) {
-  .option:not(:disabled):not(.optionOn):hover {
+  .option:not(:disabled):not(.optionOn):not(.optionArmed):hover {
     background: var(--hover);
   }
 }
@@ -412,6 +441,9 @@
 }
 
 /* ---- 底部操作栏 ---- */
+.bar:focus {
+  outline: none;
+}
 .bar {
   position: fixed;
   z-index: 10;

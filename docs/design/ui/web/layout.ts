@@ -186,7 +186,7 @@ export function tooltipFrame(
 export type Shortcut = { keys: string[]; label: string; scope: "reading" | "app"; single: boolean };
 
 export const SHORTCUTS: Shortcut[] = [
-  { keys: ["A", "B", "C", "D"], label: "选一个选项", scope: "reading", single: true },
+  { keys: ["A", "B", "C", "D"], label: "选中一个选项，按 Enter 发出", scope: "reading", single: true },
   { keys: ["/"], label: "自己写", scope: "reading", single: true },
   { keys: ["Enter"], label: "发送", scope: "reading", single: false },
   { keys: ["Shift", "Enter"], label: "换行", scope: "reading", single: false },

@@ -30,7 +30,7 @@ export const shell = {
     reading: "阅读",
     app: "界面",
     items: {
-      pick: "选一个选项",
+      pick: "选中一个选项，按 Enter 发出",
       write: "自己写",
       send: "发送",
       newline: "换行",

@@ -5,8 +5,8 @@
  * 生成中、同步中这里什么都没有：状态、“停止”、“自己写…”在底部的操作栏（BottomBar.tsx）。
  */
 
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { describeTurnError } from "@bettertavern/core/api/client";
 import type { TurnOption } from "@bettertavern/core/api/types";
@@ -29,20 +29,29 @@ function OptionRow({
   option,
   index,
   disabled,
+  armed,
   onPick,
 }: {
   option: TurnOption;
   index: number;
   disabled: boolean;
+  /** 用键盘选中了这一项（按 Enter 才发出）：同样的浅蓝底和描边，不缩小，右端提示按 Enter */
+  armed: boolean;
   onPick: () => void;
 }) {
   const { t } = useTranslation();
   // 按下即选中：浅蓝底、2px 蓝色内描边，字母圆变蓝（提交后选项就消失了）
   const [chosen, setChosen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // 滚到看得见；不把焦点移过去，否则接着按的空格会把它发出去
+    if (armed) button.current?.scrollIntoView({ block: "nearest" });
+  }, [armed]);
   return (
     <button
+      ref={button}
       type="button"
-      className={cx(styles.option, chosen && styles.optionOn)}
+      className={cx(styles.option, chosen && styles.optionOn, armed && !chosen && styles.optionArmed)}
       disabled={disabled}
       aria-keyshortcuts={KEYS[index]}
       onClick={() => {
@@ -57,6 +66,11 @@ function OptionRow({
         <span className={styles.srOnly}>{t("play.optionLabel", { key: KEYS[index] ?? "", text: "" })}</span>
         {option.text}
       </span>
+      {armed ? (
+        <span className={styles.armedHint} aria-hidden="true">
+          <Trans i18nKey="play.optionArmed" components={{ kbd: <kbd /> }} />
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -65,14 +79,17 @@ export function TurnActions({
   state,
   controls,
   onOpenSettings,
-  onPicked,
+  onPick,
+  armed,
   twoColumns,
 }: {
   state: PlayState;
   controls: PlayControls;
   onOpenSettings: () => void;
-  /** 选了一个选项（输入框开着时顺手收起，草稿留着） */
-  onPicked: () => void;
+  /** 点了一个选项：直接发出（输入框开着时顺手收起，草稿留着） */
+  onPick: (optionId: string) => void;
+  /** 用键盘选中的第几项（A–D 选中，Enter 才发出）；没有为 null */
+  armed: number | null;
   twoColumns: boolean;
 }) {
   const { t } = useTranslation();
@@ -134,10 +151,8 @@ export function TurnActions({
           option={option}
           index={i}
           disabled={!enabled}
-          onPick={() => {
-            onPicked();
-            controls.submit({ source: "option", option_id: option.id });
-          }}
+          armed={armed === i}
+          onPick={() => onPick(option.id)}
         />
       ))}
     </div>

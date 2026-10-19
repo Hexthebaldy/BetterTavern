@@ -34,6 +34,8 @@ export const play: MessagesOtherOnly<typeof source> = {
     latest: "最新に戻る",
     latestNew: "最新に戻る（新しい内容があります）",
     optionLabel: "{{key}}：{{text}}",
+    optionArmed: "<kbd>Enter</kbd> で送信",
+    optionArmedLabel: "{{key}} を選択しました。Enter で送信します",
     chooseHint: "この行動を選ぶ",
     inputPlaceholder: "私は……（自分がすることを一人称で書いてください）",
     inputLabel: "自分がすること",

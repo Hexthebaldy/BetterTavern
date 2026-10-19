@@ -32,6 +32,8 @@ export const play = {
     latest: "回到最新",
     latestNew: "回到最新，有新内容",
     optionLabel: "{{key}}：{{text}}",
+    optionArmed: "<kbd>Enter</kbd> 发出",
+    optionArmedLabel: "已选中 {{key}}，按 Enter 发出",
     chooseHint: "选择这个行动",
     inputPlaceholder: "我……（用第一人称写下你要做的事）",
     inputLabel: "我要做的事",
