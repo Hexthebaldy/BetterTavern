@@ -21,6 +21,7 @@ import {
   unsentSubmission,
   type PlayEvent,
   type PlayState,
+  type ReturnedText,
   type Submission,
 } from "./turnMachine.ts";
 
@@ -187,6 +188,13 @@ export class PlaySession {
 
   dismissError(): void {
     this.dispatch({ type: "dismiss_error" });
+  }
+
+  /** 页面取走退回来的自己写的文字（放回输入框）；取走后清掉，不会再取到第二次 */
+  takeReturned(): ReturnedText | null {
+    const returned = this.state.returned;
+    if (returned) this.dispatch({ type: "returned_taken" });
+    return returned;
   }
 
   /** 停止生成：服务端结束后事件流会送来 turn.failed（CANCELLED） */

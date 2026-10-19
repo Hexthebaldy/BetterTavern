@@ -58,6 +58,7 @@ export const play: Messages<typeof source> = {
     toolbar: "Reading actions",
     story: "Story",
     backToSaves: "Back to Saves",
+    actionReturned: "The story moved on elsewhere, so your text is back in the input box.",
   },
   reading: {
     title: "Reading",

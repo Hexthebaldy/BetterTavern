@@ -3,6 +3,7 @@
  *
  * 中间那一格：
  * - 空闲：“自己写…”（有草稿时显示草稿），点一下原地展开成输入框，跟着键盘浮起；发送或收起后缩回来；
+ *   一轮失败后（不是开场失败）也能点，等于“换个行动”再展开；
  * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色。
  *   这些状态只在这里显示，正文里不重复；
  * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）；
@@ -21,7 +22,14 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-nativ
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { actionPanelFrame } from "@bettertavern/design/layout";
-import { canAct, isEnded, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
+import {
+  canAct,
+  canWrite,
+  isEnded,
+  isLive,
+  needsOpening,
+  type PlayState,
+} from "@bettertavern/core/play/turnMachine";
 
 import { Icon, IconButton, PageSurfaces, useSheetSurfaces, type IconName } from "../../components/ui.tsx";
 import { useKeyboardLift } from "../../hooks/useKeyboardLift.ts";
@@ -132,7 +140,7 @@ function Bar({
   } else if (needsOpening(state) || state.turns.length === 0) {
     middle = <View style={{ flex: 1 }} />;
   } else {
-    middle = <WriteButton draft={draft} enabled={enabled} onPress={onWrite} />;
+    middle = <WriteButton draft={draft} enabled={canWrite(state)} onPress={onWrite} />;
   }
 
   const expanded = writing && enabled;

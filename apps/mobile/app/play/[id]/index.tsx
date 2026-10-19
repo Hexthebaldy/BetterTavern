@@ -3,7 +3,8 @@
  * - 选项接在最新一段后面（TurnActions.tsx），跟着正文滚动，不挡正文；
  * - 操作栏（BottomBar.tsx）左边“世界”，右边“更多”，中间是“自己写…”、生成中的状态和“停止”，
  *   或者往上翻时的“回到最新”。量出它的高度，故事流的底部按它留白。
- * 输入框的开关、草稿、是否离开了最新位置都放在这一页，旋转、分屏时都不会丢。
+ * 输入框的开关、草稿、是否离开了最新位置都放在这一页，旋转、分屏时都不会丢；草稿每个故事一份存在手机上（useDraft）。
+ * 自己写的行动没能变成回合（失败后换个行动、故事在别处被推进）时，文字回到输入框并展开。
  *
  * 平板（theme/layout.ts）：正文收进最宽 640 的阅读栏，操作栏的内容宽 672、同一条中线；
  * 世界状态在阅读页宽 ≥ 1100 时停靠在右侧，阅读栏和操作栏在剩下的宽度里居中，世界按钮显示为选中，
@@ -19,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
-import { canAct, headTurn, isEnded } from "@bettertavern/core/play/turnMachine";
+import { canAct, headTurn, isEnded, withReturnedText } from "@bettertavern/core/play/turnMachine";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
 
 import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
@@ -32,6 +33,7 @@ import {
   type StoryFeedHandle,
 } from "../../../src/features/play/StoryFeed.tsx";
 import { TurnActions } from "../../../src/features/play/TurnActions.tsx";
+import { useDraft } from "../../../src/features/play/useDraft.ts";
 import { usePlaySession } from "../../../src/features/play/usePlaySession.ts";
 import { WorldDock, WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
 import { useLayout } from "../../../src/hooks/useLayout.ts";
@@ -119,7 +121,7 @@ export default function PlayScreen() {
   const feed = useRef<StoryFeedHandle>(null);
   // 自己写：输入框展开着没有、草稿
   const [writing, setWriting] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useDraft(id);
   // 往上翻离开了最新位置：操作栏中间换成“回到最新”
   const [away, setAway] = useState(false);
   // 操作栏盖住的高度（展开时连同键盘）：故事流在它上方结束
@@ -179,6 +181,19 @@ export default function PlayScreen() {
       if (on) AccessibilityInfo.announceForAccessibility(head.narrative);
     });
   }, [head, state.phase]);
+
+  // 自己写的行动被退回来：放回输入框（已有草稿时放在前面）并展开；故事在别处被推进时再提示一句
+  const draftNow = useRef(draft);
+  draftNow.current = draft;
+  const { takeReturned } = controls;
+  useEffect(() => {
+    if (!state.returned) return;
+    const returned = takeReturned();
+    if (!returned) return;
+    setDraft(withReturnedText(draftNow.current, returned.text));
+    setWriting(true);
+    if (returned.why === "stale") overlay.toast(t("play.actionReturned"));
+  }, [state.returned, takeReturned, setDraft, overlay, t]);
 
   const shownTitle = title ?? state.title;
 
@@ -308,7 +323,11 @@ export default function PlayScreen() {
             state={state}
             controls={controls}
             writing={writing}
-            onWrite={() => setWriting(true)}
+            onWrite={() => {
+              // 失败后点“自己写…”等于“换个行动”：自己写的那段会退回输入框
+              if (state.phase === "failed") controls.dismissError();
+              setWriting(true);
+            }}
             onCloseWrite={() => setWriting(false)}
             draft={draft}
             onDraft={setDraft}

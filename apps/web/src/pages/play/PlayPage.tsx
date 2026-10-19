@@ -7,6 +7,7 @@
  *   其余从右侧滑出。停靠的开关记在浏览器里，打开别的故事时保持。
  * - 页面整个滚动（浏览器的查找、滚动条都是原生的）；停在底部时跟着新文字滚，往上翻就停下，
  *   操作栏中间多出“回到最新”。草稿存在浏览器里，每个故事一份。
+ *   自己写的行动没能变成回合（失败后换个行动、故事在别处被推进）时，文字回到输入框并展开。
  * - 键盘：A–D 选选项，/ 自己写，W 世界状态，End 回到最新（单键快捷键可以在快捷键对话框里关掉）。
  * - 标签页标题：“书名 · BetterTavern”，生成中在前面加“● ”。
  */
@@ -18,7 +19,7 @@ import { useNavigate, useParams } from "react-router";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import { readableColumn } from "@bettertavern/design/layout";
-import { headTurn, isEnded, isLive, canAct } from "@bettertavern/core/play/turnMachine";
+import { headTurn, isEnded, isLive, canAct, withReturnedText } from "@bettertavern/core/play/turnMachine";
 
 import { Button, IconButton } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -146,6 +147,19 @@ function PlayPage({ id }: { id: string }) {
     },
     [id],
   );
+
+  // 自己写的行动被退回来：放回输入框（已有草稿时放在前面）并展开；故事在别处被推进时再提示一句
+  const draftNow = useRef(draft);
+  draftNow.current = draft;
+  const { takeReturned } = controls;
+  useEffect(() => {
+    if (!state.returned) return;
+    const returned = takeReturned();
+    if (!returned) return;
+    setDraft(withReturnedText(draftNow.current, returned.text));
+    setWriting(true);
+    if (returned.why === "stale") overlay.toast(t("play.actionReturned"));
+  }, [state.returned, takeReturned, setDraft, overlay, t]);
 
   // ---- 剧本名和封面（剧本删掉了也不影响阅读） ----
   const scenario = useQuery({
@@ -372,7 +386,11 @@ function PlayPage({ id }: { id: string }) {
         state={state}
         controls={controls}
         writing={writing}
-        onWrite={() => setWriting(true)}
+        onWrite={() => {
+          // 失败后点“自己写…”等于“换个行动”：自己写的那段会退回输入框
+          if (state.phase === "failed") controls.dismissError();
+          setWriting(true);
+        }}
         onCloseWrite={() => setWriting(false)}
         draft={draft}
         onDraft={setDraft}

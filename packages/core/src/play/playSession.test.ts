@@ -330,6 +330,26 @@ describe("PlaySession", () => {
     assert.equal(api.detailCalls, 2);
   });
 
+  it("409 STALE_PARENT 时自己写的行动退回：takeReturned 取到一次，之后为 null", async () => {
+    const { api, session } = setup();
+    const head = makeTurn(1);
+    const newer = makeTurn(2);
+    api.detailQueue = [detail(head), detail(newer)];
+    api.historyQueue = [
+      [makeTurn(0), head],
+      [makeTurn(0), head, newer],
+    ];
+    await session.load();
+    api.submitResults = [
+      new ApiError("故事已经更新，请先刷新", { status: 409, code: "STALE_PARENT", retryable: false }),
+    ];
+    await session.submit({ source: "text", text: "敲敲门" });
+    assert.equal(session.getState().phase, "idle");
+    assert.deepEqual(session.takeReturned(), { text: "敲敲门", why: "stale" });
+    assert.equal(session.getState().returned, null);
+    assert.equal(session.takeReturned(), null);
+  });
+
   it("不可重试的错误（没有配置模型）：失败且不给重试", async () => {
     const { api, session } = setup();
     api.detailQueue = [detail(null)];

@@ -8,6 +8,7 @@ import {
   canAct,
   canRetry,
   canSubmit,
+  canWrite,
   displayAction,
   headTurn,
   initialPlayState,
@@ -17,6 +18,7 @@ import {
   playReducer,
   retryAction,
   unsentSubmission,
+  withReturnedText,
   type PlayEvent,
   type PlayState,
 } from "./turnMachine.ts";
@@ -39,6 +41,15 @@ const chosen = (overrides: Parameters<typeof makeTurn>[1] = {}) =>
 
 function idleWithTwoTurns(): PlayState {
   return run([{ type: "loaded", turns: [makeTurn(1), makeTurn(0)], active: null, lastFailed: null }]);
+}
+
+function submitText(state: PlayState, text: string): PlayState {
+  const head = headTurn(state);
+  return playReducer(state, {
+    type: "submit",
+    submission: { key: "k-text", parentTurnId: head?.id ?? null, action: { source: "text", text } },
+    display: displayAction({ source: "text", text }, head?.options ?? []),
+  });
 }
 
 function submitOption(state: PlayState, optionId = "o2"): PlayState {
@@ -419,5 +430,106 @@ describe("turnMachine", () => {
     assert.equal(actionNote({ source: "ending", text: "" }), "写结局");
     assert.equal(actionNote({ source: "text", text: "我坐下" }), "我坐下");
     assert.equal(actionNote(null), null);
+  });
+  describe("自己写的行动退回输入框", () => {
+    const failed = (state: PlayState): PlayState =>
+      playReducer(state, {
+        type: "stream",
+        event: {
+          event: "turn.failed",
+          data: { code: "CONTENT_BLOCKED", message: "Blocked", retryable: false, partial: false },
+        },
+      });
+
+    it("生成失败后换个行动：文字记在 returned 上（dismissed）", () => {
+      let state = submitText(idleWithTwoTurns(), "推开门，看看外面");
+      state = playReducer(state, {
+        type: "submitted",
+        turn: makeTurn(2, { status: "generating", action: { source: "text", text: "推开门，看看外面" } }),
+      });
+      state = failed(state);
+      state = playReducer(state, { type: "dismiss_error" });
+      assert.equal(state.phase, "idle");
+      assert.deepEqual(state.returned, { text: "推开门，看看外面", why: "dismissed" });
+    });
+
+    it("请求没送达也一样：失败后换个行动，文字退回", () => {
+      let state = submitText(idleWithTwoTurns(), "问老周");
+      state = playReducer(state, {
+        type: "submit_failed",
+        error: { code: "NETWORK", message: "offline", retryable: true },
+      });
+      state = playReducer(state, { type: "dismiss_error" });
+      assert.deepEqual(state.returned, { text: "问老周", why: "dismissed" });
+    });
+
+    it("故事在别处被推进：文字记在 returned 上（stale），重新加载后还在", () => {
+      let state = submitText(idleWithTwoTurns(), "转身离开");
+      state = playReducer(state, { type: "stale" });
+      assert.equal(state.phase, "syncing");
+      assert.deepEqual(state.returned, { text: "转身离开", why: "stale" });
+      state = playReducer(state, {
+        type: "loaded",
+        turns: [makeTurn(0), makeTurn(1), makeTurn(2)],
+        active: null,
+        lastFailed: null,
+      });
+      assert.deepEqual(state.returned, { text: "转身离开", why: "stale" });
+    });
+
+    it("选项、开场、写结局失败后不退回", () => {
+      let state = failed(submitOption(idleWithTwoTurns()));
+      assert.equal(playReducer(state, { type: "dismiss_error" }).returned, null);
+      state = playReducer(submitOption(idleWithTwoTurns()), { type: "stale" });
+      assert.equal(state.returned, null);
+      const ending = playReducer(idleWithTwoTurns(), {
+        type: "submit",
+        submission: { key: "k-end", parentTurnId: null, action: { source: "ending", text: "回到故乡" } },
+        display: { source: "ending", text: "回到故乡" },
+      });
+      assert.equal(playReducer(failed(ending), { type: "dismiss_error" }).returned, null);
+      const opening = run([
+        { type: "loaded", turns: [], active: null, lastFailed: null },
+        {
+          type: "submit",
+          submission: { key: "k-open", parentTurnId: null, action: { source: "opening" } },
+          display: { source: "opening", text: "" },
+        },
+      ]);
+      assert.equal(playReducer(failed(opening), { type: "dismiss_error" }).returned, null);
+    });
+
+    it("取走后为 null；再提交也清掉", () => {
+      let state = submitText(idleWithTwoTurns(), "等一会儿");
+      state = playReducer(state, { type: "stale" });
+      const taken = playReducer(state, { type: "returned_taken" });
+      assert.equal(taken.returned, null);
+      assert.equal(playReducer(taken, { type: "returned_taken" }), taken);
+      assert.equal(submitOption({ ...state, phase: "idle" }).returned, null);
+    });
+
+    it("放回输入框：草稿是空的就直接放；有字时退回的放在前面，空一行", () => {
+      assert.equal(withReturnedText("", "推开门"), "推开门");
+      assert.equal(withReturnedText("  ", "推开门"), "推开门");
+      assert.equal(withReturnedText("再看看", "推开门"), "推开门\n\n再看看");
+    });
+
+    it("“自己写…”：失败后也能点（等于换个行动），开场失败、故事结束时不能", () => {
+      assert.ok(canWrite(idleWithTwoTurns()));
+      const failedTurn = failed(submitOption(idleWithTwoTurns()));
+      assert.ok(!canAct(failedTurn) && canWrite(failedTurn));
+      const openingFailed = failed(
+        run([
+          { type: "loaded", turns: [], active: null, lastFailed: null },
+          {
+            type: "submit",
+            submission: { key: "k-open", parentTurnId: null, action: { source: "opening" } },
+            display: { source: "opening", text: "" },
+          },
+        ]),
+      );
+      assert.ok(!canWrite(openingFailed));
+      assert.ok(!canWrite(submitOption(idleWithTwoTurns())));
+    });
   });
 });

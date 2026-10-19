@@ -56,6 +56,7 @@ export const play = {
     toolbar: "阅读操作",
     story: "故事",
     backToSaves: "返回存档列表",
+    actionReturned: "故事在别处有了新进展，你写的内容放回输入框了",
   },
   reading: {
     title: "阅读设置",

@@ -4,6 +4,7 @@
  * 状态：loading → idle ⇄ submitting → streaming（→ reconnecting / polling）→ idle 或 failed；
  * 故事被别的设备推进时进入 syncing，由调用方重新拉取后回到 idle；加载失败是 load_failed。
  * 最新一段是结局（行动来源 ending）时故事已经结束：仍是 idle，但不能再提交任何行动（isEnded）。
+ * 自己写的行动没能变成回合（失败后换个行动、故事在别处被推进）时，文字记在 returned 上，由页面放回输入框。
  * 见 docs/client.md 第 1 节。
  */
 
@@ -49,6 +50,12 @@ export type PendingTurn = {
   waitingState: boolean;
 };
 
+/**
+ * 自己写的行动被退回来了，页面要把文字放回输入框：
+ * dismissed = 失败后点了“换个行动”（或“自己写…”）；stale = 故事在别处有了新进展，这一段没能接上
+ */
+export type ReturnedText = { text: string; why: "dismissed" | "stale" };
+
 export type Submission = {
   /** 网络错误时用同一个 Idempotency-Key 重试，服务端不会生成两个回合 */
   key: string;
@@ -69,6 +76,8 @@ export type PlayState = {
   pending: PendingTurn | null;
   error: TurnError | null;
   submission: Submission | null;
+  /** 退回来、还没被页面取走的自己写的文字 */
+  returned: ReturnedText | null;
 };
 
 export type PlayEvent =
@@ -90,7 +99,8 @@ export type PlayEvent =
   | { type: "stream"; event: TurnEvent }
   | { type: "connection"; state: "open" | "reconnecting" | "polling" }
   | { type: "polled"; turn: Turn }
-  | { type: "dismiss_error" };
+  | { type: "dismiss_error" }
+  | { type: "returned_taken" };
 
 export const initialPlayState: PlayState = {
   phase: "loading",
@@ -102,6 +112,7 @@ export const initialPlayState: PlayState = {
   pending: null,
   error: null,
   submission: null,
+  returned: null,
 };
 
 function storyTurn(turn: Turn): StoryTurn {
@@ -128,6 +139,15 @@ function pendingFrom(turn: Turn): PendingTurn {
 }
 
 const LIVE: ReadonlySet<Phase> = new Set(["submitting", "streaming", "reconnecting", "polling"]);
+
+/** 只有自己写的行动才退回输入框；选项、开场、写结局不用 */
+function ownText(
+  action: { source: string; text?: string | undefined } | null | undefined,
+  why: ReturnedText["why"],
+): ReturnedText | null {
+  if (action?.source !== "text" || !action.text) return null;
+  return { text: action.text, why };
+}
 
 function complete(state: PlayState, finished: StoryTurn): PlayState {
   const turns = state.turns.filter((t) => t.seq < finished.seq);
@@ -173,6 +193,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
         ...state,
         phase: "submitting",
         error: null,
+        returned: null,
         submission: event.submission,
         pending: {
           turnId: null,
@@ -199,7 +220,13 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
       // 保留待发的行动和幂等键：“重试”用同一个键重发，服务端不会生成两个回合
       return { ...state, phase: "failed", error: event.error };
     case "stale":
-      return { ...state, phase: "syncing", pending: null, submission: null };
+      return {
+        ...state,
+        phase: "syncing",
+        pending: null,
+        submission: null,
+        returned: ownText(state.submission?.action, "stale") ?? state.returned,
+      };
     case "connection": {
       if (!LIVE.has(state.phase)) return state;
       const phase = event.state === "open" ? "streaming" : event.state;
@@ -219,8 +246,17 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
     }
     case "dismiss_error":
       return state.phase === "failed"
-        ? { ...state, phase: "idle", error: null, pending: null, submission: null }
+        ? {
+            ...state,
+            phase: "idle",
+            error: null,
+            pending: null,
+            submission: null,
+            returned: ownText(state.pending?.action, "dismissed") ?? state.returned,
+          }
         : state;
+    case "returned_taken":
+      return state.returned === null ? state : { ...state, returned: null };
     case "stream":
       return onStream(state, event.event);
   }
@@ -285,6 +321,19 @@ export function isEnded(state: PlayState): boolean {
 /** 可以点选项、自由输入或写结局了 */
 export function canAct(state: PlayState): boolean {
   return state.phase === "idle" && headTurn(state) !== null && !isEnded(state);
+}
+
+/**
+ * 底栏的“自己写…”能点：可以行动时；或者一轮失败后（不是开场失败），点了等于“换个行动”再展开输入框
+ */
+export function canWrite(state: PlayState): boolean {
+  if (canAct(state)) return true;
+  return state.phase === "failed" && state.turns.length > 0 && !isEnded(state);
+}
+
+/** 退回来的文字放进输入框：草稿里已经有字时不覆盖，退回的放在前面，空一行 */
+export function withReturnedText(draft: string, returned: string): string {
+  return draft.trim() ? `${returned}\n\n${draft}` : returned;
 }
 
 /** 可以提交新的行动（空闲，或上一轮失败后换一个行动） */

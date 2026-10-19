@@ -2,6 +2,7 @@
  * 阅读页底部固定的操作栏（同 App 的 BottomBar.tsx）：左边“世界”，右边“更多”，中间一格按状态换内容。
  *
  * - 空闲：“自己写…”（有草稿时显示草稿，桌面上右端有键帽 /），点一下原地展开成输入框（W08）；
+ *   一轮失败后（不是开场失败）也能点，等于“换个行动”再展开；
  * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色；
  * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）；
  * - 写完结局：旗子和灰字“故事已完结”，不能再写。
@@ -12,7 +13,14 @@
 import { useEffect, useRef, type Ref } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
-import { canAct, isEnded, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
+import {
+  canAct,
+  canWrite,
+  isEnded,
+  isLive,
+  needsOpening,
+  type PlayState,
+} from "@bettertavern/core/play/turnMachine";
 
 import { cx, IconButton } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -193,7 +201,7 @@ export function BottomBar({
       <button
         type="button"
         className={styles.writePill}
-        disabled={!enabled}
+        disabled={!canWrite(state)}
         aria-label={draft ? t("play.continueDraft") : t("play.writeOwn")}
         aria-keyshortcuts="/"
         onClick={onWrite}

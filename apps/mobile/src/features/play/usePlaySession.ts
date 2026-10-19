@@ -12,7 +12,7 @@ import type { NewAction } from "@bettertavern/core/api/types";
 import { diagnostics } from "@bettertavern/core/observability/log";
 import { newIdempotencyKey } from "@bettertavern/core/utils/ids";
 import { PlaySession } from "@bettertavern/core/play/playSession";
-import { initialPlayState, type PlayState } from "@bettertavern/core/play/turnMachine";
+import { initialPlayState, type PlayState, type ReturnedText } from "@bettertavern/core/play/turnMachine";
 
 import { useApp } from "../../state/AppProvider.tsx";
 
@@ -23,6 +23,8 @@ export type PlayControls = {
   cancel: () => void;
   dismissError: () => void;
   reload: () => void;
+  /** 取走退回来的自己写的文字（state.returned），放回输入框；取走后清掉 */
+  takeReturned: () => ReturnedText | null;
 };
 
 export function usePlaySession(playthroughId: string): PlayControls {
@@ -90,6 +92,7 @@ export function usePlaySession(playthroughId: string): PlayControls {
   const cancel = useCallback(() => void sessionRef.current?.cancel(), []);
   const dismissError = useCallback(() => sessionRef.current?.dismissError(), []);
   const reload = useCallback(() => void sessionRef.current?.load(), []);
+  const takeReturned = useCallback(() => sessionRef.current?.takeReturned() ?? null, []);
 
-  return { state, submit, retry, cancel, dismissError, reload };
+  return { state, submit, retry, cancel, dismissError, reload, takeReturned };
 }
