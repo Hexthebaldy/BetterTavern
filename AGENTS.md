@@ -5,7 +5,7 @@
 ## 分层（`apps/server/importlinter.ini` 在 CI 里强制）
 
 - 依赖方向：`api` → `services` → `runtime` → `domain`；反过来禁止。
-- `domain` 只用标准库和 pydantic，能脱离 FastAPI、数据库、LangGraph 单测。
+- `domain` 只用标准库和 pydantic，能脱离 FastAPI 和数据库单测。
 - `providers` 不 import 本项目的其他包；只有 `runtime` 和 `services` 可以用它。
 - `infra` 是叶子：可以 import `domain`，不能 import `runtime`、`services`、`api`。
 - `importers` 把外部格式（角色卡等）翻译成 `domain` 的数据：本项目里只 import `domain`。

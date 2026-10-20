@@ -45,7 +45,7 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 | submitting | 409 `TURN_IN_PROGRESS` | streaming | 直接订阅已有的回合 |
 | submitting | 409 `STALE_PARENT` | syncing | 拉最新 head 后回到 idle |
 | submitting | 网络错误 | submitting | 用同一个 `Idempotency-Key` 重试 |
-| streaming | `turn.waiting_state` | streaming | 提示“世界更新中…” |
+| streaming | `director.recalling` | streaming | 提示“正在回想……”（agent runtime 阶段 3；屏障取消后不再有 `turn.waiting_state`） |
 | streaming | `narrative.delta` | streaming | 追加文字 |
 | streaming | `options.ready` 加 `turn.completed` | idle | 展示两个选项 |
 | streaming | 连接断开 | reconnecting | 小提示，自动重连 |
@@ -79,7 +79,7 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 | `(tabs)/playthroughs` | 继续游玩 | 最近的故事 |
 | `play/[id]` | 阅读主屏 | 故事流、两个选项、自由输入、菜单（重新生成、回退、世界、时间线） |
 | `play/[id]/world` | 世界 | 按类型分页浏览实体；角色私有的秘密默认隐藏 |
-| `play/[id]/timeline` | 时间线 | 回合列表带 digest，标出回退下限，回退入口 |
+| `play/[id]/timeline` | 时间线 | 回合列表带一句话摘要，每一回合都可以作为回退的目标 |
 | `play/[id]/outline` | 大纲 | 打开剧透开关才显示 |
 | `settings/models` | 模型 | 配好的模型列表；添加模型时 Key、端点、模型名、窗口一次填完 |
 | `settings/model/[id]` | 模型详情 | 测试、设为导演、窗口上限（显示当前模型能否满足）与思考开关、更换 Key |

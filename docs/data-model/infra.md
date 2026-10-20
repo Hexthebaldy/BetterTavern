@@ -22,7 +22,7 @@
 | `user_id` | uuid | 否 |  | → `users.id`，级联删除 |
 | `playthrough_id` | uuid | 是 |  | → `playthroughs.id`，级联删除 |
 | `turn_id` | uuid | 是 |  | 无外键，指向 `turns.id` |
-| `agent` | text | 否 |  | `director`、`world_builder`（M2 起还会有 `state_keeper` 等） |
+| `agent` | text | 否 |  | `director`、`world_builder`（以后还会有 `state_keeper`、`outline`、`consolidator`） |
 | `task` | text | 否 |  | 使用的路由槽位，取值同 `model_routes.task` |
 | `provider` | text | 是 |  | 服务商 |
 | `model` | text | 是 |  | 模型名 |
@@ -42,7 +42,7 @@
 
 ### `jobs`
 
-后台任务队列。M0 建好，M1 的热路径不使用；M2 的 StateKeeper 等后台车道使用。同一个 `ordering_key` 的任务严格按 `id` 顺序串行执行，不同键之间并行执行。
+后台任务队列。M0 建好，M1 的热路径不使用；agent runtime 的 state、memory 两条后台队列使用。同一个 `ordering_key` 的任务严格按 `id` 顺序串行执行，不同键之间并行执行。
 
 | 列 | 类型 | 可空 | 默认 | 说明 |
 | --- | --- | --- | --- | --- |

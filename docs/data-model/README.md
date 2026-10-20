@@ -102,13 +102,17 @@ erDiagram
 
 ## 还没有建的表
 
-以下几张表随 M2、M3 的迁移加入，设计见 [backend.md 第 2 节](../backend.md)。建好后从这里删掉，按下文“修改表结构”写进对应领域的文件。
+以下几张表按 [agent-runtime.md](../agent-runtime.md) 第 10 节的阶段加入，设计见该文档第 8 节“表的变化”（同时还会删掉几列，也列在那里）。建好后从这里删掉，按下文“修改表结构”写进对应领域的文件。
 
-| 表 | 里程碑 | 放进哪个文件 | 用途 |
+| 表 | 阶段 | 放进哪个文件 | 用途 |
 | --- | --- | --- | --- |
-| state_patches | M2 | [world.md](world.md) | 世界状态的撤销日志：每条变化记一行，带 `before` 和 `after` 两份内容；回退时倒序应用 `before` |
-| summaries | M3 | 新建 `memory.md`（规划与记忆） | 滚动摘要，按版本追加；`playthroughs.summary_version` 指向当前版本，`covers_through_seq` 决定回退下限 |
-| outline_revisions | M3 | 新建 `memory.md`（规划与记忆） | 长程大纲的修订；`playthroughs.outline_version` 指向当前版本 |
+| agent_steps | 1 | [infra.md](infra.md) | 一次 agent 运行里的每一步（调模型或用工具），用于查问题和重放 |
+| state_patches | 2 | [world.md](world.md) | 世界状态的撤销日志：每条变化记一行，带 `before` 和 `after` 两份内容；回退时倒序应用 `before` |
+| turn_notes | 2 | [world.md](world.md) | 世界状态 agent 给每回合写的标签：一句话摘要、涉及的实体、场景是否结束 |
+| threads | 3 | [world.md](world.md) | 线索与伏笔 |
+| story_summaries | 4 | 新建 `memory.md`（记忆） | 场景摘要、本场景前情、章节摘要、全书梗概，只新增，记下覆盖的回合 |
+| player_profiles | 4 | 新建 `memory.md`（记忆） | 玩家画像，每次改写新增一版，回退时不动 |
+| outline_revisions | 5 | 新建 `memory.md`（记忆） | 大纲的修订，只新增，记下依据的回合 |
 
 ## 修改表结构
 

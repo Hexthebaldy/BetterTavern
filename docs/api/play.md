@@ -243,7 +243,7 @@
 | `head_seq` | integer / null | 头部回合的 `seq`。只有游玩列表和游玩详情会填，其他接口的响应里是 null |
 | `head_excerpt` | string | 头部回合叙述的前 120 个字符，供列表显示。只有游玩列表和游玩详情会填，其他接口的响应里是空串 |
 | `active_turn_id` | string / null | 正在生成的回合 |
-| `rollback_floor_seq` | integer | 回退的下限；M1 一直是 0 |
+| `rollback_floor_seq` | integer | 回退的下限，一直是 0；agent runtime 阶段 4 删掉（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `seed_source` | string / null | 开局设定的来源：`world_builder` / `minimal`；世界建好之前为 null |
 | `created_at` | string（时间） | 创建时间 |
 | `updated_at` | string（时间） | 最近更新时间（改名、开始生成、生成结束时更新） |
@@ -278,7 +278,7 @@
 | `narrative` | string | 叙述。生成中是空串，增量要从事件流里拿；失败时可能是半截草稿（此时 `error.partial` 为真） |
 | `options` | array of [`OptionOut`](#optionout) | 两个选项；生成中、失败时和结局那一轮为空数组 |
 | `options_source` | string / null | 选项的来源：`model`（模型给的）/ `repaired`（另调小模型补的）/ `fallback`（固定的兜底选项）；完成前和结局那一轮为 null |
-| `state_lag` | boolean | 生成时上一轮的状态还没提交（屏障超时）；M1 一直是 false |
+| `state_lag` | boolean | 生成时上一轮的状态还没提交（屏障超时）；M1 一直是 false。agent runtime 阶段 2 改为记下这一回合的状态块截至第几回合 |
 | `error` | object / null | 失败原因 `{"code", "message", "retryable", "partial"}`，`code` 见 [README.md 的“回合失败码”](README.md#回合失败码) |
 | `created_at` | string（时间） | 提交时间 |
 | `replied_at` | string（时间）/ null | 叙述和选项保存的时间 |

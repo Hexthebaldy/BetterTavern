@@ -243,22 +243,22 @@ make dev
 
 与设计文档的偏差（详见 [backend.md 第 12 节](backend.md)、[client.md 第 3 节](client.md)），M2 起按设计补齐：
 
-- 热路径是线性的 `TurnRunner`，没有 LangGraph；回合直接提交为 `committed`，没有 StateKeeper 和 `post_turn` 车道，屏障不会真的等待。
+- 热路径是线性的 `TurnRunner`；回合直接提交为 `committed`，还没有世界状态 agent 和后台队列，屏障不会真的等待。
 - 没有会话通道 `/playthroughs/{id}/events`；开局进度在开场回合的事件流里（`world.building`、`world.ready`）。
 - 头像存在 Postgres 的 `blobs` 表；仓储是手写 SQL，没有 ORM 模型。
 - 客户端类型手写（没有 OpenAPI 生成）；没有 TanStack Query、Zustand、FlashList、expo-sqlite 缓存、i18n、触觉反馈。
 - 限流在进程内；租约清理在 api 进程里。
 - 还没有的接口：导出数据、单局路由覆盖、只重做选项、重新生成、回退、摘要和大纲视图、`/metrics`。
 
-M2 的主要工作（docs/README.md 第 3 节）：StateKeeper、不变量、状态块与披露分层、屏障、回退与重新生成、世界浏览与时间线界面。
+接下来的工作按 [agent-runtime.md](agent-runtime.md) 第 10 节分阶段进行：runtime 骨架、世界状态 agent 与回退、召回、分层记忆、大纲。
 
 ## 10 已确认的产品决策（摘要）
 
 完整列表见 [README.md 第 1 节](README.md)。
 
 - v1 的模型：DeepSeek、Hugging Face，加用户自定义的 OpenAI 兼容端点；provider 层只做最后的 HTTP 请求，要能扩展到更多厂商。不移植 SillyTavern 的代码。
-- 每轮只有导演在关键路径上，回复立即返回；其他 agent 在后台更新状态。同一局的回合串行，下一轮等上一轮的状态提交（屏障最多 8 秒）。
+- 每轮只有导演在关键路径上，回复立即返回；其他 agent 在后台更新状态。同一局的回合串行；下一回合不等上一回合的世界状态整理，状态块标明截至第几回合。
 - 每轮固定两个选项，加自由输入。
-- 上下文超过窗口的 80% 时压缩；v1 不接 Jev。摘要放回上下文时必须带“回顾”包装。回退的下限是最近一次摘要折叠的边界。
+- 记忆在场景、章节的分界处整理成各级摘要，不按 80% 阈值压缩；不接 Jev。摘要放回上下文时必须带“回顾”包装。可以回退到任意一回合（[agent-runtime.md](agent-runtime.md)）。
 - 工作窗口默认 128K，用户可调，运行时要校验当前模型能否满足。
 - 世界书转成世界状态，v1 没有世界书模块。中文优先；不做成本控制；隐私不作为重点。

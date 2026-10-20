@@ -26,10 +26,10 @@
 | `seed_source` | text | 是 |  | `world_builder` 表示由模型生成。`minimal` 表示没有用模型生成：模型失败或超时、没有可用的路由时只用卡片原文；剧本已被删除时设定里只有主角 |
 | `head_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：活跃链的头部 |
 | `timeline_epoch` | integer | 否 | `0` | 时间线纪元，回退和重新生成时加 1（M2）。回合和后台任务记下发起时的值，提交时如果不一致，结果就作废 |
-| `state_version` | integer | 否 | `0` | 世界状态的版本，StateKeeper 每次提交加 1（M2；M1 里一直是 0） |
-| `outline_version` | integer | 否 | `0` | 大纲的版本（M3；M1 里一直是 0） |
-| `summary_version` | integer | 否 | `0` | 摘要的版本（M3；M1 里一直是 0） |
-| `rollback_floor_seq` | integer | 否 | `0` | 回退的下限，等于最近一次摘要折叠到的回合（M3 写入；M1 里一直是 0） |
+| `state_version` | integer | 否 | `0` | 世界状态的版本，M1 里一直是 0。agent runtime 阶段 2 换成 `state_seq`（世界状态已整理到第几回合），见 [agent-runtime.md](../agent-runtime.md) 第 8 节 |
+| `outline_version` | integer | 否 | `0` | 大纲的版本，一直是 0；agent runtime 阶段 5 删掉，当前大纲按依据的回合查（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
+| `summary_version` | integer | 否 | `0` | 摘要的版本，一直是 0；agent runtime 阶段 4 删掉（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
+| `rollback_floor_seq` | integer | 否 | `0` | 回退的下限，一直是 0；agent runtime 阶段 4 删掉，回退没有下限（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `active_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：持有租约、正在生成的回合；没有正在生成的回合时为空 |
 | `lease_expires_at` | timestamptz | 是 |  | 租约的到期时间：领取时设为当前时间加 120 秒，生成期间每 30 秒续期 |
 | `lease_owner` | text | 是 |  | 持有租约的进程，格式为 `{hostname}:{pid}`，排错用 |
@@ -168,7 +168,7 @@ stateDiagram-v2
     [*] --> generating: 提交行动或开局
     generating --> committed: 提交成功（M1）
     generating --> replied: 提交成功（M2 起）
-    replied --> committed: state 车道处理完（M2 起）
+    replied --> committed: 世界状态 agent 整理完（M2 起）
     generating --> failed: 出错、取消、租约过期
     replied --> archived: 回退（M2）
     committed --> archived: 回退（M2）
@@ -176,7 +176,7 @@ stateDiagram-v2
 
 - 写 `failed` 的地方有三个，都要求当前状态还是 `generating`：runner 自己（出错或取消）、清理任务（租约过期）、提交新行动时发现上一轮的租约已经过期。
 - 失败的回合保留在表里；重试时插入同一个 `seq` 的新回合（`attempt + 1`）。
-- 屏障只在父回合变成 `committed`（或 `archived`）后放行，所以 M1 里不会等待。
+- 屏障只在父回合变成 `committed`（或 `archived`）后放行，所以 M1 里不会等待。agent runtime 阶段 2 去掉屏障，下一回合不等世界状态整理（[agent-runtime.md](../agent-runtime.md) 第 3 节）。
 
 `playthroughs.status`：`building` → `active` → `ended`。
 
@@ -210,7 +210,7 @@ WHERE id = :id AND active_turn_id = :turn AND timeline_epoch = :epoch
 ```
 
 条件满足后才写 `turns`（`WHERE status = 'generating'`）和 `agent_runs`。条件不满足说明租约已被清理任务收回，或者发生了回退：
-生成结果作废，推给客户端的错误和库里一致（`RUNNER_LOST`，可以重试）。M2 起，StateKeeper 的提交条件是 `state_version = :base AND timeline_epoch = :epoch`。
+生成结果作废，推给客户端的错误和库里一致（`RUNNER_LOST`，可以重试）。agent runtime 阶段 2 起，世界状态 agent 的写入条件是 `state_seq = :seq - 1 AND timeline_epoch = :epoch`（[agent-runtime.md](../agent-runtime.md) 第 8 节）。
 
 ### 加锁顺序
 

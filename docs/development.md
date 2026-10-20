@@ -18,8 +18,8 @@ M1 把“导入一张角色卡、一轮一轮玩下去”这条主线打通了�
   模型设置、外观（跟随系统 / 浅色 / 夜间）、平板布局、诊断日志。
 
 M1 的出口标准是 DeepSeek 与 Hugging Face 各完整玩 30 回合、断网续传用例通过，需要在真机上用真实的 Key 验收。
-和设计文档相比的简化（热路径暂不用 LangGraph、回合直接提交、还没有 StateKeeper 等）见
-[backend.md 第 12 节](backend.md)和 [client.md 第 3 节](client.md)。
+和设计文档相比的简化（回合直接提交、还没有世界状态 agent 和后台队列等）见
+[backend.md 第 12 节](backend.md)和 [client.md 第 3 节](client.md)；后续的 agent runtime 计划见 [agent-runtime.md](agent-runtime.md)。
 
 M0 的探针仍然保留：SSE 探针在 App 的“设置 → 连接测试”里，导演协议合规率评测见下文。
 

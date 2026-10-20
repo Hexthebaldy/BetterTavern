@@ -5,7 +5,7 @@
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
 
 M1 只在开局时写入世界状态：把 WorldBuilder 输出的 Seed 展开写入这三张表（`domain/world/plan.py`），之后不再变化。
-M2 的 StateKeeper 每轮更新世界状态，并把撤销日志写进 `state_patches`。
+agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，并把撤销日志写进 `state_patches`（[agent-runtime.md](../agent-runtime.md) 第 4、8 节）；阶段 1 删掉 `entities.importance` 和 `facts.importance`。
 对应的只读接口是 [`GET /v1/playthroughs/{playthrough_id}/world`](../api/play.md)。
 
 ## 表
