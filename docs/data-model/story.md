@@ -104,7 +104,8 @@
 ### `playthroughs.seed`
 
 开局设定（`domain/world/seed.py` 的 `Seed`），已经校正过：名字之间的引用只保留能对上的，主角名以玩家填的为准。
-每一轮装配导演的系统提示词时都会读它：世界的设定、基调、标题、规则和文风，主角的描述，以及重要程度不低于 3 的人物（最多 8 个）。
+每一轮装配导演的系统提示词时都会读它：世界的设定、基调、标题、规则和文风，主角的描述，以及 `characters` 的前 8 个人物（角色卡的主角色排在第一个）。
+以前存下的开局设定里每个实体和事实还带着 `importance`（重要程度），现在读的时候忽略。
 `opening` 只在生成开场时使用。实体现在的状态以世界表为准。
 
 ```jsonc
@@ -112,12 +113,12 @@
   "world": { "title": "雨夜酒馆", "setting": "…", "tone": "…", "rules": ["…"], "style": "…" },
   "protagonist": { "name": "林川", "summary": "…", "goal": "…" },
   "characters": [
-    { "name": "阿苓", "aliases": [], "summary": "…", "goal": "", "attitude": "", "speech_style": "", "importance": 5 }
+    { "name": "阿苓", "aliases": [], "summary": "…", "goal": "", "attitude": "", "speech_style": "" }
   ],
-  "locations": [{ "name": "灰石酒馆", "aliases": [], "summary": "…", "importance": 3 }],
-  "items": [{ "name": "无名信", "aliases": [], "summary": "…", "holder": "林川", "location": null, "importance": 2 }],
-  "organizations": [{ "name": "北境商会", "aliases": [], "summary": "…", "stance": "", "members": [], "importance": 2 }],
-  "facts": [{ "text": "老周欠北境商会一笔钱", "about": ["老周"], "importance": 2, "secret": true, "known_by": ["老周"] }],
+  "locations": [{ "name": "灰石酒馆", "aliases": [], "summary": "…" }],
+  "items": [{ "name": "无名信", "aliases": [], "summary": "…", "holder": "林川", "location": null }],
+  "organizations": [{ "name": "北境商会", "aliases": [], "summary": "…", "stance": "", "members": [] }],
+  "facts": [{ "text": "老周欠北境商会一笔钱", "about": ["老周"], "secret": true, "known_by": ["老周"] }],
   "opening": { "location": "灰石酒馆", "present": ["阿苓"], "situation": "…", "hook": "…" }
 }
 ```

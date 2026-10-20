@@ -16,6 +16,7 @@ from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import WorldSnapshot
 from bettertavern.providers import Usage
 
+from .agent.steps import AgentStep
 from .routing import ResolvedRoute
 
 
@@ -84,6 +85,8 @@ class AgentRunRecord:
     latency_ms: int | None = None
     error_class: str | None = None
     result: Mapping[str, Any] = field(default_factory=dict)
+    # 这次运行里的每一步（调模型、用工具），写进 agent_steps
+    steps: tuple[AgentStep, ...] = ()
 
 
 @dataclass(frozen=True)

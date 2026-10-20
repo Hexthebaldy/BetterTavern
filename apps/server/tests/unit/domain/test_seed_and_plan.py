@@ -18,7 +18,7 @@ RAW_SEED = {
     "world": {"title": "雨夜", "setting": "小镇", "rules": ["规则一"] * 12},
     "protagonist": {"name": "模型起的名字", "summary": "信使"},
     "characters": [
-        {"name": "老周", "summary": "掌柜", "importance": 9},
+        {"name": "老周", "summary": "掌柜", "importance": 9},  # 旧数据里的字段
         {"name": " 老周 ", "summary": "重复的"},
         {"name": "林川", "summary": "和主角同名的 NPC 要去掉"},
         {"name": "", "summary": "没名字"},
@@ -51,7 +51,8 @@ def test_normalize_seed_fixes_names_and_references() -> None:
     seed = normalized()
     assert seed.protagonist.name == "林川"
     assert [c.name for c in seed.characters] == ["阿苓", "老周"]  # 角色卡主角色补上，主角同名的去掉
-    assert seed.characters[1].importance == 5  # 超出范围的重要度被夹住
+    # 以前存下的开局设定里有“重要程度”，现在没有这个字段了，读的时候直接忽略
+    assert "importance" not in seed.characters[1].model_dump()
     assert len(seed.world.rules) == 8
     items = {i.name: i for i in seed.items}
     assert items["信"].holder == "林川"

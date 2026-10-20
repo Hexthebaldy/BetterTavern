@@ -288,10 +288,15 @@ async def test_vis_shows_the_turn_without_story_unless_asked(
         for kind in ("http", "turn", "provider_wait", "provider_stream", "commit", "sse"):
             assert kind in kinds, kind
         assert detail["runs"][0]["agent"] == "director"
+        # 每一步也只给长度
+        [step] = detail["runs"][0]["steps"]
+        assert step["kind"] == "model" and step["result"]["text_chars"] > 0
+        assert "text" not in step["result"]
 
         shown = (await client.get(f"/api/turns/{played.turn_id}?story=1")).json()
         assert SECRET in shown["turn"]["narrative"]
         assert SECRET in shown["turn"]["action"]["text"]
+        assert SECRET in shown["runs"][0]["steps"][0]["result"]["text"]
 
         failed = (await client.get("/api/requests?kind=failed")).json()["requests"]
         assert failed == []

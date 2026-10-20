@@ -1,0 +1,8 @@
+{
+  "descriptions": {},
+  "errors": {
+    "unknown_tool": "{name} という名前のツールはありません。もう呼び出さないでください。",
+    "bad_arguments": "引数が正しくありません：{detail}。直してからもう一度呼び出してください。",
+    "failed": "実行できませんでした：{detail}"
+  }
+}

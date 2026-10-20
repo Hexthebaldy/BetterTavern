@@ -11,7 +11,6 @@
     "CharacterSeed.goal": "Current goal, at most 160 characters",
     "CharacterSeed.attitude": "Attitude toward the protagonist, at most 160 characters",
     "CharacterSeed.speech_style": "Way of speaking and catchphrases, at most 240 characters",
-    "CharacterSeed.importance": "Importance from 1 to 5",
     "FactSeed.text": "One atomic fact, at most 200 characters",
     "FactSeed.about": "Names of the entities involved",
     "FactSeed.secret": "A secret the protagonist doesn't know at first",

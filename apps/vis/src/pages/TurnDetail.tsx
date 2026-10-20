@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { useMeta, useTurn, type Issue, type Run, type Turn } from "../api.ts";
+import { useMeta, useTurn, type Issue, type Run, type Step, type Turn } from "../api.ts";
 import { ErrorBox, IdChip, Loading, Notice, Pill, statusTone, usePref } from "../components/common.tsx";
 import { EntryRow } from "../components/EntryRow.tsx";
 import { Waterfall } from "../components/Waterfall.tsx";
@@ -18,6 +18,7 @@ import {
   OPTION_SOURCES,
   PARSE_STAGES,
   SEVERITY_LABELS,
+  stepError,
   TURN_STATUS,
 } from "../lib/catalog.ts";
 import { clock, duration, percent, tokens } from "../lib/format.ts";
@@ -77,9 +78,62 @@ function Issues({ issues, onSelect }: { issues: Issue[]; onSelect: (ref: number 
   );
 }
 
-const AGENTS: Record<string, string> = { director: "导演（写叙述和选项）", world_builder: "搭建世界" };
+const AGENTS: Record<string, string> = {
+  director: "导演（写叙述和选项）",
+  world_builder: "搭建世界",
+  options_repair: "补选项",
+};
+const RUN_STATUS: Record<string, string> = { ok: "成功", failed: "失败", cancelled: "已取消" };
 
-function RunCard({ run }: { run: Run }) {
+const shown = (value: unknown): string =>
+  value === null ? "（隐藏）" : typeof value === "string" ? value : JSON.stringify(value);
+
+/** 一步：一行摘要，点开看参数、出错说明和原文（原文只在显示故事内容时有） */
+function StepRow({ step, story }: { step: Step; story: boolean }) {
+  const { result } = step;
+  const error = typeof result.error === "string" ? result.error : null;
+  const invalid = typeof result.invalid === "string" ? result.invalid : null;
+  const text = typeof result.text === "string" ? result.text : null;
+  const chars = typeof result.text_chars === "number" ? result.text_chars : (text?.length ?? null);
+  const args = Object.entries(step.args);
+  return (
+    <details className="runstep">
+      <summary>
+        <span className="mono mut">#{step.step}</span> {step.kind === "model" ? "调模型" : `用工具 ${step.tool ?? ""}`}
+        <span className="mut">
+          {" · "}
+          {duration(step.latency_ms)}
+          {step.input_tokens || step.output_tokens
+            ? ` · 输入 ${tokens(step.input_tokens)}，输出 ${tokens(step.output_tokens)}`
+            : ""}
+          {chars !== null ? ` · ${chars} 字` : ""}
+        </span>{" "}
+        {error ? <Pill tone="error">{stepError(error)}</Pill> : invalid ? <Pill tone="warn">格式不对</Pill> : null}
+      </summary>
+      <div className="kv">
+        {args.map(([key, value]) => (
+          <span key={key} style={{ display: "contents" }}>
+            <span className="k mono">{key}</span>
+            <span className="mono">{shown(value)}</span>
+          </span>
+        ))}
+        {invalid ? (
+          <>
+            <span className="k">没通过的检查</span>
+            <span className="mono">{invalid}</span>
+          </>
+        ) : null}
+      </div>
+      {text !== null ? (
+        <div className="story">{text || "（空）"}</div>
+      ) : chars !== null && !story ? (
+        <div className="mut small">打开下面的“显示故事内容”才能看原文。</div>
+      ) : null}
+    </details>
+  );
+}
+
+function RunCard({ run, story }: { run: Run; story: boolean }) {
   const input = run.input_tokens ?? 0;
   const cached = run.cached_tokens ?? 0;
   const output = run.output_tokens ?? 0;
@@ -90,7 +144,7 @@ function RunCard({ run }: { run: Run }) {
     <div className="card runcard">
       <h3>
         {AGENTS[run.agent] ?? run.agent}{" "}
-        <Pill tone={statusTone(run.status)}>{run.status === "ok" ? "成功" : "失败"}</Pill>
+        <Pill tone={statusTone(run.status)}>{RUN_STATUS[run.status ?? ""] ?? run.status}</Pill>
       </h3>
       <div className="mut small">
         {run.provider} · {run.model}
@@ -156,6 +210,14 @@ function RunCard({ run }: { run: Run }) {
         <span className="k">提示词指纹</span>
         <span className="mono">{run.prompt_hash ?? "–"}</span>
       </div>
+      {run.steps.length > 0 ? (
+        <div className="runsteps">
+          <div className="mut small">每一步（共 {run.steps.length} 步，点开看细节）</div>
+          {run.steps.map((step) => (
+            <StepRow key={step.step} step={step} story={story} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -295,7 +357,7 @@ export function TurnDetail() {
           <h2>模型调用</h2>
           <div className="grid2">
             {runs.map((run) => (
-              <RunCard key={run.id} run={run} />
+              <RunCard key={run.id} run={run} story={story} />
             ))}
           </div>
         </>

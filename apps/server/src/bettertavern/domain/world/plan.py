@@ -33,7 +33,6 @@ class EntityDraft:
     aliases: list[str]
     summary: str
     data: dict[str, Any]
-    importance: int
     is_protagonist: bool = False
 
     @property
@@ -52,7 +51,6 @@ class LinkDraft:
 class FactDraft:
     text: str
     entities: tuple[str, ...]
-    importance: int
     secret: bool
     known_by: tuple[str, ...]
 
@@ -109,7 +107,6 @@ def plan_world(seed: Seed) -> WorldPlan:
                 "clock": None,
                 "scene": {"location": None, "present": [], "goal": seed.protagonist.goal},
             },
-            importance=5,
         )
     )
 
@@ -123,7 +120,6 @@ def plan_world(seed: Seed) -> WorldPlan:
             aliases=[],
             summary=hero.summary,
             data={"goal": hero.goal},
-            importance=5,
             is_protagonist=True,
         )
     )
@@ -144,7 +140,6 @@ def plan_world(seed: Seed) -> WorldPlan:
                     }.items()
                     if v
                 },
-                importance=c.importance,
             )
         )
     for loc in seed.locations:
@@ -156,7 +151,6 @@ def plan_world(seed: Seed) -> WorldPlan:
                 aliases=_aliases(loc.name, loc.aliases),
                 summary=loc.summary,
                 data={},
-                importance=loc.importance,
             )
         )
     for org in seed.organizations:
@@ -168,7 +162,6 @@ def plan_world(seed: Seed) -> WorldPlan:
                 aliases=_aliases(org.name, org.aliases),
                 summary=org.summary,
                 data={"stance": org.stance} if org.stance else {},
-                importance=org.importance,
             )
         )
     for item in seed.items:
@@ -180,7 +173,6 @@ def plan_world(seed: Seed) -> WorldPlan:
                 aliases=_aliases(item.name, item.aliases),
                 summary=item.summary,
                 data={},
-                importance=item.importance,
             )
         )
 
@@ -227,7 +219,6 @@ def plan_world(seed: Seed) -> WorldPlan:
             FactDraft(
                 text=fact.text,
                 entities=refs,
-                importance=fact.importance,
                 secret=fact.secret,
                 known_by=knowers,
             )

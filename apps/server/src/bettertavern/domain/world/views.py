@@ -17,9 +17,10 @@ class EntityView:
     aliases: tuple[str, ...] = ()
     summary: str = ""
     data: Mapping[str, Any] = field(default_factory=dict)
-    importance: int = 2
     is_protagonist: bool = False
     canon: str = "canon"
+    first_seq: int = 0  # 首次出现的回合
+    last_seen_seq: int = 0  # 最近一次出现的回合：名册按它从近到远排
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,9 +35,9 @@ class FactView:
     id: str
     text: str
     entity_ids: tuple[str, ...] = ()
-    importance: int = 2
     visibility: str = "public"
     known_by: tuple[str, ...] = ()
+    created_seq: int = 0  # 建立于第几回合：事实按它从近到远排
 
 
 @dataclass(frozen=True)

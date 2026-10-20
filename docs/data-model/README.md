@@ -17,7 +17,7 @@
 | [library.md](library.md) | 剧本库 | `blobs`、`scenarios` |
 | [story.md](story.md) | 游玩与回合，以及热路径的并发控制 | `playthroughs`、`turns`、`idempotency_keys` |
 | [world.md](world.md) | 世界状态 | `entities`、`entity_links`、`facts` |
-| [infra.md](infra.md) | 运行基础设施 | `agent_runs`、`jobs` |
+| [infra.md](infra.md) | 运行基础设施 | `agent_runs`、`agent_steps`、`jobs` |
 
 `tests/integration/test_data_model_doc.py` 会在真实 Postgres 上执行迁移，再把这个目录里的所有文件合在一起，逐表核对列名、类型、可空和索引名。
 有任何不一致，或者一张表在目录里写了不止一次，测试就失败。
@@ -57,6 +57,7 @@ erDiagram
     playthroughs ||--o{ entity_links : "playthrough_id"
     playthroughs ||--o{ facts : "playthrough_id"
     playthroughs |o--o{ agent_runs : "playthrough_id"
+    agent_runs ||--o{ agent_steps : "run_id"
     entities ||--o{ entity_links : "src_id / dst_id"
     playthroughs |o..o| turns : "head_turn_id / active_turn_id"
     turns |o..o{ turns : "parent_turn_id"
@@ -85,8 +86,8 @@ erDiagram
 
 | 操作 | 连带删除或修改 |
 | --- | --- |
-| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`scenarios`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`、`idempotency_keys` |
-| 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts` 和 `agent_runs`。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
+| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`scenarios`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys` |
+| 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts` 和 `agent_runs`（连同 `agent_steps`）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 在同一个事务里删除它的头像（`blobs`）；`playthroughs.scenario_id` 置空 |
 | 删除模型路由 | 删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING` |
 | 删除实体（M2） | 级联删除相关的 `entity_links`；`facts.entity_ids` 里的 ID 不会自动清理 |
@@ -106,7 +107,6 @@ erDiagram
 
 | 表 | 阶段 | 放进哪个文件 | 用途 |
 | --- | --- | --- | --- |
-| agent_steps | 1 | [infra.md](infra.md) | 一次 agent 运行里的每一步（调模型或用工具），用于查问题和重放 |
 | state_patches | 2 | [world.md](world.md) | 世界状态的撤销日志：每条变化记一行，带 `before` 和 `after` 两份内容；回退时倒序应用 `before` |
 | turn_notes | 2 | [world.md](world.md) | 世界状态 agent 给每回合写的标签：一句话摘要、涉及的实体、场景是否结束 |
 | threads | 3 | [world.md](world.md) | 线索与伏笔 |

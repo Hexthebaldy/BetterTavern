@@ -11,7 +11,6 @@
     "CharacterSeed.goal": "当前目标，不超过 160 字",
     "CharacterSeed.attitude": "对主角的态度，不超过 160 字",
     "CharacterSeed.speech_style": "说话方式与口头禅，不超过 240 字",
-    "CharacterSeed.importance": "重要程度 1 到 5",
     "FactSeed.text": "一条原子事实，不超过 200 字",
     "FactSeed.about": "涉及的实体名字",
     "FactSeed.secret": "主角一开始不知道的秘密",

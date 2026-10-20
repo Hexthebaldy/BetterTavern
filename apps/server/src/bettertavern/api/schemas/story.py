@@ -195,7 +195,6 @@ class WorldEntityOut(Out):
     aliases: list[str]
     summary: str
     data: dict[str, Any]
-    importance: int
     is_protagonist: bool
 
 
@@ -203,7 +202,6 @@ class WorldFactOut(Out):
     id: str
     text: str
     entity_ids: list[str]
-    importance: int
     secret: bool
 
 

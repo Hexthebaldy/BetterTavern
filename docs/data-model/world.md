@@ -5,7 +5,7 @@
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
 
 M1 只在开局时写入世界状态：把 WorldBuilder 输出的 Seed 展开写入这三张表（`domain/world/plan.py`），之后不再变化。
-agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，并把撤销日志写进 `state_patches`（[agent-runtime.md](../agent-runtime.md) 第 4、8 节）；阶段 1 删掉 `entities.importance` 和 `facts.importance`。
+agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，并把撤销日志写进 `state_patches`（[agent-runtime.md](../agent-runtime.md) 第 4、8 节）。实体和事实没有“重要程度”：需要排序时按最近一次出现的回合（`last_seen_seq`）和建立于第几回合（`created_seq`）。
 对应的只读接口是 [`GET /v1/playthroughs/{playthrough_id}/world`](../api/play.md)。
 
 ## 表
@@ -24,7 +24,6 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 | `aliases` | text[] | 否 | `'{}'` | 别名，最多 6 个，归一化后与本名相同的会被去掉；`world` 实体的别名是故事标题 |
 | `summary` | text | 否 | `''` | 外貌、性格、来历等描述 |
 | `data` | jsonb | 否 | `'{}'` | 结构化属性，按 `kind` 不同，结构见下文“JSON 列” |
-| `importance` | smallint | 否 | `2` | 重要程度 0 到 5。开局写入的在 1 到 5 之间，主角和 `world` 实体为 5 |
 | `canon` | text | 否 | `'canon'` | `sketch` 表示推测，以后可以改写（铅笔）；`canon` 表示已成定论（钢笔）。开局写入的实体都是 `canon` |
 | `is_protagonist` | boolean | 否 | `false` | 是否是玩家扮演的主角；每局只有一个 |
 | `first_seq` | integer | 否 | `0` | 首次出现的回合；开局写入的为 0 |
@@ -36,7 +35,7 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 - `entities_name_uq (playthrough_id, kind, name_norm) WHERE NOT retired`：同一局、同一类实体里名字唯一。
 - `entities_protagonist_uq (playthrough_id) WHERE is_protagonist AND NOT retired`：每局只有一个主角。
 - `entities_aliases_gin`：`aliases` 上的 GIN 索引，用来按别名查找。
-- `kind`、`canon` 的 CHECK；`importance BETWEEN 0 AND 5`。
+- `kind`、`canon` 的 CHECK。
 
 ### `entity_links`
 
@@ -57,7 +56,7 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 
 ### `facts`
 
-原子事实：每条一句话，记录涉及的实体、重要程度和可见性。被推翻的事实标记为 `superseded`，不删除。
+原子事实：每条一句话，记录涉及的实体和可见性。被推翻的事实标记为 `superseded`，不删除。
 
 | 列 | 类型 | 可空 | 默认 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -65,7 +64,6 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 | `playthrough_id` | uuid | 否 |  | → `playthroughs.id`，级联删除 |
 | `text` | text | 否 |  | 事实内容，最多 200 字 |
 | `entity_ids` | uuid[] | 否 | `'{}'` | 涉及的实体 |
-| `importance` | smallint | 否 | `2` | 重要程度 0 到 5 |
 | `visibility` | text | 否 | `'public'` | `public` / `secret`；`secret` 表示主角一开始不知道 |
 | `known_by` | uuid[] | 否 | `'{}'` | 知道这个秘密的人物实体；主角在其中时，这条事实对玩家可见 |
 | `status` | text | 否 | `'active'` | `active` / `superseded` |
@@ -76,7 +74,7 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 约束与索引：
 - `facts_pt_active_idx (playthrough_id) WHERE status = 'active'`。
 - `facts_entities_gin`：`entity_ids` 上的 GIN 索引。
-- `importance BETWEEN 0 AND 5`；`visibility`、`status` 的 CHECK。
+- `visibility`、`status` 的 CHECK。
 
 世界视图接口（`GET /v1/playthroughs/{playthrough_id}/world`）默认隐藏主角不知道的秘密，也就是 `visibility = 'secret'` 且主角不在 `known_by` 里的事实；加上 `reveal=true` 才返回。
 

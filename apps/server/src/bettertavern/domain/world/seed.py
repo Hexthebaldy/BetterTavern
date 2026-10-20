@@ -81,7 +81,6 @@ class CharacterSeed(_SeedModel):
     goal: str = Field(default="")
     attitude: str = Field(default="")
     speech_style: str = Field(default="")
-    importance: int = Field(default=3, ge=1, le=5)
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
     _aliases = field_validator("aliases", mode="before")(_clip_list(6, NAME_CHARS))
@@ -90,26 +89,15 @@ class CharacterSeed(_SeedModel):
     _attitude = field_validator("attitude", mode="before")(_clip(160))
     _speech = field_validator("speech_style", mode="before")(_clip(240))
 
-    @field_validator("importance", mode="before")
-    @classmethod
-    def _importance(cls, value: Any) -> Any:
-        return _clamp_importance(value)
-
 
 class LocationSeed(_SeedModel):
     name: str
     aliases: list[str] = Field(default_factory=list)
     summary: str = Field(default="")
-    importance: int = Field(default=3, ge=1, le=5)
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
     _aliases = field_validator("aliases", mode="before")(_clip_list(6, NAME_CHARS))
     _summary = field_validator("summary", mode="before")(_clip(400))
-
-    @field_validator("importance", mode="before")
-    @classmethod
-    def _importance(cls, value: Any) -> Any:
-        return _clamp_importance(value)
 
 
 class ItemSeed(_SeedModel):
@@ -118,16 +106,10 @@ class ItemSeed(_SeedModel):
     summary: str = Field(default="")
     holder: str | None = Field(default=None)
     location: str | None = Field(default=None)
-    importance: int = Field(default=2, ge=1, le=5)
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
     _aliases = field_validator("aliases", mode="before")(_clip_list(6, NAME_CHARS))
     _summary = field_validator("summary", mode="before")(_clip(300))
-
-    @field_validator("importance", mode="before")
-    @classmethod
-    def _importance(cls, value: Any) -> Any:
-        return _clamp_importance(value)
 
 
 class OrgSeed(_SeedModel):
@@ -136,7 +118,6 @@ class OrgSeed(_SeedModel):
     summary: str = Field(default="")
     stance: str = Field(default="")
     members: list[str] = Field(default_factory=list)
-    importance: int = Field(default=2, ge=1, le=5)
 
     _name = field_validator("name", mode="before")(_clip(NAME_CHARS))
     _aliases = field_validator("aliases", mode="before")(_clip_list(6, NAME_CHARS))
@@ -144,27 +125,16 @@ class OrgSeed(_SeedModel):
     _stance = field_validator("stance", mode="before")(_clip(120))
     _members = field_validator("members", mode="before")(_clip_list(24, NAME_CHARS))
 
-    @field_validator("importance", mode="before")
-    @classmethod
-    def _importance(cls, value: Any) -> Any:
-        return _clamp_importance(value)
-
 
 class FactSeed(_SeedModel):
     text: str
     about: list[str] = Field(default_factory=list)
-    importance: int = Field(default=2, ge=1, le=5)
     secret: bool = Field(default=False)
     known_by: list[str] = Field(default_factory=list)
 
     _text = field_validator("text", mode="before")(_clip(200))
     _about = field_validator("about", mode="before")(_clip_list(6, NAME_CHARS))
     _known = field_validator("known_by", mode="before")(_clip_list(12, NAME_CHARS))
-
-    @field_validator("importance", mode="before")
-    @classmethod
-    def _importance(cls, value: Any) -> Any:
-        return _clamp_importance(value)
 
 
 class OpeningBrief(_SeedModel):
@@ -193,14 +163,6 @@ class Seed(_SeedModel):
     _items = field_validator("items", mode="before")(_clip_list(16))
     _orgs = field_validator("organizations", mode="before")(_clip_list(8))
     _facts = field_validator("facts", mode="before")(_clip_list(40))
-
-
-def _clamp_importance(value: Any) -> Any:
-    if isinstance(value, bool):
-        return 3
-    if isinstance(value, int | float):
-        return max(1, min(5, int(value)))
-    return value
 
 
 def _dedupe[T: BaseModel](items: list[T], key: Callable[[T], str]) -> list[T]:
@@ -233,7 +195,7 @@ def normalize_seed(seed: Seed, *, protagonist_name: str, card_name: str) -> Seed
     characters = _dedupe([c for c in seed.characters if norm(c) != hero], norm)
     card_norm = normalize_name(card_name) if card_name else ""
     if card_norm and card_norm != hero and card_norm not in {norm(c) for c in characters}:
-        characters.insert(0, CharacterSeed(name=card_name, importance=5))
+        characters.insert(0, CharacterSeed(name=card_name))
     locations = _dedupe(seed.locations, norm)
     items = _dedupe(seed.items, norm)
     orgs = _dedupe(seed.organizations, norm)
@@ -321,7 +283,6 @@ def minimal_seed(
         name=card.name,
         summary=text("\n".join(p for p in (card.description, card.personality) if p), 500),
         speech_style=text(card.mes_example, 240),
-        importance=5,
     )
     world = WorldSeed(title=card.name, setting=text(card.scenario or card.description, 800))
     opening = OpeningBrief(

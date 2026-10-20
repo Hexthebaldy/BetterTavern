@@ -140,7 +140,8 @@ export function Entities({
   const [open, setOpen] = useState<string | null>(null);
   const entities = view.entities
     .filter((e) => e.kind !== "world")
-    .sort((a, b) => Number(b.is_protagonist) - Number(a.is_protagonist) || b.importance - a.importance);
+    // 主角排第一个，其余沿用服务端的顺序（按类型、最近出现的回合）
+    .sort((a, b) => Number(b.is_protagonist) - Number(a.is_protagonist));
   const kinds = (["character", "location", "item", "organization"] as const).filter((k) =>
     entities.some((e) => e.kind === k),
   );
@@ -301,7 +302,8 @@ export function Facts({
   const surfaces = useSheetSurfaces();
   const { t } = useTranslation();
   const facts = [...view.facts].sort(
-    (a, b) => Number(a.secret) - Number(b.secret) || b.importance - a.importance,
+    // 秘密排在后面，其余沿用服务端的顺序（建立得越晚越靠前）
+    (a, b) => Number(a.secret) - Number(b.secret),
   );
   return (
     <View style={styles.list}>

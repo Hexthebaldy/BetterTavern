@@ -307,9 +307,9 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `entities` | array of [`WorldEntityOut`](#worldentityout) | 没有退场的实体，按类型、重要程度（从高到低）、名字排序 |
+| `entities` | array of [`WorldEntityOut`](#worldentityout) | 没有退场的实体，按类型、最近一次出现的回合（从近到远）、首次出现的回合、名字排序 |
 | `links` | array of object | 实体之间的关系 `{"src_id", "rel", "dst_id"}`。`rel` 是 `located_in`（在某个地点）/ `held_by`（在某人手里）/ `member_of`（属于某个组织） |
-| `facts` | array of [`WorldFactOut`](#worldfactout) | 有效的事实，按重要程度从高到低排序 |
+| `facts` | array of [`WorldFactOut`](#worldfactout) | 有效的事实，按建立于第几回合从近到远排序 |
 | `hidden_facts` | integer | 被隐藏的秘密事实的数量；`reveal=true` 时为 0 |
 
 ### `WorldEntityOut`
@@ -322,7 +322,6 @@
 | `aliases` | array of string | 别名 |
 | `summary` | string | 描述 |
 | `data` | object | 按类型不同的属性，结构见 [数据模型：`entities.data`](../data-model/world.md#entitiesdata) |
-| `importance` | integer | 重要程度 0 到 5 |
 | `is_protagonist` | boolean | 是否是主角 |
 
 ### `WorldFactOut`
@@ -332,5 +331,4 @@
 | `id` | string | 事实 ID |
 | `text` | string | 事实内容 |
 | `entity_ids` | array of string | 涉及的实体 |
-| `importance` | integer | 重要程度 0 到 5 |
 | `secret` | boolean | 是否是秘密（主角一开始不知道的）。秘密只在 `reveal=true`，或者主角已经知道时才会返回 |

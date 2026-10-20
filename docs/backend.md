@@ -108,7 +108,7 @@ flowchart LR
 | 表 | 关键列 | 说明 |
 | --- | --- | --- |
 | `agent_runs` | id, playthrough\_id, turn\_id, agent, task, provider, model, prompt\_hash, input\_tokens, cached\_tokens, output\_tokens, reasoning\_tokens, latency\_ms, status, error\_class, result jsonb, created\_at | 账本：审计、幂等（同一 turn 同一节点已有结果就复用）、用量统计 |
-| `agent_steps` | id, run\_id, step, kind（model / tool）, tool, args jsonb, result jsonb, latency\_ms, tokens | 一次 agent 运行里的每一步，用于查问题和重放；参数和结果只存数据库，不写日志 |
+| `agent_steps` | run\_id, step（主键是这两列）, kind（model / tool）, tool, args jsonb, result jsonb, latency\_ms, tokens | 一次 agent 运行里的每一步，用于查问题和重放；参数和结果只存数据库，不写日志 |
 | `jobs` | id, kind, ordering\_key, payload jsonb, status, run\_after, attempts, locked\_by, locked\_at, last\_error | 任务队列。同一 ordering\_key（= playthrough\_id:lane）同时只有一个任务在执行；state、memory 两条队列各有各的键，互不阻塞（第 5 节） |
 | `idempotency_keys` | key, user\_id, request\_hash, turn\_id, created\_at | 客户端重试同一次提交不会生成两个 turn |
 

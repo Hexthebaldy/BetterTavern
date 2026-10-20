@@ -78,6 +78,10 @@ async def test_happy_path_events_and_commit() -> None:
     run = outcome.runs[0]
     assert run.agent == "director" and run.status == "ok" and run.usage is not None
     assert run.result["stage"] == "ok"
+    # 这次调用记成一步：模型写出的原文、用的提示词指纹
+    [step] = run.steps
+    assert step.kind == "model" and step.result["text"] == GOOD
+    assert step.args["prompt_hash"] == run.prompt_hash and step.usage is not None
     completed = events[-1][1]["turn"]
     assert isinstance(completed, dict) and completed["narrative"] == outcome.narrative
 
@@ -92,6 +96,12 @@ async def test_missing_options_go_through_repair() -> None:
         "options": [{"id": "o1", "text": "修一"}, {"id": "o2", "text": "修二"}],
         "source": "repaired",
     }
+    # 补选项单独记一次运行，和导演那次属于同一个回合
+    director, repair = store.committed[0].runs
+    assert director.agent == "director"
+    assert repair.agent == "options_repair" and repair.status == "ok"
+    assert repair.result == {"existing": 0, "produced": 2}
+    assert [s.result["text"] for s in repair.steps] == ['{"options": ["修一", "修二"]}']
 
 
 async def test_repair_failure_falls_back_to_default_options() -> None:
@@ -102,6 +112,9 @@ async def test_repair_failure_falls_back_to_default_options() -> None:
     await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
     assert store.committed[0].options_source == "fallback"
     assert len(store.committed[0].options) == 2
+    repair = store.committed[0].runs[1]
+    assert repair.status == "failed" and repair.error_class == "ProviderError"
+    assert repair.steps[0].result["error"] == "server_error"
 
 
 async def test_ending_keeps_only_the_narrative_and_ends_the_story() -> None:
@@ -182,6 +195,11 @@ async def test_error_before_text_fails_the_turn_without_retrying(
     assert not store.committed
     failure = store.failed[0]
     assert failure.reason == error_class.value and not failure.partial
+    # 没写成也记一次导演的运行，带上失败的那一步
+    [run] = failure.runs
+    assert run.agent == "director" and run.status == "failed"
+    assert run.error_class == error_class.value
+    assert [s.result["error"] for s in run.steps] == [error_class.value]
     assert events[-1] == ("turn.failed", failure.to_json())
 
 
@@ -378,6 +396,9 @@ async def test_opening_builds_world_and_falls_back_to_minimal_seed() -> None:
     assert names[:3] == ["turn.created", "world.building", "world.ready"]
     seed, source, run = store.saved_world[0]
     assert source == "minimal" and run is not None and run.status == "failed"
+    # 两次请求都记下了：模型写的原文和校验没过的原因
+    assert [s.result["text"] for s in run.steps] == ["不是 JSON", "还不是"]
+    assert all(s.result["invalid"] for s in run.steps)
     assert seed.protagonist.name == "林川"
     final_prompt = adapters["fake"].requests[-1].messages[-1].content
     assert "<opening-brief>" in final_prompt and "外乡人？" in final_prompt

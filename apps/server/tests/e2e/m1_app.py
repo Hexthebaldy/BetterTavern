@@ -66,15 +66,14 @@ SEED = {
             "summary": "酒馆帮工，想离开小镇",
             "attitude": "好奇",
             "speech_style": "嘴硬",
-            "importance": 5,
         },
-        {"name": "老周", "summary": "掌柜，消息灵通", "importance": 4},
+        {"name": "老周", "summary": "掌柜，消息灵通"},
     ],
     "locations": [{"name": "灰石酒馆", "summary": "昏暗，炉火噼啪作响"}],
     "items": [{"name": "无名信", "summary": "没写收件人的信", "holder": "随便写的名字"}],
     "facts": [
         {"text": "老周欠北境商会一笔钱", "about": ["老周"], "secret": True, "known_by": ["老周"]},
-        {"text": "北境商会的火漆是黑色的", "about": [], "importance": 3},
+        {"text": "北境商会的火漆是黑色的", "about": []},
     ],
     "opening": {
         "location": "灰石酒馆",

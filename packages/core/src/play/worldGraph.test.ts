@@ -12,7 +12,6 @@ function entity(id: string, name: string, extra: Partial<WorldEntity> = {}): Wor
     aliases: [],
     summary: "",
     data: {},
-    importance: 1,
     is_protagonist: false,
     ...extra,
   };
@@ -21,7 +20,7 @@ function entity(id: string, name: string, extra: Partial<WorldEntity> = {}): Wor
 describe("关系图布局", () => {
   const entities = [
     entity("me", "林川", { is_protagonist: true }),
-    entity("shen", "沈知微", { importance: 5 }),
+    entity("shen", "沈知微"),
     entity("inn", "渡口茶馆", { kind: "location" }),
     entity("letter", "那封信", { kind: "item" }),
     entity("lonely", "没有关系的人"),

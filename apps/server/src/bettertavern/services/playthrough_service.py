@@ -41,7 +41,6 @@ class WorldEntityView:
     aliases: list[str]
     summary: str
     data: dict[str, Any]
-    importance: int
     is_protagonist: bool
 
 
@@ -50,7 +49,6 @@ class WorldFactView:
     id: str
     text: str
     entity_ids: list[str]
-    importance: int
     secret: bool
 
 
@@ -207,7 +205,6 @@ class PlaythroughService:
                     aliases=list(e.aliases),
                     summary=e.summary,
                     data=dict(e.data),
-                    importance=e.importance,
                     is_protagonist=e.is_protagonist,
                 )
                 for e in snapshot.entities
@@ -220,7 +217,6 @@ class PlaythroughService:
                     id=f.id,
                     text=f.text,
                     entity_ids=[as_str(x) for x in f.entity_ids],
-                    importance=f.importance,
                     secret=f.visibility == "secret",
                 )
                 for f in visible

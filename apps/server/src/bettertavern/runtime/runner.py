@@ -18,10 +18,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import structlog
 
@@ -32,13 +33,18 @@ from bettertavern.domain.story.turn import OptionsSource, make_options
 from bettertavern.domain.world.seed import ProtagonistSeed, Seed, minimal_seed
 from bettertavern.providers import (
     CancelToken,
+    Message,
     ProviderError,
     ProviderHub,
+    ToolSpec,
 )
 from bettertavern.providers.errors import ErrorClass
 from bettertavern.providers.limiter import LimiterTimeout
 
+from .agent import ModelReply, StepLog, run_agent
 from .agents.director import AGENT as DIRECTOR_AGENT
+from .agents.director import SPEC as DIRECTOR_SPEC
+from .agents.options_repair import AGENT as OPTIONS_REPAIR_AGENT
 from .agents.options_repair import repair_options
 from .agents.world_builder import build_seed, failure_run
 from .context.assembler import AssembledContext, ContextAssembler, ContextTooLarge
@@ -337,6 +343,7 @@ class TurnRunner:
         seed: Seed | None = None
         source = "minimal"
         run: AgentRunRecord | None = None
+        steps = StepLog()
         started = self._clock()
         if route is not None and inp.card is not None:
             try:
@@ -354,20 +361,23 @@ class TurnRunner:
                             prompts=self._prompts_for(header),
                             negative_cache=self._hub.negative_cache,
                             cancel=cancel,
+                            steps=steps,
                         )
                 seed, source, run = result.seed, "world_builder", result.run
             except TimeoutError:
                 run = failure_run(
-                    route, "timeout", "WorldBuilder timed out", self._elapsed_ms(started)
+                    route, "timeout", "WorldBuilder timed out", self._elapsed_ms(started), steps
                 )
             except ProviderError as exc:
                 if exc.error_class is ErrorClass.CANCELLED:
                     raise
                 run = failure_run(
-                    route, exc.error_class.value, exc.message, self._elapsed_ms(started)
+                    route, exc.error_class.value, exc.message, self._elapsed_ms(started), steps
                 )
             except (StructuredOutputError, LimiterTimeout) as exc:
-                run = failure_run(route, type(exc).__name__, str(exc), self._elapsed_ms(started))
+                run = failure_run(
+                    route, type(exc).__name__, str(exc), self._elapsed_ms(started), steps
+                )
         cancel.raise_if_cancelled()
         if seed is None:
             if inp.card is not None:
@@ -420,22 +430,29 @@ class TurnRunner:
                 TurnFailure(code="CONTEXT_TOO_LARGE", message=str(exc), retryable=False)
             ) from exc
         self._log_context(context, route)
+        # 同一回合里超窗后重新装配再请求，也记在同一次运行里
+        steps = StepLog()
         attempt_route = route
         overflow_retried = False
         while True:
             try:
-                return await self._streamer.stream(
-                    attempt_route,
-                    context,
-                    lambda event, data: self._publish(stream, event, data),
-                    cancel,
+                generation = await self._call_director(
+                    header, attempt_route, context, stream, cancel, steps
                 )
+                generation.steps = steps.steps
+                return generation
             except GenerationLimitHit as hit:
-                raise TurnFailed(hit.failure) from hit
+                failure = hit.failure
+                run = self._failed_director_run(attempt_route, context, steps, failure.code.lower())
+                raise TurnFailed(dataclasses.replace(failure, runs=[run])) from hit
             except StreamFailed as failed:
                 error = failed.error
+                run = self._failed_director_run(
+                    attempt_route, context, steps, error.error_class.value
+                )
                 if failed.streamed:
-                    raise TurnFailed(failure_from_provider(error, failed.streamed)) from error
+                    failure = failure_from_provider(error, failed.streamed)
+                    raise TurnFailed(dataclasses.replace(failure, runs=[run])) from error
                 if error.error_class is ErrorClass.CONTEXT_OVERFLOW and not overflow_retried:
                     overflow_retried = True
                     limit = error.context_limit
@@ -456,15 +473,66 @@ class TurnRunner:
                             ctx, window, budget=None if learned else overflow_retry_budget(window)
                         )
                     except ContextTooLarge as exc:
-                        raise TurnFailed(failure_from_provider(error)) from exc
+                        failure = failure_from_provider(error)
+                        raise TurnFailed(dataclasses.replace(failure, runs=[run])) from exc
                     self._log_context(context, attempt_route)
                     continue
-                raise TurnFailed(failure_from_provider(error)) from error
+                failure = failure_from_provider(error)
+                raise TurnFailed(dataclasses.replace(failure, runs=[run])) from error
+
+    async def _call_director(
+        self,
+        header: TurnHeader,
+        route: ResolvedRoute,
+        context: AssembledContext,
+        stream: EventStream,
+        cancel: CancelToken,
+        steps: StepLog,
+    ) -> Generation:
+        """导演走执行循环（现在还没有召回工具，所以只调一次模型）。"""
+
+        async def call(
+            messages: Sequence[Message], tools: Sequence[ToolSpec] | None
+        ) -> ModelReply[Generation]:
+            generation = await self._streamer.stream(
+                route,
+                context,
+                lambda event, data: self._publish(stream, event, data),
+                cancel,
+                steps=steps,
+                messages=messages,
+                tools=tools,
+            )
+            # 叙述一旦推给了玩家，这一轮的输出就定下来了
+            return ModelReply(
+                value=generation, text=generation.raw, closed=bool(generation.streamed)
+            )
+
+        return await run_agent(
+            DIRECTOR_SPEC, context.messages, call, steps=steps, prompts=self._prompts_for(header)
+        )
+
+    def _failed_director_run(
+        self, route: ResolvedRoute, context: AssembledContext, steps: StepLog, error_class: str
+    ) -> AgentRunRecord:
+        """导演这次没写成：照样记一行 agent_runs，带上已经发生的步骤，方便查问题。"""
+        return AgentRunRecord(
+            agent=DIRECTOR_AGENT,
+            task=RouteTask.DIRECTOR.value,
+            status="cancelled" if error_class == ErrorClass.CANCELLED.value else "failed",
+            provider=route.provider,
+            model=route.model,
+            prompt_hash=context.fingerprint,
+            error_class=error_class,
+            result=self._context_result(route, context),
+            steps=steps.steps,
+        )
 
     async def _finalize(
         self, header: TurnHeader, generation: Generation, state_lag: bool
     ) -> TurnOutcome:
         route = generation.route
+        repair_runs: list[AgentRunRecord] = []
 
         async def repair(narrative: str, existing: Any) -> list[str]:
             # 修复用 repair 路由（没配置就沿用导演路由），只在确实缺选项时才解析
@@ -473,6 +541,29 @@ class TurnRunner:
                 or route
             )
             repair_started = self._clock()
+            steps = StepLog()
+
+            def record(
+                status: Literal["ok", "failed", "cancelled"],
+                error_class: str | None,
+                produced: int,
+            ) -> None:
+                step_usage = [s.usage for s in steps.steps if s.usage is not None]
+                repair_runs.append(
+                    AgentRunRecord(
+                        agent=OPTIONS_REPAIR_AGENT,
+                        task=RouteTask.REPAIR.value,
+                        status=status,
+                        provider=target.provider,
+                        model=target.model,
+                        usage=step_usage[-1] if step_usage else None,
+                        latency_ms=self._elapsed_ms(repair_started),
+                        error_class=error_class,
+                        result={"existing": len(list(existing)), "produced": produced},
+                        steps=steps.steps,
+                    )
+                )
+
             try:
                 options = await repair_options(
                     self._hub.adapter(target.provider),
@@ -483,8 +574,20 @@ class TurnRunner:
                     narrative=narrative,
                     existing=list(existing),
                     max_tokens=target.params.max_tokens_for(RouteTask.REPAIR),
+                    steps=steps,
                 )
-            except BaseException as exc:
+            except asyncio.CancelledError:
+                # 超过时限被取消（或者进程正在关闭）
+                record("cancelled", None, 0)
+                log.warning(
+                    "options.repair_failed",
+                    model=target.model,
+                    error_class="CancelledError",
+                    duration_ms=self._elapsed_ms(repair_started),
+                )
+                raise
+            except Exception as exc:
+                record("failed", type(exc).__name__, 0)
                 log.warning(
                     "options.repair_failed",
                     model=target.model,
@@ -492,6 +595,7 @@ class TurnRunner:
                     duration_ms=self._elapsed_ms(repair_started),
                 )
                 raise
+            record("ok", None, len(options))
             log.info(
                 "options.repair",
                 model=target.model,
@@ -534,7 +638,7 @@ class TurnRunner:
             options_source=_STAGE_TO_SOURCE[outcome.stage].value,
             usage=generation.usage,
             state_lag=state_lag,
-            runs=[run],
+            runs=[run, *repair_runs],
         )
 
     def _finalize_ending(self, generation: Generation, state_lag: bool) -> TurnOutcome:
@@ -603,14 +707,8 @@ class TurnRunner:
         extra: dict[str, Any] | None = None,
     ) -> AgentRunRecord:
         context = generation.context
-        result: dict[str, Any] = {
-            "route_id": generation.route.route_id,
-            "finish_reason": generation.finish_reason,
-            "estimated_tokens": context.estimated_tokens,
-            "usage_ratio": round(context.usage_ratio, 4),
-            "dropped_turns": context.dropped_turns,
-            "prompt_versions": context.prompt_versions,
-        }
+        result = self._context_result(generation.route, context)
+        result["finish_reason"] = generation.finish_reason
         result.update(extra or {})
         return AgentRunRecord(
             agent=DIRECTOR_AGENT,
@@ -624,4 +722,14 @@ class TurnRunner:
             latency_ms=generation.latency_ms,
             error_class=error_class,
             result=result,
+            steps=generation.steps,
         )
+
+    def _context_result(self, route: ResolvedRoute, context: AssembledContext) -> dict[str, Any]:
+        return {
+            "route_id": route.route_id,
+            "estimated_tokens": context.estimated_tokens,
+            "usage_ratio": round(context.usage_ratio, 4),
+            "dropped_turns": context.dropped_turns,
+            "prompt_versions": context.prompt_versions,
+        }

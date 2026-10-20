@@ -140,6 +140,19 @@ export type PlaythroughDetail = {
   turns: Turn[];
 };
 
+/** 一次运行里的一步：调一次模型或用一次工具。不显示故事时 result 里没有 text，只有 text_chars */
+export type Step = {
+  step: number;
+  kind: "model" | "tool";
+  tool: string | null;
+  args: Record<string, unknown>;
+  result: Record<string, unknown>;
+  latency_ms: number | null;
+  input_tokens: number | null;
+  cached_tokens: number | null;
+  output_tokens: number | null;
+};
+
 export type Run = RunSummary & {
   id: string;
   agent: string;
@@ -147,6 +160,7 @@ export type Run = RunSummary & {
   prompt_hash: string | null;
   result: Record<string, unknown> | null;
   created_at: number;
+  steps: Step[];
 };
 
 export type Span = {

@@ -1,0 +1,8 @@
+{
+  "descriptions": {},
+  "errors": {
+    "unknown_tool": "没有名为 {name} 的工具，请不要再调用它。",
+    "bad_arguments": "参数不对：{detail}。请改正后再调用。",
+    "failed": "没有执行成功：{detail}"
+  }
+}

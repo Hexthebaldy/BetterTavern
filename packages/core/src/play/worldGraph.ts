@@ -1,5 +1,6 @@
 /**
  * 世界状态面板的关系图布局：连接最多的实体放在中间，其余的绕成一圈，主角放在左上。
+ * 连接一样多时按服务端给的顺序（最近出现过的排前面）。
  * 只画出现在关系里的实体，最多 8 个（主角一定在）。纯函数，坐标以画布左上角为原点。
  */
 
@@ -50,8 +51,10 @@ export function layoutGraph(
     degree.set(l.src_id, (degree.get(l.src_id) ?? 0) + 1);
     degree.set(l.dst_id, (degree.get(l.dst_id) ?? 0) + 1);
   }
-  const score = (id: string): number => (degree.get(id) ?? 0) * 10 + (byId.get(id)?.importance ?? 0);
-  const ranked = [...degree.keys()].sort((a, b) => score(b) - score(a) || a.localeCompare(b));
+  const order = new Map(entities.map((e, i) => [e.id, i]));
+  const ranked = [...degree.keys()].sort(
+    (a, b) => (degree.get(b) ?? 0) - (degree.get(a) ?? 0) || (order.get(a) ?? 0) - (order.get(b) ?? 0),
+  );
   const me = entities.find((e) => e.is_protagonist && degree.has(e.id));
   const kept = ranked.slice(0, MAX_NODES);
   if (me && !kept.includes(me.id)) kept[kept.length - 1] = me.id;

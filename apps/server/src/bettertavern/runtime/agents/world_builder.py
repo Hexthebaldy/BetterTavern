@@ -6,19 +6,34 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
+from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.scenario.card import CharacterCard, LoreEntry, apply_macros
 from bettertavern.domain.world.seed import Seed, normalize_seed
-from bettertavern.providers import CancelToken, Message, NegativeCapabilityCache, ProviderAdapter
+from bettertavern.providers import (
+    CancelToken,
+    Message,
+    NegativeCapabilityCache,
+    ProviderAdapter,
+    ToolSpec,
+)
 from bettertavern.providers.capabilities import StructuredMode
+from bettertavern.runtime.agent import AgentSpec, ModelReply, OutputKind, StepLog, run_agent
 from bettertavern.runtime.context.fences import sanitize_for_fence
 from bettertavern.runtime.ports import AgentRunRecord, WorldBuildInput
 from bettertavern.runtime.prompts import PromptLibrary
-from bettertavern.runtime.protocol.structured import run_structured, schema_text
+from bettertavern.runtime.protocol.structured import (
+    StructuredResult,
+    run_structured,
+    schema_text,
+)
 from bettertavern.runtime.routing import ResolvedRoute
 
 AGENT = "world_builder"
+
+SPEC = AgentSpec(name=AGENT, task=RouteTask.WORLD_BUILDER, output=OutputKind.STRUCTURED)
 BOOK_ENTRIES = 40
 BOOK_ENTRY_CHARS = 800
 BOOK_TOTAL_CHARS = 12_000
@@ -92,7 +107,10 @@ async def build_seed(
     prompts: PromptLibrary,
     negative_cache: NegativeCapabilityCache | None = None,
     cancel: CancelToken | None = None,
+    steps: StepLog | None = None,
 ) -> WorldBuildResult:
+    """steps 由调用方给，失败时调用方也能拿到已经发生的步骤。"""
+    steps = steps if steps is not None else StepLog()
     context = render_prompt_context(card, inp)
     # 字段说明和工具说明随这一局的语言（runtime/prompts/<lang>/schema/seed.json）
     schema_data = prompts.data("schema/seed")
@@ -107,23 +125,31 @@ async def build_seed(
         rendered_hash.append(prompt.hash)
         return [Message(role="user", content=prompt.text)]
 
-    result = await run_structured(
-        adapter,
-        route.credential,
-        route.caps,
-        model=route.model,
-        output=Seed,
-        name="seed",
-        description=schema_data["description"],
-        build_messages=build_messages,
-        prompts=prompts,
-        schema_notes=notes,
-        max_tokens=route.max_tokens,
-        temperature=route.temperature,
-        reasoning=route.reasoning(),
-        negative_cache=negative_cache,
-        cancel=cancel,
-    )
+    async def call(
+        _messages: Sequence[Message], _tools: Sequence[ToolSpec] | None
+    ) -> ModelReply[StructuredResult[Seed]]:
+        # 消息按结构化输出的方式现拼（build_messages），所以不用循环传进来的消息
+        value = await run_structured(
+            adapter,
+            route.credential,
+            route.caps,
+            model=route.model,
+            output=Seed,
+            name="seed",
+            description=schema_data["description"],
+            build_messages=build_messages,
+            prompts=prompts,
+            schema_notes=notes,
+            max_tokens=route.max_tokens,
+            temperature=route.temperature,
+            reasoning=route.reasoning(),
+            negative_cache=negative_cache,
+            cancel=cancel,
+            steps=steps,
+        )
+        return ModelReply(value=value)
+
+    result = await run_agent(SPEC, [], call, steps=steps, prompts=prompts)
     seed = normalize_seed(result.value, protagonist_name=inp.protagonist_name, card_name=card.name)
     run = AgentRunRecord(
         agent=AGENT,
@@ -141,12 +167,17 @@ async def build_seed(
             "locations": len(seed.locations),
             "facts": len(seed.facts),
         },
+        steps=steps.steps,
     )
     return WorldBuildResult(seed=seed, run=run)
 
 
 def failure_run(
-    route: ResolvedRoute | None, error_class: str, detail: str, latency_ms: int
+    route: ResolvedRoute | None,
+    error_class: str,
+    detail: str,
+    latency_ms: int,
+    steps: StepLog | None = None,
 ) -> AgentRunRecord:
     return AgentRunRecord(
         agent=AGENT,
@@ -157,4 +188,5 @@ def failure_run(
         latency_ms=latency_ms,
         error_class=error_class,
         result={"detail": detail[:300]},
+        steps=steps.steps if steps is not None else (),
     )

@@ -1,8 +1,8 @@
 """状态块 <world-state>：把世界状态按“场景、主角、在场人物、其他人物、玩家已知、角色私有”排版。
 标签和标点随这一局的语言（runtime/prompts/<lang>/state_block.json），排版规则相同。
 
-M1 是简化版：没有别名扫描和 T2/T3 分层（M2 的场景解析器补上），只按场景取在场的部分，
-其余重要实体进名册（一行）。预算不够时按顺序降级：名册 → 事实 → 在场人物的详情。
+现在是简化版：没有名字匹配和一跳邻居这两层（agent runtime 阶段 2 补上），只按场景取在场的部分，
+其余钢笔实体按最近出现的回合进名册（一行）。预算不够时按顺序删减：名册 → 事实 → 在场人物的详情。
 所有实体文字都先过 sanitize_for_fence()；输出是确定性的（同样的输入逐字节相同）。
 """
 
@@ -87,10 +87,9 @@ def render_state_block(
     shown = present_ids | ({hero.id} if hero else set()) | ({location.id} if location else set())
     if world_entity is not None:
         shown.add(world_entity.id)
-    roster = [
-        e for e in world.entities if e.id not in shown and e.importance >= 2 and e.canon == "canon"
-    ]
-    roster.sort(key=lambda e: (-e.importance, e.kind, e.name))
+    # 名册：其余钢笔实体，最近出现过的排前面
+    roster = [e for e in world.entities if e.id not in shown and e.canon == "canon"]
+    roster.sort(key=lambda e: (-e.last_seen_seq, e.first_seq, e.kind, e.name))
     roster_lines = [
         "- "
         + _describe(
@@ -102,10 +101,12 @@ def render_state_block(
     ]
 
     hero_id = hero.id if hero else ""
+    # 事实：涉及在场人物或主角的排前面，其次是建立得越晚越靠前
     relevant = sorted(
         world.facts,
         key=lambda f: (
-            -(f.importance + (2 if set(f.entity_ids) & (present_ids | {hero_id}) else 0)),
+            0 if set(f.entity_ids) & (present_ids | {hero_id}) else 1,
+            -f.created_seq,
             f.id,
         ),
     )

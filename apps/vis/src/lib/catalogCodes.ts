@@ -85,10 +85,23 @@ export const ERROR_CLASSES: Record<string, string> = {
   narrative_missing: "没写出叙述",
   StructuredOutputError: "结构化输出失败",
   LimiterTimeout: "等并发槽位超时",
+  ProviderError: "调模型出错",
+  TimeoutError: "超时",
+  CancelledError: "被取消",
+  slot_timeout: "等并发槽位超时",
+  too_long: "写得太长，被截断",
+};
+
+/** agent 运行里一步的出错原因：工具的三种，其余同 provider 的错误类别 */
+const STEP_ERRORS: Record<string, string> = {
+  unknown_tool: "没有这个工具",
+  bad_arguments: "参数不对",
+  failed: "工具没执行成功",
 };
 
 export const errorCode = (code: unknown): string => ERROR_CODES[str(code)] ?? str(code);
 export const errorClass = (value: unknown): string => ERROR_CLASSES[str(value)] ?? str(value);
+export const stepError = (value: unknown): string => STEP_ERRORS[str(value)] ?? errorClass(value);
 
 // ---- 接口 ------------------------------------------------------------------------------
 

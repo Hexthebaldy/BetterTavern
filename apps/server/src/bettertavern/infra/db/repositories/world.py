@@ -1,4 +1,7 @@
-"""世界状态：entities、entity_links、facts。M1 只有开局写入和读取；补丁与撤销日志随 M2 加入。"""
+"""世界状态：entities、entity_links、facts。
+
+现在只有开局写入和读取；修改与撤销日志随 agent runtime 阶段 2 加入。
+"""
 
 from __future__ import annotations
 
@@ -18,7 +21,6 @@ class EntityRow:
     aliases: tuple[str, ...]
     summary: str
     data: dict[str, Any]
-    importance: int
     canon: str
     is_protagonist: bool
     first_seq: int
@@ -33,7 +35,6 @@ class EntityRow:
             aliases=tuple(row["aliases"] or ()),
             summary=row["summary"],
             data=as_json(row["data"], {}),
-            importance=int(row["importance"]),
             canon=row["canon"],
             is_protagonist=bool(row["is_protagonist"]),
             first_seq=int(row["first_seq"]),
@@ -53,9 +54,9 @@ class FactRow:
     id: str
     text: str
     entity_ids: tuple[str, ...]
-    importance: int
     visibility: str
     known_by: tuple[str, ...]
+    created_seq: int
 
 
 async def insert_entity(
@@ -68,7 +69,6 @@ async def insert_entity(
     aliases: list[str],
     summary: str,
     data: dict[str, Any],
-    importance: int,
     is_protagonist: bool,
     seq: int = 0,
 ) -> str:
@@ -76,9 +76,9 @@ async def insert_entity(
         conn,
         """
         INSERT INTO entities (playthrough_id, kind, name, name_norm, aliases, summary, data,
-                              importance, canon, is_protagonist, first_seq, last_seen_seq)
+                              canon, is_protagonist, first_seq, last_seen_seq)
         VALUES (:pt, :kind, :name, :norm, CAST(:aliases AS text[]), :summary,
-                CAST(:data AS jsonb), :importance, 'canon', :hero, :seq, :seq)
+                CAST(:data AS jsonb), 'canon', :hero, :seq, :seq)
         RETURNING id
         """,
         {
@@ -89,7 +89,6 @@ async def insert_entity(
             "aliases": aliases,
             "summary": summary,
             "data": dumps(data),
-            "importance": importance,
             "hero": is_protagonist,
             "seq": seq,
         },
@@ -126,7 +125,6 @@ async def insert_fact(
     playthrough_id: str,
     text: str,
     entity_ids: list[str],
-    importance: int,
     visibility: str,
     known_by: list[str],
     seq: int = 0,
@@ -134,17 +132,14 @@ async def insert_fact(
     row = await fetch_one(
         conn,
         """
-        INSERT INTO facts (playthrough_id, text, entity_ids, importance, visibility, known_by,
-                           created_seq)
-        VALUES (:pt, :text, CAST(:entities AS uuid[]), :importance, :visibility,
-                CAST(:known AS uuid[]), :seq)
+        INSERT INTO facts (playthrough_id, text, entity_ids, visibility, known_by, created_seq)
+        VALUES (:pt, :text, CAST(:entities AS uuid[]), :visibility, CAST(:known AS uuid[]), :seq)
         RETURNING id
         """,
         {
             "pt": playthrough_id,
             "text": text,
             "entities": entity_ids,
-            "importance": importance,
             "visibility": visibility,
             "known": known_by,
             "seq": seq,
@@ -158,10 +153,10 @@ async def load_entities(conn: AsyncConnection, playthrough_id: str) -> list[Enti
     rows = await fetch_all(
         conn,
         """
-        SELECT id, kind, name, aliases, summary, data, importance, canon, is_protagonist,
+        SELECT id, kind, name, aliases, summary, data, canon, is_protagonist,
                first_seq, last_seen_seq
         FROM entities WHERE playthrough_id = :pt AND NOT retired
-        ORDER BY kind, importance DESC, name_norm
+        ORDER BY kind, last_seen_seq DESC, first_seq, name_norm
         """,
         {"pt": playthrough_id},
     )
@@ -185,9 +180,9 @@ async def load_facts(conn: AsyncConnection, playthrough_id: str) -> list[FactRow
     rows = await fetch_all(
         conn,
         """
-        SELECT id, text, entity_ids, importance, visibility, known_by FROM facts
+        SELECT id, text, entity_ids, visibility, known_by, created_seq FROM facts
         WHERE playthrough_id = :pt AND status = 'active'
-        ORDER BY importance DESC, created_seq, id
+        ORDER BY created_seq DESC, id
         """,
         {"pt": playthrough_id},
     )
@@ -196,9 +191,9 @@ async def load_facts(conn: AsyncConnection, playthrough_id: str) -> list[FactRow
             id=str(r["id"]),
             text=r["text"],
             entity_ids=tuple(str(x) for x in r["entity_ids"] or ()),
-            importance=int(r["importance"]),
             visibility=r["visibility"],
             known_by=tuple(str(x) for x in r["known_by"] or ()),
+            created_seq=int(r["created_seq"]),
         )
         for r in rows
     ]

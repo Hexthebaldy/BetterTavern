@@ -1,13 +1,17 @@
-"""agent_runs 账本：审计、幂等与用量统计。result 里不放故事全文。"""
+"""agent_runs 账本：审计、幂等与用量统计。result 里不放故事全文。
+
+agent_steps：一次运行里的每一步（调模型、用工具），参数和结果里有故事文字，只存数据库、不写日志。
+"""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from bettertavern.infra.db.sqlutil import dumps, fetch_one
+from bettertavern.infra.db.sqlutil import dumps, execute, fetch_one
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,3 +69,43 @@ async def insert_agent_run(conn: AsyncConnection, run: AgentRunInsert) -> str:
     )
     assert row is not None
     return str(row["id"])
+
+
+@dataclass(frozen=True, slots=True)
+class AgentStepInsert:
+    kind: Literal["model", "tool"]
+    tool: str | None
+    args: dict[str, Any]
+    result: dict[str, Any]
+    latency_ms: int | None = None
+    input_tokens: int | None = None
+    cached_tokens: int | None = None
+    output_tokens: int | None = None
+
+
+async def insert_agent_steps(
+    conn: AsyncConnection, run_id: str, steps: Sequence[AgentStepInsert]
+) -> None:
+    """按顺序写入，step 从 0 开始。一次运行通常只有一到几步，逐条插入就够了。"""
+    for index, step in enumerate(steps):
+        await execute(
+            conn,
+            """
+            INSERT INTO agent_steps (run_id, step, kind, tool, args, result, latency_ms,
+                                     input_tokens, cached_tokens, output_tokens)
+            VALUES (:run, :step, :kind, :tool, CAST(:args AS jsonb), CAST(:result AS jsonb),
+                    :latency, :input, :cached, :output)
+            """,
+            {
+                "run": run_id,
+                "step": index,
+                "kind": step.kind,
+                "tool": step.tool,
+                "args": dumps(step.args),
+                "result": dumps(step.result),
+                "latency": step.latency_ms,
+                "input": step.input_tokens,
+                "cached": step.cached_tokens,
+                "output": step.output_tokens,
+            },
+        )

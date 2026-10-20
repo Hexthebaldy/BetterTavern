@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,15 +22,18 @@ import structlog
 from bettertavern.providers import (
     CancelToken,
     Done,
+    Message,
     ProviderError,
     ProviderHub,
     TextDelta,
+    ToolSpec,
     Usage,
     UsageEvent,
 )
 from bettertavern.providers.errors import ErrorClass
 from bettertavern.providers.limiter import LimiterTimeout
 
+from .agent import AgentStep, StepLog, clip_text
 from .agents.director import director_request
 from .context.assembler import AssembledContext
 from .ports import TurnFailure
@@ -73,6 +76,8 @@ class Generation:
     route: ResolvedRoute
     context: AssembledContext
     latency_ms: int = 0
+    raw: str = ""  # 模型写出的原文（含标签），记进 agent_steps
+    steps: tuple[AgentStep, ...] = ()  # 这一回合导演的每一步，由 runner 填上
 
 
 def failure_from_provider(error: ProviderError, narrative: str = "") -> TurnFailure:
@@ -186,12 +191,18 @@ class DirectorStreamer:
         context: AssembledContext,
         publish: Publish,
         cancel: CancelToken,
+        *,
+        steps: StepLog,
+        messages: Sequence[Message] | None = None,
+        tools: Sequence[ToolSpec] | None = None,
     ) -> Generation:
+        """messages 不给就用装配好的上下文；这次调用记成 steps 里的一步（成功、失败都记）。"""
         adapter = self._hub.adapter(route.provider)
-        request = director_request(context, route)
+        request = director_request(context.messages if messages is None else messages, route, tools)
         parser = DirectorStreamParser()
         pending: list[str] = []
         streamed: list[str] = []
+        raw: list[str] = []
         usage: Usage | None = None
         finish_reason: str | None = None
         ttft_ms: int | None = None
@@ -201,6 +212,20 @@ class DirectorStreamer:
         max_chars = max(route.max_tokens, 1) * CHARS_PER_TOKEN_CAP
         received = 0
         limit: str | None = None  # 碰到了哪条上限：timeout / too_long
+        step_args = {
+            "provider": route.provider,
+            "model": route.model,
+            "route_id": route.route_id,
+            "messages": len(request.messages),
+            "tools": [t.name for t in tools or ()],
+            "prompt_hash": context.fingerprint,
+            "estimated_tokens": context.estimated_tokens,
+        }
+
+        def record(result: dict[str, object]) -> None:
+            steps.model(
+                args=step_args, result=result, latency_ms=self._elapsed_ms(started), usage=usage
+            )
 
         async def flush() -> None:
             nonlocal last_flush
@@ -247,6 +272,7 @@ class DirectorStreamer:
                                 if received > max_chars:
                                     limit = "too_long"
                                     break
+                                raw.append(event.text)
                                 pending.extend(parser.feed(event.text))
                                 if pending and self._clock() - last_flush >= self._delta_batch_s:
                                     await flush()
@@ -266,6 +292,7 @@ class DirectorStreamer:
                     limit = "timeout"
         except LimiterTimeout as exc:
             log.warning("provider.slot_timeout", duration_ms=self._elapsed_ms(started))
+            record({"error": "slot_timeout"})
             raise StreamFailed(
                 ProviderError(
                     ErrorClass.RATE_LIMIT, "Timed out waiting for a model concurrency slot"
@@ -284,6 +311,14 @@ class DirectorStreamer:
                 streamed_chars=len("".join(streamed)),
                 duration_ms=self._elapsed_ms(started),
             )
+            record(
+                {
+                    "error": exc.error_class.value,
+                    "status": exc.status,
+                    "partial": bool(streamed),
+                    "text": clip_text("".join(raw)),
+                }
+            )
             raise StreamFailed(exc, "".join(streamed)) from exc
         if limit is not None:
             await flush()
@@ -298,6 +333,7 @@ class DirectorStreamer:
                 streamed_chars=len(narrative),
                 duration_ms=self._elapsed_ms(started),
             )
+            record({"error": limit, "text": clip_text("".join(raw))})
             raise GenerationLimitHit(
                 limit_failure(limit, narrative, max_duration_s=self._max_duration_s)
             )
@@ -313,6 +349,9 @@ class DirectorStreamer:
             completion_tokens=usage.completion if usage else None,
             reasoning_tokens=usage.reasoning if usage else None,
             streamed_chars=len("".join(streamed)),
+        )
+        record(
+            {"text": clip_text("".join(raw)), "finish_reason": finish_reason, "ttft_ms": ttft_ms}
         )
         tail, parse = parser.finish()
         pending.extend(tail)
@@ -331,4 +370,5 @@ class DirectorStreamer:
             route=route,
             context=context,
             latency_ms=self._elapsed_ms(started),
+            raw="".join(raw),
         )

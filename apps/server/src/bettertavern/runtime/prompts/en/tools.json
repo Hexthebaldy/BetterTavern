@@ -1,0 +1,8 @@
+{
+  "descriptions": {},
+  "errors": {
+    "unknown_tool": "There is no tool named {name}. Don't call it again.",
+    "bad_arguments": "The arguments are wrong: {detail}. Fix them and call again.",
+    "failed": "The call didn't succeed: {detail}"
+  }
+}

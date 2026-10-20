@@ -2,6 +2,7 @@
 
 所有阶梯的输出都经 pydantic 校验。校验失败：带错误信息在同一级重试 1 次；仍失败就降一级再试 1 次，
 并把该凭据加模型的这一级记入负缓存（1 小时）。厂商明确报“不支持”时直接降级并记负缓存。
+每次请求都记成 `steps` 里的一步（docs/agent-runtime.md 第 5 节“记录与重放”）。
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from bettertavern.providers import (
 )
 from bettertavern.providers.capabilities import StructuredMode
 from bettertavern.providers.errors import ErrorClass
+from bettertavern.runtime.agent.steps import StepLog, clip_text
 from bettertavern.runtime.prompts import PromptLibrary
 from bettertavern.runtime.protocol.json_extract import extract_json_object
 
@@ -112,6 +114,7 @@ async def run_structured[T: BaseModel](
     reasoning: ReasoningConfig | None,
     negative_cache: NegativeCapabilityCache | None = None,
     cancel: CancelToken | None = None,
+    steps: StepLog | None = None,
     clock: Callable[[], float] = time.perf_counter,
 ) -> StructuredResult[T]:
     disabled: frozenset[str] = (
@@ -152,14 +155,23 @@ async def run_structured[T: BaseModel](
                 ),
                 tool_choice=ForcedTool(name) if mode == "tool_call" else None,
             )
+            step_args = {"model": model, "mode": mode, "attempt": attempts}
+            call_started = clock()
             try:
                 result = await adapter.complete(request, cred, caps, cancel=cancel)
             except ProviderError as exc:
+                if steps is not None:
+                    steps.model(
+                        args=step_args,
+                        result={"error": exc.error_class.value, "status": exc.status},
+                        latency_ms=int((clock() - call_started) * 1000),
+                    )
                 if exc.error_class is ErrorClass.UNSUPPORTED_FEATURE and mode != "prompt_json":
                     last_error = f"{mode} not supported: {exc.message[:120]}"
                     unsupported = True
                     break
                 raise
+            call_ms = int((clock() - call_started) * 1000)
             usage = _merge_usage(usage, result.usage)
             if mode == "tool_call":
                 call = next((c for c in result.tool_calls if c.name == name), None)
@@ -173,6 +185,13 @@ async def run_structured[T: BaseModel](
                 value = output.model_validate(data)
             except (ValidationError, ValueError) as exc:
                 last_error = _error_summary(exc)
+                if steps is not None:
+                    steps.model(
+                        args=step_args,
+                        result={"text": clip_text(raw), "invalid": last_error},
+                        latency_ms=call_ms,
+                        usage=result.usage,
+                    )
                 retry = prompts.render("structured_retry", error=last_error)
                 messages = [
                     *messages,
@@ -180,6 +199,13 @@ async def run_structured[T: BaseModel](
                     Message(role="user", content=retry.text),
                 ]
                 continue
+            if steps is not None:
+                steps.model(
+                    args=step_args,
+                    result={"text": clip_text(raw)},
+                    latency_ms=call_ms,
+                    usage=result.usage,
+                )
             return StructuredResult(
                 value=value,
                 mode=mode,

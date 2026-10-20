@@ -904,6 +904,30 @@ table.list tr.selected td {
   color: var(--mut);
 }
 
+.runsteps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.runstep {
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  font-size: 13px;
+}
+
+.runstep summary {
+  cursor: pointer;
+}
+
+.runstep .story {
+  margin-top: 8px;
+  font-size: 13px;
+  max-height: 360px;
+  overflow: auto;
+}
+
 .tokenbar {
   display: flex;
   height: 10px;

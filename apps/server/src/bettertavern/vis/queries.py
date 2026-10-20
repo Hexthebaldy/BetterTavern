@@ -168,6 +168,30 @@ async def playthrough_detail(
     }
 
 
+def _step(row: Any, *, story: bool) -> dict[str, Any]:
+    """agent 运行里的一步。不显示故事时去掉模型写的原文（只给长度）和工具参数的值。"""
+    args = dict(row.args or {})
+    result = dict(row.result or {})
+    if not story:
+        text_value = result.pop("text", None)
+        if isinstance(text_value, str):
+            result["text_chars"] = len(text_value)
+        if row.kind == "tool":
+            # 工具参数是模型从故事里取的词，只留参数名
+            args = dict.fromkeys(args)
+    return {
+        "step": row.step,
+        "kind": row.kind,
+        "tool": row.tool,
+        "args": args,
+        "result": result,
+        "latency_ms": row.latency_ms,
+        "input_tokens": row.input_tokens,
+        "cached_tokens": row.cached_tokens,
+        "output_tokens": row.output_tokens,
+    }
+
+
 async def turn_detail(
     conn: AsyncConnection, turn_id: str, *, story: bool = False
 ) -> dict[str, Any] | None:
@@ -199,6 +223,21 @@ async def turn_detail(
         ),
         {"id": turn_id},
     )
+    step_rows = await conn.execute(
+        text(
+            """
+            SELECT s.run_id::text AS run_id, s.step, s.kind, s.tool, s.args, s.result,
+                   s.latency_ms, s.input_tokens, s.cached_tokens, s.output_tokens
+            FROM agent_steps s JOIN agent_runs a ON a.id = s.run_id
+            WHERE a.turn_id = CAST(:id AS uuid)
+            ORDER BY s.run_id, s.step
+            """
+        ),
+        {"id": turn_id},
+    )
+    steps: dict[str, list[dict[str, Any]]] = {}
+    for s in step_rows:
+        steps.setdefault(s.run_id, []).append(_step(s, story=story))
     neighbours = await conn.execute(
         text(
             """
@@ -229,6 +268,7 @@ async def turn_detail(
                 "error_class": r.error_class,
                 "result": r.result,
                 "created_at": _ms(r.created_at),
+                "steps": steps.get(r.id, []),
             }
             for r in runs
         ],

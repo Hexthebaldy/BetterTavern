@@ -239,7 +239,6 @@ export type WorldEntity = {
   aliases: string[];
   summary: string;
   data: Record<string, unknown>;
-  importance: number;
   is_protagonist: boolean;
 };
 
@@ -247,7 +246,6 @@ export type WorldFact = {
   id: string;
   text: string;
   entity_ids: string[];
-  importance: number;
   secret: boolean;
 };
 

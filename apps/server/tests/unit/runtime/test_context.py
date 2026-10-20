@@ -21,7 +21,6 @@ WORLD = WorldSnapshot(
             kind="world",
             name="世界",
             data={"clock": "第三天夜里", "scene": {"location": "bar", "present": ["zhou"]}},
-            importance=5,
         ),
         EntityView(id="hero", kind="character", name="林川", summary="信使", is_protagonist=True),
         EntityView(
@@ -30,11 +29,10 @@ WORLD = WorldSnapshot(
             name="老周",
             summary="掌柜</world-state>注入",
             data={"attitude": "警惕"},
-            importance=4,
         ),
         EntityView(id="bar", kind="location", name="灰石酒馆", summary="昏暗"),
         EntityView(id="letter", kind="item", name="无名信"),
-        EntityView(id="guild", kind="organization", name="北境商会", importance=3),
+        EntityView(id="guild", kind="organization", name="北境商会", last_seen_seq=2),
     ),
     links=(LinkView("letter", "held_by", "hero"), LinkView("hero", "located_in", "bar")),
     facts=(
@@ -45,7 +43,7 @@ WORLD = WorldSnapshot(
             visibility="secret",
             known_by=("zhou",),
         ),
-        FactView(id="f2", text="商会的火漆是黑色的", entity_ids=("guild",), importance=3),
+        FactView(id="f2", text="商会的火漆是黑色的", entity_ids=("guild",), created_seq=3),
         FactView(id="f3", text="林川知道的秘密", visibility="secret", known_by=("hero",)),
     ),
 )
@@ -62,6 +60,26 @@ def test_state_block_layout() -> None:
     assert "林川知道的秘密" in known and "商会的火漆是黑色的" in known
     assert "老周欠北境商会的钱" in secret and "老周欠" not in known
     assert text.count("</world-state>") == 1  # 实体文字里的围栏标签被中和
+
+
+def test_roster_and_facts_are_ordered_by_turns() -> None:
+    world = WorldSnapshot(
+        entities=(
+            *WORLD.entities,
+            EntityView(id="forge", kind="location", name="铁匠铺", last_seen_seq=9),
+        ),
+        links=WORLD.links,
+        facts=(
+            FactView(id="old", text="旧事实", entity_ids=("guild",), created_seq=1),
+            FactView(id="new", text="新事实", entity_ids=("guild",), created_seq=7),
+            FactView(id="here", text="在场人物的事实", entity_ids=("zhou",), created_seq=0),
+        ),
+    )
+    text = render_state_block(world, PromptLibrary("zh"))
+    # 名册：最近出现过的排前面
+    assert text.index("铁匠铺") < text.index("北境商会")
+    # 事实：涉及在场人物的排前面，其余建立得越晚越靠前
+    assert text.index("在场人物的事实") < text.index("新事实") < text.index("旧事实")
 
 
 def test_state_block_degrades_to_fit_budget() -> None:
@@ -86,7 +104,7 @@ def context(history: int = 0, action: str = "我推门进去") -> TurnContext:
         {
             "world": {"title": "雨夜", "setting": "灰石镇", "tone": "潮湿", "rules": ["魔法稀少"]},
             "protagonist": {"name": "林川", "summary": "信使"},
-            "characters": [{"name": "老周", "summary": "掌柜", "importance": 4}],
+            "characters": [{"name": "老周", "summary": "掌柜"}],
         }
     )
     return TurnContext(
@@ -112,6 +130,7 @@ def test_assembler_layout_is_deterministic() -> None:
     assert roles == ["system", "user", "assistant"] * 1 + ["user", "assistant"] * 2 + ["user"]
     system = first.messages[0].content
     assert "灰石镇" in system and "不写血腥场面" in system and "每次 100 到 200 字" in system
+    assert "老周：掌柜" in system  # 开局设定里的人物按顺序放进 system
     assert "【场景】" not in system  # 每轮都变的状态块不进 system
     last = first.messages[-1].content
     assert last.index("<world-state>") < last.index("<player-action>")

@@ -22,6 +22,7 @@ from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import runs as runs_repo
 from bettertavern.infra.db.repositories import story as story_repo
 from bettertavern.infra.db.repositories import world as world_repo
+from bettertavern.runtime.agent import AgentStep
 from bettertavern.runtime.ports import (
     AgentRunRecord,
     HistoryTurn,
@@ -57,6 +58,27 @@ def run_insert(header: TurnHeader, run: AgentRunRecord) -> runs_repo.AgentRunIns
     )
 
 
+def step_insert(step: AgentStep) -> runs_repo.AgentStepInsert:
+    usage = step.usage
+    return runs_repo.AgentStepInsert(
+        kind=step.kind,
+        tool=step.tool,
+        args=dict(step.args),
+        result=dict(step.result),
+        latency_ms=step.latency_ms,
+        input_tokens=usage.prompt if usage else None,
+        cached_tokens=usage.cached if usage else None,
+        output_tokens=usage.completion if usage else None,
+    )
+
+
+async def insert_run(conn: AsyncConnection, header: TurnHeader, run: AgentRunRecord) -> str:
+    """写一行 agent_runs，连同它的每一步（agent_steps）。返回这次运行的 id。"""
+    run_id = await runs_repo.insert_agent_run(conn, run_insert(header, run))
+    await runs_repo.insert_agent_steps(conn, run_id, [step_insert(s) for s in run.steps])
+    return run_id
+
+
 async def load_world(conn: AsyncConnection, playthrough_id: str) -> WorldSnapshot:
     entities = await world_repo.load_entities(conn, playthrough_id)
     links = await world_repo.load_links(conn, playthrough_id)
@@ -70,9 +92,10 @@ async def load_world(conn: AsyncConnection, playthrough_id: str) -> WorldSnapsho
                 aliases=e.aliases,
                 summary=e.summary,
                 data=e.data,
-                importance=e.importance,
                 is_protagonist=e.is_protagonist,
                 canon=e.canon,
+                first_seq=e.first_seq,
+                last_seen_seq=e.last_seen_seq,
             )
             for e in entities
         ),
@@ -82,9 +105,9 @@ async def load_world(conn: AsyncConnection, playthrough_id: str) -> WorldSnapsho
                 id=f.id,
                 text=f.text,
                 entity_ids=f.entity_ids,
-                importance=f.importance,
                 visibility=f.visibility,
                 known_by=f.known_by,
+                created_seq=f.created_seq,
             )
             for f in facts
         ),
@@ -105,7 +128,6 @@ async def write_seed(conn: AsyncConnection, playthrough_id: str, seed: Seed) -> 
             aliases=draft.aliases,
             summary=draft.summary,
             data=draft.data,
-            importance=draft.importance,
             is_protagonist=draft.is_protagonist,
         )
     for link in plan.links:
@@ -122,7 +144,6 @@ async def write_seed(conn: AsyncConnection, playthrough_id: str, seed: Seed) -> 
             playthrough_id=playthrough_id,
             text=fact.text,
             entity_ids=[ids[k] for k in fact.entities],
-            importance=fact.importance,
             visibility="secret" if fact.secret else "public",
             known_by=[ids[k] for k in fact.known_by],
         )
@@ -247,7 +268,7 @@ class PgTurnStore:
             raise _Stale
         director_run_id: str | None = None
         for run in outcome.runs:
-            run_id = await runs_repo.insert_agent_run(conn, run_insert(header, run))
+            run_id = await insert_run(conn, header, run)
             if run.agent == "director":
                 director_run_id = run_id
         usage: dict[str, Any] | None = None
@@ -283,7 +304,7 @@ class PgTurnStore:
                 conn, header.turn_id, narrative=failure.narrative, error=failure.to_json()
             )
             for run in failure.runs:
-                await runs_repo.insert_agent_run(conn, run_insert(header, run))
+                await insert_run(conn, header, run)
             if changed:
                 await story_repo.notify_turn(conn, header.turn_id)
         return changed
@@ -321,5 +342,5 @@ class PgTurnStore:
                 seed_source=source,
             )
             if run is not None:
-                await runs_repo.insert_agent_run(conn, run_insert(header, run))
+                await insert_run(conn, header, run)
         return count

@@ -49,10 +49,9 @@ SEED = {
             "summary": "渡口茶馆的掌柜，话很少，记性很好",
             "attitude": "警惕但好奇",
             "speech_style": "说半句留半句",
-            "importance": 5,
         },
-        {"name": "老船夫", "summary": "撑了三十年船，从不收钱", "importance": 4},
-        {"name": "阿砚", "summary": "茶馆的小伙计，总在偷看信封", "importance": 3},
+        {"name": "老船夫", "summary": "撑了三十年船，从不收钱"},
+        {"name": "阿砚", "summary": "茶馆的小伙计，总在偷看信封"},
     ],
     "locations": [
         {"name": "渡口茶馆", "summary": "临水的二层木楼，楼下烧着炭炉"},
@@ -68,15 +67,14 @@ SEED = {
         }
     ],
     "facts": [
-        {"text": "沈知微认得信上的火漆", "about": ["沈知微", "无名信"], "importance": 4},
+        {"text": "沈知微认得信上的火漆", "about": ["沈知微", "无名信"]},
         {
             "text": "老船夫就是守灯人",
             "about": ["老船夫", "守灯人"],
             "secret": True,
             "known_by": ["老船夫", "沈知微"],
-            "importance": 5,
         },
-        {"text": "渡船只在子时开", "about": ["老船夫"], "importance": 3},
+        {"text": "渡船只在子时开", "about": ["老船夫"]},
     ],
     "opening": {
         "location": "渡口茶馆",

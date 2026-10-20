@@ -29,6 +29,7 @@ STATE_BLOCK_RATIO = 0.12
 STATE_BLOCK_CAP = 2500
 ACTION_RATIO = 0.03
 MIN_KEEP_TURNS = 2
+MAX_SYSTEM_CHARACTERS = 8
 
 
 class ContextTooLarge(Exception):
@@ -78,11 +79,11 @@ class ContextAssembler:
             title = seed.world.title
             rules = [sanitize_for_fence(r) for r in seed.world.rules]
             protagonist_desc = seed.protagonist.summary
+            # 开局设定里的人物按顺序取前几个（角色卡的主角色排在第一个）
             characters = [
                 {"name": sanitize_for_fence(c.name), "description": sanitize_for_fence(c.summary)}
-                for c in seed.characters
-                if c.importance >= 3
-            ][:8]
+                for c in seed.characters[:MAX_SYSTEM_CHARACTERS]
+            ]
             style = style or seed.world.style
         return self._prompts.render(
             "director.system",

@@ -16,6 +16,7 @@ FENCE_TAGS = (
     "world-state",
     "recap",
     "memory-context",
+    "recall",
     "character-card",
     "opening-brief",
 )

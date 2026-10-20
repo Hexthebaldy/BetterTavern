@@ -11,7 +11,6 @@
     "CharacterSeed.goal": "現在の目的、160字以内",
     "CharacterSeed.attitude": "主人公への態度、160字以内",
     "CharacterSeed.speech_style": "話し方と口癖、240字以内",
-    "CharacterSeed.importance": "重要度、1から5",
     "FactSeed.text": "一つの事実を一文で、200字以内",
     "FactSeed.about": "関係する要素の名前",
     "FactSeed.secret": "主人公が最初は知らない秘密かどうか",
