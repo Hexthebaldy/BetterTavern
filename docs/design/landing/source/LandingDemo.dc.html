@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>落地页 · 演示</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="/_blob/a2499751ad929dab0ef6e2c9b8872a89">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@400;600;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<section class="dm {{theme}}" aria-label="演示：雾港守夜人" style="font-family: 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif; color: var(--ink)">
+  <header class="dm-top">
+    <span class="dm-cover"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" style="display: block"><path d="M-2 31q5.5-3.6 11 0t11 0 11 0 11 0" style="fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round"/><path d="M-2 36q5.5-3.6 11 0t11 0 11 0 11 0" style="fill: none; stroke: var(--line2); stroke-width: 1.6; stroke-linecap: round"/><path d="M20 13l4.2 15.5h-8.4z" style="fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round"/><circle cx="20" cy="10.2" r="2.6" style="fill: var(--acc)"/></svg></span>
+    <div class="dm-ttl">
+      <b>雾港守夜人</b>
+      <sc-if value="{{notEditing}}" hint-placeholder-val="{{true}}">
+        <button class="me-pill" type="button" onClick="{{editName}}" aria-label="{{nameLabel}}">我是 {{name}}<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></button>
+      </sc-if>
+      <sc-if value="{{editing}}" hint-placeholder-val="{{false}}">
+        <input class="me-in" type="text" aria-label="你的名字" placeholder="起个名字" value="{{draftName}}" onChange="{{onName}}" onKeyDown="{{onNameKey}}" onBlur="{{commitName}}" ref="{{focusRef}}">
+      </sc-if>
+    </div>
+    <button class="ib" type="button" onClick="{{toggleDark}}" aria-label="{{darkLabel}}" aria-pressed="{{darkPressed}}">
+      <sc-if value="{{isLight}}" hint-placeholder-val="{{true}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg></sc-if>
+      <sc-if value="{{isDark}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg></sc-if>
+    </button>
+    <button class="ib" type="button" onClick="{{restart}}" aria-label="从头再读"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 108-8 8.2 8.2 0 00-6.4 3.1"/><path d="M4.5 3.5v4.2h4.2"/></svg></button>
+  </header>
+
+  <div class="dm-feed" ref="{{feedRef}}" onScroll="{{onFeedScroll}}">
+    <sc-for list="{{segs}}" as="s" hint-placeholder-count="1">
+      <p class="narr">{{s.text}}<sc-if value="{{s.caret}}" hint-placeholder-val="{{false}}"><span class="caret" aria-hidden="true"></span></sc-if></p>
+      <sc-if value="{{s.hasAct}}" hint-placeholder-val="{{false}}">
+        <p class="note"><span class="sr">我的行动：</span>{{s.act}}</p>
+      </sc-if>
+    </sc-for>
+
+    <sc-if value="{{hasTyped}}" hint-placeholder-val="{{false}}">
+      <div class="typed appear">
+        <p class="note" style="margin: 0"><span class="sr">我的行动：</span>{{typed}}</p>
+        <div class="hint"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8h.01"/></svg><span>演示不会生成新的段落。实际使用时，这一句会交给你配置的模型接着写。</span></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{showOpts}}" hint-placeholder-val="{{false}}">
+      <div class="opts appear" role="group" aria-label="选一个行动">
+        <sc-for list="{{opts}}" as="o" hint-placeholder-count="2">
+          <button class="opt {{o.cls}}" type="button" onClick="{{o.pick}}" disabled="{{o.dis}}" aria-label="{{o.aria}}"><span class="key" aria-hidden="true">{{o.key}}</span><span>{{o.label}}</span></button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{showEnd}}" hint-placeholder-val="{{false}}">
+      <div class="endc appear">
+        <p class="t" style="margin: 0">演示到这里结束。</p>
+        <p class="txt" style="font-size: 14.5px; line-height: 24px">实际使用时，故事由你配置的模型一直写下去。</p>
+        <div class="row">
+          <button class="btn pri sm" type="button" onClick="{{restart}}">从头再读</button>
+          <a class="btn line sm" href="#deploy">部署说明</a>
+        </div>
+      </div>
+    </sc-if>
+    <span class="sr" aria-live="polite">{{live}}</span>
+  </div>
+
+  <footer class="dm-bar">
+    <button class="tb {{worldCls}}" type="button" onClick="{{toggleWorld}}" aria-label="{{worldLabel}}" aria-expanded="{{worldOpen}}"><svg class="i" style="width: 21px; height: 21px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><sc-if value="{{hasFresh}}" hint-placeholder-val="{{false}}"><span class="bdg"></span></sc-if></button>
+
+    <sc-if value="{{busy}}" hint-placeholder-val="{{true}}">
+      <div class="status"><span class="pulse"></span><span>{{statusText}}</span></div>
+      <button class="ghost" type="button" onClick="{{skip}}">全部显示</button>
+    </sc-if>
+
+    <sc-if value="{{canWrite}}" hint-placeholder-val="{{false}}">
+      <button class="wpill" type="button" onClick="{{openCompose}}"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg><span style="flex: 1">自己写…</span></button>
+    </sc-if>
+
+    <sc-if value="{{composing}}" hint-placeholder-val="{{false}}">
+      <div class="cmp">
+        <textarea rows="1" aria-label="我要做的事" placeholder="我……" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onDraftKey}}" ref="{{focusRef}}"></textarea>
+        <button class="send" type="button" onClick="{{sendDraft}}" disabled="{{cantSend}}">发送</button>
+      </div>
+      <button class="ib" type="button" onClick="{{closeCompose}}" aria-label="收起"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </sc-if>
+
+    <sc-if value="{{ended}}" hint-placeholder-val="{{false}}">
+      <button class="wpill" type="button" onClick="{{restart}}"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 108-8 8.2 8.2 0 00-6.4 3.1"/><path d="M4.5 3.5v4.2h4.2"/></svg><span style="flex: 1">从头再读</span></button>
+    </sc-if>
+  </footer>
+
+  <sc-if value="{{worldOpen}}" hint-placeholder-val="{{false}}">
+    <div class="ws" role="dialog" aria-label="世界">
+      <div class="ws-h">
+        <div style="flex: 1; min-width: 0"><div class="t">世界</div><div class="s">人物、地点、物品和已知的事实</div></div>
+        <button class="ib" type="button" onClick="{{toggleWorld}}" aria-label="收起世界" style="background: var(--card)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="ws-l">
+        <sc-for list="{{ents}}" as="e" hint-placeholder-count="5">
+          <div class="ent {{e.cls}}">
+            <span class="eic">
+              <sc-if value="{{e.person}}" hint-placeholder-val="{{true}}"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5"/></svg></sc-if>
+              <sc-if value="{{e.place}}" hint-placeholder-val="{{false}}"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0113 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg></sc-if>
+              <sc-if value="{{e.item}}" hint-placeholder-val="{{false}}"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5l7-4 7 4v7l-7 4-7-4z"/><path d="M5 8.5l7 4 7-4M12 12.5v7"/></svg></sc-if>
+              <sc-if value="{{e.fact}}" hint-placeholder-val="{{false}}"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h8l3 3v12h-11z"/><path d="M9.5 11h5M9.5 14.5h5"/></svg></sc-if>
+            </span>
+            <span class="nm"><b>{{e.name}}</b><span>{{e.kindLabel}} · {{e.note}}</span></span>
+            <sc-if value="{{e.isNew}}" hint-placeholder-val="{{false}}"><span class="tag new">新</span></sc-if>
+            <sc-if value="{{e.isUpd}}" hint-placeholder-val="{{false}}"><span class="tag upd">更新</span></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div class="ws-f">主角还不知道的秘密默认隐藏，确认后才会显示。</div>
+    </div>
+  </sc-if>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":500,"height":640}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.S = {
+      root: {
+        text: '雾是从海面漫上来的。我走到码头尽头的时候，它已经没过了栏杆。灯塔就在前面，灯却是灭的。\n\n老周在信里说过：雾港的灯一旦灭了，就得有人去点上——可写这封信的人，三天前就不见了。\n\n身后响起一声钟，低沉，潮湿，像是从水底浮上来的。',
+        options: [{ label: '先爬上灯塔，把灯点亮', next: 'a' }, { label: '回头去找那口钟', next: 'b' }],
+        adds: ['me', 'pier', 'tower', 'keeper', 'bell']
+      },
+      a: {
+        text: '塔里的楼梯又窄又陡。爬到一半，我听见上面有翻纸的声音。\n\n灯室的门半掩着。一个穿灰外套的女人坐在熄灭的灯旁，膝上摊着一本航海日志。她抬起头，像是早就在等我。\n\n“{n}？”她说，“老周说你会来的。”',
+        options: [{ label: '问她老周去了哪里', next: 'aa' }, { label: '先看那本航海日志', next: 'ab' }],
+        adds: ['grey', 'log']
+      },
+      b: {
+        text: '钟声是从雾里一条旧船上传来的。船身没有名字，缆绳还在往下滴水。\n\n我刚踏上跳板，钟又响了一下，这一次就在耳边。舱门后面有人压低了声音：\n\n“别点灯，{n}。灯一亮，它们就知道你来了。”',
+        options: [{ label: '推开舱门', next: 'ba' }, { label: '退回码头，去点灯', next: 'bb' }],
+        adds: ['ship', 'voice']
+      },
+      aa: {
+        text: '“他去追一条船了。”女人合上日志，“一条三十年前就沉了的船。”\n\n她把火柴推到我面前：“灯得由你来点。点亮以后，你会看见他看见的东西。”\n\n我划着火柴的时候，窗外的雾里亮起了第二盏灯。可雾港只有这一座灯塔。',
+        adds: ['f_light']
+      },
+      ab: {
+        text: '日志的最后一页是老周的字，墨迹还没干：\n\n“今晚它们会回来。灯亮着，船就靠不了岸。”\n\n下面一行写得很急：“要是我没回来，告诉{n}——别信那口钟。”我抬起头，灰外套的女人已经不在了，椅子还是温的。',
+        adds: ['f_bell']
+      },
+      ba: {
+        text: '舱里只有一个孩子，抱着一盏没点的提灯，冻得发抖。\n\n他说他叫阿潮，是老周的孙子。“爷爷说，钟响三声，就有人要回来。”\n\n他盯着我身后的雾，小声说：“已经响了两声了。”',
+        adds: ['chao'], drops: ['voice'], upd: ['chao']
+      },
+      bb: {
+        text: '我退回码头，雾已经漫过了脚踝。跑到灯塔下面时，钟响了第三声。\n\n塔门开着。楼梯上有一串湿脚印，一直往上——有人比我先到了。',
+        adds: ['f_steps']
+      }
+    };
+    this.E = {
+      me: { kind: 'person', name: '{n}', note: '新来的守夜人', me: true },
+      pier: { kind: 'place', name: '雾港码头', note: '雾已经没过了栏杆' },
+      tower: { kind: 'place', name: '灯塔', note: '灯是灭的' },
+      keeper: { kind: 'person', name: '老周', note: '守塔人，三天前不见了' },
+      bell: { kind: 'item', name: '旧船钟', note: '声音像从水底浮上来' },
+      grey: { kind: 'person', name: '灰外套的女人', note: '像是早就在等我' },
+      log: { kind: 'item', name: '航海日志', note: '老周的字' },
+      ship: { kind: 'place', name: '无名旧船', note: '缆绳还在滴水' },
+      voice: { kind: 'person', name: '舱门后的人', note: '不让我点灯' },
+      chao: { kind: 'person', name: '阿潮', note: '老周的孙子，刚才是他在舱门后说话' },
+      f_light: { kind: 'fact', name: '雾里亮起了第二盏灯', note: '可雾港只有一座灯塔' },
+      f_bell: { kind: 'fact', name: '日志里写着：别信那口钟', note: '老周留下的话' },
+      f_steps: { kind: 'fact', name: '楼梯上有一串湿脚印', note: '有人先到了' }
+    };
+    this.state = {
+      name: '林深', editing: false, draftName: '',
+      steps: [], node: 'root', phase: 'thinking', shown: 0, chosen: null,
+      found: [], fresh: [], upd: [], world: false, dark: false,
+      composing: false, draft: '', typed: '', live: ''
+    };
+    this.follow = true;
+    this.feedRef = (el) => { this.feed = el; };
+    this.focusRef = (el) => {
+      if (!el) { this.fx = null; return; }
+      if (this.fx === el) return;
+      this.fx = el;
+      setTimeout(() => {
+        try { el.focus(); if (el.tagName === 'INPUT') el.select(); } catch (e) {}
+      }, 0);
+    };
+  }
+
+  componentDidMount() {
+    try {
+      this.reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+      this.reduce = false;
+    }
+    this.begin('root');
+  }
+
+  componentWillUnmount() {
+    this.dead = true;
+    this.clear();
+  }
+
+  componentDidUpdate() {
+    if (this.feed && this.follow) this.feed.scrollTop = this.feed.scrollHeight;
+  }
+
+  clear() {
+    clearTimeout(this.t1);
+    clearInterval(this.t2);
+    clearTimeout(this.t3);
+  }
+
+  full(node) {
+    return this.S[node].text.replace(/\{n\}/g, this.state.name);
+  }
+
+  begin(node) {
+    this.clear();
+    if (this.reduce) {
+      const t = this.full(node);
+      this.setState({ node, phase: 'idle', shown: t.length, chosen: null, live: t });
+      this.found(node);
+      return;
+    }
+    this.setState({ node, phase: 'thinking', shown: 0, chosen: null, live: '' });
+    this.t1 = setTimeout(() => {
+      if (this.dead) return;
+      this.setState({ phase: 'writing' });
+      this.t2 = setInterval(() => {
+        if (this.dead) { clearInterval(this.t2); return; }
+        const len = this.full(node).length;
+        const n = this.state.shown + 2;
+        if (n >= len) {
+          clearInterval(this.t2);
+          this.setState({ shown: len, phase: 'idle', live: this.full(node) });
+          this.found(node);
+        } else {
+          this.setState({ shown: n });
+        }
+      }, 42);
+    }, node === 'root' ? 900 : 650);
+  }
+
+  found(node) {
+    const st = this.S[node];
+    const adds = st.adds || [];
+    const drops = st.drops || [];
+    const upd = st.upd || [];
+    this.setState((s) => {
+      let found = s.found.filter((id) => drops.indexOf(id) < 0);
+      let fresh = s.fresh.filter((id) => drops.indexOf(id) < 0);
+      adds.forEach((id) => {
+        if (found.indexOf(id) < 0) found = found.concat(id);
+        if (fresh.indexOf(id) < 0) fresh = fresh.concat(id);
+      });
+      return { found, fresh, upd: s.upd.concat(upd) };
+    });
+  }
+
+  pick(i) {
+    const st = this.state;
+    if (st.phase !== 'idle' || st.chosen !== null) return;
+    const opt = (this.S[st.node].options || [])[i];
+    if (!opt) return;
+    this.follow = true;
+    this.setState({ chosen: i, composing: false, editing: false });
+    this.t3 = setTimeout(() => {
+      if (this.dead) return;
+      this.setState((s) => ({ steps: s.steps.concat({ node: s.node, pick: i }), typed: '' }));
+      this.begin(opt.next);
+    }, 260);
+  }
+
+  restart() {
+    this.clear();
+    this.follow = true;
+    this.setState({ steps: [], found: [], fresh: [], upd: [], world: false, composing: false, draft: '', typed: '', chosen: null });
+    this.begin('root');
+  }
+
+  commitName() {
+    const v = (this.state.draftName || '').trim();
+    this.setState({ editing: false, name: v || this.state.name });
+  }
+
+  renderVals() {
+    const st = this.state;
+    const S = this.S;
+    const E = this.E;
+    const sub = (t) => t.replace(/\{n\}/g, st.name);
+    const cur = S[st.node];
+    const idle = st.phase === 'idle';
+    const ended = idle && !cur.options;
+    const segs = st.steps.map((x) => ({
+      text: sub(S[x.node].text),
+      act: S[x.node].options[x.pick].label,
+      hasAct: true,
+      caret: false
+    }));
+    segs.push({
+      text: st.phase === 'thinking' ? '' : sub(cur.text).slice(0, st.shown),
+      act: '',
+      hasAct: false,
+      caret: !idle
+    });
+    const keys = ['A', 'B'];
+    const opts = (cur.options || []).map((o, i) => ({
+      key: keys[i],
+      label: o.label,
+      aria: keys[i] + '：' + o.label,
+      cls: st.chosen === i ? 'on' : '',
+      dis: st.chosen !== null,
+      pick: () => this.pick(i)
+    }));
+    const kindLabel = { person: '人物', place: '地点', item: '物品', fact: '事实' };
+    const ents = st.found.slice().reverse().map((id) => {
+      const e = E[id];
+      const isUpd = st.upd.indexOf(id) >= 0;
+      const isFresh = st.fresh.indexOf(id) >= 0;
+      return {
+        name: sub(e.name),
+        note: e.note,
+        kindLabel: e.me ? '我' : kindLabel[e.kind],
+        cls: (e.me ? 'me' : '') + (isFresh ? ' fresh' : ''),
+        isNew: isFresh && !isUpd,
+        isUpd: isUpd,
+        person: e.kind === 'person',
+        place: e.kind === 'place',
+        item: e.kind === 'item',
+        fact: e.kind === 'fact'
+      };
+    });
+    const hasFresh = st.fresh.length > 0 && !st.world;
+    return {
+      theme: st.dark ? 'D' : '',
+      isDark: st.dark,
+      isLight: !st.dark,
+      darkPressed: st.dark ? 'true' : 'false',
+      darkLabel: st.dark ? '切回浅色' : '切到夜间',
+      toggleDark: () => this.setState({ dark: !st.dark }),
+      restart: () => this.restart(),
+
+      name: st.name,
+      nameLabel: '我是 ' + st.name + '，点一下换个名字',
+      editing: st.editing,
+      notEditing: !st.editing,
+      draftName: st.draftName,
+      editName: () => this.setState({ editing: true, draftName: st.name, composing: false }),
+      onName: (e) => this.setState({ draftName: e.target.value.slice(0, 8) }),
+      onNameKey: (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); this.commitName(); }
+        else if (e.key === 'Escape') { e.preventDefault(); this.setState({ editing: false }); }
+      },
+      commitName: () => this.commitName(),
+      focusRef: this.focusRef,
+
+      feedRef: this.feedRef,
+      onFeedScroll: (e) => {
+        const el = e.currentTarget;
+        this.follow = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+      },
+      segs,
+      live: st.live,
+      showOpts: idle && !!cur.options,
+      opts,
+      showEnd: ended,
+      ended,
+      hasTyped: !!st.typed,
+      typed: st.typed,
+
+      busy: !idle,
+      statusText: st.phase === 'thinking' ? '正在构思…' : (st.node === 'root' ? '正在写开场' : '正在写下一段'),
+      skip: () => {
+        this.clear();
+        const t = this.full(st.node);
+        this.setState({ shown: t.length, phase: 'idle', live: t });
+        this.found(st.node);
+      },
+
+      canWrite: idle && !ended && !st.composing,
+      composing: st.composing,
+      draft: st.draft,
+      cantSend: !st.draft.trim(),
+      openCompose: () => { this.follow = true; this.setState({ composing: true, editing: false, world: false }); },
+      closeCompose: () => this.setState({ composing: false }),
+      onDraft: (e) => this.setState({ draft: e.target.value.slice(0, 200) }),
+      onDraftKey: (e) => {
+        const composingIme = e.nativeEvent && (e.nativeEvent.isComposing || e.keyCode === 229);
+        if (e.key === 'Enter' && !e.shiftKey && !composingIme) {
+          e.preventDefault();
+          if (st.draft.trim()) { this.follow = true; this.setState({ typed: st.draft.trim(), draft: '', composing: false }); }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          this.setState({ composing: false });
+        }
+      },
+      sendDraft: () => {
+        if (!st.draft.trim()) return;
+        this.follow = true;
+        this.setState({ typed: st.draft.trim(), draft: '', composing: false });
+      },
+
+      worldOpen: st.world,
+      worldCls: st.world ? 'on' : '',
+      worldLabel: st.world ? '收起世界' : (hasFresh ? '世界，有新内容' : '世界'),
+      hasFresh,
+      toggleWorld: () => {
+        if (st.world) this.setState({ world: false, fresh: [], upd: [] });
+        else this.setState({ world: true, composing: false, editing: false });
+      },
+      ents
+    };
+  }
+}
+</script>
+</body>
+</html>

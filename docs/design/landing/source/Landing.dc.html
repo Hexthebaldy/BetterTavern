@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>BetterTavern · 落地页</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="/_blob/a2499751ad929dab0ef6e2c9b8872a89">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@400;600;700;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="lp" id="top" style="font-family: 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif; color: var(--ink)">
+
+  <!-- 导航 -->
+  <header class="nav {{navCls}}">
+    <div class="wrap in">
+      <a class="brand" href="#top" aria-label="BetterTavern，回到顶部"><svg width="32" height="32" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linejoin="miter" stroke-miterlimit="4"><path class="o1" d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" stroke-width="4"/><path class="o2" d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" stroke-width="4"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" stroke-width="4.2"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" style="fill: var(--acc)"/></svg><span>BetterTavern</span></a>
+      <nav class="links" aria-label="页面导航">
+        <a href="#how" class="{{nv.how}}" aria-current="{{ac.how}}">开始</a>
+        <a href="#world" class="{{nv.world}}" aria-current="{{ac.world}}">世界状态</a>
+        <a href="#more" class="{{nv.more}}" aria-current="{{ac.more}}">长篇</a>
+        <a href="#models" class="{{nv.models}}" aria-current="{{ac.models}}">模型和数据</a>
+        <a href="#deploy" class="{{nv.deploy}}" aria-current="{{ac.deploy}}">部署</a>
+        <a href="#faq" class="{{nv.faq}}" aria-current="{{ac.faq}}">常见问题</a>
+      </nav>
+      <div class="tools" style="margin-left: auto">
+        <a class="gh" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/docs/development.md" target="_blank" rel="noopener noreferrer"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h8l3 3v12h-11z"/><path d="M9.5 11h5M9.5 14.5h5"/></svg>文档</a>
+        <a class="btn pri sm" href="https://github.com/Hexthebaldy/BetterTavern" target="_blank" rel="noopener noreferrer">GitHub<span class="arr"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></span></a>
+        <button class="ib menuBtn" type="button" onClick="{{toggleMenu}}" aria-label="{{menuLabel}}" aria-expanded="{{menuOpen}}">
+          <sc-if value="{{menuClosed}}" hint-placeholder-val="{{true}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></sc-if>
+          <sc-if value="{{menuOpen}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></sc-if>
+        </button>
+      </div>
+    </div>
+    <sc-if value="{{menuOpen}}" hint-placeholder-val="{{false}}">
+      <nav class="drawer" aria-label="页面导航">
+        <a href="#how" onClick="{{closeMenu}}">开始<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        <a href="#world" onClick="{{closeMenu}}">世界状态<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        <a href="#more" onClick="{{closeMenu}}">长篇<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        <a href="#models" onClick="{{closeMenu}}">模型和数据<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        <a href="#clients" onClick="{{closeMenu}}">客户端<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        <a href="#deploy" onClick="{{closeMenu}}">部署<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        <a href="#faq" onClick="{{closeMenu}}">常见问题<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></a>
+        <a href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/docs/development.md" target="_blank" rel="noopener noreferrer" onClick="{{closeMenu}}">文档<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+      </nav>
+    </sc-if>
+  </header>
+
+  <main>
+    <!-- 首屏 -->
+    <section class="hero">
+      <div class="wrap grid">
+        <div class="copy">
+          <p class="eyebrow in1"><i></i>开源项目 · 开发中</p>
+          <h1 class="h-xl reg in2" data-text="BetterTavern">BetterTavern</h1>
+          <p class="lead in3" style="max-width: 31em">用 SillyTavern 角色卡玩的互动小说。AI 用第一人称写一段故事，结尾给两个选项；想做选项之外的事，可以自己写一句。</p>
+          <p class="txt in3" style="max-width: 34em">目前需要自己运行服务器。手机 App 还没有上架应用商店，用 Expo Go 打开；网页版在本地启动。</p>
+          <div class="ctas in4">
+            <a class="btn pri" href="https://github.com/Hexthebaldy/BetterTavern" target="_blank" rel="noopener noreferrer">GitHub<span class="arr"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></span></a>
+            <a class="btn sec" href="#deploy">部署说明</a>
+          </div>
+          <div class="meta in4">
+            <span><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="3"/><path d="M11 18.5h2"/></svg>iOS · Android · 平板 · 网页</span>
+          </div>
+        </div>
+        <div class="demoCol in5">
+          <div class="demoHead"><span class="eyebrow">演示 · 段落是预先写好的</span></div>
+          <dc-import name="LandingDemo" hint-size="100%,640px"></dc-import>
+          <p class="cap" style="padding: 0 6px">点选项往下读，也可以改主角的名字、切换夜间模式、打开世界状态。实际使用时，每一段由你配置的模型生成。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 一览 -->
+    <section aria-label="一览">
+      <div class="wrap">
+        <div class="facts">
+          <div class="fact"><span class="k">角色卡</span><span class="v">SillyTavern V1、V2、V3，PNG 或 JSON</span></div>
+          <div class="fact"><span class="k">模型</span><span class="v">DeepSeek、OpenAI、Grok、Gemini、Hugging Face，或兼容 OpenAI 接口的服务</span></div>
+          <div class="fact"><span class="k">服务器</span><span class="v">Python（FastAPI）和 PostgreSQL，可以用 Docker Compose 部署</span></div>
+          <div class="fact"><span class="k">界面</span><span class="v">中文 · English · 日本語</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 01 开始 -->
+    <section class="sec" id="how">
+      <div class="wrap">
+        <div class="shead">
+          <span class="num"><b>01</b></span>
+          <h2 class="h-l">开始一个故事</h2>
+          <p class="lead">需要一张角色卡和主角的名字，其他设置都可以留空。</p>
+        </div>
+        <div class="grid3">
+          <article class="card hov">
+            <div class="vig" aria-hidden="true">
+              <div class="drop"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M5 14v3.5A2.5 2.5 0 007.5 20h9a2.5 2.5 0 002.5-2.5V14"/></svg><b><span class="rest">拖到这里</span><span class="hot">松开就导入</span></b><span>.PNG / .JSON · ≤ 16 MB</span></div>
+              <div class="cardpic"><div class="art"><svg viewBox="0 0 80 84" width="80" height="84" style="display: block; width: 100%; height: 100%"><path d="M-4 62q11-7 22 0t22 0 22 0 22 0" style="fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round"/><path d="M-4 72q11-7 22 0t22 0 22 0 22 0" style="fill: none; stroke: var(--line2); stroke-width: 2.2; stroke-linecap: round"/><path d="M40 24l8 31H32z" style="fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round"/><circle cx="40" cy="19" r="5" style="fill: var(--acc)"/></svg></div><span>雾港.png</span></div>
+            </div>
+            <div class="body">
+              <span class="num">STEP 1</span>
+              <h3 class="h-m">导入角色卡</h3>
+              <p class="txt">支持 SillyTavern 的 V1、V2、V3 角色卡，PNG 或 JSON 文件。卡里的图片用作故事封面，世界书用来搭建开局的世界。</p>
+            </div>
+          </article>
+          <article class="card hov">
+            <div class="vig" style="flex-direction: column; gap: 14px">
+              <div class="namef" aria-hidden="true"><span class="lab">主角的名字</span><div class="fld">林深<span class="caret"></span></div></div>
+              <div class="chips" style="width: calc(100% - 40px)" role="radiogroup" aria-label="身份（可选）">
+                <sc-for list="{{idents}}" as="c" hint-placeholder-count="3">
+                  <button class="chipb {{c.cls}}" type="button" role="radio" aria-checked="{{c.on}}" onClick="{{c.pick}}">{{c.label}}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div class="body">
+              <span class="num">STEP 2</span>
+              <h3 class="h-m">给主角起名字</h3>
+              <p class="txt">名字必填。也可以选一个身份（过路的旅人、旧相识……），设定每段写多长、用什么文风。同一张卡可以开好几个故事。</p>
+            </div>
+          </article>
+          <article class="card hov">
+            <div class="vig" aria-hidden="true" style="flex-direction: column; align-items: stretch; justify-content: center; gap: 8px; padding: 0 20px">
+              <span class="ln" style="width: 92%"></span>
+              <span class="ln" style="width: 100%"></span>
+              <span class="ln" style="width: 58%; margin-bottom: 10px"></span>
+              <div class="opts">
+                <div class="opt mini" style="cursor: default"><span class="key">A</span><span>先爬上灯塔，把灯点亮</span></div>
+                <div class="opt mini on" style="cursor: default"><span class="key">B</span><span>回头去找那口钟</span></div>
+              </div>
+            </div>
+            <div class="body">
+              <span class="num">STEP 3</span>
+              <h3 class="h-m">读一段，选一个</h3>
+              <p class="txt">AI 用第一人称写下一段，结尾给两个选项。点一个继续；想做别的，点“自己写”。</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 世界状态 -->
+    <section class="sec" id="world" style="padding-top: 0">
+      <div class="wrap">
+        <div class="stage">
+          <div class="left">
+            <span class="num"><b>02</b></span>
+            <h2 class="h-l">世界状态</h2>
+            <p class="lead">开局时，AI 先读角色卡，整理出人物、地点、物品、组织和秘密。之后每一段都参照这些来写，并随剧情更新。</p>
+            <ul class="ticks">
+              <li><span class="tic"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5"/></svg></span>人物、地点、物品、组织，各自记录当前状态</li>
+              <li><span class="tic"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2.5"/><circle cx="18" cy="7" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.3 8.3l2.4 7.4M15.7 8.3l-2.4 7.4M8.5 7h7"/></svg></span>关系图：谁在哪里、谁拿着什么、谁和谁有关系</li>
+              <li><span class="tic"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="3"/><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5"/></svg></span>主角还不知道的秘密默认隐藏，确认后才显示</li>
+            </ul>
+            <div class="secret">
+              <div class="row">
+                <span class="lock"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="3"/><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5"/></svg></span>
+                <sc-if value="{{secHidden}}" hint-placeholder-val="{{true}}"><span class="sr">1 条未揭示的秘密</span></sc-if>
+                <p class="sx {{secCls}}" aria-hidden="{{secAria}}" style="margin: 0">老周三十年前就死在那条沉船上了。</p>
+                <sc-if value="{{secCanAsk}}" hint-placeholder-val="{{true}}"><button class="btn sec sm" type="button" onClick="{{askReveal}}">揭示</button></sc-if>
+                <sc-if value="{{secShown}}" hint-placeholder-val="{{false}}"><span class="badge warn">已揭示</span></sc-if>
+              </div>
+              <sc-if value="{{secAsk}}" hint-placeholder-val="{{false}}">
+                <div class="ask" role="alert">
+                  <span>揭示一条秘密？揭示后会看到主角还不知道的事。</span>
+                  <button class="btn sec sm" type="button" onClick="{{cancelReveal}}">取消</button>
+                  <button class="btn pri sm" type="button" onClick="{{doReveal}}" style="padding: 0 18px">揭示</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+          <div class="gwrap">
+            <p class="cap" style="padding: 0 6px"><span class="on-hover">鼠标移到节点上，相关的关系会高亮；点击查看详情。</span><span class="on-touch">点一下节点，查看详情和相关的关系。</span></p>
+            <div class="graph" data-focus="{{focus}}" onMouseLeave="{{unhover}}" role="group" aria-label="关系图：雾港守夜人">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <line class="ge k-me k-tower" x1="18" y1="50" x2="46" y2="32"/>
+                <line class="ge k-grey k-tower" x1="24" y1="14" x2="46" y2="32"/>
+                <line class="ge k-tower k-pier" x1="46" y1="32" x2="24" y2="72"/>
+                <line class="ge k-grey k-log" x1="24" y1="14" x2="72" y2="14"/>
+                <line class="ge k-log k-keeper" x1="72" y1="14" x2="78" y2="50"/>
+                <line class="ge k-keeper k-chao" x1="78" y1="50" x2="78" y2="90"/>
+                <line class="ge k-chao k-ship" x1="78" y1="90" x2="62" y2="72"/>
+                <line class="ge k-ship k-bell" x1="62" y1="72" x2="34" y2="90"/>
+                <line class="ge k-pier k-ship" x1="24" y1="72" x2="62" y2="72"/>
+                <line class="ge sec {{secLine}} k-keeper k-ship" x1="78" y1="50" x2="62" y2="72"/>
+              </svg>
+              <sc-for list="{{nodes}}" as="n" hint-placeholder-count="9">
+                <button class="gn {{n.cls}}" type="button" style="left: {{n.x}}%; top: {{n.y}}%" onMouseEnter="{{n.hover}}" onFocus="{{n.hover}}" onBlur="{{unhover}}" onClick="{{n.pick}}" aria-pressed="{{n.pressed}}" aria-label="{{n.aria}}">
+                  <span class="gi">
+                    <sc-if value="{{n.person}}" hint-placeholder-val="{{true}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5"/></svg></sc-if>
+                    <sc-if value="{{n.place}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0113 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg></sc-if>
+                    <sc-if value="{{n.item}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5l7-4 7 4v7l-7 4-7-4z"/><path d="M5 8.5l7 4 7-4M12 12.5v7"/></svg></sc-if>
+                  </span>
+                  <span>{{n.label}}</span>
+                  <sc-if value="{{n.isMe}}" hint-placeholder-val="{{false}}"><span class="hide-sm">· 林深</span></sc-if>
+                </button>
+              </sc-for>
+            </div>
+            <div class="info" aria-live="polite">
+              <div class="top"><span class="badge {{selKindCls}}">{{selKind}}</span><span class="nm">{{selName}}</span></div>
+              <p class="txt" style="font-size: 14.5px; line-height: 24px">{{selDesc}}</p>
+              <div class="rels">
+                <sc-for list="{{selRels}}" as="r" hint-placeholder-count="2">
+                  <span class="rel {{r.cls}}">{{r.pre}}<b>{{r.target}}</b>{{r.post}}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 长篇 -->
+    <section class="sec" id="more" style="padding-top: 0">
+      <div class="wrap">
+        <div class="shead">
+          <span class="num"><b>03</b></span>
+          <h2 class="h-l">长篇</h2>
+          <p class="lead">正文由导演模型写。世界状态、前情摘要和长程大纲由后台任务另外维护，写每一段之前按需要取用。</p>
+        </div>
+        <div class="grid3">
+          <article class="card hov">
+            <div class="vig sm" aria-hidden="true" style="flex-direction: column; gap: 16px">
+              <div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="m"></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="o"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></div>
+              <div style="display: flex; gap: 14px; font-size: 12px; color: var(--ink2)"><span style="display: inline-flex; align-items: center; gap: 6px"><i style="width: 10px; height: 10px; border-radius: 5px; background: var(--ink)"></i>前情</span><span style="display: inline-flex; align-items: center; gap: 6px"><i style="width: 10px; height: 10px; border-radius: 5px; background: var(--acc)"></i>最近几段</span><span style="display: inline-flex; align-items: center; gap: 6px"><i style="width: 10px; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 2px var(--warn)"></i>从这里开始整理</span></div>
+            </div>
+            <div class="body">
+              <h3 class="h-m">前情摘要</h3>
+              <p class="txt">故事变长以后，较早的剧情整理成摘要。人物和地点的状态单独保存，整理时不会丢。</p>
+            </div>
+          </article>
+          <article class="card hov">
+            <div class="vig sm" aria-hidden="true">
+              <div class="outline">
+                <div class="ol ok"><span class="d"><svg class="i" style="width: 12px; height: 12px; stroke-width: 2.4" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>灯为什么灭了</div>
+                <div class="ol ok"><span class="d"><svg class="i" style="width: 12px; height: 12px; stroke-width: 2.4" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>老周去了哪里</div>
+                <div class="ol now"><span class="d"></span>第二盏灯是谁点的<span style="margin-left: auto; font-size: 11.5px">进行中</span></div>
+                <div class="ol"><span class="d"></span>那条沉船</div>
+              </div>
+            </div>
+            <div class="body">
+              <h3 class="h-m">长程大纲</h3>
+              <p class="txt">后台维护一份大纲，记下主线和还没收回的伏笔，每写一段都会对照一次。</p>
+            </div>
+          </article>
+          <article class="card hov">
+            <div class="vig sm" aria-hidden="true">
+              <div class="tl">
+                <div class="t here"><svg class="i s" viewBox="0 0 24 24"><path d="M11 7L6 12l5 5M18 7l-5 5 5 5"/></svg>第 11 段<span class="ln" style="background: rgba(47,85,244,.18)"></span>从这里重新选</div>
+                <div class="t gone">第 12 段<span class="ln"></span></div>
+                <div class="t gone">第 13 段<span class="ln"></span></div>
+              </div>
+            </div>
+            <div class="body">
+              <h3 class="h-m">回退和重写</h3>
+              <p class="txt">回到前面的某一段重新选，或者让当前这一段重写。世界状态跟着退回去。</p>
+            </div>
+          </article>
+          <article class="card hov">
+            <div class="vig sm" aria-hidden="true">
+              <div class="compose">
+                <div class="box">我把信塞回她手里，转身就走。<span class="caret"></span></div>
+                <div class="row"><span></span><span class="send">发送</span></div>
+              </div>
+            </div>
+            <div class="body">
+              <h3 class="h-m">自己写</h3>
+              <p class="txt">选项以外的行动，点“自己写”，用一句话告诉导演你要做什么。</p>
+            </div>
+          </article>
+          <article class="card hov">
+            <div class="vig sm" aria-hidden="true" style="flex-direction: column; gap: 10px">
+              <div class="stat w"><span class="pd"></span>连接断了，正在重连…</div>
+              <svg class="i" viewBox="0 0 24 24" style="color: var(--mut)"><path d="M12 5v14M6.5 13.5L12 19l5.5-5.5"/></svg>
+              <div class="stat a"><span class="pulse"></span>已重连，继续生成</div>
+            </div>
+            <div class="body">
+              <h3 class="h-m">断线续写</h3>
+              <p class="txt">网络断了，或者 App 切到后台，回来以后从断的地方接着写，不重复也不缺字。</p>
+            </div>
+          </article>
+          <article class="card hov">
+            <div class="vig sm" aria-hidden="true">
+              <div class="theend">
+                <svg class="i l" viewBox="0 0 24 24" style="color: var(--mut)"><path d="M6 21V4M6 4h10l-2 4 2 4H6"/></svg>
+                <span class="w">全文完</span>
+                <span class="badge">写结局：让我亲手点亮那盏灯</span>
+              </div>
+            </div>
+            <div class="body">
+              <h3 class="h-m">写结局</h3>
+              <p class="txt">在“更多”里点“写结局”，可以说明想要怎样的结局，AI 会写一大段收尾。</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 模型和数据 -->
+    <section class="sec" id="models" style="padding-top: 0">
+      <div class="wrap">
+        <div class="shead">
+          <span class="num"><b>04</b></span>
+          <h2 class="h-l">模型和数据</h2>
+        </div>
+        <div class="grid2">
+          <article class="panel">
+            <h3 class="h-m">模型</h3>
+            <p class="txt">在“设置 → 模型”里添加：选服务商，贴上 API Key，模型列表会自动出来。可以添加好几个，点一下就能换一个来写故事。费用由模型服务商按用量收取。</p>
+            <div class="tiles" role="radiogroup" aria-label="服务商">
+              <sc-for list="{{tiles}}" as="p" hint-placeholder-count="6">
+                <button class="tile {{p.cls}}" type="button" role="radio" aria-checked="{{p.on}}" onClick="{{p.pick}}"><span class="mk">{{p.mk}}</span><span>{{p.name}}</span></button>
+              </sc-for>
+            </div>
+            <div class="keyrow">
+              <div class="lab">
+                <span>API Key</span>
+                <sc-if value="{{hasUrl}}" hint-placeholder-val="{{true}}"><a href="{{provUrl}}" target="_blank" rel="noopener noreferrer">去 {{provName}} 获取 Key<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a></sc-if>
+                <sc-if value="{{noUrl}}" hint-placeholder-val="{{false}}"><span class="cap">另外填一个端点地址，比如自己电脑上跑的模型</span></sc-if>
+              </div>
+              <div class="keyfld"><span class="ph">{{provPh}}</span><span class="paste"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="4" width="10" height="4" rx="1.5"/><path d="M8 6H6.5A1.5 1.5 0 005 7.5v11A1.5 1.5 0 006.5 20h11a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0017.5 6H16"/></svg>粘贴</span></div>
+              <p class="cap" style="padding: 0 4px">Key 加密保存，之后只显示后四位：<span class="mono">•••• 3f9a</span></p>
+            </div>
+          </article>
+          <article class="panel">
+            <h3 class="h-m">数据存在哪里</h3>
+            <div class="flow">
+              <div class="st"><span class="ics"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="3"/><path d="M11 18.5h2"/></svg><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2"/><path d="M8 20.5h8"/></svg></span><b>客户端</b><span>手机、平板、网页</span></div>
+              <span class="ar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
+              <div class="st me"><span class="ics"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01"/></svg></span><b>你的服务器</b><span>故事、世界状态、加密的 Key</span></div>
+              <span class="ar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
+              <div class="st"><span class="ics"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg></span><b>模型服务商</b><span>只收到写这一段需要的前情</span></div>
+            </div>
+            <ul class="plist">
+              <li><span class="tic"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="3"/><path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5"/></svg></span><span>故事、世界设定、模型 Key 都保存在你自己运行的服务器上。Key 加密保存，App 里只显示后四位。</span></li>
+              <li><span class="tic"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-7-7 16-2-7z"/></svg></span><span>只有在写故事的时候，服务器才把需要的前情发给你选的模型服务。</span></li>
+              <li><span class="tic"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.6A9.6 9.6 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16.4 16.4 0 01-3 3.9M6.6 6.6A16 16 0 002.5 12S6 18.5 12 18.5a9.5 9.5 0 004.4-1.1"/></svg></span><span>服务器的运行日志不记录故事内容，也不记录 Key。</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 客户端 -->
+    <section class="sec" id="clients" style="padding-top: 0">
+      <div class="wrap">
+        <div class="shead">
+          <span class="num"><b>05</b></span>
+          <h2 class="h-l">客户端</h2>
+          <p class="lead">手机、平板和网页客户端连同一台服务器，账号和故事通用。外观可以跟随系统，也可以固定成浅色或夜间；正文用宋体或黑体，字号可调。</p>
+        </div>
+        <div class="grid3">
+          <article class="plat">
+            <span class="icn"><svg class="i l" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="3"/><path d="M11 18.5h2"/></svg></span>
+            <h3 class="h-m">手机</h3>
+            <p class="cap" style="margin-top: -10px">iOS 和 Android</p>
+            <p class="txt">React Native（Expo），两个平台用同一套代码。还没有上架应用商店，目前用 Expo Go 打开。</p>
+            <div class="acts"><a class="alink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/apps/mobile/README.md" target="_blank" rel="noopener noreferrer">手机端说明<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+          </article>
+          <article class="plat">
+            <span class="icn"><svg class="i l" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M11 18h2"/></svg></span>
+            <h3 class="h-m">平板</h3>
+            <p class="cap" style="margin-top: -10px">iPad 和 Android 平板</p>
+            <p class="txt">和手机是同一个 App。屏幕宽的时候正文居中排版，世界面板可以停靠在旁边。</p>
+          </article>
+          <article class="plat">
+            <span class="icn"><svg class="i l" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="11" rx="2"/><path d="M2 19.5h20"/></svg></span>
+            <h3 class="h-m">网页</h3>
+            <p class="cap" style="margin-top: -10px">电脑浏览器</p>
+            <p class="txt">有侧栏和键盘快捷键，角色卡文件可以直接拖进窗口导入。本地用 <code class="ic">make web</code> 启动。</p>
+            <div class="acts"><a class="alink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/docs/client.md" target="_blank" rel="noopener noreferrer">网页端说明<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 部署 -->
+    <section class="sec" id="deploy" style="padding-top: 0">
+      <div class="wrap">
+        <div class="shead">
+          <span class="num"><b>06</b></span>
+          <h2 class="h-l">部署</h2>
+          <p class="lead">目前没有公共服务，需要在自己的电脑或云主机上运行服务器，客户端连接到它。</p>
+        </div>
+        <div class="deploy" style="margin-top: 0">
+          <div class="left">
+            <h3 class="h-m">需要准备</h3>
+            <ul class="req">
+              <li><span><b>服务器：</b>Docker；或者 Python 3.12+ 和 uv、PostgreSQL 16</span></li>
+              <li><span><b>客户端：</b>Node 22.18+；手机上装 Expo Go</span></li>
+              <li><span><b>模型：</b>一个服务商的 API Key，或者兼容 OpenAI 接口的本地模型</span></li>
+            </ul>
+            <p class="txt" style="font-size: 14.5px; line-height: 24px">生产环境第一次启动前要生成主密钥和令牌签名密钥。主密钥丢了，已保存的模型 Key 就解不开了，请另外备份。</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px 20px">
+              <a class="alink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/docs/development.md" target="_blank" rel="noopener noreferrer">开发者指南<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+              <a class="alink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/deploy/nginx.example.conf" target="_blank" rel="noopener noreferrer">反向代理示例<svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 12px; min-width: 0; width: 100%">
+            <div class="tabs" role="tablist" aria-label="部署方式">
+              <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+                <button class="tab {{t.cls}}" type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}">{{t.label}}</button>
+              </sc-for>
+            </div>
+            <div class="code" role="tabpanel" aria-label="{{tabLabel}}" style="width: 100%">
+              <div class="bar">
+                <span class="lab">终端</span>
+                <button class="cp {{copyCls}}" type="button" onClick="{{copy}}">
+                  <sc-if value="{{copiedOk}}" hint-placeholder-val="{{false}}"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></sc-if>
+                  <sc-if value="{{notCopied}}" hint-placeholder-val="{{true}}"><svg class="i s" viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="3"/><path d="M15.5 8.5v-2a2 2 0 00-2-2h-7a2 2 0 00-2 2v7a2 2 0 002 2h2"/></svg></sc-if>
+                  <span aria-live="polite">{{copyLabel}}</span>
+                </button>
+              </div>
+              <pre ref="{{codeRef}}"><sc-for list="{{cmd}}" as="l" hint-placeholder-count="5"><span class="{{l.cls}}" style="display: block"><span class="pr">{{l.pre}}</span>{{l.t}}</span></sc-for></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 常见问题 -->
+    <section class="sec" id="faq" style="padding-top: 0">
+      <div class="wrap" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px 64px">
+        <div class="shead" style="flex: 1 1 280px; margin: 0">
+          <span class="num"><b>07</b></span>
+          <h2 class="h-l">常见问题</h2>
+          <p class="txt">其他问题可以在 <a href="https://github.com/Hexthebaldy/BetterTavern/issues" target="_blank" rel="noopener noreferrer" style="color: var(--acc); text-underline-offset: 3px">GitHub Issues</a> 里提。</p>
+        </div>
+        <div class="faq" style="flex: 999 1 560px; min-width: 0">
+          <div class="faq-item {{f0c}}">
+            <h3 style="margin: 0"><button class="faq-q" type="button" onClick="{{f0t}}" aria-expanded="{{f0o}}" aria-controls="faq-a0"><span>收费吗？</span><span class="plus" aria-hidden="true"></span></button></h3>
+            <div class="faq-a" id="faq-a0"><div><p>不收费，BetterTavern 是开源项目。写故事用的是你自己的模型 Key，费用由模型服务商按用量收取。</p></div></div>
+          </div>
+          <div class="faq-item {{f1c}}">
+            <h3 style="margin: 0"><button class="faq-q" type="button" onClick="{{f1t}}" aria-expanded="{{f1o}}" aria-controls="faq-a1"><span>一定要自己运行服务器吗？</span><span class="plus" aria-hidden="true"></span></button></h3>
+            <div class="faq-a" id="faq-a1"><div><p>是的，目前没有公共服务。故事、世界状态和 Key 都存在你自己运行的服务器上，一台常开的电脑或一台小云主机就够。</p></div></div>
+          </div>
+          <div class="faq-item {{f2c}}">
+            <h3 style="margin: 0"><button class="faq-q" type="button" onClick="{{f2t}}" aria-expanded="{{f2o}}" aria-controls="faq-a2"><span>手机 App 在哪里下载？</span><span class="plus" aria-hidden="true"></span></button></h3>
+            <div class="faq-a" id="faq-a2"><div><p>还没有上架 App Store 和 Google Play。现在用 Expo Go 打开：在电脑上启动客户端（见上面部署里的“手机”），用手机扫终端里的二维码。手机和电脑要在同一个网络里，或者用 Tailscale 这类组网工具连起来。</p></div></div>
+          </div>
+          <div class="faq-item {{f3c}}">
+            <h3 style="margin: 0"><button class="faq-q" type="button" onClick="{{f3t}}" aria-expanded="{{f3o}}" aria-controls="faq-a3"><span>支持哪些角色卡？</span><span class="plus" aria-hidden="true"></span></button></h3>
+            <div class="faq-a" id="faq-a3"><div><p>SillyTavern 的角色卡：PNG 图片或 JSON 文件，V1、V2、V3 都可以，最大 16 MB。PNG 卡的数据存在图片文件里，压缩过或截图得到的图片会丢掉这些数据，要用原文件。</p></div></div>
+          </div>
+          <div class="faq-item {{f4c}}">
+            <h3 style="margin: 0"><button class="faq-q" type="button" onClick="{{f4t}}" aria-expanded="{{f4o}}" aria-controls="faq-a4"><span>能用自己电脑上跑的模型吗？</span><span class="plus" aria-hidden="true"></span></button></h3>
+            <div class="faq-a" id="faq-a4"><div><p>可以。添加模型时选“自定义兼容端点”，填上兼容 OpenAI 接口的地址。端点在本机或内网时，服务器要设置 <code class="ic">ALLOW_PRIVATE_ENDPOINTS=true</code>。</p></div></div>
+          </div>
+          <div class="faq-item {{f5c}}">
+            <h3 style="margin: 0"><button class="faq-q" type="button" onClick="{{f5t}}" aria-expanded="{{f5o}}" aria-controls="faq-a5"><span>长篇故事会不会前后矛盾？</span><span class="plus" aria-hidden="true"></span></button></h3>
+            <div class="faq-a" id="faq-a5"><div><p>开局时 AI 先整理出世界状态，之后每一段都参照它来写；故事变长以后，前情整理成摘要，并对照长程大纲。写偏了可以回退，或者让这一段重写。</p></div></div>
+          </div>
+          <div class="faq-item {{f6c}}">
+            <h3 style="margin: 0"><button class="faq-q" type="button" onClick="{{f6t}}" aria-expanded="{{f6o}}" aria-controls="faq-a6"><span>支持哪些语言？</span><span class="plus" aria-hidden="true"></span></button></h3>
+            <div class="faq-a" id="faq-a6"><div><p>界面有中文、英文和日文，在“设置 → 语言”里切换。故事正文不限定语言，一般跟着开局时的界面语言、角色卡和你写的话走。</p></div></div>
+          </div>
+          <div class="faq-item {{f7c}}">
+            <h3 style="margin: 0"><button class="faq-q" type="button" onClick="{{f7t}}" aria-expanded="{{f7o}}" aria-controls="faq-a7"><span>故事会被拿去训练模型吗？</span><span class="plus" aria-hidden="true"></span></button></h3>
+            <div class="faq-a" id="faq-a7"><div><p>BetterTavern 不收集故事内容。写故事时，需要的前情会发给你选的模型服务商，他们怎么处理数据以各家的条款为准；介意的话，可以用自己电脑上跑的模型。</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="foot">
+    <div class="wrap">
+      <div class="cols">
+        <div class="about" style="display: flex; flex-direction: column; align-items: flex-start; gap: 14px">
+          <a class="brand" href="#top" aria-label="BetterTavern，回到顶部"><svg width="28" height="28" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linejoin="miter" stroke-miterlimit="4"><path class="o1" d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" stroke-width="4"/><path class="o2" d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" stroke-width="4"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" stroke-width="4.2"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" style="fill: var(--acc)"/></svg><span>BetterTavern</span></a>
+          <p class="txt">用 SillyTavern 角色卡玩的互动小说。<br>开源，需要自己部署。</p>
+        </div>
+        <div>
+          <h4>项目</h4>
+          <ul>
+            <li><a class="flink" href="https://github.com/Hexthebaldy/BetterTavern" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+            <li><a class="flink" href="https://github.com/Hexthebaldy/BetterTavern/issues" target="_blank" rel="noopener noreferrer">反馈问题</a></li>
+            <li><a class="flink" href="#deploy">部署</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>文档</h4>
+          <ul>
+            <li><a class="flink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/docs/development.md" target="_blank" rel="noopener noreferrer">开发者指南</a></li>
+            <li><a class="flink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/docs/README.md" target="_blank" rel="noopener noreferrer">技术方案</a></li>
+            <li><a class="flink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/docs/design/ui/README.md" target="_blank" rel="noopener noreferrer">界面设计</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>客户端</h4>
+          <ul>
+            <li><a class="flink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/apps/mobile/README.md" target="_blank" rel="noopener noreferrer">手机端说明</a></li>
+            <li><a class="flink" href="https://github.com/Hexthebaldy/BetterTavern/blob/HEAD/docs/client.md" target="_blank" rel="noopener noreferrer">网页端说明</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="mast" aria-hidden="true" style="font-size: min(12.7vw, 182px)">BetterTavern</div>
+      <div class="base">
+        <span>© 2026 BetterTavern · 许可证待定（MIT 或 Apache-2.0）</span>
+      </div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":7460}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { menu: false, ident: 1, focus: 'none', sel: 'me', secret: 'hidden', prov: 'deepseek', tab: 'docker', copied: '', faq: 0, up: false, cur: '' };
+    this.codeRef = (el) => { this.code = el; };
+    // 滚动时：导航出现细线；当前所在的那一节在导航里高亮
+    this.onScroll = () => {
+      if (this.raf) return;
+      this.raf = requestAnimationFrame(() => {
+        this.raf = 0;
+        const up = (window.scrollY || 0) > 8;
+        let cur = '';
+        ['how', 'world', 'more', 'models', 'clients', 'deploy', 'faq'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el && el.getBoundingClientRect().top <= 140) cur = id;
+        });
+        if (up !== this.state.up || cur !== this.state.cur) this.setState({ up, cur });
+      });
+    };
+  }
+
+  componentDidMount() {
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    this.onScroll();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('scroll', this.onScroll);
+    cancelAnimationFrame(this.raf);
+    clearTimeout(this.ct);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const shown = st.secret === 'shown';
+
+    // 关系图：位置是关系图里的百分比（连线的坐标和这里一致）
+    const N = {
+      me: { label: '我', kind: 'person', x: 18, y: 50, desc: '新来的守夜人。目标：把灯重新点亮。' },
+      tower: { label: '灯塔', kind: 'place', x: 46, y: 32, desc: '码头尽头的灯塔，灯是灭的。' },
+      grey: { label: '灰外套的女人', kind: 'person', x: 24, y: 14, desc: '态度：像是早就认识我。说话很轻，很慢。' },
+      log: { label: '航海日志', kind: 'item', x: 72, y: 14, desc: '最后一页的墨迹还没干。' },
+      keeper: { label: '老周', kind: 'person', x: 78, y: 50, desc: '守塔人，三天前不见了。' },
+      chao: { label: '阿潮', kind: 'person', x: 78, y: 90, desc: '抱着一盏没点的提灯，冻得发抖。' },
+      ship: { label: '无名旧船', kind: 'place', x: 62, y: 72, desc: '船身没有名字，缆绳还在滴水。' },
+      bell: { label: '旧船钟', kind: 'item', x: 34, y: 90, desc: '钟响三声，就有人要回来。' },
+      pier: { label: '雾港码头', kind: 'place', x: 24, y: 72, desc: '雾从海面漫上来，已经没过了栏杆。' }
+    };
+    // [甲, 乙, 从甲看, 从乙看]，每个是 [前, 对方, 后]
+    const ED = [
+      ['me', 'tower', ['在', '灯塔', ''], ['', '我', '在这里']],
+      ['grey', 'tower', ['在', '灯塔', ''], ['', '灰外套的女人', '在这里']],
+      ['tower', 'pier', ['在', '雾港码头', '的尽头'], ['尽头是', '灯塔', '']],
+      ['grey', 'log', ['拿着', '航海日志', ''], ['在', '灰外套的女人', '手里']],
+      ['log', 'keeper', ['是', '老周', '写的'], ['写下了', '航海日志', '']],
+      ['keeper', 'chao', ['是', '阿潮', '的爷爷'], ['是', '老周', '的孙子']],
+      ['chao', 'ship', ['躲在', '无名旧船', '里'], ['舱里有', '阿潮', '']],
+      ['ship', 'bell', ['挂着', '旧船钟', ''], ['挂在', '无名旧船', '上']],
+      ['pier', 'ship', ['旁边停着', '无名旧船', ''], ['停在', '雾港码头', '边上']]
+    ];
+    const nb = {};
+    Object.keys(N).forEach((k) => { nb[k] = []; });
+    ED.forEach((e) => { nb[e[0]].push(e[1]); nb[e[1]].push(e[0]); });
+    if (shown) { nb.keeper.push('ship'); nb.ship.push('keeper'); }
+    const kindLabel = { person: '人物', place: '地点', item: '物品' };
+    const nodes = Object.keys(N).map((id) => {
+      const n = N[id];
+      const isMe = id === 'me';
+      return {
+        x: n.x,
+        y: n.y,
+        label: n.label,
+        isMe,
+        person: n.kind === 'person',
+        place: n.kind === 'place',
+        item: n.kind === 'item',
+        cls: [isMe ? 'me' : '', 'k-' + id].concat(nb[id].map((x) => 'k-' + x)).concat(st.sel === id ? ['sel'] : []).join(' '),
+        aria: (isMe ? '我，林深，主角' : n.label + '，' + kindLabel[n.kind]),
+        pressed: st.sel === id ? 'true' : 'false',
+        hover: () => { if (this.state.focus !== id) this.setState({ focus: id }); },
+        pick: () => this.setState({ sel: id })
+      };
+    });
+    const selRels = [];
+    ED.forEach((e) => {
+      if (e[0] === st.sel) selRels.push({ pre: e[2][0], target: e[2][1], post: e[2][2], cls: '' });
+      else if (e[1] === st.sel) selRels.push({ pre: e[3][0], target: e[3][1], post: e[3][2], cls: '' });
+    });
+    if (shown && st.sel === 'keeper') selRels.push({ pre: '三十年前死在', target: '无名旧船', post: '上', cls: 'secr' });
+    if (shown && st.sel === 'ship') selRels.push({ pre: '', target: '老周', post: '三十年前死在这里', cls: 'secr' });
+    const sn = N[st.sel];
+
+    // 服务商
+    const P = [
+      { id: 'deepseek', name: 'DeepSeek', mk: 'DS', ph: 'sk-…', url: 'https://platform.deepseek.com/api_keys' },
+      { id: 'openai', name: 'OpenAI', mk: 'OA', ph: 'sk-…', url: 'https://platform.openai.com/api-keys' },
+      { id: 'xai', name: 'Grok', mk: 'xAI', ph: 'xai-…', url: 'https://console.x.ai' },
+      { id: 'gemini', name: 'Gemini', mk: 'G', ph: 'AIza…', url: 'https://aistudio.google.com/apikey' },
+      { id: 'hf', name: 'Hugging Face', mk: 'HF', ph: 'hf_…', url: 'https://huggingface.co/settings/tokens' },
+      { id: 'custom', name: '自定义兼容端点', mk: '{ }', ph: '粘贴 API Key', url: '' }
+    ];
+    const prov = P.find((p) => p.id === st.prov) || P[0];
+
+    // 部署命令：'$' 是命令，'#' 是注释
+    const T = [
+      { id: 'docker', label: 'Docker', aria: '用 Docker 部署服务器', lines: [
+        ['$', 'git clone https://github.com/Hexthebaldy/BetterTavern.git'],
+        ['$', 'cd BetterTavern'],
+        ['#', '生成密钥，把输出的两行写进 deploy/.env'],
+        ['$', 'docker compose -f deploy/docker-compose.yml run --rm migrate bettertavern keygen'],
+        ['$', 'docker compose -f deploy/docker-compose.yml up -d'],
+        ['#', '接口监听 127.0.0.1:8000，对外访问要放在带 TLS 的反向代理后面']
+      ] },
+      { id: 'source', label: '源码', aria: '从源码运行服务器', lines: [
+        ['$', 'git clone https://github.com/Hexthebaldy/BetterTavern.git'],
+        ['$', 'cd BetterTavern'],
+        ['$', 'cp apps/server/.env.example apps/server/.env'],
+        ['$', 'make db-up && make install && make migrate'],
+        ['$', 'make dev'],
+        ['#', '接口文档：http://localhost:8000/docs']
+      ] },
+      { id: 'web', label: '网页', aria: '启动网页客户端', lines: [
+        ['$', 'make js-install'],
+        ['$', 'make web'],
+        ['#', '浏览器打开 http://localhost:5173'],
+        ['#', '部署时用 make web-build 生成 apps/web/dist，和接口放在同一个域名下']
+      ] },
+      { id: 'mobile', label: '手机', aria: '启动手机客户端', lines: [
+        ['$', 'cp apps/mobile/.env.example apps/mobile/.env'],
+        ['#', '把 apps/mobile/.env 里的地址改成电脑的局域网 IP'],
+        ['$', 'make mobile-install'],
+        ['$', 'cd apps/mobile && npm start'],
+        ['#', '手机上用 Expo Go 扫终端里的二维码']
+      ] }
+    ];
+    const tab = T.find((t) => t.id === st.tab) || T[0];
+    const mac = /Mac|iPhone|iPad/.test((typeof navigator !== 'undefined' && (navigator.platform || navigator.userAgent)) || '');
+
+    const nv = {};
+    const ac = {};
+    ['how', 'world', 'more', 'models', 'deploy', 'faq'].forEach((id) => {
+      nv[id] = st.cur === id ? 'on' : '';
+      ac[id] = st.cur === id ? 'location' : 'false';
+    });
+
+    const vals = {
+      navCls: st.up || st.menu ? 'up' : '',
+      nv,
+      ac,
+      menuOpen: st.menu,
+      menuClosed: !st.menu,
+      menuLabel: st.menu ? '收起菜单' : '打开菜单',
+      toggleMenu: () => this.setState({ menu: !st.menu }),
+      closeMenu: () => this.setState({ menu: false }),
+
+      idents: ['过路的旅人', '新来的守夜人', '旧相识'].map((label, i) => ({
+        label,
+        cls: st.ident === i ? 'on' : '',
+        on: st.ident === i ? 'true' : 'false',
+        pick: () => this.setState({ ident: i })
+      })),
+
+      focus: st.focus,
+      unhover: () => { if (this.state.focus !== 'none') this.setState({ focus: 'none' }); },
+      nodes,
+      selKind: st.sel === 'me' ? '主角' : kindLabel[sn.kind],
+      selKindCls: st.sel === 'me' ? 'acc' : '',
+      selName: st.sel === 'me' ? '我 · 林深' : sn.label,
+      selDesc: sn.desc,
+      selRels,
+
+      secHidden: !shown,
+      secCls: shown ? '' : 'hid',
+      secAria: shown ? 'false' : 'true',
+      secCanAsk: st.secret === 'hidden',
+      secAsk: st.secret === 'ask',
+      secShown: shown,
+      secLine: shown ? 'show' : '',
+      askReveal: () => this.setState({ secret: 'ask' }),
+      cancelReveal: () => this.setState({ secret: 'hidden' }),
+      doReveal: () => this.setState({ secret: 'shown', sel: 'keeper' }),
+
+      tiles: P.map((p) => ({
+        name: p.name,
+        mk: p.mk,
+        cls: p.id === prov.id ? 'on' : '',
+        on: p.id === prov.id ? 'true' : 'false',
+        pick: () => this.setState({ prov: p.id })
+      })),
+      provName: prov.name,
+      provPh: prov.ph,
+      provUrl: prov.url,
+      hasUrl: !!prov.url,
+      noUrl: !prov.url,
+
+      tabs: T.map((t) => ({
+        label: t.label,
+        cls: t.id === tab.id ? 'on' : '',
+        on: t.id === tab.id ? 'true' : 'false',
+        pick: () => this.setState({ tab: t.id, copied: '' })
+      })),
+      tabLabel: tab.aria,
+      cmd: tab.lines.map((l) => ({
+        t: l[0] === '#' ? '# ' + l[1] : l[1],
+        pre: l[0] === '$' ? '$ ' : '',
+        cls: l[0] === '#' ? 'cm' : ''
+      })),
+      codeRef: this.codeRef,
+      copiedOk: st.copied === 'ok',
+      notCopied: st.copied !== 'ok',
+      copyCls: st.copied === 'ok' ? 'ok' : '',
+      copyLabel: st.copied === 'ok' ? '已复制' : (st.copied === 'sel' ? (mac ? '已选中，按 ⌘C 复制' : '已选中，按 Ctrl+C 复制') : '复制'),
+      copy: () => {
+        const text = tab.lines.map((l) => (l[0] === '#' ? '# ' + l[1] : l[1])).join('\n');
+        const done = (v) => {
+          this.setState({ copied: v });
+          clearTimeout(this.ct);
+          this.ct = setTimeout(() => this.setState({ copied: '' }), v === 'sel' ? 4000 : 2200);
+        };
+        // 剪贴板接口不可用时：选中命令，再试一次旧的复制命令；还不行就请用户自己按快捷键
+        const fallback = () => {
+          let ok = false;
+          try {
+            if (this.code) {
+              const r = document.createRange();
+              r.selectNodeContents(this.code);
+              const s = window.getSelection();
+              s.removeAllRanges();
+              s.addRange(r);
+              ok = document.execCommand && document.execCommand('copy');
+              if (ok) s.removeAllRanges();
+            }
+          } catch (e) {
+            ok = false;
+          }
+          done(ok ? 'ok' : 'sel');
+        };
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done('ok'), fallback);
+          else fallback();
+        } catch (e) {
+          fallback();
+        }
+      }
+    };
+    for (let i = 0; i < 8; i++) {
+      vals['f' + i + 'c'] = st.faq === i ? 'open' : '';
+      vals['f' + i + 'o'] = st.faq === i ? 'true' : 'false';
+      vals['f' + i + 't'] = () => this.setState({ faq: this.state.faq === i ? -1 : i });
+    }
+    return vals;
+  }
+}
+</script>
+</body>
+</html>
