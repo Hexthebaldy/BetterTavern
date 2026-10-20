@@ -57,6 +57,20 @@ export const play: Messages<typeof source> = {
     toolbar: "Reading actions",
     story: "Story",
     backToSaves: "Back to Saves",
+    rollbackHere: "Go back here",
+    rollbackPick: "Go back to an earlier part",
+    rollbackPickTitle: "Go back to which part?",
+    rollbackOpening: "Opening",
+    rollbackTitle: "Go back to this part?",
+    rollbackMessage_one:
+      "The part after it will be undone, and the world goes back to how it was then. {{left}}",
+    rollbackMessage_other:
+      "The {{count}} parts after it will be undone, and the world goes back to how it was then. {{left}}",
+    rollbackLeft_one: "After this, this save can go back {{count}} more time.",
+    rollbackLeft_other: "After this, this save can go back {{count}} more times.",
+    rolledBack: "Went back to this part",
+    rollbackUsedUp: "This save has no go-backs left",
+    rollbackFailed: "Couldn't go back: {{error}}",
   },
   reading: {
     title: "Reading",

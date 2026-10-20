@@ -1,27 +1,35 @@
-"""游玩：开局（WorldBuilder 与开场回合在后台进行）、列表、详情、改名、删除，世界状态的只读视图。"""
+"""游玩：开局（WorldBuilder 与开场回合在后台进行）、列表、详情、改名、删除、回退，
+世界状态的只读视图。"""
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.story.language import DEFAULT_LANGUAGE, parse_language
 from bettertavern.domain.world.names import clean_display_name
 from bettertavern.infra.db.repositories import library as library_repo
+from bettertavern.infra.db.repositories import rollback as rollback_repo
 from bettertavern.infra.db.repositories import state as state_repo
 from bettertavern.infra.db.repositories import story as repo
 from bettertavern.infra.db.sqlutil import as_str, is_uuid
+from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.runtime.ports import Preferences
 from bettertavern.runtime.runner import TurnRunnerPool
 
-from .errors import AppError, Invalid, NotFound
+from .errors import AppError, Conflict, Invalid, NotFound
 from .route_service import RouteService
+from .state_jobs import enqueue_state
 from .turn_service import header_for
 from .turn_store import load_world
 from .views import PlaythroughDetail, PlaythroughView, TurnView
+
+log = structlog.get_logger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,12 +87,29 @@ class PlaythroughService:
         *,
         lease_ttl_s: float,
         instance_id: str,
+        rollback_limit: int = 1,
     ) -> None:
         self._engine = engine
         self._routes = routes
         self._runners = runners
         self._lease_ttl = lease_ttl_s
         self._instance = instance_id
+        self._queue = PgJobQueue(engine)
+        self._rollback_limit = rollback_limit
+
+    def rollback_limit(self, user_id: str) -> int:
+        """这个用户每个存档能回退几次。现在人人一样；以后按用户（例如充值用户 3 次）在这里查。"""
+        return self._rollback_limit
+
+    def _view(
+        self, pt: repo.PlaythroughRow, *, head_seq: int | None = None, head_excerpt: str = ""
+    ) -> PlaythroughView:
+        return PlaythroughView.of(
+            pt,
+            rollback_limit=self.rollback_limit(pt.user_id),
+            head_seq=head_seq,
+            head_excerpt=head_excerpt,
+        )
 
     async def create(self, user_id: str, data: NewPlaythrough) -> tuple[PlaythroughView, TurnView]:
         name = clean_display_name(data.protagonist_name)
@@ -131,7 +156,7 @@ class PlaythroughService:
             )
             await repo.take_lease(conn, pt.id, turn.id, ttl_s=self._lease_ttl, owner=self._instance)
         self._runners.start(header_for(pt, turn, user_id))
-        return PlaythroughView.of(pt), TurnView.of(turn)
+        return self._view(pt), TurnView.of(turn)
 
     async def list(self, user_id: str) -> list[PlaythroughView]:
         async with self._engine.connect() as conn:
@@ -141,7 +166,7 @@ class PlaythroughService:
             pt = repo.PlaythroughRow.from_row(row)
             seq = row.get("head_seq")
             views.append(
-                PlaythroughView.of(
+                self._view(
                     pt,
                     head_seq=int(seq) if seq is not None else None,
                     head_excerpt=str(row.get("head_excerpt") or ""),
@@ -167,7 +192,7 @@ class PlaythroughService:
                 conn, pt.id, head.seq if head is not None else -1
             )
         return PlaythroughDetail(
-            playthrough=PlaythroughView.of(
+            playthrough=self._view(
                 pt,
                 head_seq=head.seq if head else None,
                 head_excerpt=head.narrative[:120] if head else "",
@@ -187,7 +212,63 @@ class PlaythroughService:
             pt = await repo.rename_playthrough(conn, user_id, playthrough_id, title)
         if pt is None:
             raise NotFound("Playthrough not found")
-        return PlaythroughView.of(pt)
+        return self._view(pt)
+
+    async def rollback(self, user_id: str, playthrough_id: str, turn_id: str) -> PlaythroughDetail:
+        """回退到 turn_id 那一回合（docs/agent-runtime.md 第 8 节），一个事务。
+
+        撤销之后各回合对世界状态的修改、删掉它们的回合标签、把它们（连同失败的尝试）归档、
+        头部指回这一回合、时间线编号加 1、回退次数加 1。有回合正在生成时不回退。
+        """
+        if not is_uuid(playthrough_id) or not is_uuid(turn_id):
+            raise NotFound("Playthrough not found")
+        limit = self.rollback_limit(user_id)
+        async with self._engine.begin() as conn:
+            pt = await repo.get_playthrough(conn, user_id, playthrough_id, lock=True)
+            if pt is None:
+                raise NotFound("Playthrough not found")
+            if pt.active_turn_id is not None:
+                if await repo.lease_alive(conn, pt.id):
+                    raise Conflict(
+                        "A turn is still being written; stop it first",
+                        code="TURN_IN_PROGRESS",
+                        active_turn_id=pt.active_turn_id,
+                    )
+                # 租约已过期：生成进程没了，先把那一轮标为失败
+                await repo.fail_turn(
+                    conn, pt.active_turn_id, narrative="", error=repo.RUNNER_LOST_ERROR
+                )
+                await repo.release_lease(conn, pt.id, pt.active_turn_id)
+            target = await repo.get_turn(conn, turn_id)
+            if target is None or target.playthrough_id != pt.id:
+                raise NotFound("Turn not found")
+            if target.status not in ("replied", "committed"):
+                raise Conflict("That turn is no longer in the story", code="NOT_ON_TIMELINE")
+            if target.id == pt.head_turn_id:
+                raise Conflict("The story is already at that turn", code="ALREADY_AT_TURN")
+            if pt.rollbacks_used >= limit:
+                raise Conflict(
+                    "This save has no rollbacks left", code="ROLLBACK_LIMIT_REACHED", limit=limit
+                )
+            undo = await rollback_repo.patches_after(conn, pt.id, target.seq)
+            await state_repo.apply_changes(conn, pt.id, rollback_repo.inverted(undo))
+            patches, notes = await rollback_repo.delete_after(conn, pt.id, target.seq)
+            archived = await rollback_repo.archive_after(conn, pt.id, target.seq, str(uuid.uuid4()))
+            await rollback_repo.move_head(conn, pt.id, target.id, target.seq)
+            # 世界状态还没整理到这一回合：接着整理（回退前开始的整理写入时会作废）
+            if pt.state_seq < target.seq:
+                await enqueue_state(conn, self._queue, pt.id)
+        log.info(
+            "playthrough.rolled_back",
+            playthrough_id=pt.id,
+            to_seq=target.seq,
+            undone_rows=len(undo),
+            deleted_patches=patches,
+            deleted_notes=notes,
+            archived_turns=archived,
+            state_seq=min(pt.state_seq, target.seq),
+        )
+        return await self.get(user_id, playthrough_id)
 
     async def delete(self, user_id: str, playthrough_id: str) -> None:
         pt = await self._row(user_id, playthrough_id)

@@ -6,7 +6,7 @@ import type { NewAction, PlaythroughDetail, Turn, TurnEvent } from "../api/types
 import type { StreamOutcome, TurnStream, TurnStreamHandlers } from "../api/turnStream.ts";
 import { PlaySession, type PlayApi } from "./playSession.ts";
 import { makeTurn, opts } from "./testing.ts";
-import { headTurn } from "./turnMachine.ts";
+import { canRollbackTo, headTurn, turnsAfter } from "./turnMachine.ts";
 
 /** 可以手动推进的假事件流 */
 class FakeStream implements TurnStream {
@@ -58,6 +58,8 @@ class FakeApi implements PlayApi {
   turnResults: (Turn | Error)[] = [];
   submitted: Submitted[] = [];
   cancelled: string[] = [];
+  rolledBack: string[] = [];
+  rollbackError: Error | null = null;
   detailCalls = 0;
 
   async detail(): Promise<PlaythroughDetail> {
@@ -91,6 +93,12 @@ class FakeApi implements PlayApi {
     this.cancelled.push(turnId);
     return makeTurn(9);
   }
+
+  async rollback(_id: string, turnId: string): Promise<PlaythroughDetail> {
+    this.rolledBack.push(turnId);
+    if (this.rollbackError) throw this.rollbackError;
+    return this.detail();
+  }
 }
 
 function detail(head: Turn | null, extra: Partial<PlaythroughDetail> = {}): PlaythroughDetail {
@@ -109,6 +117,7 @@ function detail(head: Turn | null, extra: Partial<PlaythroughDetail> = {}): Play
       active_turn_id: null,
       rollback_floor_seq: 0,
       state_seq: -1,
+      rollbacks_left: 1,
       seed_source: "model",
       created_at: "",
       updated_at: "",
@@ -328,6 +337,48 @@ describe("PlaySession", () => {
     const state = session.getState();
     assert.equal(state.phase, "idle");
     assert.equal(headTurn(state)?.id, newer.id);
+    assert.equal(api.detailCalls, 2);
+  });
+
+  it("回到更早的一回合：撤销之后的回合，重新加载", async () => {
+    const { api, session } = setup();
+    const [t0, t1, t2] = [makeTurn(0), makeTurn(1), makeTurn(2)];
+    const after = detail(t1);
+    after.playthrough.rollbacks_left = 0;
+    api.detailQueue = [detail(t2), after];
+    api.historyQueue = [
+      [t0, t1, t2],
+      [t0, t1],
+    ];
+    await session.load();
+    let state = session.getState();
+    assert.ok(canRollbackTo(state, t1.id) && canRollbackTo(state, t0.id));
+    assert.ok(!canRollbackTo(state, t2.id), "最新一回合不能回退");
+    assert.equal(turnsAfter(state, t0.id), 2);
+    assert.equal(await session.rollback(t1.id), null);
+    assert.deepEqual(api.rolledBack, [t1.id]);
+    state = session.getState();
+    assert.equal(headTurn(state)?.id, t1.id);
+    assert.equal(state.rollbacksLeft, 0);
+    // 次数用完：不再发请求
+    assert.ok(!canRollbackTo(state, t0.id));
+    assert.equal(await session.rollback(t0.id), null);
+    assert.deepEqual(api.rolledBack, [t1.id]);
+  });
+
+  it("服务端拒绝回退：返回原因，并重新加载和服务端保持一致", async () => {
+    const { api, session } = setup();
+    const [t0, t1] = [makeTurn(0), makeTurn(1)];
+    api.detailQueue = [detail(t1)];
+    api.historyQueue = [[t0, t1]];
+    await session.load();
+    api.rollbackError = new ApiError("No rollbacks left", {
+      status: 409,
+      code: "ROLLBACK_LIMIT_REACHED",
+      retryable: false,
+    });
+    const failure = await session.rollback(t0.id);
+    assert.equal(failure?.code, "ROLLBACK_LIMIT_REACHED");
     assert.equal(api.detailCalls, 2);
   });
 

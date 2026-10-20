@@ -30,8 +30,7 @@ export type SseClientState = "idle" | "connecting" | "open" | "reconnecting" | "
 export type SseOutcome = "completed" | "polling" | "closed" | "unauthorized";
 
 export type HeadersSource =
-  | Record<string, string>
-  | (() => Record<string, string> | Promise<Record<string, string>>);
+  Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>);
 
 export type SseClientOptions = {
   url: string;

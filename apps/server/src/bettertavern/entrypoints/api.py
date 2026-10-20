@@ -82,6 +82,7 @@ def build_app_services(
             director_timeout_s=settings.director_timeout_s,
         ),
         instance_id=instance_id(),
+        rollback_limit=settings.rollback_limit,
     )
 
 

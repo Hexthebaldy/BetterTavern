@@ -14,6 +14,7 @@ import {
   isBusy,
   isEnded,
   needsOpening,
+  rollbackStatus,
   playReducer,
   retryAction,
   unsentSubmission,
@@ -415,5 +416,19 @@ describe("turnMachine", () => {
     assert.equal(actionNote({ source: "ending", text: "" }), "写结局");
     assert.equal(actionNote({ source: "text", text: "我坐下" }), "我坐下");
     assert.equal(actionNote(null), null);
+  });
+});
+
+describe("回到更早的一段", () => {
+  it("入口的样子：能用、正在生成、次数用完、还没有更早的一段", () => {
+    const loaded = run([
+      { type: "loaded", turns: [makeTurn(1), makeTurn(0)], active: null, lastFailed: null, rollbacksLeft: 1 },
+    ]);
+    assert.equal(rollbackStatus(loaded), "ready");
+    assert.equal(rollbackStatus({ ...loaded, phase: "streaming" }), "busy");
+    assert.equal(rollbackStatus({ ...loaded, rollbacksLeft: 0 }), "used_up");
+    assert.equal(rollbackStatus({ ...loaded, turns: loaded.turns.slice(0, 1) }), "none");
+    // 加载时没给次数（旧的事件）就沿用之前的
+    assert.equal(idleWithTwoTurns().rollbacksLeft, 0);
   });
 });

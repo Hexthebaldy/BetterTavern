@@ -151,6 +151,7 @@ class PlaythroughOut(Out):
     active_turn_id: str | None
     rollback_floor_seq: int
     state_seq: int
+    rollbacks_left: int
     seed_source: str | None
     created_at: datetime
     updated_at: datetime
@@ -173,6 +174,10 @@ class ActionIn(BaseModel):
     source: Literal["option", "text", "opening", "ending"]
     text: str | None = Field(default=None, max_length=4000)
     option_id: str | None = Field(default=None, max_length=8)
+
+
+class RollbackIn(BaseModel):
+    turn_id: str = Field(max_length=64)
 
 
 class TurnIn(BaseModel):

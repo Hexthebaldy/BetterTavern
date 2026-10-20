@@ -213,6 +213,7 @@ make vis
 | `integration/test_accounts.py` | 注册登录、刷新令牌轮换、宽限期与盗用检测、退出吊销整族、删除账户 |
 | `integration/test_routes.py` | 模型路由：窗口的来源顺序（服务商列表 > 能力表 > 手填 > 32K）、保存时复用表单拉过的列表、复用 Key 与一起换 Key、只有一个导演且所有用途都用它、学到的窗口只往小调、跨用户 404 |
 | `integration/test_turns.py` | 同一个幂等键并发提交只建一个回合、生成中再提交得到 `TURN_IN_PROGRESS`、租约过期清理后迟到的结果作废、跨用户 404、过期父回合与选项校验 |
+| `integration/test_rollback.py` | 回退：随机走很多步“往前玩几回合 / 回退到更早的一回合”，每次回退后世界状态（实体、关系、事实）、回合标签和整理进度都和当初刚整理完那一回合时逐行相同；世界状态落后时回退，接着整理到目标回合；回退前开始的整理写入时作废；已经在最新一回合、正在生成、目标不在故事线上、次数用完时拒绝；写完结局的故事回退后回到进行中 |
 | `integration/test_state.py` | 世界状态 agent 的写入：回合存为 `replied` 并只放一个整理任务；整理结果写进世界状态表、`state_patches`、`turn_notes` 和 `agent_steps`；时间线变了时什么都不写、运行记为 `stale`；世界状态接口带上整理进度、失败和跳过 |
 | `e2e/test_m1_flow.py` | uvicorn 里的真实 api 加假模型服务：注册 → 拉模型列表并添加模型 → 导入 → 开局 → 多回合（幂等重放、并发提交、过期父回合）→ 中途断开再续传，拼接结果等于最终叙述；鉴权与隔离；窗口校验；开局的 `language`（不传按中文、只认 zh / en、英文的一局给导演的是英文提示词） |
 | `e2e/test_web_auth.py` | 网页的 Cookie 登录：注册、刷新、登录只在 HttpOnly Cookie 里给刷新令牌，刷新和退出凭 Cookie、被拒时删掉 Cookie；跨站请求返回 403；不带 `X-Auth-Mode` 时和 App 一样 |
@@ -220,7 +221,7 @@ make vis
 `integration` 与 `e2e/test_m1_flow.py`、`e2e/test_web_auth.py` 需要 `BT_TEST_DATABASE_URL`（`make test-integration`），没有设置时跳过。
 
 客户端（仓库根目录 `npm test`，主要在 `packages/core`）：`i18n`（英文、日文资源的 key 都和中文一一对应、插值变量和组件标签一致、英文复数齐全、语言的解析和切换）、错误按错误码翻译（中、英、日）、`sseParser`、`sseClient`（重连、退避、续传、转轮询、401）、`turnMachine`、`playSession`（加载、幂等重试、
-`TURN_IN_PROGRESS` / `STALE_PARENT`、续传、轮询、失效登录）、`turnStream`（半截终止事件后的恢复）、`session`（单飞刷新、网页的 Cookie 模式）、`client`（401 重试、problem+json、
+`TURN_IN_PROGRESS` / `STALE_PARENT`、续传、轮询、失效登录、回到更早的一段（成功后重新加载、次数用完不发请求、被拒绝时返回原因并重新加载））、`turnStream`（半截终止事件后的恢复）、`session`（单飞刷新、网页的 Cookie 模式）、`client`（401 重试、problem+json、
 Cookie 模式的请求头和请求体）。网页端（`apps/web`）自己的纯逻辑也在 `npm test` 里：桌面布局（`theme/layout.ts`：断点、阅读页让位、设置两栏、右键菜单和提示的位置、
 快捷键判断、标签页标题）、浏览器存储、界面偏好、最近故事分组、导入规则、跟随新文字、Enter 发送与输入法组字。App 的界面还没有自动化测试。
 

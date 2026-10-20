@@ -59,13 +59,19 @@ class PlaythroughView:
     active_turn_id: str | None
     rollback_floor_seq: int
     state_seq: int
+    rollbacks_left: int  # 还能回退几次
     seed_source: str | None
     created_at: datetime
     updated_at: datetime
 
     @classmethod
     def of(
-        cls, row: PlaythroughRow, *, head_seq: int | None = None, head_excerpt: str = ""
+        cls,
+        row: PlaythroughRow,
+        *,
+        rollback_limit: int,
+        head_seq: int | None = None,
+        head_excerpt: str = "",
     ) -> PlaythroughView:
         protagonist = row.settings.get("protagonist") or {}
         return cls(
@@ -82,6 +88,7 @@ class PlaythroughView:
             active_turn_id=row.active_turn_id,
             rollback_floor_seq=row.rollback_floor_seq,
             state_seq=row.state_seq,
+            rollbacks_left=max(rollback_limit - row.rollbacks_used, 0),
             seed_source=row.seed_source,
             created_at=row.created_at,
             updated_at=row.updated_at,

@@ -6,30 +6,18 @@
 
 from __future__ import annotations
 
-import json
-from collections.abc import AsyncIterator, Sequence
-from dataclasses import dataclass
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.world.records import RowChange
-from bettertavern.infra.crypto.keyring import AppSecrets, load_secrets, new_master_key_entry
-from bettertavern.providers import ChatResult, EndpointPolicy, ToolCall, Usage
-from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.providers import ChatResult
 from bettertavern.runtime.ports import AgentRunRecord, StateCommit
-from bettertavern.runtime.runner import RunnerConfig
-from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
-from bettertavern.services.container import Services, build_services, build_state_runner
-from bettertavern.services.playthrough_service import NewPlaythrough
-from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.state_store import PgStateStore
-from bettertavern.services.turn_service import ActionInput
-from tests.fakes.runtime import ScriptedAdapter, StreamScript, result, scripted_hub
-from tests.support.pg import database_url, schema_engine
+from tests.support.game import Game, calls, commit, new_game, play, rows
+from tests.support.pg import database_url
 
 pytestmark = [pytest.mark.integration, pytest.mark.anyio]
 
@@ -37,132 +25,12 @@ URL = database_url()
 if not URL:
     pytest.skip("没有设置 BT_TEST_DATABASE_URL", allow_module_level=True)
 
-SEED = {
-    "world": {"title": "雨夜", "setting": "灰石镇"},
-    "protagonist": {"name": "林川", "summary": "信使"},
-    "characters": [{"name": "老周", "summary": "掌柜"}],
-    "locations": [{"name": "酒馆"}, {"name": "码头"}],
-    "opening": {"location": "酒馆", "present": ["老周"], "situation": "雨夜"},
-}
-CARD = {"spec": "chara_card_v2", "data": {"name": "老周", "description": "掌柜"}}
-
-
-def director(n: int) -> list[str]:
-    body = f"<narrative>\n第{n}段叙述。\n</narrative>\n<options>\n1. 甲{n}\n2. 乙{n}\n</options>"
-    return [body[i : i + 6] for i in range(0, len(body), 6)]
-
-
-def calls(*items: tuple[str, dict[str, Any]]) -> ChatResult:
-    return ChatResult(
-        text="",
-        reasoning="",
-        tool_calls=tuple(
-            ToolCall(id=f"c{i}", name=name, arguments=json.dumps(args, ensure_ascii=False))
-            for i, (name, args) in enumerate(items)
-        ),
-        finish_reason="tool_calls",
-        usage=Usage(prompt=100, completion=20),
-    )
-
-
-def commit(digest: str, *entities: str) -> tuple[str, dict[str, Any]]:
-    return ("commit", {"digest": digest, "entities": list(entities), "scene_ended": False})
-
-
-@dataclass
-class Game:
-    services: Services
-    state: StateRunner
-    adapter: ScriptedAdapter
-    engine: AsyncEngine
-    user_id: str
-    playthrough_id: str
-    opening_id: str
-
-
-async def finish(services: Services, turn_id: str) -> None:
-    stream = services.buffers.get(turn_id)
-    assert stream is not None
-    async for _ in stream.subscribe(0):
-        pass
-
-
-def secrets_for(tmp_path: Path) -> AppSecrets:
-    return load_secrets(
-        master_keys=new_master_key_entry("t1"),
-        auth_secret="s" * 40,
-        allow_dev_fallback=False,
-        data_dir=tmp_path,
-    )
-
 
 @pytest.fixture
 async def game(tmp_path: Path) -> AsyncIterator[Game]:
     assert URL is not None
-    async with schema_engine(URL, pool_size=10) as engine:
-        hub, adapters = scripted_hub("fake")
-        secrets = secrets_for(tmp_path)
-        services = build_services(
-            engine=engine,
-            secrets=secrets,
-            hub=hub,
-            policy=EndpointPolicy(),
-            buffers=EventBufferRegistry(),
-            access_ttl_s=900,
-            refresh_ttl_s=3600,
-            runner_config=RunnerConfig(delta_batch_s=0.0, lease_renew_s=0.2),
-            instance_id="test",
-        )
-        state = build_state_runner(
-            engine=engine,
-            secrets=secrets,
-            hub=hub,
-            policy=EndpointPolicy(),
-            config=StateRunnerConfig(turn_timeout_s=5.0),
-        )
-        user, _ = await services.auth.register("lin@example.com", "correct horse")
-        await services.routes.create(
-            user.id,
-            RouteInput(
-                provider="fake", model="fake-model", api_key="sk-test-123456", director=True
-            ),
-        )
-        scenario = await services.scenarios.import_file(user.id, json.dumps(CARD).encode())
-        adapter = adapters["fake"]
-        adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))
-        adapter.streams.append(StreamScript(director(0)))
-        pt, opening = await services.playthroughs.create(
-            user.id, NewPlaythrough(scenario_id=scenario.id, protagonist_name="林川")
-        )
-        await finish(services, opening.id)
-        try:
-            yield Game(services, state, adapter, engine, user.id, pt.id, opening.id)
-        finally:
-            await services.runners.shutdown(1.0)
-            await hub.aclose()
-
-
-async def rows(engine: AsyncEngine, sql: str, **params: Any) -> Sequence[Any]:
-    async with engine.connect() as conn:
-        return (await conn.execute(text(sql), params)).all()
-
-
-async def play(game: Game, n: int) -> str:
-    game.adapter.streams.append(StreamScript(director(n)))
-    [(head,)] = await rows(
-        game.engine,
-        "SELECT head_turn_id::text FROM playthroughs WHERE id = :id",
-        id=game.playthrough_id,
-    )
-    turn, _ = await game.services.turns.create(
-        game.user_id,
-        game.playthrough_id,
-        parent_turn_id=head,
-        action=ActionInput(source="option", option_id="o1"),
-        idempotency_key=None,
-    )
-    await finish(game.services, turn.id)
-    return turn.id
+    async with new_game(URL, tmp_path) as started:
+        yield started
 
 
 async def test_turns_are_saved_as_replied_with_one_queued_job(game: Game) -> None:

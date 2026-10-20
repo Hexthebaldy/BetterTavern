@@ -18,7 +18,7 @@ import { useNavigate, useParams } from "react-router";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import { readableColumn } from "@bettertavern/design/layout";
-import { headTurn, isEnded, isLive, canAct } from "@bettertavern/core/play/turnMachine";
+import { headTurn, isEnded, isLive, canAct, turnsAfter } from "@bettertavern/core/play/turnMachine";
 
 import { Button, IconButton } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -105,6 +105,32 @@ function PlayPage({ id }: { id: string }) {
   const width = useWindowWidth();
   const controls = usePlaySession(id);
   const { state } = controls;
+  // “回到这里”的处理函数要稳定（故事流里每一段都是 memo 的），所以经 ref 读最新的状态
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const { rollback } = controls;
+  const rollbackTo = useCallback(
+    async (turnId: string) => {
+      const current = stateRef.current;
+      const left = t("play.rollbackLeft", { count: Math.max(current.rollbacksLeft - 1, 0) });
+      const ok = await overlay.confirm({
+        title: t("play.rollbackTitle"),
+        message: t("play.rollbackMessage", { count: turnsAfter(current, turnId), left }),
+        confirmLabel: t("play.rollbackHere"),
+        tone: "warn",
+        icon: "back",
+      });
+      if (!ok) return;
+      const failure = await rollback(turnId);
+      if (failure) {
+        overlay.toast(t("play.rollbackFailed", { error: describeTurnError(failure) }), { icon: "alert" });
+        return;
+      }
+      overlay.toast(t("play.rolledBack"));
+      void queries.invalidateQueries({ queryKey: storiesKey });
+    },
+    [overlay, t, rollback, queries],
+  );
 
   // ---- 世界状态：停靠时开关跟着浏览器里的偏好（所有故事共用）；滑出只在这一页里开关 ----
   const dockable = readingLayout(width, sidebarCollapsed, true).world === "dock";
@@ -346,6 +372,7 @@ function PlayPage({ id }: { id: string }) {
       <div className={styles.feed} style={syncing ? { opacity: 0.4 } : undefined}>
         <StoryFeed
           state={state}
+          onRollback={rollbackTo}
           header={
             <BookHeader
               seed={state.scenarioId ?? id}
@@ -386,7 +413,13 @@ function PlayPage({ id }: { id: string }) {
         moreRef={moreButton}
       />
       {layout.world ? (
-        <WorldPanel mode={layout.world} playthroughId={id} version={head?.id ?? null} onClose={closeWorld} />
+        <WorldPanel
+          mode={layout.world}
+          playthroughId={id}
+          version={head?.id ?? null}
+          headSeq={head?.seq ?? null}
+          onClose={closeWorld}
+        />
       ) : null}
       {moreOpen && moreButton.current ? (
         <MorePopover

@@ -6,6 +6,8 @@
  * 两端对齐；正文可以选中复制，用浏览器自己的右键菜单。流式光标是 3×20 的蓝色圆头竖条，不闪烁。
  * 已完成的回合用 content-visibility: auto：很长的故事也只排版看得见的部分，浏览器的“查找”照样能找到。
  * 写完结局的故事，最后一段下面居中一行“—END—”（叙述的字，浅一档），没有选项也没有别的按钮。
+ * 鼠标移到更早的一段上，右上角出现“回到这里”（回退，docs/agent-runtime.md 第 8 节）；回退次数用完时那里写明已用完。
+ * 没有鼠标的设备上它一直显示在这一段下面。
  */
 
 import { memo, type CSSProperties, type ReactNode } from "react";
@@ -14,6 +16,8 @@ import { useTranslation } from "react-i18next";
 import { LANGUAGE_TAGS } from "@bettertavern/core/i18n/index";
 import {
   actionNote,
+  canRollbackTo,
+  headTurn,
   isEnded,
   type PendingTurn,
   type Phase,
@@ -136,14 +140,40 @@ function Narrative({
   );
 }
 
-const TurnBlock = memo(function TurnBlock({ turn, lang }: { turn: StoryTurn } & StoryLang) {
+/** 这一段能不能回退：能（available）、次数用完了（used_up），或者不显示（null：最新一段、正在生成） */
+export type RollbackState = "available" | "used_up" | null;
+
+function rollbackState(state: PlayState, turn: StoryTurn): RollbackState {
+  if (canRollbackTo(state, turn.id)) return "available";
+  const idle = state.phase === "idle" || state.phase === "failed";
+  return idle && state.rollbacksLeft <= 0 && headTurn(state)?.id !== turn.id ? "used_up" : null;
+}
+
+const TurnBlock = memo(function TurnBlock({
+  turn,
+  lang,
+  rollback,
+  onRollback,
+}: { turn: StoryTurn; rollback: RollbackState; onRollback?: (turnId: string) => void } & StoryLang) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
-  useTranslation();
+  const { t } = useTranslation();
   const note = actionNote(turn.action);
   return (
     <section className={cx(styles.turn, styles.settled)}>
       {note ? <ActionNote text={note} lang={lang} /> : null}
       <Narrative text={turn.narrative} lang={lang} />
+      {rollback && onRollback ? (
+        <div className={styles.turnTools}>
+          {rollback === "available" ? (
+            <button type="button" className={styles.rollback} onClick={() => onRollback(turn.id)}>
+              <Icon name="back" size={14} />
+              {t("play.rollbackHere")}
+            </button>
+          ) : (
+            <span className={styles.rollbackUsedUp}>{t("play.rollbackUsedUp")}</span>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 });
@@ -214,11 +244,14 @@ export function StoryFeed({
   state,
   header,
   footer,
+  onRollback,
 }: {
   state: PlayState;
   header?: ReactNode;
   /** 接在最后一段后面的行动区 */
   footer?: ReactNode;
+  /** 点了某一段的“回到这里”（要稳定的函数，否则每段都会重画） */
+  onRollback?: (turnId: string) => void;
 }) {
   const { t } = useTranslation();
   const missingOpening = state.turns.length === 0 && state.phase === "idle";
@@ -227,7 +260,13 @@ export function StoryFeed({
     <>
       {header}
       {state.turns.map((turn) => (
-        <TurnBlock key={turn.id} turn={turn} lang={lang} />
+        <TurnBlock
+          key={turn.id}
+          turn={turn}
+          lang={lang}
+          rollback={rollbackState(state, turn)}
+          onRollback={onRollback}
+        />
       ))}
       {state.pending ? <PendingBlock pending={state.pending} phase={state.phase} lang={lang} /> : null}
       {missingOpening ? <OpeningMissing /> : null}

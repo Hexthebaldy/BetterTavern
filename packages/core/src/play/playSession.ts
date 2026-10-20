@@ -11,6 +11,7 @@ import { ApiError, describeError } from "../api/client.ts";
 import type { StreamOutcome, TurnConnector, TurnStream, TurnStreamHandlers } from "../api/turnStream.ts";
 import type { NewAction, PlaythroughDetail, Turn, TurnCreated, TurnError } from "../api/types.ts";
 import {
+  canRollbackTo,
   canSubmit,
   displayAction,
   headTurn,
@@ -34,6 +35,7 @@ export type PlayApi = {
   ): Promise<TurnCreated>;
   turn(turnId: string): Promise<Turn>;
   cancel(turnId: string): Promise<Turn>;
+  rollback(playthroughId: string, turnId: string): Promise<PlaythroughDetail>;
 };
 
 export type PlaySessionDeps = {
@@ -140,6 +142,7 @@ export class PlaySession {
         protagonist: detail.playthrough.protagonist_name,
         scenarioId: detail.playthrough.scenario_id,
         language: detail.playthrough.language,
+        rollbacksLeft: detail.playthrough.rollbacks_left,
       });
       const pending = this.state.pending;
       if (this.state.phase === "streaming" && pending?.turnId) this.attach(pending.turnId);
@@ -183,6 +186,23 @@ export class PlaySession {
     }
     const action = retryAction(this.state);
     if (action) await this.submit(action);
+  }
+
+  /**
+   * 回到更早的一回合：之后的回合和它们对世界状态的修改都撤销，回退次数少一次。
+   * 成功后重新加载整条故事；失败返回原因（界面用提示条显示），服务端拒绝时也重新加载，和库里保持一致。
+   */
+  async rollback(turnId: string): Promise<TurnError | null> {
+    if (!canRollbackTo(this.state, turnId)) return null;
+    try {
+      await this.deps.api.rollback(this.playthroughId, turnId);
+    } catch (error) {
+      const failure = toTurnError(error);
+      if (error instanceof ApiError && !error.isNetwork) await this.load();
+      return failure;
+    }
+    await this.load();
+    return null;
   }
 
   dismissError(): void {

@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { WorldView } from "@bettertavern/core/api/types";
-import { worldIssue, worldProgress } from "@bettertavern/core/play/worldStatus";
+import { worldIssue, worldProgress, worldRefreshDelay } from "@bettertavern/core/play/worldStatus";
 import { pane } from "@bettertavern/design/layout";
 
 import {
@@ -35,8 +35,11 @@ import { useApp } from "../../state/AppProvider.tsx";
 import { radius, space, usePalette } from "../../theme/index.ts";
 import { Entities, Facts, Links, type Tab } from "./WorldParts.tsx";
 
-/** 取世界状态、揭示秘密；active 变成 true 时取一次（面板打开、停靠面板展开） */
-function useWorld(playthroughId: string, active: boolean) {
+/**
+ * 取世界状态、揭示秘密。面板开着（active）时：打开时取一次；最新一段变了（headSeq，写完新的一段或回退）再取；
+ * 后台还没整理到最新一段时，每隔一会儿再取，整理到了就停（worldRefreshDelay）。
+ */
+function useWorld(playthroughId: string, active: boolean, headSeq: number | null) {
   const { api } = useApp();
   const overlay = useOverlay();
   const { t } = useTranslation();
@@ -59,7 +62,16 @@ function useWorld(playthroughId: string, active: boolean) {
   useEffect(() => {
     if (active) void load(revealed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, load]);
+  }, [active, load, headSeq]);
+
+  const delay = active ? worldRefreshDelay(view, headSeq) : null;
+  useEffect(() => {
+    if (delay === null) return;
+    const timer = setTimeout(() => void load(revealed), delay);
+    return () => clearTimeout(timer);
+    // view 每次取回来都是新对象：取完一次就重新排下一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delay, view, load]);
 
   const reveal = async (): Promise<void> => {
     const count = view?.hidden_facts ?? 0;
@@ -184,14 +196,17 @@ export function WorldSheet({
   visible,
   onClose,
   playthroughId,
+  headSeq,
 }: {
   visible: boolean;
   onClose: () => void;
+  /** 最新一段的序号：变了就重新取 */
+  headSeq: number | null;
   playthroughId: string;
 }) {
   const palette = usePalette();
   const { compact, width } = useLayout();
-  const world = useWorld(playthroughId, visible);
+  const world = useWorld(playthroughId, visible, headSeq);
   const [tab, setTab] = useState<Tab>("entities");
   // 手机：面板左右各离屏幕 8；平板：滑出的面板宽 400
   const panelWidth = compact ? width - space.s * 2 : pane.world;
@@ -210,11 +225,20 @@ export function WorldSheet({
 }
 
 /** 停靠在阅读页右侧的世界状态（阅读页宽 ≥ 1100）：宽 400，上、下、右各留 8，圆角 32，灰底，不加遮罩 */
-export function WorldDock({ onClose, playthroughId }: { onClose: () => void; playthroughId: string }) {
+export function WorldDock({
+  onClose,
+  playthroughId,
+  headSeq,
+}: {
+  onClose: () => void;
+  playthroughId: string;
+  /** 最新一段的序号：变了就重新取 */
+  headSeq: number | null;
+}) {
   const palette = usePalette();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const world = useWorld(playthroughId, true);
+  const world = useWorld(playthroughId, true, headSeq);
   const [tab, setTab] = useState<Tab>("entities");
   return (
     <View

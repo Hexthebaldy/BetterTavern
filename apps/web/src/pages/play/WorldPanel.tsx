@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { i18n } from "@bettertavern/core/i18n/index";
-import { worldIssue, worldProgress } from "@bettertavern/core/play/worldStatus";
+import { worldIssue, worldProgress, worldRefreshDelay } from "@bettertavern/core/play/worldStatus";
 
 import { Button, cx, Dots, IconButton, Notice } from "../../components/controls.tsx";
 import { Dialog } from "../../overlay/Dialog.tsx";
@@ -24,8 +24,13 @@ import type { WorldMode } from "../../theme/layout.ts";
 import styles from "./world.module.css";
 import { Entities, Facts, Links, type Tab } from "./WorldParts.tsx";
 
-/** 取世界状态、揭示秘密；version 变了（新的一段写完）就重新取 */
-function useWorld(playthroughId: string, version: string | null) {
+/**
+ * 取世界状态、揭示秘密。version 变了（写完新的一段、回退）就重新取；
+ * 后台还没整理到最新一段（headSeq）时每隔一会儿再取，整理到了就停（worldRefreshDelay）。
+ */
+type Head = { version: string | null; headSeq: number | null };
+
+function useWorld(playthroughId: string, { version, headSeq }: Head) {
   const { api } = useApp();
   const overlay = useOverlay();
   const [revealed, setRevealed] = useState(false);
@@ -33,6 +38,7 @@ function useWorld(playthroughId: string, version: string | null) {
     queryKey: ["world", playthroughId, revealed, version],
     queryFn: () => api.playthroughs.world(playthroughId, revealed),
     placeholderData: (previous) => previous,
+    refetchInterval: (q) => worldRefreshDelay(q.state.data, headSeq) ?? false,
   });
   const reveal = async (): Promise<void> => {
     const count = query.data?.hidden_facts ?? 0;
@@ -50,17 +56,17 @@ function useWorld(playthroughId: string, version: string | null) {
 
 function WorldContent({
   playthroughId,
-  version,
+  head,
   mode,
   onClose,
 }: {
   playthroughId: string;
-  version: string | null;
+  head: Head;
   mode: WorldMode;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { query, reveal } = useWorld(playthroughId, version);
+  const { query, reveal } = useWorld(playthroughId, head);
   const [tab, setTab] = useState<Tab>("entities");
   const view = query.data;
   const names = useMemo(() => new Map((view?.entities ?? []).map((e) => [e.id, e.name])), [view]);
@@ -147,17 +153,20 @@ export function WorldPanel({
   mode,
   playthroughId,
   version,
+  headSeq,
   onClose,
 }: {
   mode: WorldMode;
   playthroughId: string;
   /** 故事的最新一段：变了就重新取世界状态 */
   version: string | null;
+  /** 最新一段的序号：后台还没整理到它时，每隔一会儿再取 */
+  headSeq: number | null;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const content = (
-    <WorldContent playthroughId={playthroughId} version={version} mode={mode} onClose={onClose} />
+    <WorldContent playthroughId={playthroughId} head={{ version, headSeq }} mode={mode} onClose={onClose} />
   );
   if (mode === "dock") {
     return (

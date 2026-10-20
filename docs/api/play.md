@@ -93,6 +93,30 @@
 | --- | --- | --- | --- |
 | `title` | string | 是 | 新标题，1 到 80 个字符 |
 
+### `POST /v1/playthroughs/{playthrough_id}/rollback`
+
+回退到当前故事线上更早的一回合（[agent-runtime.md](../agent-runtime.md) 第 8 节）。在一个事务里：撤销之后各回合对世界状态的修改、删掉它们的回合标签、
+把它们（连同失败的尝试）标为 `archived`、头部指回目标回合、时间线编号加 1。写完了结局的故事回到 `active`。
+世界状态还没整理到目标回合时，接着整理到它。每个存档能回退的次数有上限（服务端设置 `ROLLBACK_LIMIT`，默认 1），用了就少一次。
+
+- 鉴权：需要
+- 请求体：[`RollbackIn`](#rollbackin)
+- 成功：`200`，返回 [`PlaythroughDetailOut`](#playthroughdetailout)，`head` 是目标回合。客户端随后重新拉取回合列表和世界状态。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 游玩不存在；回合不存在或者不属于这局 |
+| 409 | `TURN_IN_PROGRESS` | 有回合正在生成，带 `active_turn_id`。先停止它再回退 |
+| 409 | `NOT_ON_TIMELINE` | 目标回合不在当前故事线上（失败的尝试，或者已经被回退掉） |
+| 409 | `ALREADY_AT_TURN` | 目标回合就是最新一回合，没有可以回退的 |
+| 409 | `ROLLBACK_LIMIT_REACHED` | 这个存档的回退次数用完了，带 `limit` |
+
+#### `RollbackIn`
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `turn_id` | string | 是 | 回退到哪一回合 |
+
 ### `DELETE /v1/playthroughs/{playthrough_id}`
 
 删除游玩，包括全部回合、世界状态、单局的路由覆盖和调用记录。如果有正在生成的回合，并且在当前实例上，先取消它。
@@ -106,7 +130,7 @@
 
 ### `GET /v1/playthroughs/{playthrough_id}/world`
 
-世界状态的只读视图：实体、关系和事实。M1 的世界状态只在开局时写入，之后不再变化。
+世界状态的只读视图：实体、关系和事实。开局时写入，之后由后台的世界状态 agent 每回合整理，可能比最新一回合落后几回合（`state_seq`）。
 
 - 鉴权：需要
 - 查询参数 `reveal`（布尔，默认 `false`）：为真时，主角不知道的秘密事实也一起返回（会剧透）。
@@ -245,6 +269,7 @@
 | `active_turn_id` | string / null | 正在生成的回合 |
 | `rollback_floor_seq` | integer | 回退的下限，一直是 0；agent runtime 阶段 4 删掉（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `state_seq` | integer | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态由后台整理，可能比头部回合落后几回合 |
+| `rollbacks_left` | integer | 这个存档还能回退几次；为 0 时客户端不显示“回到这里” |
 | `seed_source` | string / null | 开局设定的来源：`world_builder` / `minimal`；世界建好之前为 null |
 | `created_at` | string（时间） | 创建时间 |
 | `updated_at` | string（时间） | 最近更新时间（改名、开始生成、生成结束时更新） |

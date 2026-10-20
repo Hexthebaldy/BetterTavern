@@ -101,7 +101,7 @@ describe("SseParser", () => {
         return state / 2147483648;
       };
       const chunks: Uint8Array[] = [];
-      for (let i = 0; i < raw.length; ) {
+      for (let i = 0; i < raw.length;) {
         const size = 1 + Math.floor(random() * 17);
         chunks.push(raw.slice(i, i + size));
         i += size;

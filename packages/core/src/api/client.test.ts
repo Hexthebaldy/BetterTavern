@@ -327,7 +327,10 @@ describe("错误说明按错误码翻译", () => {
         describeError(serverError(418, "TEAPOT", "I'm a teapot")),
         "サーバーがエラーを返しました（HTTP 418）",
       );
-      assert.equal(describeTurnError({ code: "SOMETHING_NEW", message: "Server said so" }), "生成に失敗しました");
+      assert.equal(
+        describeTurnError({ code: "SOMETHING_NEW", message: "Server said so" }),
+        "生成に失敗しました",
+      );
     } finally {
       applyLanguage("zh");
     }

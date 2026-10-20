@@ -19,12 +19,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
-import { canAct, headTurn, isEnded } from "@bettertavern/core/play/turnMachine";
+import { canAct, headTurn, isEnded, rollbackStatus, turnsAfter } from "@bettertavern/core/play/turnMachine";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
 
 import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
 import { BottomBar } from "../../../src/features/play/BottomBar.tsx";
 import { MoreSheet } from "../../../src/features/play/MoreSheet.tsx";
+import { RollbackSheet } from "../../../src/features/play/RollbackSheet.tsx";
 import {
   BookHeader,
   columnWidth,
@@ -115,6 +116,7 @@ export default function PlayScreen() {
   // 停靠模式下开关跟着界面偏好（所有故事共用）；滑出和底部面板只在这一页里开关
   const [worldOpen, setWorldOpen] = useState(() => worldMode === "dock" && worldDocked);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [rollbackOpen, setRollbackOpen] = useState(false);
   const moreButton = useRef<View>(null);
   const feed = useRef<StoryFeedHandle>(null);
   // 自己写：输入框展开着没有、草稿
@@ -213,6 +215,27 @@ export default function PlayScreen() {
     });
     if (wish === null) return;
     controls.submit({ source: "ending", text: wish });
+    feed.current?.jumpToLatest();
+  };
+
+  // 回到更早的一段：先在列表里选，再确认；之后的段落和世界状态的变化都撤销
+  const rollbackTo = async (turnId: string): Promise<void> => {
+    setRollbackOpen(false);
+    const left = t("play.rollbackLeft", { count: Math.max(state.rollbacksLeft - 1, 0) });
+    const ok = await overlay.confirm({
+      title: t("play.rollbackTitle"),
+      message: t("play.rollbackMessage", { count: turnsAfter(state, turnId), left }),
+      confirmLabel: t("play.rollbackHere"),
+      tone: "warn",
+      icon: "back",
+    });
+    if (!ok) return;
+    const failure = await controls.rollback(turnId);
+    if (failure) {
+      overlay.toast(t("play.rollbackFailed", { error: describeTurnError(failure) }), { icon: "alert" });
+      return;
+    }
+    overlay.toast(t("play.rolledBack"));
     feed.current?.jumpToLatest();
   };
 
@@ -325,8 +348,19 @@ export default function PlayScreen() {
           />
         </View>
       </View>
-      {docked ? <WorldDock onClose={closeWorld} playthroughId={id} /> : null}
-      <WorldSheet visible={worldOpen && worldMode !== "dock"} onClose={closeWorld} playthroughId={id} />
+      {docked ? <WorldDock onClose={closeWorld} playthroughId={id} headSeq={head?.seq ?? null} /> : null}
+      <WorldSheet
+        visible={worldOpen && worldMode !== "dock"}
+        onClose={closeWorld}
+        playthroughId={id}
+        headSeq={head?.seq ?? null}
+      />
+      <RollbackSheet
+        visible={rollbackOpen}
+        onClose={() => setRollbackOpen(false)}
+        state={state}
+        onPick={(turnId) => void rollbackTo(turnId)}
+      />
       <MoreSheet
         visible={moreOpen}
         onClose={() => setMoreOpen(false)}
@@ -341,6 +375,11 @@ export default function PlayScreen() {
         }}
         onEnd={() => void end()}
         ending={isEnded(state) ? "ended" : canAct(state) ? "ready" : "busy"}
+        onRollback={() => {
+          setMoreOpen(false);
+          setRollbackOpen(true);
+        }}
+        rollback={rollbackStatus(state)}
         onDelete={() => void remove()}
       />
     </View>

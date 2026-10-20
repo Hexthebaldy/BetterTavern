@@ -54,6 +54,7 @@ def build_services(
     runner_config: RunnerConfig,
     instance_id: str,
     prompts: PromptBook | None = None,
+    rollback_limit: int = 1,
 ) -> Services:
     prompts = prompts or PromptBook()
     signer = AccessTokenSigner(secrets.auth_secret, ttl_s=access_ttl_s)
@@ -75,6 +76,7 @@ def build_services(
             runners,
             lease_ttl_s=runner_config.lease_ttl_s,
             instance_id=instance_id,
+            rollback_limit=rollback_limit,
         ),
         turns=TurnService(
             engine,

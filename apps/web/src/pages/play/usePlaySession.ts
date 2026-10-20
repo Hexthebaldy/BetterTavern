@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { NewAction } from "@bettertavern/core/api/types";
+import type { NewAction, TurnError } from "@bettertavern/core/api/types";
 import { diagnostics } from "@bettertavern/core/observability/log";
 import { PlaySession } from "@bettertavern/core/play/playSession";
 import { initialPlayState, type PlayState } from "@bettertavern/core/play/turnMachine";
@@ -22,6 +22,8 @@ export type PlayControls = {
   cancel: () => void;
   dismissError: () => void;
   reload: () => void;
+  /** 回到更早的一回合；失败时返回原因 */
+  rollback: (turnId: string) => Promise<TurnError | null>;
 };
 
 export function usePlaySession(playthroughId: string): PlayControls {
@@ -38,6 +40,7 @@ export function usePlaySession(playthroughId: string): PlayControls {
         submit: (id, body, key) => api.turns.submit(id, body, key),
         turn: (turnId) => api.turns.get(turnId),
         cancel: (turnId) => api.turns.cancel(turnId),
+        rollback: (id, turnId) => api.playthroughs.rollback(id, turnId),
       },
       connect: connectTurn,
       newKey: newIdempotencyKey,
@@ -92,6 +95,10 @@ export function usePlaySession(playthroughId: string): PlayControls {
   const cancel = useCallback(() => void sessionRef.current?.cancel(), []);
   const dismissError = useCallback(() => sessionRef.current?.dismissError(), []);
   const reload = useCallback(() => void sessionRef.current?.load(), []);
+  const rollback = useCallback(
+    (turnId: string) => sessionRef.current?.rollback(turnId) ?? Promise.resolve(null),
+    [],
+  );
 
-  return { state, submit, retry, cancel, dismissError, reload };
+  return { state, submit, retry, cancel, dismissError, reload, rollback };
 }

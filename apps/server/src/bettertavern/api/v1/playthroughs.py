@@ -16,6 +16,7 @@ from bettertavern.api.schemas.story import (
     PlaythroughIn,
     PlaythroughOut,
     PlaythroughPatchIn,
+    RollbackIn,
     TurnCreatedOut,
     TurnIn,
     TurnListOut,
@@ -92,6 +93,15 @@ async def rename_playthrough(
 ) -> PlaythroughOut:
     return PlaythroughOut.model_validate(
         await services.playthroughs.rename(user_id, playthrough_id, body.title)
+    )
+
+
+@router.post("/playthroughs/{playthrough_id}/rollback")
+async def rollback_playthrough(
+    playthrough_id: str, body: RollbackIn, user_id: UserId, services: ServicesDep
+) -> PlaythroughDetailOut:
+    return PlaythroughDetailOut.model_validate(
+        await services.playthroughs.rollback(user_id, playthrough_id, body.turn_id)
     )
 
 

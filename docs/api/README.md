@@ -137,6 +137,9 @@
 | `STALE_PARENT` | 409 | `parent_turn_id` 不是当前头部 | `head_turn_id` |
 | `OPENING_PENDING` | 409 | 开场还没完成就提交了行动 |  |
 | `STORY_ENDED` | 409 | 这局已经写完结局，不能再提交行动 |  |
+| `NOT_ON_TIMELINE` | 409 | 回退的目标回合不在当前故事线上 |  |
+| `ALREADY_AT_TURN` | 409 | 回退的目标回合就是最新一回合 |  |
+| `ROLLBACK_LIMIT_REACHED` | 409 | 这个存档的回退次数用完了 | `limit` |
 | `CARD_CHANGED` | 409 | 保存角色卡时版本号对不上：在别处改过了 | `version`（当前的版本号） |
 | `TURN_NOT_LOCAL` | 409 | 要停止的回合不在当前实例上 |  |
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体或文件超过限制 |  |

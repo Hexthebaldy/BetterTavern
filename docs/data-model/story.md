@@ -25,11 +25,12 @@
 | `seed` | jsonb | 是 |  | 开局设定（WorldBuilder 或最小 Seed 的输出），结构见下文“JSON 列”；世界建好时写入 |
 | `seed_source` | text | 是 |  | `world_builder` 表示由模型生成。`minimal` 表示没有用模型生成：模型失败或超时、没有可用的路由时只用卡片原文；剧本已被删除时设定里只有主角 |
 | `head_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：活跃链的头部 |
-| `timeline_epoch` | integer | 否 | `0` | 时间线纪元，回退和重新生成时加 1（M2）。回合和后台任务记下发起时的值，提交时如果不一致，结果就作废 |
+| `timeline_epoch` | integer | 否 | `0` | 时间线纪元，回退时加 1。回合记下发起时的值，提交时如果不一致，结果就作废；世界状态 agent 写入时也要求它没变 |
 | `state_seq` | integer | 否 | `-1` | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态 agent 写入时用带条件的 UPDATE 从 N-1 改成 N（见下文“带围栏的提交”）。迁移 `0011` 把已有的存档设成活跃链上最新的回合，不回头整理旧回合 |
 | `outline_version` | integer | 否 | `0` | 大纲的版本，一直是 0；agent runtime 阶段 5 删掉，当前大纲按依据的回合查（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `summary_version` | integer | 否 | `0` | 摘要的版本，一直是 0；agent runtime 阶段 4 删掉（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `rollback_floor_seq` | integer | 否 | `0` | 回退的下限，一直是 0；agent runtime 阶段 4 删掉，回退没有下限（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
+| `rollbacks_used` | integer | 否 | `0` | 已经回退了几次。每个存档能回退的次数有上限（服务端设置 `ROLLBACK_LIMIT`，默认 1），用完后回退接口返回 409 `ROLLBACK_LIMIT_REACHED` |
 | `active_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：持有租约、正在生成的回合；没有正在生成的回合时为空 |
 | `lease_expires_at` | timestamptz | 是 |  | 租约的到期时间：领取时设为当前时间加 120 秒，生成期间每 30 秒续期 |
 | `lease_owner` | text | 是 |  | 持有租约的进程，格式为 `{hostname}:{pid}`，排错用 |
@@ -37,7 +38,7 @@
 | `updated_at` | timestamptz | 否 | `now()` | 改名、领取租约、世界建好、推进头部、释放租约时写入（续期不写）；游玩列表按它倒序排列 |
 
 约束与索引：
-- `status`、`seed_source`、`language` 的 CHECK；`state_seq >= -1`。
+- `status`、`seed_source`、`language` 的 CHECK；`state_seq >= -1`；`rollbacks_used >= 0`。
 - `playthroughs_user_idx (user_id, updated_at DESC)`。
 - `playthroughs_lease_idx (lease_expires_at) WHERE active_turn_id IS NOT NULL`：清理过期租约时用。
 
@@ -62,7 +63,7 @@
 | `state_seq` | integer | 否 | `-1` | 写这一回合时，状态块截至第几回合（当时的 `playthroughs.state_seq`）。下一回合不等世界状态整理，所以它可能比 `seq - 1` 小 |
 | `usage` | jsonb | 是 |  | 导演调用的 token 用量，结构见下文“JSON 列”；服务商没给用量时为空 |
 | `error` | jsonb | 是 |  | 失败原因，结构见下文“JSON 列”；成功的回合为空 |
-| `rollback_id` | uuid | 是 |  | 回退批次号（M2）：被同一次回退归档的回合共用一个 |
+| `rollback_id` | uuid | 是 |  | 回退批次号：被同一次回退归档的回合（包括失败的尝试）共用一个 |
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `replied_at` | timestamptz | 是 |  | 叙述和选项写入的时间 |
 | `committed_at` | timestamptz | 是 |  | 世界状态 agent 整理完（或跳过）的时间；结局那一轮保存时直接写入，和 `replied_at` 相同 |
@@ -171,8 +172,9 @@ stateDiagram-v2
     generating --> committed: 结局提交成功
     replied --> committed: 世界状态 agent 整理完，或失败两次后跳过
     generating --> failed: 出错、取消、租约过期
-    replied --> archived: 回退（M2）
-    committed --> archived: 回退（M2）
+    replied --> archived: 回退
+    committed --> archived: 回退
+    failed --> archived: 回退
 ```
 
 - 写 `failed` 的地方有三个，都要求当前状态还是 `generating`：runner 自己（出错或取消）、清理任务（租约过期）、提交新行动时发现上一轮的租约已经过期。
@@ -180,7 +182,7 @@ stateDiagram-v2
 - 回合存为 `replied` 的同一个事务里，往任务队列放一个 `state.turn` 任务（排序键 `{playthrough_id}:state`；这个键上已经有一个还没开始的同类任务时不再放）。worker 领到后按顺序整理这一局所有 `replied` 的回合（[agent-runtime.md](../agent-runtime.md) 第 3、4 节）。
 - 下一回合不等世界状态整理：`replied` 的回合也算在活跃链上，状态块开头写明截至第几回合。结局之后不再整理世界状态，所以结局那一轮直接是 `committed`。
 
-`playthroughs.status`：`building` → `active` → `ended`。
+`playthroughs.status`：`building` → `active` → `ended`；`ended` 的故事回退后回到 `active`。
 
 - 开场回合的 runner 建好世界后，在同一个事务里写入 `entities`、`entity_links`、`facts`、`seed`、`seed_source`，并把状态改为 `active`（条件是仍为 `building`）。
   如果开场在建好世界之前就失败了（例如被取消），状态停在 `building`，重试开场时会重新构建。
@@ -223,9 +225,22 @@ WHERE id = :id AND state_seq = :seq - 1 AND timeline_epoch = :epoch
 
 条件不满足说明期间发生了回退，或者这一回合已经被别的任务整理过：整个结果作废，这次运行在 `agent_runs` 里记为 `stale`。
 
+### 回退
+
+`POST /v1/playthroughs/{id}/rollback`（`services/playthrough_service.py`，SQL 在 `infra/db/repositories/rollback.py`）在一个事务里：
+
+1. 锁住 `playthroughs` 行。有未过期的租约就返回 409 `TURN_IN_PROGRESS`；租约已过期就先把那一轮标为 `RUNNER_LOST`。
+2. 检查目标回合 K 在当前故事线上、不是头部、回退次数没用完。
+3. 读出 K 之后各回合的 `state_patches`，按回合倒序、按 `idx` 倒序，把每一行写回 `before`（`before` 为空就删掉这一行），然后删掉这些撤销记录和 K 之后的 `turn_notes`。
+4. K 之后的回合（包括失败的尝试）标为 `archived`，共用一个新的 `rollback_id`。
+5. `head_turn_id` 指回 K，`timeline_epoch` 加 1，`state_seq` 改成 `min(state_seq, K)`，`rollbacks_used` 加 1；`ended` 改回 `active`。
+6. `state_seq` 比 K 小时（世界状态还没整理到 K），放一个 `state.turn` 任务接着整理。
+
+回退前已经开始的世界状态整理，写入时发现时间线编号变了，整个结果作废。归档的回合留在表里，它们的 `agent_runs` 也保留。
+
 ### 加锁顺序
 
-一律先锁 `playthroughs` 行，再写 `turns`。提交、失败、清理、创建、删除都遵守这个顺序；顺序反过来会死锁（代码审查时出现过一次）。
+一律先锁 `playthroughs` 行，再写 `turns`。提交、失败、清理、创建、删除、回退、世界状态 agent 的写入都遵守这个顺序；顺序反过来会死锁（代码审查时出现过一次）。
 
 ### 唯一约束兜底
 

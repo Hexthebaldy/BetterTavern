@@ -223,6 +223,8 @@ export type Playthrough = {
   rollback_floor_seq: number;
   /** 世界状态已整理到第几回合，-1 表示还是开局时的样子 */
   state_seq: number;
+  /** 这个存档还能回退几次 */
+  rollbacks_left: number;
   seed_source: string | null;
   created_at: string;
   updated_at: string;

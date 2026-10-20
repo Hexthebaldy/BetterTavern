@@ -1,5 +1,6 @@
 /**
- * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号），重命名存档、世界状态、写结局、删除存档。
+ * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号），重命名存档、世界状态、回到更早的一段、写结局、删除存档。
+ * “回到更早的一段”生成中不能点；这个存档的回退次数用完时写明已用完、不能点。
  * “写结局”只在能行动时可点（开场写完、没在生成、没有失败等着重试），故事写完结局后不再显示。
  * 阅读设置存在设备上，所有故事共用。
  * 手机上是底部面板；平板上贴着操作栏的“更多”按钮弹出（宽 340，右边缘和按钮对齐，底边在按钮上方 8，不加遮罩）。
@@ -175,6 +176,8 @@ export function MoreSheet({
   onWorld,
   onEnd,
   ending,
+  onRollback,
+  rollback,
   onDelete,
   anchor,
   above,
@@ -186,6 +189,9 @@ export function MoreSheet({
   onEnd: () => void;
   /** 写结局：ready 可以写；busy 暂时不能（生成中、开场没写好、失败等着重试）；ended 已经写完了，不显示 */
   ending: "ready" | "busy" | "ended";
+  onRollback: () => void;
+  /** 回到更早的一段：见 turnMachine 的 rollbackStatus；none 时不显示 */
+  rollback: "ready" | "busy" | "used_up" | "none";
   onDelete: () => void;
   /** 平板：菜单贴着这个按钮弹出；传了 above 时底边放在它的顶边上方 */
   anchor?: RefObject<View | null>;
@@ -202,6 +208,14 @@ export function MoreSheet({
         <MenuGroup style={{ marginTop: space.xs }}>
           <MenuItem icon="write" label={t("reading.renameSave")} onPress={onRename} />
           <MenuItem icon="world" label={t("play.world")} onPress={onWorld} />
+          {rollback !== "none" ? (
+            <MenuItem
+              icon="back"
+              label={rollback === "used_up" ? t("play.rollbackUsedUp") : t("play.rollbackPick")}
+              disabled={rollback !== "ready"}
+              onPress={onRollback}
+            />
+          ) : null}
           {ending !== "ended" ? (
             <MenuItem
               icon="flag"

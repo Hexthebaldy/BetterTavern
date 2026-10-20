@@ -88,7 +88,54 @@
   background: var(--card);
 }
 .turn {
+  position: relative;
   margin-bottom: 16px;
+}
+/* 更早的一段：鼠标移上去，右上角出现“回到这里”；没有鼠标的设备上一直显示在这一段下面 */
+.turnTools {
+  position: absolute;
+  top: -14px;
+  right: 16px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.turn:hover .turnTools,
+.turnTools:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .turnTools {
+    position: static;
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px 24px 0;
+    opacity: 1;
+  }
+}
+.rollback {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow-float);
+  color: var(--ink2);
+  font-size: 13px;
+  cursor: pointer;
+}
+.rollback:hover {
+  color: var(--acc);
+}
+.rollbackUsedUp {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: var(--bg2);
+  color: var(--mut);
+  font-size: 12px;
 }
 .settled {
   content-visibility: auto;

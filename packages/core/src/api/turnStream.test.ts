@@ -48,6 +48,9 @@ describe("回合事件流（SseClient + PlaySession）", () => {
           last_failed: null,
         }),
         history: async () => [head],
+        rollback: async () => {
+          throw new Error("不应回退");
+        },
         submit: async () => {
           throw new Error("不应提交");
         },

@@ -147,6 +147,9 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
       rename: (id: string, title: string) =>
         client.patch<Playthrough>(`/v1/playthroughs/${enc(id)}`, { title }),
       remove: (id: string) => client.delete<void>(`/v1/playthroughs/${enc(id)}`),
+      /** 回退到更早的一回合；返回回退后的详情 */
+      rollback: (id: string, turnId: string) =>
+        client.post<PlaythroughDetail>(`/v1/playthroughs/${enc(id)}/rollback`, { turn_id: turnId }),
       world: (id: string, reveal = false) =>
         client.get<WorldView>(`/v1/playthroughs/${enc(id)}/world${reveal ? "?reveal=true" : ""}`),
     },

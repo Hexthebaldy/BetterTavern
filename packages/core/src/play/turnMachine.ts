@@ -64,6 +64,8 @@ export type PlayState = {
   scenarioId: string | null;
   /** 这一局的语言（开局时定下，和提示词同一种）：正文按它选字体；加载前按中文 */
   language: Playthrough["language"];
+  /** 这个存档还能回退几次（加载后才有） */
+  rollbacksLeft: number;
   turns: StoryTurn[];
   pending: PendingTurn | null;
   error: TurnError | null;
@@ -80,6 +82,7 @@ export type PlayEvent =
       protagonist?: string;
       scenarioId?: string | null;
       language?: Playthrough["language"];
+      rollbacksLeft?: number;
     }
   | { type: "load_failed"; error: TurnError }
   | { type: "submit"; submission: Submission; display: TurnAction | null }
@@ -97,6 +100,7 @@ export const initialPlayState: PlayState = {
   protagonist: "",
   scenarioId: null,
   language: "zh",
+  rollbacksLeft: 0,
   turns: [],
   pending: null,
   error: null,
@@ -147,6 +151,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
         protagonist: event.protagonist ?? state.protagonist,
         scenarioId: event.scenarioId !== undefined ? event.scenarioId : state.scenarioId,
         language: event.language ?? state.language,
+        rollbacksLeft: event.rollbacksLeft ?? state.rollbacksLeft,
         turns,
         error: null,
         submission: null,
@@ -280,6 +285,33 @@ export function isEnded(state: PlayState): boolean {
 /** 可以点选项、自由输入或写结局了 */
 export function canAct(state: PlayState): boolean {
   return state.phase === "idle" && headTurn(state) !== null && !isEnded(state);
+}
+
+/**
+ * 可以回到这一回合：没有回合在生成、回退次数没用完、它是故事里更早的一回合（不是最新的）。
+ * 回退会撤销之后的回合和它们对世界状态的修改（docs/agent-runtime.md 第 8 节）。
+ */
+export function canRollbackTo(state: PlayState, turnId: string): boolean {
+  if (state.phase !== "idle" && state.phase !== "failed") return false;
+  if (state.rollbacksLeft <= 0) return false;
+  const head = headTurn(state);
+  return head !== null && head.id !== turnId && state.turns.some((t) => t.id === turnId);
+}
+
+/**
+ * “回到更早的一段”这个入口的样子：ready 能用；busy 正在生成，暂时不能；
+ * used_up 这个存档的回退次数用完了；none 还没有更早的一段（不显示）。
+ */
+export function rollbackStatus(state: PlayState): "ready" | "busy" | "used_up" | "none" {
+  if (state.turns.length < 2) return "none";
+  if (state.rollbacksLeft <= 0) return "used_up";
+  return state.phase === "idle" || state.phase === "failed" ? "ready" : "busy";
+}
+
+/** 回到这一回合时，之后有几个回合会被撤销 */
+export function turnsAfter(state: PlayState, turnId: string): number {
+  const index = state.turns.findIndex((t) => t.id === turnId);
+  return index < 0 ? 0 : state.turns.length - index - 1;
 }
 
 /** 可以提交新的行动（空闲，或上一轮失败后换一个行动） */
