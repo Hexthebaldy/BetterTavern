@@ -157,6 +157,11 @@ async def test_full_m1_flow(running: Running) -> None:
             await client.get(f"/v1/playthroughs/{playthrough_id}/turns", headers=auth)
         ).json()["turns"]
         assert [t["seq"] for t in history] == [0, 1]
+        # 第二次请求导演时，开场那一回合带着当时给玩家的选项
+        director = [r for r in running.fake.app.chat_requests if r.body.get("stream")][-1]
+        opening = next(m for m in director.body["messages"] if m["role"] == "assistant")
+        second_option = history[0]["options"][1]["text"]
+        assert opening["content"].endswith(f"2. {second_option}\n</options>")
         # 没有 worker：世界状态还没整理，回合停在 replied，整理进度还是开局
         assert history[1]["status"] == "replied" and history[1]["state_seq"] == -1
         r = await client.get(f"/v1/turns/{turn['id']}", headers=auth)

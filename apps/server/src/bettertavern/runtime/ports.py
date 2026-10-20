@@ -60,6 +60,7 @@ class HistoryTurn:
     seq: int
     action: PlayerAction
     narrative: str
+    options: tuple[str, ...] = ()  # 当时给玩家的选项；结局回合、没补齐时可能少于 2 个
 
 
 @dataclass(frozen=True)

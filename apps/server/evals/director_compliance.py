@@ -62,6 +62,7 @@ from bettertavern.providers import (
 from bettertavern.providers.capabilities import load_rules
 from bettertavern.providers.transport import EndpointPolicy, build_http_client
 from bettertavern.runtime.agents.options_repair import repair_options
+from bettertavern.runtime.context.assembler import director_reply
 from bettertavern.runtime.context.fences import sanitize_for_fence
 from bettertavern.runtime.prompts import PromptLibrary
 from bettertavern.runtime.protocol.director_parser import DirectorStreamParser, ParseStage
@@ -214,7 +215,7 @@ class DirectorEval:
         )
         self.rng = random.Random(config.seed)
         self.clock = clock
-        self.history: list[tuple[str, str]] = []
+        self.history: list[tuple[str, str, tuple[str, ...]]] = []
         self.system = self.prompts.render(
             "director.system",
             protagonist=self.scenario.protagonist,
@@ -226,12 +227,10 @@ class DirectorEval:
 
     def messages(self, action: str) -> list[Message]:
         messages = [Message(role="system", content=self.system.text)]
-        for past_action, narrative in self.history[-self.config.history_turns :]:
+        for past_action, narrative, options in self.history[-self.config.history_turns :]:
             messages.append(Message(role="user", content=self.turn_prompt(past_action)))
-            # 历史里导演回合只保留叙述部分，选项不带
-            messages.append(
-                Message(role="assistant", content=f"<narrative>\n{narrative}\n</narrative>")
-            )
+            # 和正式的上下文一样：导演回合带上叙述和当时给玩家的选项
+            messages.append(Message(role="assistant", content=director_reply(narrative, options)))
         messages.append(Message(role="user", content=self.turn_prompt(action)))
         return messages
 
@@ -297,7 +296,7 @@ class DirectorEval:
         record.narrative_chars = len(outcome.narrative)
         record.options = list(outcome.options)
         record.total_ms = int((self.clock() - started) * 1000)
-        self.history.append((action, outcome.narrative))
+        self.history.append((action, outcome.narrative, tuple(outcome.options)))
         return record
 
     def next_action(self, record: TurnRecord, index: int) -> str:

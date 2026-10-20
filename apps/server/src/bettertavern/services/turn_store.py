@@ -175,7 +175,12 @@ class PgTurnStore:
             seed=seed,
             history=tuple(
                 HistoryTurn(
-                    seq=t.seq, action=PlayerAction.from_json(t.user_action), narrative=t.narrative
+                    seq=t.seq,
+                    action=PlayerAction.from_json(t.user_action),
+                    narrative=t.narrative,
+                    options=tuple(
+                        str(o.get("text") or "") for o in t.options if isinstance(o, dict)
+                    ),
                 )
                 for t in history
             ),

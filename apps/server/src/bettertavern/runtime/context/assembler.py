@@ -2,7 +2,8 @@
 
 消息摆放（docs/backend.md 第 4 节）：
 1. system：规则 + 故事设定（取自开局 Seed，开局后基本不变，放最前面命中前缀缓存）；
-2. 近期原文：按顺序交替的 user / assistant，导演回合只保留叙述，不带历史选项；
+2. 近期原文：按顺序交替的 user / assistant，导演回合写成当时的叙述加给玩家的选项
+   （和导演的输出格式一样，模型看着历史也会照样写选项）；
 3. 最后一条 user：状态块在前、玩家行动在后（或开场简报、结局要求），离生成点最近。
 
 M1 还没有摘要与压缩（M3），近期原文就是全部历史；超过有效窗口 95% 时只截断发送视图，
@@ -30,6 +31,15 @@ STATE_BLOCK_CAP = 2500
 ACTION_RATIO = 0.03
 MIN_KEEP_TURNS = 2
 MAX_SYSTEM_CHARACTERS = 8
+
+
+def director_reply(narrative: str, options: tuple[str, ...] | list[str] = ()) -> str:
+    """历史回合里导演那一条消息：叙述，后面跟当时给玩家的选项（没有选项就只有叙述）。"""
+    reply = f"<narrative>\n{sanitize_for_fence(narrative)}\n</narrative>"
+    if options:
+        lines = "\n".join(f"{i}. {sanitize_for_fence(text)}" for i, text in enumerate(options, 1))
+        reply += f"\n<options>\n{lines}\n</options>"
+    return reply
 
 
 class ContextTooLarge(Exception):
@@ -121,7 +131,7 @@ class ContextAssembler:
                 user = self._prompts.render(
                     "director.turn", action=sanitize_for_fence(turn.action.text)
                 ).text
-            assistant = f"<narrative>\n{sanitize_for_fence(turn.narrative)}\n</narrative>"
+            assistant = director_reply(turn.narrative, turn.options)
             pairs.append(
                 (Message(role="user", content=user), Message(role="assistant", content=assistant))
             )
