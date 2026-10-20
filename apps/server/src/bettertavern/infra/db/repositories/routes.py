@@ -18,7 +18,6 @@ from bettertavern.infra.db.sqlutil import (
     execute,
     fetch_all,
     fetch_one,
-    opt_str,
 )
 
 
@@ -44,7 +43,6 @@ class RouteRow:
     status: str
     last_ok_at: datetime | None
     is_director: bool
-    fallback_route_id: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -71,7 +69,6 @@ class RouteRow:
             status=row["status"],
             last_ok_at=row["last_ok_at"],
             is_director=row["is_director"],
-            fallback_route_id=opt_str(row["fallback_route_id"]),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -79,8 +76,7 @@ class RouteRow:
 
 _COLS = """id, user_id, label, provider, base_url, api_key_enc, key_id, key_last4,
     extra_headers_enc, extra_body, model, listed_window, manual_window, learned_window, params,
-    caps_override, probe, status, last_ok_at, is_director, fallback_route_id, created_at,
-    updated_at"""
+    caps_override, probe, status, last_ok_at, is_director, created_at, updated_at"""
 
 
 def _params(route: RouteRow) -> dict[str, Any]:
@@ -104,7 +100,6 @@ def _params(route: RouteRow) -> dict[str, Any]:
         "probe": dumps(route.probe),
         "status": route.status,
         "last_ok_at": route.last_ok_at,
-        "fallback_route_id": route.fallback_route_id,
     }
 
 
@@ -115,12 +110,11 @@ async def insert_route(conn: AsyncConnection, route: RouteRow) -> RouteRow:
         f"""
         INSERT INTO model_routes (id, user_id, label, provider, base_url, api_key_enc, key_id,
             key_last4, extra_headers_enc, extra_body, model, listed_window, manual_window,
-            learned_window, params, caps_override, probe, status, last_ok_at, fallback_route_id)
+            learned_window, params, caps_override, probe, status, last_ok_at)
         VALUES (:id, :user_id, :label, :provider, :base_url, :api_key_enc, :key_id, :key_last4,
             :extra_headers_enc, CAST(:extra_body AS jsonb), :model, :listed_window,
             :manual_window, :learned_window, CAST(:params AS jsonb),
-            CAST(:caps_override AS jsonb), CAST(:probe AS jsonb), :status, :last_ok_at,
-            :fallback_route_id)
+            CAST(:caps_override AS jsonb), CAST(:probe AS jsonb), :status, :last_ok_at)
         RETURNING {_COLS}
         """,
         _params(route),
@@ -141,8 +135,7 @@ async def update_route(conn: AsyncConnection, route: RouteRow) -> RouteRow:
             listed_window = :listed_window, manual_window = :manual_window,
             learned_window = :learned_window, params = CAST(:params AS jsonb),
             caps_override = CAST(:caps_override AS jsonb), probe = CAST(:probe AS jsonb),
-            status = :status, last_ok_at = :last_ok_at, fallback_route_id = :fallback_route_id,
-            updated_at = now()
+            status = :status, last_ok_at = :last_ok_at, updated_at = now()
         WHERE id = :id AND user_id = :user_id
         RETURNING {_COLS}
         """,

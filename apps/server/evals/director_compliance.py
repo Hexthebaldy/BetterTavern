@@ -46,7 +46,6 @@ import yaml
 from bettertavern.domain.story.language import parse_language
 from bettertavern.domain.story.options import fallback_options
 from bettertavern.providers import (
-    HOT_PATH,
     Capabilities,
     ChatRequest,
     Done,
@@ -60,7 +59,6 @@ from bettertavern.providers import (
     UsageEvent,
     default_registry,
     resolve_capabilities,
-    stream_with_retry,
 )
 from bettertavern.providers.capabilities import load_rules
 from bettertavern.providers.transport import EndpointPolicy, build_http_client
@@ -259,9 +257,7 @@ class DirectorEval:
         request = self.request(action)
         started = self.clock()
         try:
-            async for event in stream_with_retry(
-                lambda: self.adapter.stream(request, self.cred, self.caps), HOT_PATH
-            ):
+            async for event in self.adapter.stream(request, self.cred, self.caps):
                 if isinstance(event, TextDelta):
                     if record.ttft_ms is None:
                         record.ttft_ms = int((self.clock() - started) * 1000)

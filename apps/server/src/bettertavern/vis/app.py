@@ -133,22 +133,20 @@ def create_vis_app(
         if detail is None:
             raise HTTPException(404, "Story not found")
         entries = await logs()
-        # 每个回合在日志里的重试、断线次数，回合列表上显示
+        # 每个回合在日志里的断线次数和警告条数，回合列表上显示
         counts: dict[str, dict[str, int]] = {}
         wanted = {t["id"] for t in detail["turns"]}
         for e in entries:
             tid = e.get("turn_id")
             if tid not in wanted:
                 continue
-            c = counts.setdefault(tid, {"retries": 0, "sse_drops": 0, "warnings": 0})
-            if e.event == "provider.retry":
-                c["retries"] += 1
-            elif e.event == "sse.close" and e.get("reason") == "client_gone":
+            c = counts.setdefault(tid, {"sse_drops": 0, "warnings": 0})
+            if e.event == "sse.close" and e.get("reason") == "client_gone":
                 c["sse_drops"] += 1
             if e.level in ("warning", "error", "critical"):
                 c["warnings"] += 1
         for turn in detail["turns"]:
-            turn["log"] = counts.get(turn["id"], {"retries": 0, "sse_drops": 0, "warnings": 0})
+            turn["log"] = counts.get(turn["id"], {"sse_drops": 0, "warnings": 0})
         return detail
 
     @app.get("/api/turns/{turn_id}")

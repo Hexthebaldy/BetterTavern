@@ -50,7 +50,6 @@ erDiagram
     users ||--o{ playthroughs : "user_id"
     users ||--o{ agent_runs : "user_id"
     users ||--o{ idempotency_keys : "user_id"
-    model_routes |o--o{ model_routes : "fallback_route_id"
     blobs |o--o{ scenarios : "avatar_blob_id"
     scenarios |o--o{ playthroughs : "scenario_id"
     playthroughs ||--o{ turns : "playthrough_id"
@@ -89,7 +88,7 @@ erDiagram
 | 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`scenarios`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`、`idempotency_keys` |
 | 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts` 和 `agent_runs`。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 在同一个事务里删除它的头像（`blobs`）；`playthroughs.scenario_id` 置空 |
-| 删除模型路由 | 把它当作备用模型的其他行，`fallback_route_id` 置空。删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING` |
+| 删除模型路由 | 删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING` |
 | 删除实体（M2） | 级联删除相关的 `entity_links`；`facts.entity_ids` 里的 ID 不会自动清理 |
 
 定期清理（`services/maintenance.py`，在 api 进程里运行）：

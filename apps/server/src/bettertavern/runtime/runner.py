@@ -5,8 +5,10 @@
 结局那一轮（行动来源 ending）只要叙述：不走修复阶梯，模型写了选项也丢掉，提交时把这局标为已完结。
 
 - 生成期间每 30 秒续租；续租失败（租约被清理或发生了回退）就取消生成，不再写库；
-- 首个可见内容之前出错：同一路由退避重试，再试 fallback 路由；之后出错不重试，半截叙述存为草稿；
-- 厂商报超窗：截断到有效窗口的 85% 后重试一次；
+- 调模型出错不自动重试、也不换别的模型，这一轮直接失败（玩家自己点重试）；
+  已经写出的半截叙述存为草稿；
+- 唯一的例外是厂商报超窗：说明我们估算的 token 数偏少或窗口记大了，
+  重新装配到有效窗口的 85% 以内再发一次；
 - 玩家取消、进程关闭都通过 CancelToken 关闭上游连接，回合置为 failed。
 
 M1 还没有 StateKeeper，回合提交时直接置为 committed（状态车道在 M2 接入后改为 replied 并入队）。
@@ -419,18 +421,15 @@ class TurnRunner:
             ) from exc
         self._log_context(context, route)
         attempt_route = route
-        fallback_used = False
         overflow_retried = False
         while True:
             try:
-                generation = await self._streamer.stream(
+                return await self._streamer.stream(
                     attempt_route,
                     context,
                     lambda event, data: self._publish(stream, event, data),
                     cancel,
                 )
-                generation.fallback_used = fallback_used
-                return generation
             except GenerationLimitHit as hit:
                 raise TurnFailed(hit.failure) from hit
             except StreamFailed as failed:
@@ -459,25 +458,6 @@ class TurnRunner:
                     except ContextTooLarge as exc:
                         raise TurnFailed(failure_from_provider(error)) from exc
                     self._log_context(context, attempt_route)
-                    continue
-                fallback = attempt_route.fallback
-                if fallback is not None and error.policy.fallback and not fallback_used:
-                    log.warning(
-                        "turn.fallback",
-                        error_class=error.error_class.value,
-                        from_model=attempt_route.model,
-                        to_provider=fallback.provider,
-                        to_model=fallback.model,
-                    )
-                    fallback_used = True
-                    attempt_route = fallback
-                    try:
-                        context = self._assembler_for(header).assemble(
-                            ctx, fallback.window.effective_window
-                        )
-                    except ContextTooLarge as exc:
-                        raise TurnFailed(failure_from_provider(error)) from exc
-                    self._log_context(context, fallback)
                     continue
                 raise TurnFailed(failure_from_provider(error)) from error
 
@@ -625,7 +605,6 @@ class TurnRunner:
         context = generation.context
         result: dict[str, Any] = {
             "route_id": generation.route.route_id,
-            "fallback_used": generation.fallback_used,
             "finish_reason": generation.finish_reason,
             "estimated_tokens": context.estimated_tokens,
             "usage_ratio": round(context.usage_ratio, 4),

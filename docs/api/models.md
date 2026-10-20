@@ -122,9 +122,9 @@
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
-| 404 | `NOT_FOUND` | 模型不存在；`fallback_route_id` 指向的模型不存在 |
+| 404 | `NOT_FOUND` | 模型不存在 |
 | 409 | `CREDENTIAL_UNREADABLE` | 要重新拉列表或一起换 Key 时，Key 无法解密 |
-| 422 | `VALIDATION_ERROR` | 同添加模型；另外，需要接口地址的服务商不能把 `base_url` 清空；备用模型是它自己（`field: "fallback_route_id"`） |
+| 422 | `VALIDATION_ERROR` | 同添加模型；另外，需要接口地址的服务商不能把 `base_url` 清空 |
 | 422 | `ENDPOINT_NOT_ALLOWED` | 新的接口地址没有通过校验，带 `reason` |
 | 422 | `WINDOW_TOO_SMALL` | 改完之后有效窗口小于 16000 |
 
@@ -143,11 +143,10 @@
 | `params` | [`RouteParamsIn`](#routeparamsin) / null | 否 | 整体替换写法设置：没写的键恢复默认值 |
 | `caps_override` | object / null | 否 | 整体替换能力覆盖 |
 | `director` | boolean / null | 否 | 为真时设为导演（原来的导演不再是导演）；为假时如果它是导演就取消，之后没有导演 |
-| `fallback_route_id` | string / null | 否 | 备用模型，必须是自己的另一个模型；传 null 表示去掉，不传表示不改 |
 
 ### `DELETE /v1/model-routes/{route_id}`
 
-删除一个模型。把它当作备用模型的其他模型，备用模型变为空。删掉的是导演时就没有导演了，重新设置之前开局和提交行动会返回 409 `ROUTE_MISSING`。
+删除一个模型。删掉的是导演时就没有导演了，重新设置之前开局和提交行动会返回 409 `ROUTE_MISSING`。
 
 - 鉴权：需要
 - 成功：`204`，没有响应体。
@@ -224,7 +223,6 @@
 | `last_ok_at` | string（时间）/ null | 最近一次确认 Key 可用的时间 |
 | `last_probe` | [`ProbeOut`](#probeout) / null | 最近一次测试的结果；没测过，或者之后改了 Key、端点、模型名时为 null |
 | `is_director` | boolean | 是不是导演 |
-| `fallback_route_id` | string / null | 备用模型 |
 | `shares_key_with` | array of string | 和它用同一个 Key 的其他模型的 ID（换 Key 时可以一起换） |
 | `window` | [`WindowOut`](#windowout) | 按当前设置算出的窗口 |
 | `created_at` | string（时间） | 添加时间 |

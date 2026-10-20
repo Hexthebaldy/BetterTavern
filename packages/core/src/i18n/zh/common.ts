@@ -130,7 +130,6 @@ export const common = {
       extra_headers: "自定义请求头不合法",
       extra_body: "自定义请求体不合法",
       caps_override: "能力覆盖不合法",
-      fallback_route_id: "备用模型不能是它自己",
       manual_window: "上下文长度不合法",
       params: "参数不合法",
     },

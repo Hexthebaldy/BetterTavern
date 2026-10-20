@@ -92,7 +92,7 @@ export function StoryDetail() {
             <th>总耗时</th>
             <th>模型</th>
             <th>输出 token</th>
-            <th>重试 / 断线</th>
+            <th>断线</th>
             <th>时间</th>
           </tr>
         </thead>
@@ -132,11 +132,8 @@ export function StoryDetail() {
               </td>
               <td>{tokens(t.run?.output_tokens)}</td>
               <td>
-                {t.log && (t.log.retries || t.log.sse_drops) ? (
-                  <span>
-                    {t.log.retries ? <Pill tone="warn">重试 {t.log.retries}</Pill> : null}{" "}
-                    {t.log.sse_drops ? <Pill>断线 {t.log.sse_drops}</Pill> : null}
-                  </span>
+                {t.log?.sse_drops ? (
+                  <Pill>断线 {t.log.sse_drops}</Pill>
                 ) : (
                   <span className="mut">–</span>
                 )}

@@ -1,6 +1,6 @@
 """自动挑出可疑之处。纯函数。
 
-- turn_issues：一个回合的问题（失败、被限流重试、首字太慢、格式要修补、断线……），按严重程度排好；
+- turn_issues：一个回合的问题（失败、首字太慢、格式要修补、断线……），按严重程度排好；
 - recent_problems：一段时间里所有警告和错误，按事件名归类计数，每类带最近一条做例子。
 
 每个问题是英文代号加字段，网页负责写成中文。严重程度：error（出错了）、warn（值得看看）、info（知道一下）。
@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -83,17 +82,6 @@ def turn_issues(
         if hit is not None:
             issues.append(Issue("error", code, {}, hit.n))
 
-    retries = by_event.get("provider.retry", [])
-    if retries:
-        classes = Counter(str(r.get("error_class")) for r in retries)
-        issues.append(
-            Issue(
-                "warn",
-                "provider_retry",
-                {"count": len(retries), "classes": dict(classes)},
-                retries[0].n,
-            )
-        )
     provider_failed = first("provider.failed")
     if provider_failed is not None:
         issues.append(
@@ -171,16 +159,6 @@ def turn_issues(
             )
         )
 
-    fallback = first("turn.fallback")
-    if fallback is not None:
-        issues.append(
-            Issue(
-                "warn",
-                "fallback_route",
-                {"from_model": fallback.get("from_model"), "to_model": fallback.get("to_model")},
-                fallback.n,
-            )
-        )
     overflow = first("turn.context_overflow_retry")
     if overflow is not None:
         issues.append(

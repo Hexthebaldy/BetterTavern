@@ -11,7 +11,6 @@ import json
 import re
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -39,39 +38,19 @@ class ErrorClass(StrEnum):
     UNKNOWN = "unknown"
 
 
-@dataclass(frozen=True, slots=True)
-class ErrorPolicy:
-    retryable: bool  # 同一路由退避后重试
-    fallback: bool  # 允许切到 fallback 路由
-    max_retries: int  # 同一路由最多重试几次（不含第一次）
-
-
-# 上下文超窗、格式错误、能力不支持这几类由 runtime 做专门处理（截断、换转换、降级），
-# 所以这里标为不可直接重试。
-_POLICIES: dict[ErrorClass, ErrorPolicy] = {
-    ErrorClass.AUTH: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.BILLING: ErrorPolicy(retryable=False, fallback=True, max_retries=0),
-    ErrorClass.RATE_LIMIT: ErrorPolicy(retryable=True, fallback=True, max_retries=2),
-    ErrorClass.OVERLOADED: ErrorPolicy(retryable=True, fallback=True, max_retries=2),
-    ErrorClass.SERVER_ERROR: ErrorPolicy(retryable=True, fallback=True, max_retries=2),
-    ErrorClass.TIMEOUT: ErrorPolicy(retryable=True, fallback=True, max_retries=1),
-    ErrorClass.CONNECTION: ErrorPolicy(retryable=True, fallback=True, max_retries=2),
-    ErrorClass.CONTEXT_OVERFLOW: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.PAYLOAD_TOO_LARGE: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.MODEL_NOT_FOUND: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.CONTENT_POLICY_BLOCKED: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.FORMAT_ERROR: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.UNSUPPORTED_FEATURE: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.ENDPOINT_NOT_ALLOWED: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.STREAM_INTERRUPTED: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.INVALID_RESPONSE: ErrorPolicy(retryable=True, fallback=True, max_retries=1),
-    ErrorClass.CANCELLED: ErrorPolicy(retryable=False, fallback=False, max_retries=0),
-    ErrorClass.UNKNOWN: ErrorPolicy(retryable=True, fallback=True, max_retries=1),
-}
-
-
-def policy_for(error_class: ErrorClass) -> ErrorPolicy:
-    return _POLICIES[error_class]
+# 过一会儿再试有可能成功的错误类别：服务商那边一时的问题（请求太多、太忙、服务器出错、超时、
+# 连不上、返回内容坏了）。代码不会自己重试，这个标记只告诉调用方要不要让用户再试一次
+_RETRYABLE: frozenset[ErrorClass] = frozenset(
+    {
+        ErrorClass.RATE_LIMIT,
+        ErrorClass.OVERLOADED,
+        ErrorClass.SERVER_ERROR,
+        ErrorClass.TIMEOUT,
+        ErrorClass.CONNECTION,
+        ErrorClass.INVALID_RESPONSE,
+        ErrorClass.UNKNOWN,
+    }
+)
 
 
 class ProviderError(Exception):
@@ -102,12 +81,9 @@ class ProviderError(Exception):
         self.body_excerpt = body_excerpt
 
     @property
-    def policy(self) -> ErrorPolicy:
-        return policy_for(self.error_class)
-
-    @property
     def retryable(self) -> bool:
-        return self.policy.retryable and not self.partial
+        """再试一次可能成功：类别是一时的问题，并且还没有产出过内容"""
+        return self.error_class in _RETRYABLE and not self.partial
 
     @property
     def context_limit(self) -> int | None:

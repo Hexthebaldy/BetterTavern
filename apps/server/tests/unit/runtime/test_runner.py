@@ -1,4 +1,5 @@
-"""TurnRunner 的行为：事件顺序、修复阶梯、结局、重试与 fallback、半截失败、取消、租约与开局构建。"""
+"""TurnRunner 的行为：事件顺序、修复阶梯、结局、出错直接失败与超窗重新装配、半截失败、取消、
+租约与开局构建。"""
 
 from __future__ import annotations
 
@@ -156,17 +157,32 @@ async def test_ordinary_turns_do_not_end_the_story() -> None:
     assert store.committed[0].ends_story is False
 
 
-async def test_error_before_text_switches_to_fallback_route() -> None:
-    hub, adapters = scripted_hub("primary", "backup")
-    bad = ProviderError(ErrorClass.BILLING, "no money", status=402)  # 不可重试，但允许 fallback
-    adapters["primary"].streams.append(StreamScript(["x"], error=bad, error_after=0))
-    adapters["backup"].streams.append(StreamScript(pieces(GOOD)))
-    route = make_route("primary", fallback=make_route("backup"))
+@pytest.mark.parametrize(
+    ("error_class", "status"),
+    [
+        (ErrorClass.RATE_LIMIT, 429),
+        (ErrorClass.OVERLOADED, 503),
+        (ErrorClass.SERVER_ERROR, 500),
+        (ErrorClass.TIMEOUT, None),
+        (ErrorClass.CONNECTION, None),
+        (ErrorClass.BILLING, 402),
+    ],
+)
+async def test_error_before_text_fails_the_turn_without_retrying(
+    error_class: ErrorClass, status: int | None
+) -> None:
+    # 服务商或账户的问题：只请求一次，不自动重发，直接把原因告诉玩家
+    hub, adapters = scripted_hub("fake")
+    bad = ProviderError(error_class, "upstream said no", status=status)
+    adapters["fake"].streams.append(StreamScript(["x"], error=bad, error_after=0))
+    adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
     store = FakeStore()
-    await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: route}), hub)
-    outcome = store.committed[0]
-    assert outcome.runs[0].provider == "backup"
-    assert outcome.runs[0].result["fallback_used"] is True
+    events = await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
+    assert len(adapters["fake"].requests) == 1
+    assert not store.committed
+    failure = store.failed[0]
+    assert failure.reason == error_class.value and not failure.partial
+    assert events[-1] == ("turn.failed", failure.to_json())
 
 
 async def test_overflow_with_stated_limit_learns_the_window() -> None:

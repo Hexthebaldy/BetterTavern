@@ -69,8 +69,6 @@ class RoutePatch:
     params: Mapping[str, Any] | None = None
     caps_override: Mapping[str, Any] | None = None
     director: bool | None = None
-    fallback_route_id: str | None = None
-    clear_fallback: bool = False
 
 
 def aad(route_id: str, field: str) -> str:

@@ -97,8 +97,6 @@ async def update_route(
             params=None if body.params is None else body.params.model_dump(exclude_none=True),
             caps_override=body.caps_override,
             director=body.director,
-            fallback_route_id=body.fallback_route_id,
-            clear_fallback="fallback_route_id" in given and body.fallback_route_id is None,
         ),
     )
     return RouteOut.model_validate(view)

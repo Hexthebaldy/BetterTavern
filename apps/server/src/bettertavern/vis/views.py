@@ -2,12 +2,11 @@
 
 - requests：手机发来的请求，一个请求一行（来自访问日志 http.request），可以只看失败的或慢的；
 - filter_logs：原始日志的筛选（级别、关键字、编号、游标）；
-- log_metrics：概览页里来自日志的几个数（重试、断线、服务端错误）。
+- log_metrics：概览页里来自日志的几个数（断线、服务端错误、请求数）。
 """
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import Any
 
 from .logstore import Entry, level_at_least
@@ -133,7 +132,6 @@ def filter_logs(
 
 
 def log_metrics(entries: list[Entry], *, since: float) -> dict[str, Any]:
-    retries: Counter[str] = Counter()
     sse_drops = 0
     server_errors = 0
     requests_total = 0
@@ -141,9 +139,7 @@ def log_metrics(entries: list[Entry], *, since: float) -> dict[str, Any]:
         if entry.t < since:
             continue
         event = entry.event
-        if event == "provider.retry":
-            retries[str(entry.get("error_class"))] += 1
-        elif event == "sse.close" and entry.get("reason") == "client_gone":
+        if event == "sse.close" and entry.get("reason") == "client_gone":
             sse_drops += 1
         elif event == "http.request" and entry.get("path") not in _HIDDEN_ROUTES:
             requests_total += 1
@@ -151,8 +147,6 @@ def log_metrics(entries: list[Entry], *, since: float) -> dict[str, Any]:
             if status is not None and status >= 500:
                 server_errors += 1
     return {
-        "retries": dict(retries),
-        "retries_total": sum(retries.values()),
         "sse_drops": sse_drops,
         "server_errors": server_errors,
         "requests": requests_total,

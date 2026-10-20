@@ -69,7 +69,7 @@ flowchart LR
 | 表 | 关键列 | 说明 |
 | --- | --- | --- |
 | `users` | id, email, password\_hash, locale, settings jsonb, created\_at | v1 邮箱加密码，短期访问令牌加刷新令牌（`refresh_tokens` 表） |
-| `model_routes` | id, user\_id, label, provider（deepseek / openai / xai / gemini / huggingface / custom\_openai；新厂商在注册表里加）, base\_url, api\_key\_enc, key\_id, extra\_headers\_enc, extra\_body jsonb, model, listed\_window, manual\_window, learned\_window, params jsonb, caps\_override jsonb, probe jsonb, status, is\_director, fallback\_route\_id | 一行是玩家配好的一个模型：Key、端点、模型名、窗口和写法设置放在一起，换导演时不用重新配。密钥信封加密；`probe` 是能力探测结果（第 8 节）；`extra_body` / `extra_headers_enc` 用来给请求追加自定义字段和请求头（思路参考 ST 的 custom\_include\_body / custom\_include\_headers）。每个用户最多一行是导演，其他 task 都用导演这一行（以后要给 StateKeeper 等单独配模型时再加按 task 的分配） |
+| `model_routes` | id, user\_id, label, provider（deepseek / openai / xai / gemini / huggingface / custom\_openai；新厂商在注册表里加）, base\_url, api\_key\_enc, key\_id, extra\_headers\_enc, extra\_body jsonb, model, listed\_window, manual\_window, learned\_window, params jsonb, caps\_override jsonb, probe jsonb, status, is\_director | 一行是玩家配好的一个模型：Key、端点、模型名、窗口和写法设置放在一起，换导演时不用重新配。密钥信封加密；`probe` 是能力探测结果（第 8 节）；`extra_body` / `extra_headers_enc` 用来给请求追加自定义字段和请求头（思路参考 ST 的 custom\_include\_body / custom\_include\_headers）。每个用户最多一行是导演，其他 task 都用导演这一行（以后要给 StateKeeper 等单独配模型时再加按 task 的分配） |
 
 ### B 剧本库
 
@@ -258,7 +258,6 @@ class AssembledContext:
 1. 保存路由时检查。算出 W = min(M, C) − 预留输出 − 2% 余量。C 大于 M 照常保存，但响应的 `warnings` 里带 `WINDOW_CLAMPED`：这个模型最多 M，实际按 M 计算。W 小于 16K 则拒绝保存，返回 422 `WINDOW_TOO_SMALL`，附上 M、C、`max_tokens` 和 W，让玩家知道该调哪一项。
 2. 每次调用导演前再算一次。路由、模型、`max_tokens`、探测出的窗口，任何一项变了 W 都会变，所以占用率的分母每次现算，不缓存。
 3. 换模型立即生效。换到窗口更小的模型，占用率按新的 W 重算：超过 80% 就入队压缩，超过 95% 先走紧急截断（见下一节）。换到更大的模型，不会自动放大玩家设的上限。
-4. 备用路由（`fallback_route`）按它自己的窗口算 W。主路由失败切到备用路由时，装配结果超过备用 W 的 95% 同样走紧急截断。
 
 这个计算只写在一个纯函数里（`domain/memory/thresholds.py` 的 `effective_window()`），保存路由和装配上下文共用，避免两处算法不一致。
 
@@ -417,7 +416,7 @@ sequenceDiagram
 
 | 故障 | 阶段 | 处理 |
 | --- | --- | --- |
-| 首 token 之前失败（网络、429、5xx、超时） | 导演调用 | 同路由抖动退避重试最多 2 次，再试 `fallback_route`；都失败则 `turn.failed`，回合置 failed，租约释放，玩家可以重试 |
+| 首 token 之前失败（网络、429、5xx、超时、余额不足） | 导演调用 | 不自动重试，也不换别的模型：这些是服务商或玩家账户的问题，由玩家看到原因后自己决定。直接 `turn.failed`（带错误码和 `reason`），回合置 failed，租约释放，玩家可以点重试 |
 | 流中途断开 | 导演调用 | 不自动重试（玩家已经看到部分文字，重试会换内容）；半截叙述存入 `turns.narrative`，发 `turn.failed`（`partial = true`）；玩家点重试等于重新生成 |
 | 上下文超窗 | 导演调用 | 厂商报超窗说明估算偏低，紧急截断到不超过 85%（比 95% 线的 90% 更低）后重试一次，仍失败返回 `CONTEXT_TOO_LARGE` |
 | 输出格式不合规 | 协议解析 | 修复阶梯（第 6 节）；叙述为空按首 token 前失败处理 |
@@ -428,7 +427,7 @@ sequenceDiagram
 | Postgres 短暂不可用 | 任意 | 接口返回 503 加 `Retry-After`；热路径提交失败时保留内存中的叙述，重试提交 3 次 |
 | 收到 SIGTERM | 滚动发布 | `/ready` 转为不就绪，不接新回合；等待进行中的回合最多 60 秒；超时的回合靠租约清理。worker 收到后释放自己持有的任务锁 |
 
-“流中途断开不重试”和“首 token 之前可以重试”是同一条规则的两面：provider 层只在没有任何内容发给玩家之前重试流式请求（第 8 节）。
+导演调用只有一种情况会自动再请求一次：厂商报超窗。这不是服务商或玩家的问题，而是我们估算的 token 数偏少，或者记下的模型窗口比服务商实际开的大，所以重新装配后再请求一次（第 4 节）。其他错误一律直接失败，交给玩家。
 
 ### 延迟预算（目标值，M0 实测后修订）
 
@@ -716,7 +715,7 @@ class ProviderAdapter(Protocol):
 2. 兼容 OpenAI 协议，但字段有差异（推理内容字段名、usage 字段、请求体多或少几个字段）：在 profile 里实现对应的钩子（`prepare_body`、`parse_usage`、`parse_reasoning`）。
 3. 协议不兼容（例如 Anthropic 的原生接口；Gemini 有官方的 OpenAI 兼容接口，走第 2 档）：实现 `ProviderAdapter` 协议（`build_body`、`stream`、`complete`、`list_models`），在 profile 里指明用哪个 Adapter。
 
-三档共用同一套外围能力：SSRF 防护、并发限流、错误分类与重试、能力探测、用量归一，它们都在 Adapter 外面，新厂商自动获得。设置页的厂商下拉由注册表生成，不写死。厂商多了以后，纯声明式的 profile 可以改放 YAML 文件，由注册表启动时加载。现在注册了 `deepseek`、`openai`、`xai`、`gemini`、`huggingface`、`custom_openai` 六个 profile（顺序就是设置页服务商图块的顺序）。`custom_openai` 没有默认基址，由玩家填写；它的能力全靠探测，探测之前按 `capabilities.yaml` 的兜底规则保守处理，窗口由玩家在路由里确认。
+三档共用同一套外围能力：SSRF 防护、并发限流、错误分类、能力探测、用量归一，它们都在 Adapter 外面，新厂商自动获得。设置页的厂商下拉由注册表生成，不写死。厂商多了以后，纯声明式的 profile 可以改放 YAML 文件，由注册表启动时加载。现在注册了 `deepseek`、`openai`、`xai`、`gemini`、`huggingface`、`custom_openai` 六个 profile（顺序就是设置页服务商图块的顺序）。`custom_openai` 没有默认基址，由玩家填写；它的能力全靠探测，探测之前按 `capabilities.yaml` 的兜底规则保守处理，窗口由玩家在路由里确认。
 
 ### DeepSeek 与 Hugging Face 的差异
 
@@ -808,26 +807,26 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 
 默认转换由能力表的 `roles` 决定；线上遇到 `role_alternation` 类错误时升级到更严格的一档并重试一次。导演上下文本来就是 system 加交替的 user / assistant，DeepSeek 用不到转换，它主要服务 Hugging Face 上的小众后端，以及以后新增的厂商。
 
-### 错误分类与重试（`errors.py`、`retry.py`）
+### 错误分类（`errors.py`）
 
 `classify_error(status, body, exc)` 把各家千奇百怪的错误归成下面这些类别，类别决定动作。取自 hermes-agent 的 `FailoverReason`，去掉了与我们无关的几类：
 
 | 类别 | 典型信号 | 动作 |
 | --- | --- | --- |
 | auth | 401、403；400 且信息说 Key 无效（Gemini） | 不重试；模型标 invalid，提示检查密钥 |
-| billing | 402、额度不足 | 不重试；走 fallback 路由；提示额度 |
-| rate\_limit | 429 | 退避（遵守 Retry-After）后重试，再走 fallback |
-| overloaded | 503、529、overloaded 字样 | 退避重试，再走 fallback |
-| server\_error | 500、502、504 | 退避重试，再走 fallback |
-| timeout | 连接或首包超时 | 退避重试一次，再走 fallback |
-| context\_overflow | 400 且信息含 context length 一类；5xx 且信息说上下文太长（Gemini） | 紧急截断（目标 85%）后重试一次（第 5 节） |
-| payload\_too\_large | 413 | 同上 |
+| billing | 402、额度不足 | 回合失败；提示额度 |
+| rate\_limit | 429 | 回合失败；提示稍后再试，可以重试 |
+| overloaded | 503、529、overloaded 字样 | 回合失败，可以重试 |
+| server\_error | 500、502、504 | 回合失败，可以重试 |
+| timeout | 连接或首包超时 | 回合失败，可以重试 |
+| context\_overflow | 400 且信息含 context length 一类；5xx 且信息说上下文太长（Gemini） | 重新装配到有效窗口的 85% 以内，再请求一次（第 5 节）；报错里写明了真实上限就记到路由上 |
+| payload\_too\_large | 413 | 回合失败（`CONTEXT_TOO_LARGE`） |
 | model\_not\_found | 404 | 不重试；提示检查模型名 |
 | content\_policy\_blocked | `finish_reason = content_filter` 或策略类 400 | 不重试；提示玩家换个行动或重新生成 |
 | role\_alternation / format\_error | 400 且信息指向消息格式 | 换更严格的消息转换，重试一次 |
-| unknown | 其他 | 重试一次，再失败 |
+| unknown | 其他 | 回合失败，可以重试 |
 
-退避用带抖动的指数退避，函数形态借自 hermes-agent 的 `jittered_backoff(attempt, base, max, jitter_ratio=0.5)`：热路径 base 1 秒、max 20 秒，后台 base 5 秒、max 120 秒；遵守 `Retry-After`，热路径上超过 20 秒就不等了，直接切 fallback 路由。流式请求只在收到第一个 token 之前重试（第 5 节）。
+代码不自动重试，也不换到别的模型：上表里除了超窗，都是服务商或玩家账户那边的问题，替玩家重试或换模型只会让出错的原因变得看不清。`ProviderError.retryable` 只用来告诉客户端要不要显示“重试”按钮（类别是一时的问题、并且还没写出过内容时为真）。
 
 ### 传输层与 SSRF 防护（`providers/transport.py`）
 
@@ -858,7 +857,7 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 
 ### 许可证
 
-本项目只参考 SillyTavern 适配模型接口的思路，不翻译、不复制它的代码，所以不受 ST 的 AGPL-3.0 约束，许可证见[README.md 第 3 节](README.md)的待确认问题。hermes-agent 是 MIT 许可，`error_classifier.py`、`retry_utils.py` 这类代码可以复用，保留版权声明即可。以上是工程判断，不是法律意见，发布前请确认。
+本项目只参考 SillyTavern 适配模型接口的思路，不翻译、不复制它的代码，所以不受 ST 的 AGPL-3.0 约束，许可证见[README.md 第 3 节](README.md)的待确认问题。hermes-agent 是 MIT 许可，`error_classifier.py` 这类代码可以复用，保留版权声明即可。以上是工程判断，不是法律意见，发布前请确认。
 
 ## 9 API 与流式协议
 
@@ -1030,7 +1029,7 @@ apps/server/
 │   │   ├── context/
 │   │   │   └── assembler.py  budget.py  tokens.py  recap.py  truncate.py  compaction.py  fences.py
 │   │   ├── routing/
-│   │   │   └── resolver.py  fallback.py
+│   │   │   └── resolver.py
 │   │   ├── events/
 │   │   │   └── bus.py  envelope.py  buffer.py
 │   │   └── prompts/                    # 提示词模板：数据文件，不是 Python
@@ -1050,7 +1049,7 @@ apps/server/
 │   │   ├── base.py  profile.py  registry.py  hub.py  openai_compat.py  cancel.py
 │   │   ├── profiles/  deepseek.py  openai.py  xai.py  gemini.py  huggingface.py  custom_openai.py   # 每家厂商一个文件
 │   │   ├── capabilities.py  capabilities.yaml  probe.py
-│   │   ├── message_transforms.py  sse_parser.py  errors.py  retry.py
+│   │   ├── message_transforms.py  sse_parser.py  errors.py
 │   │   ├── transport.py  limiter.py  usage.py
 │   │   └── langchain_compat.py         # 可选
 │   │
@@ -1158,7 +1157,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 
 | 设计 | M1 的做法 | 原因与补齐时间 |
 | --- | --- | --- |
-| 热路径由 `turn_graph`（LangGraph）编排 | `runtime/runner.py` 的 `TurnRunner` 线性执行：开局构建 → 屏障 → 装配上下文 → 导演流式生成（同路由重试、fallback、超窗截断重试）→ 选项修复 → 带围栏提交 | 热路径上只有导演一个节点，图带不来收益。M2 接入后台管线时引入 LangGraph |
+| 热路径由 `turn_graph`（LangGraph）编排 | `runtime/runner.py` 的 `TurnRunner` 线性执行：开局构建 → 屏障 → 装配上下文 → 导演流式生成（出错直接失败，只有超窗时截断后再请求一次）→ 选项修复 → 带围栏提交 | 热路径上只有导演一个节点，图带不来收益。M2 接入后台管线时引入 LangGraph |
 | 回合提交为 `replied` 并在同一事务里入队 `post_turn` | 直接提交为 `committed`，不入队 | 还没有 StateKeeper。屏障的代码已经在，但上一轮总是已提交，不会等待。M2 改回 `replied` 加 `post_turn` |
 | 会话通道 `/playthroughs/{id}/events` 与 `playthrough.ready` | 没有实现；开局构建在开场回合自己的事件流里报告，新增 `world.building` 与 `world.ready`（data：`source`、`entities`）两个事件 | 单设备游玩用不到会话通道。M2 有了 `state.updated` 再加 |
 | 文件存储 `infra/storage/`（本地或 S3） | 角色卡头像存在 Postgres 的 `blobs` 表（bytea），通过 `GET /v1/blobs/{id}` 读取（要带令牌，有 ETag） | 头像最大 16 MB，量小。换对象存储只影响 `infra/db/repositories/library.py` |

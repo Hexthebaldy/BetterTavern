@@ -78,7 +78,7 @@
 
 | 调用 | 结构 |
 | --- | --- |
-| 导演，成功 | `{ "route_id", "fallback_used", "finish_reason", "estimated_tokens", "usage_ratio", "dropped_turns", "prompt_versions": { 模板名: 版本 }, "stage", "repairs": [], "notes": [] }`；`stage` 是 `ok` / `salvaged` / `repaired` / `fallback` |
+| 导演，成功 | `{ "route_id", "finish_reason", "estimated_tokens", "usage_ratio", "dropped_turns", "prompt_versions": { 模板名: 版本 }, "stage", "repairs": [], "notes": [] }`；`stage` 是 `ok` / `salvaged` / `repaired` / `fallback` |
 | 导演，`NARRATIVE_MISSING` | 同上，但没有 `stage`、`repairs`、`notes` |
 | WorldBuilder，成功 | `{ "mode", "attempts", "characters", "locations", "facts" }`；`mode` 是实际用上的结构化输出方式（`json_schema` / `tool_call` / `json_object` / `prompt_json`） |
 | WorldBuilder，失败 | `{ "detail" }`：错误说明，最多 300 字 |

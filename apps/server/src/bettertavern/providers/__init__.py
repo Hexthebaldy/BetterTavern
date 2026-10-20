@@ -32,12 +32,9 @@ from .limiter import CredentialLimiter, LimiterConfig, LimiterTimeout
 from .message_transforms import TransformLevel, apply_transforms
 from .probe import ProbeReport, probe_model
 from .registry import ProviderRegistry, UnknownProvider, default_registry
-from .retry import BACKGROUND, HOT_PATH, RetryPolicy, call_with_retry, stream_with_retry
 from .transport import EndpointPolicy, validate_endpoint
 
 __all__ = [
-    "BACKGROUND",
-    "HOT_PATH",
     "CancelToken",
     "Capabilities",
     "ChatEvent",
@@ -63,7 +60,6 @@ __all__ = [
     "ReasoningDelta",
     "ResolvedCredential",
     "ResponseFormat",
-    "RetryPolicy",
     "Secret",
     "TextDelta",
     "ToolCall",
@@ -74,10 +70,8 @@ __all__ = [
     "Usage",
     "UsageEvent",
     "apply_transforms",
-    "call_with_retry",
     "default_registry",
     "probe_model",
     "resolve_capabilities",
-    "stream_with_retry",
     "validate_endpoint",
 ]

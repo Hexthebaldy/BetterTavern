@@ -5,7 +5,7 @@ provider 层是 runtime 里唯一访问外部模型服务的地方；它不 impo
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncGenerator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
@@ -206,7 +206,10 @@ class ProviderAdapter(Protocol):
         caps: Capabilities,
         *,
         cancel: CancelToken | None = None,
-    ) -> AsyncIterator[ChatEvent]: ...
+    ) -> AsyncGenerator[ChatEvent, None]:
+        """一边收一边产出事件。调用方提前停止接收时要调 aclose()（或用 contextlib.aclosing），
+        连接才会马上断开。"""
+        ...
 
     async def complete(
         self,

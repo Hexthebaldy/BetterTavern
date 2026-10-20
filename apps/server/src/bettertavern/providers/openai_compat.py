@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncGenerator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -236,7 +236,7 @@ class OpenAICompatAdapter:
         caps: Capabilities,
         *,
         cancel: CancelToken | None = None,
-    ) -> AsyncIterator[ChatEvent]:
+    ) -> AsyncGenerator[ChatEvent, None]:
         body = self.build_body(req, caps, stream=True, cred_extra_body=cred.extra_body)
         url = self._url(cred, self._profile.chat_path)
         state = _StreamState()

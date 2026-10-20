@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { useOverview, type ProblemGroup } from "../api.ts";
 import { ErrorBox, IdChip, Loading, Notice, Pill, Seg, Stat } from "../components/common.tsx";
 import { IdLink } from "../components/EntryRow.tsx";
-import { errorClass, errorCode, eventInfo, sentence } from "../lib/catalog.ts";
+import { errorCode, eventInfo, sentence } from "../lib/catalog.ts";
 import { ago, clock, duration, percent, tokens } from "../lib/format.ts";
 
 function ProblemRow({ group }: { group: ProblemGroup }) {
@@ -49,9 +49,6 @@ export function Overview() {
   const failRate = db && turnsTotal ? db.turns.failed / turnsTotal : null;
   const cacheRate = db && db.director.input_tokens ? db.director.cached_tokens / db.director.input_tokens : null;
   const maxHour = Math.max(1, ...(db?.hourly ?? []).map((h) => h.ok + h.failed));
-  const retryNote = Object.entries(data.logs.retries)
-    .map(([k, v]) => `${errorClass(k)} ${v}`)
-    .join("、");
   return (
     <div className="page">
       <div className="page-head">
@@ -95,12 +92,6 @@ export function Overview() {
             />
           </>
         ) : null}
-        <Stat
-          label="调模型重试"
-          value={data.logs.retries_total}
-          note={retryNote || "没有"}
-          tone={data.logs.retries_total > 0 ? "warn" : undefined}
-        />
         <Stat label="推送断线" value={data.logs.sse_drops} note="手机的推送连接中途断开（会自动续传）" />
         <Stat
           label="服务端错误"

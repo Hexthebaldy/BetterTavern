@@ -52,7 +52,6 @@ class RouteView:
     last_ok_at: datetime | None
     last_probe: dict[str, Any] | None
     is_director: bool
-    fallback_route_id: str | None
     shares_key_with: list[str]
     window: WindowInfo
     created_at: datetime
@@ -98,7 +97,6 @@ def _view(codec: RouteCodec, row: RouteRow, shares_key_with: list[str]) -> Route
         last_ok_at=row.last_ok_at,
         last_probe=report if isinstance(report, dict) else None,
         is_director=row.is_director,
-        fallback_route_id=row.fallback_route_id,
         shares_key_with=shares_key_with,
         window=WindowInfo(
             model_window=check.model_window,

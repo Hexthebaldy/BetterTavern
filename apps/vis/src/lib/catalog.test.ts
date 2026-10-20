@@ -43,8 +43,8 @@ describe("格式化", () => {
 describe("中文目录", () => {
   it("事件写成一句人话，认不出来的原样显示", () => {
     assert.equal(
-      sentence("provider.retry", { attempt: 1, error_class: "rate_limit", status: 429, retry_in_s: 2 }),
-      "第 1 次失败：被服务商限流，HTTP 429，2 秒后重试",
+      sentence("provider.request", { provider: "deepseek", model: "deepseek-chat" }),
+      "调用 deepseek / deepseek-chat",
     );
     assert.equal(sentence("provider.first_token", { ttft_ms: 1840 }), "模型吐出第一个字，等了 1.84 秒");
     assert.equal(
@@ -78,8 +78,8 @@ describe("中文目录", () => {
 
   it("问题写成中文", () => {
     assert.equal(
-      issueText("provider_retry", { count: 3, classes: { rate_limit: 2, timeout: 1 } }),
-      "调模型重试了 3 次（被服务商限流 2 次、超时 1 次）",
+      issueText("provider_failed", { error_class: "rate_limit", status: 429 }),
+      "调模型失败：被服务商限流，HTTP 429",
     );
     assert.equal(issueText("low_cache", { ratio: 0.12 }), "前缀缓存只命中了 12%，这一轮更慢也更贵");
   });

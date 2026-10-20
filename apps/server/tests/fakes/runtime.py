@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncGenerator, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -95,7 +95,7 @@ class ScriptedAdapter:
         caps: Capabilities,
         *,
         cancel: CancelToken | None = None,
-    ) -> AsyncIterator[ChatEvent]:
+    ) -> AsyncGenerator[ChatEvent, None]:
         self.requests.append(req)
         script = self.streams.popleft()
         try:
@@ -170,7 +170,6 @@ def make_route(
     *,
     task: RouteTask = RouteTask.DIRECTOR,
     window: int = 65536,
-    fallback: ResolvedRoute | None = None,
     caps: Capabilities | None = None,
     params: RouteParams | None = None,
 ) -> ResolvedRoute:
@@ -187,7 +186,6 @@ def make_route(
         caps=caps,
         params=params,
         window=effective_window(window, params.working_cap(), params.max_tokens_for(task)),
-        fallback=fallback,
     )
 
 

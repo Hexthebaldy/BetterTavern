@@ -96,7 +96,6 @@ export type ModelRoute = {
   last_ok_at: string | null;
   last_probe: ProbeReport | null;
   is_director: boolean;
-  fallback_route_id: string | null;
   /** 和它用同一个 Key 的其他模型 */
   shares_key_with: string[];
   window: RouteWindow;

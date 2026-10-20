@@ -131,7 +131,6 @@ export const common: Messages<typeof source> = {
       extra_headers: "The custom headers aren't valid.",
       extra_body: "The custom body fields aren't valid.",
       caps_override: "The capability overrides aren't valid.",
-      fallback_route_id: "A model can't be its own fallback.",
       manual_window: "The context length isn't valid.",
       params: "The parameters aren't valid.",
     },

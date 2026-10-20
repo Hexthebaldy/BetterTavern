@@ -153,12 +153,6 @@ function RunCard({ run }: { run: Run }) {
             </span>
           </>
         ) : null}
-        {result.fallback_used ? (
-          <>
-            <span className="k">备用模型</span>
-            <span>用了</span>
-          </>
-        ) : null}
         <span className="k">提示词指纹</span>
         <span className="mono">{run.prompt_hash ?? "–"}</span>
       </div>

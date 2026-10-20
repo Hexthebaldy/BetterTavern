@@ -291,7 +291,6 @@ class RouteService:
             status="ok" if key_ok else "unverified",
             last_ok_at=now if key_ok else None,
             is_director=False,
-            fallback_route_id=None,
             created_at=now,
             updated_at=now,
         )
@@ -373,15 +372,6 @@ class RouteService:
             override = inp.clean_caps_override(patch.caps_override)
             row = dataclasses.replace(row, caps_override=override)
             changed.append("caps_override")
-        if patch.clear_fallback:
-            row = dataclasses.replace(row, fallback_route_id=None)
-            changed.append("fallback_route_id")
-        elif patch.fallback_route_id is not None:
-            if patch.fallback_route_id == row.id:
-                raise Invalid("A model can't be its own fallback", field="fallback_route_id")
-            await self._row(user_id, patch.fallback_route_id)
-            row = dataclasses.replace(row, fallback_route_id=patch.fallback_route_id)
-            changed.append("fallback_route_id")
         return row, new_key, reset
 
     async def update(self, user_id: str, route_id: str, patch: RoutePatch) -> RouteView:
@@ -490,19 +480,11 @@ class RouteService:
         """task 用的模型：目前所有 task 都用导演这一行。playthrough_id 留给以后的单局覆盖。"""
         async with self._engine.connect() as conn:
             row = await repo.get_director(conn, user_id)
-            fallback_row = (
-                await repo.get_route(conn, user_id, row.fallback_route_id)
-                if row is not None and row.fallback_route_id
-                else None
-            )
         if row is None:
             return None
-        fallback = self._resolved(fallback_row, task) if fallback_row is not None else None
-        return self._resolved(row, task, fallback)
+        return self._resolved(row, task)
 
-    def _resolved(
-        self, row: repo.RouteRow, task: RouteTask, fallback: ResolvedRoute | None = None
-    ) -> ResolvedRoute:
+    def _resolved(self, row: repo.RouteRow, task: RouteTask) -> ResolvedRoute:
         params = inp.parse_params(row.params)
         caps = self._codec.caps(row)
         return ResolvedRoute(
@@ -514,7 +496,6 @@ class RouteService:
             caps=caps,
             params=params,
             window=window_for(caps, params, task),
-            fallback=fallback,
         )
 
     async def note_window(self, user_id: str, route_id: str, window: int) -> bool:

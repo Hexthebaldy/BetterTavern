@@ -124,14 +124,12 @@ export const SPAN_LABELS: Record<string, string> = {
   provider_wait: "等第一个字",
   provider_stream: "吐字",
   provider_failed: "调用失败",
-  retry_wait: "重试前等待",
   sse: "推送连接",
 };
 
 export const MARKER_LABELS: Record<string, string> = {
   context: "组装上下文",
   parse: "检查格式",
-  fallback: "换备用模型",
   context_overflow_retry: "超窗重试",
   replayed: "重复提交",
   cancel_requested: "停止生成",
@@ -166,13 +164,6 @@ export function issueText(code: string, f: Fields): string {
       return "执行回合时服务端抛出了没处理的异常";
     case "lease_expired":
       return "生成进程没了（服务重启或卡死），回合被标为失败";
-    case "provider_retry": {
-      const classes = f.classes && typeof f.classes === "object" ? (f.classes as Record<string, number>) : {};
-      const detail = Object.entries(classes)
-        .map(([k, v]) => `${errorClass(k)} ${v} 次`)
-        .join("、");
-      return `调模型重试了 ${str(f.count)} 次（${detail}）`;
-    }
     case "provider_failed":
       return plus(`调模型失败：${errorClass(f.error_class)}`, f.status ? `HTTP ${str(f.status)}` : null);
     case "slot_timeout":
@@ -193,8 +184,6 @@ export function issueText(code: string, f: Fields): string {
       return "模型输出的格式有小问题，自动修补了";
     case "repair_failed":
       return `补选项失败：${str(f.error_class)}`;
-    case "fallback_route":
-      return `主模型失败，换成了备用模型 ${str(f.to_model)}`;
     case "context_overflow":
       return "上下文超出了模型窗口，截短后重试";
     case "context_tight":

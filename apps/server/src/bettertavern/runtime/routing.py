@@ -28,7 +28,6 @@ class ResolvedRoute:
     caps: Capabilities
     params: RouteParams
     window: WindowCheck
-    fallback: ResolvedRoute | None = None
 
     @property
     def max_tokens(self) -> int:

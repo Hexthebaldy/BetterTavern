@@ -27,7 +27,7 @@
 | 422 | `VALIDATION_ERROR` | 主角名整理后为空（`field: "protagonist_name"`） |
 | 404 | `NOT_FOUND` | 剧本不存在 |
 | 409 | `ROUTE_MISSING` | 还没有设置导演模型 |
-| 409 | `CREDENTIAL_UNREADABLE` | 导演模型（或它的备用模型）的 Key 无法解密 |
+| 409 | `CREDENTIAL_UNREADABLE` | 导演模型的 Key 无法解密 |
 | 429 | `RATE_LIMITED` | 每分钟超过 30 次（和提交行动合计） |
 | 503 | `UNAVAILABLE` | 服务正在重启，带 `Retry-After: 5` |
 
@@ -162,7 +162,7 @@
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 游玩不存在 |
 | 409 | `ROUTE_MISSING` | 还没有设置导演模型 |
-| 409 | `CREDENTIAL_UNREADABLE` | 导演模型（或它的备用模型）的 Key 无法解密 |
+| 409 | `CREDENTIAL_UNREADABLE` | 导演模型的 Key 无法解密 |
 | 409 | `TURN_IN_PROGRESS` | 上一轮还在生成，带 `active_turn_id`；客户端可以直接订阅它的事件流 |
 | 409 | `STALE_PARENT` | `parent_turn_id` 不是当前头部（故事在别处更新过），带最新的 `head_turn_id`。已经有开场时提交 `opening` 并且 `parent_turn_id` 为 null，得到的也是这个码 |
 | 409 | `OPENING_PENDING` | 开场还没完成，就提交了 `option`、`text` 或 `ending` 行动 |

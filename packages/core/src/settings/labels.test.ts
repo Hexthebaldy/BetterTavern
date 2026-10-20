@@ -29,7 +29,6 @@ function route(id: string, provider: string, last4: string, shares: string[] = [
     last_ok_at: null,
     last_probe: null,
     is_director: false,
-    fallback_route_id: null,
     shares_key_with: shares,
     window,
     created_at: "2026-10-15T00:00:00Z",

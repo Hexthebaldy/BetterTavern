@@ -36,7 +36,6 @@
 | `status` | text | 否 | `'unverified'` | `unverified` / `ok` / `invalid`，状态变化见下文“状态” |
 | `last_ok_at` | timestamptz | 是 |  | 最近一次确认 Key 可用的时间（获取模型列表或测试成功） |
 | `is_director` | boolean | 否 | `false` | 是不是导演。每个用户最多一行为真 |
-| `fallback_route_id` | uuid | 是 |  | → `model_routes.id`，被删除时置空。备用模型，只有导演使用：导演在输出第一段文字之前失败，并且错误类别允许切换（限流、繁忙、5xx、超时、连接错误、欠费、无效响应、未知错误）时，改用这一行 |
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `updated_at` | timestamptz | 否 | `now()` |  |
 

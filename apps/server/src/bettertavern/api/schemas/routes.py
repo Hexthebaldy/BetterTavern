@@ -67,8 +67,6 @@ class RoutePatchIn(BaseModel):
     params: RouteParamsIn | None = None
     caps_override: dict[str, Any] | None = None
     director: bool | None = None
-    # 传 null 表示去掉备用模型；不传表示不改
-    fallback_route_id: str | None = None
 
 
 class ProbeCheckOut(BaseModel):
@@ -112,7 +110,6 @@ class RouteOut(Out):
     last_ok_at: datetime | None
     last_probe: ProbeOut | None
     is_director: bool
-    fallback_route_id: str | None
     shares_key_with: list[str]
     window: WindowOut
     created_at: datetime

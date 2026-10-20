@@ -127,7 +127,6 @@ export const common: MessagesOtherOnly<typeof source> = {
       extra_headers: "カスタムヘッダーが正しくありません",
       extra_body: "カスタムリクエストボディが正しくありません",
       caps_override: "機能の上書き設定が正しくありません",
-      fallback_route_id: "予備のモデルに自分自身は指定できません",
       manual_window: "コンテキスト長が正しくありません",
       params: "パラメーターが正しくありません",
     },

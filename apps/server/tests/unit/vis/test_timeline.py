@@ -24,7 +24,7 @@ SUBMIT = "/v1/playthroughs/{playthrough_id}/turns"
 EVENTS = "/v1/turns/{turn_id}/events"
 
 
-def a_turn_with_one_rate_limit_retry() -> list[Entry]:
+def a_turn_with_one_context_overflow_retry() -> list[Entry]:
     return entries(
         (0, "turn.submitted", {"request_id": "r1", "turn_id": "T"}),
         (5, "turn.started", {"request_id": "r1", "turn_id": "T"}),
@@ -34,19 +34,20 @@ def a_turn_with_one_rate_limit_retry() -> list[Entry]:
             {"request_id": "r1", "route": SUBMIT, "status": 201, "duration_ms": 30},
         ),
         (20, "context.assembled", {"turn_id": "T", "usage_ratio": 0.9, "estimated_tokens": 9000}),
-        (25, "provider.request", {"turn_id": "T", "attempt": 1, "model": "m"}),
+        (25, "provider.request", {"turn_id": "T", "model": "m"}),
         (
             425,
-            "provider.retry",
+            "provider.failed",
             {
                 "turn_id": "T",
-                "attempt": 1,
-                "error_class": "rate_limit",
-                "retry_in_s": 2.0,
+                "error_class": "context_overflow",
+                "status": 400,
                 "level": "warning",
             },
         ),
-        (2430, "provider.request", {"turn_id": "T", "attempt": 2, "model": "m"}),
+        (426, "turn.context_overflow_retry", {"turn_id": "T", "window": 8000, "level": "warning"}),
+        (428, "context.assembled", {"turn_id": "T", "usage_ratio": 0.85, "estimated_tokens": 6800}),
+        (2430, "provider.request", {"turn_id": "T", "model": "m"}),
         (8430, "provider.first_token", {"turn_id": "T", "ttft_ms": 8405}),
         (9000, "sse.subscribe", {"request_id": "s1", "turn_id": "T", "mode": "live", "backlog": 3}),
         (9001, "sse.open", {"request_id": "s1", "turn_id": "T", "resumed_from": 0}),
@@ -81,21 +82,21 @@ def a_turn_with_one_rate_limit_retry() -> list[Entry]:
 
 
 def test_spans_follow_the_turn_step_by_step() -> None:
-    timeline = build_timeline(a_turn_with_one_rate_limit_retry())
+    timeline = build_timeline(a_turn_with_one_context_overflow_retry())
     kinds = [(s.lane, s.kind, s.status) for s in timeline.spans]
     assert ("request", "http", "ok") in kinds
     assert ("turn", "turn", "ok") in kinds
     model = [
         (s.kind, s.status, s.fields.get("attempt")) for s in timeline.spans if s.lane == "model"
     ]
+    # 超窗后重新装配再请求一次：第几次请求按这一回合里 provider.request 出现的顺序数
     assert model == [
         ("provider_failed", "error", 1),
-        ("retry_wait", "warn", None),
         ("provider_wait", "ok", 2),
         ("provider_stream", "ok", 2),
     ]
-    wait = next(s for s in timeline.spans if s.kind == "retry_wait")
-    assert (wait.start, wait.end) == (T0 + 425, T0 + 2430)  # 画到下一次开流，不是固定的 2 秒
+    failed = next(s for s in timeline.spans if s.kind == "provider_failed")
+    assert (failed.start, failed.end) == (T0 + 25, T0 + 425)
     stream = next(s for s in timeline.spans if s.kind == "provider_stream")
     assert stream.fields["completion_tokens"] == 300
     sse = [
@@ -105,14 +106,19 @@ def test_spans_follow_the_turn_step_by_step() -> None:
     ]
     assert sse == [("sse:1", True, 3), ("sse:2", False, None)]
     assert not any(s.lane == "request" and s.fields.get("route") == EVENTS for s in timeline.spans)
-    assert [m.kind for m in timeline.markers] == ["context", "parse"]
+    assert [m.kind for m in timeline.markers] == [
+        "context",
+        "context_overflow_retry",
+        "context",
+        "parse",
+    ]
     assert timeline.origin == T0 - 18  # 提交请求从 12-30 毫秒开始
     commit = next(s for s in timeline.spans if s.kind == "commit")
     assert (commit.start, commit.end) == (T0 + 12010, T0 + 12050)
 
 
 def test_unfinished_spans_run_to_the_last_entry_while_generating() -> None:
-    items = a_turn_with_one_rate_limit_retry()[:8]
+    items = a_turn_with_one_context_overflow_retry()[:10]
     timeline = build_timeline(items, running=True)
     open_ones = [(s.kind, s.status, s.end) for s in timeline.spans if s.status == "running"]
     assert ("turn", "running", T0 + 8430) in open_ones
@@ -120,18 +126,19 @@ def test_unfinished_spans_run_to_the_last_entry_while_generating() -> None:
 
 
 def test_issues_point_out_what_went_wrong() -> None:
-    items = a_turn_with_one_rate_limit_retry()
+    items = a_turn_with_one_context_overflow_retry()
     timeline = build_timeline(items)
     issues = turn_issues(items, timeline, turn={"status": "committed", "seq": 5})
     codes = [(i.severity, i.code) for i in issues]
-    assert ("warn", "provider_retry") in codes
+    assert ("error", "provider_failed") in codes
+    assert ("warn", "context_overflow") in codes
     assert ("warn", "slow_first_token") in codes
     assert ("warn", "parse_repaired") in codes
     assert ("info", "context_tight") in codes
     assert ("info", "low_cache") in codes
     assert ("info", "sse_dropped") in codes
-    retry = next(i for i in issues if i.code == "provider_retry")
-    assert retry.fields == {"count": 1, "classes": {"rate_limit": 1}}
+    overflow = next(i for i in issues if i.code == "context_overflow")
+    assert overflow.fields == {"window": 8000}
     severities = [i.severity for i in issues]
     assert severities == sorted(severities, key=["error", "warn", "info"].index)
 
@@ -139,7 +146,7 @@ def test_issues_point_out_what_went_wrong() -> None:
 def test_failed_turn_is_reported_first() -> None:
     items = entries(
         (0, "turn.started", {"turn_id": "T"}),
-        (10, "provider.request", {"turn_id": "T", "attempt": 1}),
+        (10, "provider.request", {"turn_id": "T"}),
         (
             500,
             "provider.failed",
@@ -169,7 +176,7 @@ def test_turn_known_only_to_the_database_says_logs_are_missing() -> None:
 
 
 def test_request_list_filters_and_links_turns() -> None:
-    items = a_turn_with_one_rate_limit_retry() + entries(
+    items = a_turn_with_one_context_overflow_retry() + entries(
         (
             20000,
             "http.request",
@@ -195,20 +202,23 @@ def test_request_list_filters_and_links_turns() -> None:
 
 
 def test_raw_log_filters() -> None:
-    items = a_turn_with_one_rate_limit_retry()
-    assert [e.event for e in filter_logs(items, level="warning")] == ["provider.retry"]
+    items = a_turn_with_one_context_overflow_retry()
+    assert [e.event for e in filter_logs(items, level="warning")] == [
+        "provider.failed",
+        "turn.context_overflow_retry",
+    ]
     assert len(filter_logs(items, ident="s")) == 6  # 单号开头匹配：s1 三条、s2 三条
-    assert [e.n for e in filter_logs(items, after=15)] == [16, 17]
+    assert [e.n for e in filter_logs(items, after=17)] == [18, 19]
     assert [e.event for e in filter_logs(items, q="REPAIRED")] == ["director.parse"]
 
 
 def test_recent_problems_group_by_event() -> None:
     items = entries(
-        (0, "provider.retry", {"level": "warning", "error_class": "rate_limit"}),
-        (5, "provider.retry", {"level": "warning", "error_class": "timeout"}),
+        (0, "provider.failed", {"level": "warning", "error_class": "rate_limit"}),
+        (5, "provider.failed", {"level": "warning", "error_class": "timeout"}),
         (6, "http.error", {"level": "error"}),
         (7, "turn.committed", {}),
     )
     groups = recent_problems(items, since=T0)
-    assert [(g.event, g.count) for g in groups] == [("http.error", 1), ("provider.retry", 2)]
+    assert [(g.event, g.count) for g in groups] == [("http.error", 1), ("provider.failed", 2)]
     assert groups[1].sample["error_class"] == "timeout"

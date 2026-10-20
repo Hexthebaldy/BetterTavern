@@ -187,21 +187,6 @@ async def test_only_one_director_and_everything_uses_it(env: Env) -> None:
     assert await routes.resolve(env.user_id, RouteTask.DIRECTOR) is None
 
 
-async def test_fallback_route(env: Env) -> None:
-    routes = env.services.routes
-    main = await routes.create(env.user_id, new("fake-model", director=True))
-    backup = await routes.create(env.user_id, new("plain"))
-    with pytest.raises(AppError):
-        await routes.update(env.user_id, main.id, RoutePatch(fallback_route_id=main.id))
-    await routes.update(env.user_id, main.id, RoutePatch(fallback_route_id=backup.id))
-    resolved = await routes.resolve(env.user_id, RouteTask.DIRECTOR)
-    assert resolved is not None and resolved.fallback is not None
-    assert resolved.fallback.route_id == backup.id
-    # 备用模型被删掉时引用置空
-    await routes.delete(env.user_id, backup.id)
-    assert (await routes.get(env.user_id, main.id)).fallback_route_id is None
-
-
 async def test_learned_window_only_goes_down(env: Env) -> None:
     routes = env.services.routes
     view = await routes.create(env.user_id, new("fake-model", director=True))

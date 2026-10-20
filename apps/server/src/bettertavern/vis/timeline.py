@@ -92,7 +92,7 @@ def build_timeline(entries: list[Entry], *, running: bool = False) -> Timeline:
     turn_start: float | None = None
     world_start: float | None = None
     attempt: _Attempt | None = None
-    retry_wait: Span | None = None
+    requests = 0  # 这一回合第几次请求模型（服务商报超窗时会重新装配再请求一次）
     sse_open: dict[str, tuple[float, int, dict[str, Any]]] = {}
     sse_count = 0
     pending_subscribe: dict[str, dict[str, Any]] = {}
@@ -239,30 +239,15 @@ def build_timeline(entries: list[Entry], *, running: bool = False) -> Timeline:
                 Span("model", "slot_wait", _before(e), e.t, "error", _pick(e, "duration_ms"), e.n)
             )
         elif event == "provider.request":
-            if retry_wait is not None:
-                retry_wait.end = e.t
-                retry_wait = None
+            requests += 1
             attempt = _Attempt(
                 start=e.t,
-                number=int(_num(e.get("attempt")) or 1),
+                number=requests,
                 fields=_pick(e, "provider", "model", "route_id", "estimated_tokens"),
             )
         elif event == "provider.first_token":
             if attempt is not None:
                 attempt.first_token = e.t
-        elif event == "provider.retry":
-            close_attempt(e.t, False, e.n, _pick(e, "error_class", "status"))
-            wait = (_num(e.get("retry_in_s")) or 0.0) * 1000
-            retry_wait = Span(
-                "model",
-                "retry_wait",
-                e.t,
-                e.t + wait,
-                "warn",
-                _pick(e, "error_class", "status", "retry_in_s"),
-                e.n,
-            )
-            spans.append(retry_wait)
         elif event == "provider.response":
             close_attempt(
                 e.t,
@@ -283,14 +268,14 @@ def build_timeline(entries: list[Entry], *, running: bool = False) -> Timeline:
             close_attempt(
                 e.t, False, e.n, _pick(e, "error_class", "status", "partial", "streamed_chars")
             )
-        elif event in ("turn.fallback", "turn.context_overflow_retry"):
+        elif event == "turn.context_overflow_retry":
             markers.append(
                 Marker(
                     "model",
-                    event.split(".", 1)[1],
+                    "context_overflow_retry",
                     e.t,
                     "warn",
-                    _pick(e, "error_class", "from_model", "to_provider", "to_model", "window"),
+                    _pick(e, "window", "learned_window"),
                     e.n,
                 )
             )

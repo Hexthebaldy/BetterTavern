@@ -93,11 +93,10 @@ def test_retry_after_variants() -> None:
     assert parse_retry_after(None) is None
 
 
-def test_rate_limit_carries_retry_after_and_policy() -> None:
+def test_rate_limit_carries_retry_after_and_is_retryable() -> None:
     error = classify_http_error(429, "slow down", httpx.Headers({"Retry-After": "3"}))
     assert error.retry_after == 3.0
     assert error.retryable
-    assert error.policy.fallback
 
 
 def test_extract_error_text_handles_shapes() -> None:

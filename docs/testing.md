@@ -59,8 +59,8 @@ App 报错时显示这个单号，拿它去日志里一搜：搜不到说明请�
 | 账户 | `auth.registered`、`auth.login`、`auth.login_failed`、`auth.refresh`、`auth.refresh_invalid`、`auth.refresh_reused`（疑似令牌被盗，整族吊销）、`auth.logout`、`account.deleted`、`account.delete_rejected` | 失败原因（`unknown_email` / `wrong_password` / `expired`……）；不记邮箱和密码 |
 | 模型 | `route.created` / `updated` / `deleted`、`route.key_unreadable`、`route.probe`、`route.window_learned`、`models.listed`、`models.list_failed`、`models.list_skipped` | 服务商、模型名、端点主机名、改了哪些字段、窗口从哪来、是否复用或一起换了 Key、探测结果、模型数量、错误类别 |
 | 导入 | `scenario.imported`、`scenario.import_failed`、`scenario.deleted` | 字节数、卡片规范、世界书条目数、开场白数、被截断的字段名、是否重复导入 |
-| 回合 | `turn.submitted`、`turn.replayed`（幂等重放）、`turn.started`、`world.build.started` / `done`、`turn.barrier_waited`、`context.assembled`、`turn.context_overflow_retry`（服务商写明了上限时带 `learned_window`）、`turn.window_note_failed`、`turn.fallback`、`director.parse`、`options.repair` / `repair_failed`、`turn.committed`、`turn.commit_rejected`、`turn.failed`、`turn.cancel_requested`、`turn.lease_expired`、`turn.crashed` | 行动来源和文字长度、预算与占用比例、提示词指纹、解析走到哪一级、选项来源、失败码与取消原因、总耗时 |
-| 模型调用 | `provider.request`、`provider.slot_wait` / `slot_timeout`、`provider.retry`、`provider.first_token`、`provider.response`、`provider.failed`、`provider.limit_hit`（导演这一段碰到总时长或总字数上限） | 服务商、模型、第几次尝试、错误类别与 HTTP 状态、重试等待、首字延迟、各类 token 数、结束原因、碰到哪条上限 |
+| 回合 | `turn.submitted`、`turn.replayed`（幂等重放）、`turn.started`、`world.build.started` / `done`、`turn.barrier_waited`、`context.assembled`、`turn.context_overflow_retry`（服务商写明了上限时带 `learned_window`）、`turn.window_note_failed`、`director.parse`、`options.repair` / `repair_failed`、`turn.committed`、`turn.commit_rejected`、`turn.failed`、`turn.cancel_requested`、`turn.lease_expired`、`turn.crashed` | 行动来源和文字长度、预算与占用比例、提示词指纹、解析走到哪一级、选项来源、失败码与取消原因、总耗时 |
+| 模型调用 | `provider.request`、`provider.slot_wait` / `slot_timeout`、`provider.first_token`、`provider.response`、`provider.failed`、`provider.limit_hit`（导演这一段碰到总时长或总字数上限） | 服务商、模型、错误类别与 HTTP 状态、首字延迟、各类 token 数、结束原因、碰到哪条上限 |
 | 推送 | `sse.subscribe`（实时 / 回合结束后一次给全，续传要补发几条）、`sse.open`、`sse.close` | 从第几条续传、结束原因（`completed` / `client_gone` / `shutdown`）、发出几条、持续多久 |
 | 后台任务 | `job.started` / `done` / `failed` / `released` / `lock_lost` / `renew_failed` / `reaped`、`job.claim_failed`、`queue.listen_*`、`worker.*` | 任务类型、第几次尝试、会不会重试、多久后重试 |
 | 进程 | `app.started`、`app.stopping`、`scheduler.task_failed`、`secrets.dev_generated` | 版本、环境、实例 |
@@ -125,7 +125,7 @@ make vis
 
 - 接口是一个独立的 FastAPI 应用，由 `bettertavern vis` 启动，同时托管构建好的网页（`apps/vis/dist`）。所有接口只读，不进 `docs/api/`：它不是产品接口，随网页一起改。
 - `logstore.py` 增量读日志：记住每个文件读到哪个字节，轮转后按 inode 认出是哪个文件，坏行跳过；按请求单号、回合、故事、任务建索引。
-- `timeline.py` 把一个回合的日志变成时间条：带 `duration_ms` 的事件往前推出开始时间，`provider.retry` 的等待、`sse.open` 到 `sse.close` 各成一段，没有时长的事件画成点。
+- `timeline.py` 把一个回合的日志变成时间条：带 `duration_ms` 的事件往前推出开始时间，每次请求模型、`sse.open` 到 `sse.close` 各成一段，没有时长的事件画成点。
 - `issues.py` 从日志和 `agent_runs` 里找问题；`queries.py` 跨用户查数据库（只读，不带 `user_id` 条件，这是它和业务仓储的区别）。
 - 网页是 React + Vite + TanStack Query；纯逻辑（中文目录、格式化、手机日志解析）用 `node --test` 测（`make vis-test`）。
 - 数据库连不上时，只依赖日志的页面（请求、原始日志、时间线）照常工作。
@@ -203,12 +203,12 @@ make vis
 | `unit/runtime/test_prompt_languages.py` | 中文、英文、日文三套提示词（[i18n.md](i18n.md) 第 4 节）：文件一一对应、模板用到的变量相同、数据文件的键相同、字段说明指向真实字段、每种语言都能渲染；英文、日文的状态块和上下文是各自的语言 |
 | `unit/domain/test_language.py` | 提示词语言的解析（认识的原样保留，不认识的按中文）、没有名字的主角按语言的兜底称呼 |
 | `unit/runtime/test_structured.py` | 结构化输出阶梯：校验失败带错误重试一次、不支持的级别跳过并缓存、降两级后放弃、传输错误上抛 |
-| `unit/runtime/test_runner.py` | 事件顺序与提交、选项修复与默认选项、首 token 前出错切 fallback、半截失败保留叙述、鉴权错误不重试（失败事件带 `reason`）、没有叙述、没有路由、提交被围栏拒绝、屏障超时、租约丢失时取消生成、开局构建、关闭时取消、英文和日文的一局用各自语言的提示词 |
+| `unit/runtime/test_runner.py` | 事件顺序与提交、选项修复与默认选项、首 token 前出错直接失败、不重发也不换模型，超窗时重新装配再请求一次，半截失败保留叙述、鉴权错误不重试（失败事件带 `reason`）、没有叙述、没有路由、提交被围栏拒绝、屏障超时、租约丢失时取消生成、开局构建、关闭时取消、英文和日文的一局用各自语言的提示词 |
 | `unit/api/test_body_limit.py`、`unit/api/test_probe_api.py` | 请求体大小限制；探针接口读不到真实回合的事件流 |
 | `unit/api/test_api_doc.py` | [docs/api/](api/README.md) 与 OpenAPI 一致（目录里的文件合在一起检查，每个接口和模型只能写一次）：接口齐全、鉴权与成功状态码、查询参数与请求头、每个请求和响应模型的字段与必填项 |
 | `integration/test_data_model_doc.py` | [docs/data-model/](data-model/README.md) 与迁移建出的表一致（同上）：表、列名、类型、可空、索引名 |
 | `integration/test_accounts.py` | 注册登录、刷新令牌轮换、宽限期与盗用检测、退出吊销整族、删除账户 |
-| `integration/test_routes.py` | 模型路由：窗口的来源顺序（服务商列表 > 能力表 > 手填 > 32K）、保存时复用表单拉过的列表、复用 Key 与一起换 Key、只有一个导演且所有用途都用它、备用模型、学到的窗口只往小调、跨用户 404 |
+| `integration/test_routes.py` | 模型路由：窗口的来源顺序（服务商列表 > 能力表 > 手填 > 32K）、保存时复用表单拉过的列表、复用 Key 与一起换 Key、只有一个导演且所有用途都用它、学到的窗口只往小调、跨用户 404 |
 | `integration/test_turns.py` | 同一个幂等键并发提交只建一个回合、生成中再提交得到 `TURN_IN_PROGRESS`、租约过期清理后迟到的结果作废、跨用户 404、过期父回合与选项校验 |
 | `e2e/test_m1_flow.py` | uvicorn 里的真实 api 加假模型服务：注册 → 拉模型列表并添加模型 → 导入 → 开局 → 多回合（幂等重放、并发提交、过期父回合）→ 中途断开再续传，拼接结果等于最终叙述；鉴权与隔离；窗口校验；开局的 `language`（不传按中文、只认 zh / en、英文的一局给导演的是英文提示词） |
 | `e2e/test_web_auth.py` | 网页的 Cookie 登录：注册、刷新、登录只在 HttpOnly Cookie 里给刷新令牌，刷新和退出凭 Cookie、被拒时删掉 Cookie；跨站请求返回 403；不带 `X-Auth-Mode` 时和 App 一样 |

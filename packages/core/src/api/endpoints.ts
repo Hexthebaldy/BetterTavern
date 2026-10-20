@@ -37,7 +37,7 @@ export type NewModelRoute = {
   director?: boolean;
 };
 
-/** 只改给出的字段；manual_window、fallback_route_id 传 null 表示清空 */
+/** 只改给出的字段；manual_window 传 null 表示清空 */
 export type ModelRoutePatch = {
   label?: string;
   model?: string;
@@ -48,7 +48,6 @@ export type ModelRoutePatch = {
   manual_window?: number | null;
   params?: RouteParams;
   director?: boolean;
-  fallback_route_id?: string | null;
 };
 
 export type ModelListQuery = { api_key: string; base_url?: string | null };

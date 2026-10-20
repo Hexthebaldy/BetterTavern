@@ -1,11 +1,12 @@
-"""一次导演调用的流式部分（TurnRunner 用）：占并发槽位、带重试地开流、边收边解析、按批推送叙述增量。
+"""一次导演调用的流式部分（TurnRunner 用）：领这把密钥的请求名额、开流、边收边解析、
+攒一下再推送叙述。出错不在这里重试，直接交给 TurnRunner 按失败处理。
 
 两道保险，防止模型（或者玩家填的、不守规矩的接口）一直写下去：从开流算起的总时长上限，
 和按 max_tokens 换算的总字数上限。碰到任何一条就主动停下，这一轮按失败结束，已写出的部分存成草稿。
 
-日志：provider.request（每次开流）、provider.retry（首个可见内容之前出错后重试）、
-provider.first_token、provider.response（成功结束，带 token 数）、provider.failed、
-provider.slot_wait / slot_timeout（等并发槽位）、provider.limit_hit（碰到总时长或总字数上限）。
+日志：provider.request（开流）、provider.first_token、provider.response（成功结束，带 token 数）、
+provider.failed、provider.slot_wait / slot_timeout（等并发槽位）、
+provider.limit_hit（碰到总时长或总字数上限）。
 """
 
 from __future__ import annotations
@@ -19,7 +20,6 @@ from typing import Any
 import structlog
 
 from bettertavern.providers import (
-    HOT_PATH,
     CancelToken,
     Done,
     ProviderError,
@@ -27,7 +27,6 @@ from bettertavern.providers import (
     TextDelta,
     Usage,
     UsageEvent,
-    stream_with_retry,
 )
 from bettertavern.providers.errors import ErrorClass
 from bettertavern.providers.limiter import LimiterTimeout
@@ -74,7 +73,6 @@ class Generation:
     route: ResolvedRoute
     context: AssembledContext
     latency_ms: int = 0
-    fallback_used: bool = False
 
 
 def failure_from_provider(error: ProviderError, narrative: str = "") -> TurnFailure:
@@ -120,7 +118,7 @@ class StreamFailed(Exception):
 
 
 class GenerationLimitHit(Exception):
-    """这一段超过了总时长或总字数上限，主动停下了。不重试、不切备用模型。"""
+    """这一段超过了总时长或总字数上限，主动停下了。不重试。"""
 
     def __init__(self, failure: TurnFailure) -> None:
         super().__init__(failure.message)
@@ -200,36 +198,9 @@ class DirectorStreamer:
         started = self._clock()
         last_flush = started
         narrative_done = False
-        attempts = 0
-        attempt_started = started
         max_chars = max(route.max_tokens, 1) * CHARS_PER_TOKEN_CAP
         received = 0
         limit: str | None = None  # 碰到了哪条上限：timeout / too_long
-
-        def open_stream() -> Any:
-            nonlocal attempts, attempt_started
-            attempts += 1
-            attempt_started = self._clock()
-            log.info(
-                "provider.request",
-                provider=route.provider,
-                model=route.model,
-                route_id=route.route_id,
-                attempt=attempts,
-                estimated_tokens=context.estimated_tokens,
-            )
-            return adapter.stream(request, route.credential, route.caps, cancel=cancel)
-
-        def on_retry(error: ProviderError, retries: int, delay: float) -> None:
-            # 首个可见内容之前出错（429、超时、5xx……），退避后在同一路由上重试
-            log.warning(
-                "provider.retry",
-                attempt=retries,
-                error_class=error.error_class.value,
-                status=error.status,
-                retry_in_s=round(delay, 2),
-                duration_ms=self._elapsed_ms(attempt_started),
-            )
 
         async def flush() -> None:
             nonlocal last_flush
@@ -250,23 +221,28 @@ class DirectorStreamer:
                 if waited >= 100:
                     # 同一个密钥的并发槽位满了，或者处于限流冷却
                     log.info("provider.slot_wait", duration_ms=waited)
-                # 总时长从开流算起（含首字之前的重试），等并发槽位的时间另算
+                log.info(
+                    "provider.request",
+                    provider=route.provider,
+                    model=route.model,
+                    route_id=route.route_id,
+                    estimated_tokens=context.estimated_tokens,
+                )
+                # 总时长从开流算起，等请求名额的时间不算在内
                 deadline = asyncio.timeout(self._max_duration_s)
                 try:
                     async with (
                         deadline,
                         # 提前跳出时立刻关掉流，不等垃圾回收，连接马上断开
                         contextlib.aclosing(
-                            stream_with_retry(open_stream, HOT_PATH, on_retry=on_retry)
+                            adapter.stream(request, route.credential, route.caps, cancel=cancel)
                         ) as events,
                     ):
                         async for event in events:
                             if isinstance(event, TextDelta):
                                 if ttft_ms is None:
                                     ttft_ms = int((self._clock() - started) * 1000)
-                                    log.info(
-                                        "provider.first_token", ttft_ms=ttft_ms, attempt=attempts
-                                    )
+                                    log.info("provider.first_token", ttft_ms=ttft_ms)
                                 received += len(event.text)
                                 if received > max_chars:
                                     limit = "too_long"
@@ -302,7 +278,6 @@ class DirectorStreamer:
                 "provider.failed",
                 provider=route.provider,
                 model=route.model,
-                attempt=attempts,
                 error_class=exc.error_class.value,
                 status=exc.status,
                 partial=bool(streamed),
@@ -330,7 +305,6 @@ class DirectorStreamer:
             "provider.response",
             provider=route.provider,
             model=route.model,
-            attempts=attempts,
             ttft_ms=ttft_ms,
             duration_ms=self._elapsed_ms(started),
             finish_reason=finish_reason,

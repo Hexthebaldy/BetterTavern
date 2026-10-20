@@ -40,8 +40,6 @@ export type ProblemGroup = { event: string; level: string; count: number; last_t
 export type Overview = {
   hours: number;
   logs: {
-    retries: Record<string, number>;
-    retries_total: number;
     sse_drops: number;
     server_errors: number;
     requests: number;
@@ -122,7 +120,7 @@ export type Turn = {
   replied_at: number | null;
   duration_ms: number | null;
   run: RunSummary | null;
-  log?: { retries: number; sse_drops: number; warnings: number };
+  log?: { sse_drops: number; warnings: number };
 };
 
 export type PlaythroughDetail = {

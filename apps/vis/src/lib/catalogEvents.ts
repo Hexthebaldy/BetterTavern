@@ -164,11 +164,6 @@ export const EVENTS: Record<string, EventInfo> = {
         : "服务商说上下文超了，截短后重试",
   },
   "turn.window_note_failed": { label: "没记下学到的窗口", category: "model" },
-  "turn.fallback": {
-    label: "换备用模型",
-    category: "model",
-    say: (f) => `${errorClass(f.error_class)}，换成备用模型 ${str(f.to_model)}`,
-  },
   "provider.slot_wait": {
     label: "等并发槽位",
     category: "model",
@@ -178,22 +173,12 @@ export const EVENTS: Record<string, EventInfo> = {
   "provider.request": {
     label: "调模型",
     category: "model",
-    say: (f) => `第 ${str(f.attempt)} 次调用 ${str(f.provider)} / ${str(f.model)}`,
+    say: (f) => `调用 ${str(f.provider)} / ${str(f.model)}`,
   },
   "provider.first_token": {
     label: "第一个字",
     category: "model",
     say: (f) => `模型吐出第一个字，等了 ${ms(f.ttft_ms)}`,
-  },
-  "provider.retry": {
-    label: "重试",
-    category: "model",
-    say: (f) =>
-      plus(
-        `第 ${str(f.attempt)} 次失败：${errorClass(f.error_class)}`,
-        f.status ? `HTTP ${str(f.status)}` : null,
-        `${str(f.retry_in_s)} 秒后重试`,
-      ),
   },
   "provider.response": {
     label: "模型写完",
