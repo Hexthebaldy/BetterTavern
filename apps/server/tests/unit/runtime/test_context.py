@@ -82,6 +82,38 @@ def test_roster_and_facts_are_ordered_by_turns() -> None:
     assert text.index("在场人物的事实") < text.index("新事实") < text.index("旧事实")
 
 
+def test_state_block_shows_mentioned_and_nearby_entities() -> None:
+    world = WorldSnapshot(
+        entities=(
+            *WORLD.entities,
+            EntityView(
+                id="fu",
+                kind="character",
+                name="阿福",
+                aliases=("小福",),
+                summary="跑堂",
+                canon="sketch",
+            ),
+            EntityView(id="cellar", kind="location", name="地窖", summary="潮湿"),
+            EntityView(id="ghost", kind="character", name="鬼影", canon="sketch"),
+        ),
+        links=(*WORLD.links, LinkView("cellar", "part_of", "bar")),
+        facts=WORLD.facts,
+    )
+    text = render_state_block(
+        world, PromptLibrary("zh"), state_seq=6, mention_texts=("我叫来小福", "")
+    )
+    assert text.startswith("<world-state>\n以下是截至第 6 回合的世界状态")
+    mentioned = text.split("【刚刚提到的】\n")[1].split("【")[0]
+    nearby = text.split("【相关的人物与事物】\n")[1].split("【")[0]
+    # 提到名字（别名也算）的铅笔实体也列出来
+    assert mentioned == "- 阿福：跑堂\n"
+    # 在场地点的一跳邻居
+    assert nearby == "- 地窖（地点）：潮湿\n"
+    # 没被提到的铅笔实体不出现，已经列出的不再进名册
+    assert "鬼影" not in text and text.count("地窖") == 1
+
+
 def test_state_block_degrades_to_fit_budget() -> None:
     big = WorldSnapshot(
         entities=WORLD.entities

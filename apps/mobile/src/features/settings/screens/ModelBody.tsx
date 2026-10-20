@@ -139,6 +139,12 @@ export function ModelBody({ id }: { id: string }) {
       }
     });
 
+  const setBackground = (on: boolean): Promise<void> =>
+    run(async () => {
+      update(await api.models.update(route.id, { background: on }));
+      overlay.toast(on ? t("models.backgroundOn") : t("models.backgroundOff"));
+    });
+
   const cancelDirector = async (): Promise<void> => {
     const ok = await overlay.confirm({
       title: t("models.cancelDirectorTitle"),
@@ -193,6 +199,7 @@ export function ModelBody({ id }: { id: string }) {
             <View style={styles.statusLine}>
               <Status kind={kind} label={modelStatusLabel(route.status)} />
               {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
+              {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
             </View>
           </View>
           <IconButton
@@ -322,6 +329,8 @@ export function ModelBody({ id }: { id: string }) {
           />
         </View>
 
+        <BackgroundRow route={route} onChange={(on) => void setBackground(on)} />
+
         <View style={styles.bottom}>
           <Button
             label={t("models.replaceKey")}
@@ -367,6 +376,38 @@ export function ModelBody({ id }: { id: string }) {
         onSaved={update}
       />
     </KeyboardAvoidingView>
+  );
+}
+
+/** “用于后台整理”开关：点了立刻保存；不能调用工具的模型打不开 */
+function BackgroundRow({ route, onChange }: { route: ModelRoute; onChange: (on: boolean) => void }) {
+  const palette = usePalette();
+  const { t } = useTranslation();
+  const locked = !route.supports_tools && !route.is_background;
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: route.is_background, disabled: locked }}
+      accessibilityLabel={t("models.background")}
+      disabled={locked}
+      onPress={() => onChange(!route.is_background)}
+      style={[styles.switchRow, { backgroundColor: palette.bg2, marginTop: space.l }]}
+    >
+      <View style={[styles.switchIcon, { backgroundColor: palette.card }]}>
+        <Icon name="world" size={20} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontSize: 16, color: palette.ink }}>{t("models.background")}</Text>
+        <Text
+          style={{ fontSize: 13, lineHeight: 20, color: route.supports_tools ? palette.mut : palette.warn }}
+        >
+          {route.supports_tools ? t("models.backgroundNote") : t("models.backgroundNoTools")}
+        </Text>
+      </View>
+      {locked ? null : (
+        <Toggle value={route.is_background} onChange={onChange} label={t("models.background")} />
+      )}
+    </Pressable>
   );
 }
 

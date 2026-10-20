@@ -12,12 +12,14 @@ from bettertavern.providers import EndpointPolicy, ProviderHub
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.runtime.prompts import PromptBook
 from bettertavern.runtime.runner import RunnerConfig, TurnRunner, TurnRunnerPool
+from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
 
 from .auth_service import AuthService
 from .maintenance import Maintenance
 from .playthrough_service import PlaythroughService
 from .route_service import RouteService
 from .scenario_service import ScenarioService
+from .state_store import PgStateStore
 from .turn_service import TurnService
 from .turn_store import PgTurnStore
 
@@ -83,4 +85,24 @@ def build_services(
             instance_id=instance_id,
         ),
         maintenance=Maintenance(engine),
+    )
+
+
+def build_state_runner(
+    *,
+    engine: AsyncEngine,
+    secrets: AppSecrets,
+    hub: ProviderHub,
+    policy: EndpointPolicy,
+    config: StateRunnerConfig,
+    prompts: PromptBook | None = None,
+) -> StateRunner:
+    """worker 进程用：后台整理世界状态。"""
+    routes = RouteService(engine, secrets.keyring, hub, policy)
+    return StateRunner(
+        store=PgStateStore(engine),
+        routes=routes,
+        hub=hub,
+        prompts=prompts or PromptBook(),
+        config=config,
     )

@@ -113,7 +113,7 @@ export type Turn = {
   options_count: number;
   options?: string[];
   options_source: string | null;
-  state_lag: boolean;
+  state_seq: number;
   usage: Record<string, number> | null;
   error: { code?: string; message?: string; retryable?: boolean } | null;
   created_at: number;

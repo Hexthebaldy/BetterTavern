@@ -47,6 +47,7 @@ def prompts(tmp_path: Path) -> PromptLibrary:
             "unknown_tool": "没有 {name}",
             "bad_arguments": "参数不对：{detail}",
             "failed": "失败：{detail}",
+            "must_finish": "请用 {name} 结束",
         },
     }
     (directory / "tools.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
@@ -109,6 +110,13 @@ def test_spec_rejects_negative_rounds_and_rounds_without_tools() -> None:
     with pytest.raises(ValueError):
         make_spec(tools=(), rounds=1)
     assert make_spec(tools=(), rounds=0).max_tool_rounds == 0
+
+
+def test_finish_tool_must_be_one_of_the_tools() -> None:
+    with pytest.raises(ValueError):
+        AgentSpec("a", RouteTask.STATE_KEEPER, OutputKind.FINISH_TOOL, ("search",), 2, "note")
+    with pytest.raises(ValueError):
+        AgentSpec("a", RouteTask.STATE_KEEPER, OutputKind.STRUCTURED, ("note",), 2, "note")
 
 
 # ---- 参数检查 ----
@@ -364,3 +372,94 @@ async def test_closed_reply_ignores_tool_calls(prompts: PromptLibrary) -> None:
     )
     assert value == "已经推给玩家的叙述"
     assert len(model.requests) == 1 and not seen and len(steps) == 0
+
+
+# ---- 有收尾工具的 agent ----
+
+
+def finishing_spec(rounds: int = 2) -> AgentSpec:
+    return AgentSpec(
+        name="keeper",
+        task=RouteTask.STATE_KEEPER,
+        output=OutputKind.FINISH_TOOL,
+        tools=("search", "note"),
+        max_tool_rounds=rounds,
+        finish_tool="note",
+    )
+
+
+async def test_successful_finish_tool_ends_the_loop(prompts: PromptLibrary) -> None:
+    model = ScriptedModel(
+        [
+            ModelReply(
+                value="完成",
+                tool_calls=(
+                    call_of("search", '{"query": "老周"}', "c1"),
+                    call_of("note", "{}", "c2"),
+                ),
+            )
+        ]
+    )
+    steps = StepLog()
+    value = await run_agent(
+        finishing_spec(), START, model, steps=steps, prompts=prompts, registry=make_registry()
+    )
+    assert value == "完成"
+    assert len(model.requests) == 1
+    assert [s.tool for s in steps.steps] == ["search", "note"]
+
+
+async def test_stopping_without_the_finish_tool_gets_a_reminder(prompts: PromptLibrary) -> None:
+    model = ScriptedModel(
+        [
+            ModelReply(value="", text="我想好了"),
+            ModelReply(value="完成", tool_calls=(call_of("note", "{}"),)),
+        ]
+    )
+    await run_agent(
+        finishing_spec(), START, model, steps=StepLog(), prompts=prompts, registry=make_registry()
+    )
+    messages, _ = model.requests[1]
+    assert messages[-2] == Message(role="assistant", content="我想好了")
+    assert messages[-1] == Message(role="user", content="请用 note 结束")
+
+
+async def test_last_round_offers_only_the_finish_tool(prompts: PromptLibrary) -> None:
+    search = (call_of("search", '{"query": "老周"}'),)
+    model = ScriptedModel(
+        [
+            ModelReply(value="", tool_calls=search),
+            # 最后一轮只提供收尾工具：再调查询工具也不执行
+            ModelReply(value="没收尾", tool_calls=search),
+        ]
+    )
+    seen: list[Mapping[str, Any]] = []
+    steps = StepLog()
+    value = await run_agent(
+        finishing_spec(rounds=1),
+        START,
+        model,
+        steps=steps,
+        prompts=prompts,
+        registry=make_registry(seen),
+    )
+    assert value == "没收尾"
+    assert [[t.name for t in tools or []] for _, tools in model.requests] == [
+        ["search", "note"],
+        ["note"],
+    ]
+    assert len(seen) == 1
+    assert steps.steps[-1].result["error"] == "unknown_tool"
+
+
+async def test_reasoning_is_echoed_with_tool_calls(prompts: PromptLibrary) -> None:
+    model = ScriptedModel(
+        [
+            ModelReply(value="", tool_calls=(call_of("search", '{"query": "a"}'),), reasoning="想"),
+            ModelReply(value="完成"),
+        ]
+    )
+    await run_agent(
+        make_spec(), START, model, steps=StepLog(), prompts=prompts, registry=make_registry()
+    )
+    assert model.requests[1][0][1].reasoning_content == "想"

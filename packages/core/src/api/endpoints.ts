@@ -48,6 +48,7 @@ export type ModelRoutePatch = {
   manual_window?: number | null;
   params?: RouteParams;
   director?: boolean;
+  background?: boolean;
 };
 
 export type ModelListQuery = { api_key: string; base_url?: string | null };

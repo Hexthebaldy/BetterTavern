@@ -60,7 +60,7 @@ async def list_playthroughs(conn: AsyncConnection, limit: int = 200) -> list[dic
 
 _TURN_COLUMNS = """
     t.id::text AS id, t.playthrough_id::text AS playthrough_id, t.seq, t.attempt, t.status,
-    t.user_action, t.narrative, t.options, t.options_source, t.state_lag, t.usage, t.error,
+    t.user_action, t.narrative, t.options, t.options_source, t.state_seq, t.usage, t.error,
     t.created_at, t.replied_at, t.committed_at,
     r.provider, r.model, r.ttft_ms, r.latency_ms, r.input_tokens, r.cached_tokens,
     r.output_tokens, r.reasoning_tokens, r.status AS run_status, r.error_class AS run_error_class
@@ -93,7 +93,7 @@ def _turn(row: Any, *, story: bool) -> dict[str, Any]:
         "narrative_chars": len(row.narrative or ""),
         "options_count": len(options),
         "options_source": row.options_source,
-        "state_lag": row.state_lag,
+        "state_seq": row.state_seq,
         "usage": row.usage,
         "error": row.error,
         "created_at": _ms(row.created_at),
@@ -168,7 +168,15 @@ async def playthrough_detail(
     }
 
 
-def _step(row: Any, *, story: bool) -> dict[str, Any]:
+def run_result_view(result: Any, *, story: bool) -> Any:
+    """agent_runs.result。世界状态 agent 的 refs（编号对应的名字）是故事里的词，
+    不显示故事时去掉。"""
+    if story or not isinstance(result, dict) or "refs" not in result:
+        return result
+    return {k: v for k, v in result.items() if k != "refs"}
+
+
+def step_view(row: Any, *, story: bool) -> dict[str, Any]:
     """agent 运行里的一步。不显示故事时去掉模型写的原文（只给长度）和工具参数的值。"""
     args = dict(row.args or {})
     result = dict(row.result or {})
@@ -179,6 +187,10 @@ def _step(row: Any, *, story: bool) -> dict[str, Any]:
         if row.kind == "tool":
             # 工具参数是模型从故事里取的词，只留参数名
             args = dict.fromkeys(args)
+        calls = result.get("tool_calls")
+        if isinstance(calls, list):
+            # 模型这一步要调的工具：参数里同样是故事里的词，只留工具名
+            result["tool_calls"] = [{"name": c.get("name")} for c in calls if isinstance(c, dict)]
     return {
         "step": row.step,
         "kind": row.kind,
@@ -237,7 +249,7 @@ async def turn_detail(
     )
     steps: dict[str, list[dict[str, Any]]] = {}
     for s in step_rows:
-        steps.setdefault(s.run_id, []).append(_step(s, story=story))
+        steps.setdefault(s.run_id, []).append(step_view(s, story=story))
     neighbours = await conn.execute(
         text(
             """
@@ -266,7 +278,7 @@ async def turn_detail(
                 "latency_ms": r.latency_ms,
                 "status": r.status,
                 "error_class": r.error_class,
-                "result": r.result,
+                "result": run_result_view(r.result, story=story),
                 "created_at": _ms(r.created_at),
                 "steps": steps.get(r.id, []),
             }

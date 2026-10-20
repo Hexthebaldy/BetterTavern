@@ -71,6 +71,14 @@ export const settings: MessagesOtherOnly<typeof source> = {
     testing: "テスト中",
     add: "モデルを追加",
     directorPill: "監督",
+    backgroundPill: "バックグラウンド",
+    background: "バックグラウンドの整理に使う",
+    backgroundNote:
+      "毎ターン、人物・物・場所・事実をバックグラウンドで整理します。プレイヤーを待たせません。安くて速いモデルがおすすめです。選ばないときは監督モデルを使います。",
+    backgroundNoTools:
+      "このモデルはツールを呼び出せないので、バックグラウンドの整理には使えません。モデルをテストすると確認し直せます。",
+    backgroundOn: "バックグラウンド用のモデルにしました",
+    backgroundOff: "解除しました。バックグラウンドの整理には監督モデルを使います",
     rowLabel: "{{name}}",
     rowLabelDirector: "{{name}}、監督",
     customProvider: "カスタム互換エンドポイント",
@@ -110,7 +118,8 @@ export const settings: MessagesOtherOnly<typeof source> = {
     editTitle: "モデルを編集",
     modelName: "モデル名",
     changedModel: "モデル名を変えたため、これまでのテスト結果とコンテキストウィンドウは決め直します。",
-    changedEndpoint: "エンドポイントを変えたため、これまでのテスト結果とコンテキストウィンドウは決め直します。",
+    changedEndpoint:
+      "エンドポイントを変えたため、これまでのテスト結果とコンテキストウィンドウは決め直します。",
     replaceKey: "キーを変更",
     newKey: "新しい API キー",
     currentTail: "現在の末尾は {{last4}} です。変更するとテスト結果は消去されます。",
@@ -139,7 +148,8 @@ export const settings: MessagesOtherOnly<typeof source> = {
     workingCap: "作業ウィンドウの上限",
     workingNote:
       "ウィンドウが大きいほど監督は多くを覚えていられますが、1 回ごとに遅く、高くなります。80% まで使うと、序盤の展開は要約にまとめられます。",
-    clamped: "このモデルのコンテキストは {{window}} しかないため、作業ウィンドウは {{window}} として計算します。",
+    clamped:
+      "このモデルのコンテキストは {{window}} しかないため、作業ウィンドウは {{window}} として計算します。",
     style: "書き方",
     thinking: "じっくり考える",
     thinkingNote: "モデルが対応していれば、考えてから書きます。遅くなります",
@@ -173,8 +183,10 @@ export const settings: MessagesOtherOnly<typeof source> = {
     windowNote: {
       default:
         "プロバイダーからこのモデルがどれだけ読めるかが示されていないため、ひとまず {{window}} と見積もっています。わかる場合は入力してください。あとでプロバイダーが「長すぎる」と返したときは、示された上限に自動で変更します。",
-      learned: "プロバイダーが「コンテキストが長すぎる」と返したときに、このモデルの上限は {{window}} と示されたため、自動でそれに合わせました。",
-      manual: "コンテキスト {{window}} は手動で入力した値です。プロバイダーのモデル一覧にはこのモデルの長さがありません。",
+      learned:
+        "プロバイダーが「コンテキストが長すぎる」と返したときに、このモデルの上限は {{window}} と示されたため、自動でそれに合わせました。",
+      manual:
+        "コンテキスト {{window}} は手動で入力した値です。プロバイダーのモデル一覧にはこのモデルの長さがありません。",
     },
     manualUnknown: "わからない",
     windowSummary: "モデルのコンテキスト {{window}}（{{source}}）、作業ウィンドウの上限 {{cap}}",

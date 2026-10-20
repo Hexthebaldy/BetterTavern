@@ -96,6 +96,10 @@ export type ModelRoute = {
   last_ok_at: string | null;
   last_probe: ProbeReport | null;
   is_director: boolean;
+  /** 是不是后台整理世界状态用的模型；没有时后台用导演的模型 */
+  is_background: boolean;
+  /** 能不能调用工具：不能的模型不能用于后台整理 */
+  supports_tools: boolean;
   /** 和它用同一个 Key 的其他模型 */
   shares_key_with: string[];
   window: RouteWindow;
@@ -193,7 +197,8 @@ export type Turn = {
   narrative: string;
   options: TurnOption[];
   options_source: "model" | "repaired" | "fallback" | null;
-  state_lag: boolean;
+  /** 写这一回合时，世界状态截至第几回合（-1 是开局时的样子） */
+  state_seq: number;
   error: TurnError | null;
   created_at: string;
   replied_at: string | null;
@@ -216,6 +221,8 @@ export type Playthrough = {
   head_excerpt: string;
   active_turn_id: string | null;
   rollback_floor_seq: number;
+  /** 世界状态已整理到第几回合，-1 表示还是开局时的样子 */
+  state_seq: number;
   seed_source: string | null;
   created_at: string;
   updated_at: string;
@@ -249,11 +256,17 @@ export type WorldFact = {
   secret: boolean;
 };
 
+/** 整理世界状态时遇到的问题：failed 是这一回合失败了、下一回合会再试；skipped 是失败两次后跳过了 */
+export type WorldStateIssue = { seq: number; kind: "failed" | "skipped"; reason: string | null };
+
 export type WorldView = {
   entities: WorldEntity[];
   links: { src_id: string; rel: string; dst_id: string }[];
   facts: WorldFact[];
   hidden_facts: number;
+  /** 世界状态已整理到第几回合，-1 表示还是开局时的样子 */
+  state_seq: number;
+  state_issue: WorldStateIssue | null;
 };
 
 export type NewAction =
@@ -267,7 +280,6 @@ export type TurnEvent =
   | { event: "turn.created"; data: { turn_id: string; seq: number; attempt: number } }
   | { event: "world.building"; data: Record<string, never> }
   | { event: "world.ready"; data: { source: string; entities: number } }
-  | { event: "turn.waiting_state"; data: { waited_ms: number; done?: boolean; lag?: boolean } }
   | { event: "narrative.delta"; data: { text: string } }
   | { event: "narrative.done"; data: { chars: number; rewritten?: boolean } }
   /** 结局那一轮 options 是空的、source 是 null */
@@ -283,7 +295,7 @@ export type TurnEvent =
           narrative: string;
           options: TurnOption[];
           options_source: string | null;
-          state_lag: boolean;
+          state_seq: number;
         };
         usage: Record<string, number> | null;
       };

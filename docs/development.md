@@ -43,7 +43,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 | `make install` | `uv sync`，装后端依赖 |
 | `make migrate` | 建表；拉了新代码以后也要跑一次 |
 | `make dev` | 启动 api，接口文档在 http://localhost:8000/docs |
-| `make worker` | 另开一个终端，启动 worker（M1 的热路径不需要它） |
+| `make worker` | 另开一个终端，启动 worker：后台整理世界状态（[agent-runtime.md](agent-runtime.md) 第 4 节）。不开也能玩，只是世界状态停在开局，回合一直是 `replied` |
 | `make mobile-install` | 装客户端依赖（在根目录 `npm install`，手机端和 `packages/` 是同一个 npm 工作区）；之后在 `apps/mobile` 下 `npm start`，用 Expo Go 打开 |
 
 开发环境不配置密钥也能启动：服务端第一次启动时生成主密钥和令牌签名密钥，存在 `apps/server/.data/dev-secrets.json`
@@ -85,7 +85,7 @@ cd apps/server && uv run python -m tests.fakes.story_llm --port 8020
 | `make js-test` | 客户端的纯逻辑（`packages/`、`apps/mobile`、`apps/web` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局、网页的存储和快捷键判断 |
 | `make js-typecheck` | 客户端和共用包的 TypeScript 类型检查 |
 | `make web-e2e` | 网页端的端到端测试（Playwright，用本机的 Chrome）：自己起后端、假模型服务和 Vite，从注册一路玩到删除账户；测试账号以 `e2e-` 开头，最后会删掉 |
-| `make vis-test` | 日志查看器的纯逻辑：中文目录、格式化、手机日志解析 |
+| `make vis-test` | 日志查看器的纯逻辑：中文目录、格式化、手机日志解析、每一步的显示 |
 
 ## 合规率评测（M0 的 go / no-go）
 

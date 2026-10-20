@@ -26,7 +26,7 @@
 | `seed_source` | text | 是 |  | `world_builder` 表示由模型生成。`minimal` 表示没有用模型生成：模型失败或超时、没有可用的路由时只用卡片原文；剧本已被删除时设定里只有主角 |
 | `head_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：活跃链的头部 |
 | `timeline_epoch` | integer | 否 | `0` | 时间线纪元，回退和重新生成时加 1（M2）。回合和后台任务记下发起时的值，提交时如果不一致，结果就作废 |
-| `state_version` | integer | 否 | `0` | 世界状态的版本，M1 里一直是 0。agent runtime 阶段 2 换成 `state_seq`（世界状态已整理到第几回合），见 [agent-runtime.md](../agent-runtime.md) 第 8 节 |
+| `state_seq` | integer | 否 | `-1` | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态 agent 写入时用带条件的 UPDATE 从 N-1 改成 N（见下文“带围栏的提交”）。迁移 `0011` 把已有的存档设成活跃链上最新的回合，不回头整理旧回合 |
 | `outline_version` | integer | 否 | `0` | 大纲的版本，一直是 0；agent runtime 阶段 5 删掉，当前大纲按依据的回合查（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `summary_version` | integer | 否 | `0` | 摘要的版本，一直是 0；agent runtime 阶段 4 删掉（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `rollback_floor_seq` | integer | 否 | `0` | 回退的下限，一直是 0；agent runtime 阶段 4 删掉，回退没有下限（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
@@ -37,7 +37,7 @@
 | `updated_at` | timestamptz | 否 | `now()` | 改名、领取租约、世界建好、推进头部、释放租约时写入（续期不写）；游玩列表按它倒序排列 |
 
 约束与索引：
-- `status`、`seed_source`、`language` 的 CHECK。
+- `status`、`seed_source`、`language` 的 CHECK；`state_seq >= -1`。
 - `playthroughs_user_idx (user_id, updated_at DESC)`。
 - `playthroughs_lease_idx (lease_expires_at) WHERE active_turn_id IS NOT NULL`：清理过期租约时用。
 
@@ -59,18 +59,18 @@
 | `options` | jsonb | 否 | `'[]'` | 两个选项，结构见下文“JSON 列” |
 | `options_source` | text | 是 |  | 选项的来源：`model` 是模型给的（包括解析器修补过的）；`repaired` 是另调小模型补的；`fallback` 表示补救失败，缺的选项用固定的兜底文案补上（模型给出的有效选项会保留）。生成完成前为空 |
 | `director_run_id` | uuid | 是 |  | 无外键，指向 `agent_runs.id` |
-| `state_lag` | boolean | 否 | `false` | 屏障等待超时，上一轮的状态还没提交就开始生成了（M1 不会出现） |
+| `state_seq` | integer | 否 | `-1` | 写这一回合时，状态块截至第几回合（当时的 `playthroughs.state_seq`）。下一回合不等世界状态整理，所以它可能比 `seq - 1` 小 |
 | `usage` | jsonb | 是 |  | 导演调用的 token 用量，结构见下文“JSON 列”；服务商没给用量时为空 |
 | `error` | jsonb | 是 |  | 失败原因，结构见下文“JSON 列”；成功的回合为空 |
 | `rollback_id` | uuid | 是 |  | 回退批次号（M2）：被同一次回退归档的回合共用一个 |
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `replied_at` | timestamptz | 是 |  | 叙述和选项写入的时间 |
-| `committed_at` | timestamptz | 是 |  | state 车道处理完的时间；M1 里和 `replied_at` 相同 |
+| `committed_at` | timestamptz | 是 |  | 世界状态 agent 整理完（或跳过）的时间；结局那一轮保存时直接写入，和 `replied_at` 相同 |
 
 约束与索引：
 - `turns_chain_seq_uq (playthrough_id, seq) WHERE status NOT IN ('failed', 'archived')`：保证活跃链上每个 `seq` 只有一个回合。失败的尝试和被回退的回合不受这个约束，所以重试时可以在同一个 `seq` 上插入 `attempt + 1`。
 - `turns_pt_seq_idx (playthrough_id, seq, created_at)`：历史分页、查最近一次失败时用。
-- `status`、`options_source` 的 CHECK；`seq >= 0`。
+- `status`、`options_source` 的 CHECK；`seq >= 0`；`state_seq >= -1`。
 
 ### `idempotency_keys`
 
@@ -167,9 +167,9 @@
 ```mermaid
 stateDiagram-v2
     [*] --> generating: 提交行动或开局
-    generating --> committed: 提交成功（M1）
-    generating --> replied: 提交成功（M2 起）
-    replied --> committed: 世界状态 agent 整理完（M2 起）
+    generating --> replied: 提交成功
+    generating --> committed: 结局提交成功
+    replied --> committed: 世界状态 agent 整理完，或失败两次后跳过
     generating --> failed: 出错、取消、租约过期
     replied --> archived: 回退（M2）
     committed --> archived: 回退（M2）
@@ -177,7 +177,8 @@ stateDiagram-v2
 
 - 写 `failed` 的地方有三个，都要求当前状态还是 `generating`：runner 自己（出错或取消）、清理任务（租约过期）、提交新行动时发现上一轮的租约已经过期。
 - 失败的回合保留在表里；重试时插入同一个 `seq` 的新回合（`attempt + 1`）。
-- 屏障只在父回合变成 `committed`（或 `archived`）后放行，所以 M1 里不会等待。agent runtime 阶段 2 去掉屏障，下一回合不等世界状态整理（[agent-runtime.md](../agent-runtime.md) 第 3 节）。
+- 回合存为 `replied` 的同一个事务里，往任务队列放一个 `state.turn` 任务（排序键 `{playthrough_id}:state`；这个键上已经有一个还没开始的同类任务时不再放）。worker 领到后按顺序整理这一局所有 `replied` 的回合（[agent-runtime.md](../agent-runtime.md) 第 3、4 节）。
+- 下一回合不等世界状态整理：`replied` 的回合也算在活跃链上，状态块开头写明截至第几回合。结局之后不再整理世界状态，所以结局那一轮直接是 `committed`。
 
 `playthroughs.status`：`building` → `active` → `ended`。
 
@@ -211,7 +212,16 @@ WHERE id = :id AND active_turn_id = :turn AND timeline_epoch = :epoch
 ```
 
 条件满足后才写 `turns`（`WHERE status = 'generating'`）和 `agent_runs`。条件不满足说明租约已被清理任务收回，或者发生了回退：
-生成结果作废，推给客户端的错误和库里一致（`RUNNER_LOST`，可以重试）。agent runtime 阶段 2 起，世界状态 agent 的写入条件是 `state_seq = :seq - 1 AND timeline_epoch = :epoch`（[agent-runtime.md](../agent-runtime.md) 第 8 节）。
+生成结果作废，推给客户端的错误和库里一致（`RUNNER_LOST`，可以重试）。
+
+世界状态 agent 的写入（`infra/db/repositories/state.py`）也是先改 `playthroughs`，条件满足才写世界状态表、`state_patches`、`turn_notes`，再把回合改成 `committed`：
+
+```sql
+UPDATE playthroughs SET state_seq = :seq
+WHERE id = :id AND state_seq = :seq - 1 AND timeline_epoch = :epoch
+```
+
+条件不满足说明期间发生了回退，或者这一回合已经被别的任务整理过：整个结果作废，这次运行在 `agent_runs` 里记为 `stale`。
 
 ### 加锁顺序
 

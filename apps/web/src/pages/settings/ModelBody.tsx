@@ -128,6 +128,11 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
         setSaving(false);
       }
     });
+  const setBackground = (on: boolean): Promise<void> =>
+    run(async () => {
+      update(await api.models.update(route.id, { background: on }));
+      overlay.toast(on ? t("models.backgroundOn") : t("models.backgroundOff"));
+    });
   const cancelDirector = async (): Promise<void> => {
     const ok = await overlay.confirm({
       title: t("models.cancelDirectorTitle"),
@@ -172,6 +177,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
             <div className={styles.statusLine}>
               <StatusPill kind={kind} label={modelStatusLabel(route.status)} />
               {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
+              {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
             </div>
           </div>
           <IconButton
@@ -283,6 +289,26 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
           disabled={!dirty}
           onClick={() => void saveParams()}
         />
+
+        <label className={styles.switchRow}>
+          <span className={styles.switchIcon}>
+            <Icon name="world" size={20} />
+          </span>
+          <span className={styles.rowText}>
+            <span>{t("models.background")}</span>
+            <span className={cx(styles.rowSub, !route.supports_tools && styles.warnText)}>
+              {route.supports_tools ? t("models.backgroundNote") : t("models.backgroundNoTools")}
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            className={styles.toggle}
+            checked={route.is_background}
+            disabled={!route.supports_tools && !route.is_background}
+            onChange={(e) => void setBackground(e.target.checked)}
+          />
+        </label>
 
         <div className={styles.bottom}>
           <Button

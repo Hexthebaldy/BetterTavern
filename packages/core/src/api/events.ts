@@ -9,7 +9,6 @@ const KNOWN = new Set<string>([
   "turn.created",
   "world.building",
   "world.ready",
-  "turn.waiting_state",
   "narrative.delta",
   "narrative.done",
   "options.ready",

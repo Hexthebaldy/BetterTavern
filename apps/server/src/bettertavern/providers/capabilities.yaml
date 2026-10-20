@@ -158,11 +158,13 @@
 - match: { provider: huggingface }
   caps:
     structured: []                         # 保守：只走 prompt_json，探测通过再升级
+    tools: false                           # 工具调用同样要探测确认
     roles: { system: true, alternation: loose }
 
 - match: { provider: custom_openai }
   caps:
     structured: []                         # 自定义端点能力全靠探测
+    tools: false
     roles: { system: true, alternation: loose }
 
 - match: {}                                 # 兜底；不写 context_window，没人知道窗口时由路由按 32K 估计

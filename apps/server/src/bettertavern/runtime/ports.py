@@ -12,6 +12,7 @@ from typing import Any, Literal, Protocol
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.scenario.card import CharacterCard
 from bettertavern.domain.story.turn import PlayerAction, TurnOption
+from bettertavern.domain.world.records import RowChange, WorldRecords
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import WorldSnapshot
 from bettertavern.providers import Usage
@@ -70,6 +71,8 @@ class TurnContext:
     seed: Seed | None
     history: tuple[HistoryTurn, ...]
     world: WorldSnapshot
+    # 世界状态已整理到第几回合（-1 表示还没整理过）：状态块开头写“截至第几回合”
+    state_seq: int = -1
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,7 +98,7 @@ class TurnOutcome:
     options: list[TurnOption]
     options_source: str | None  # 结局那一轮没有选项，是 None
     usage: Usage | None
-    state_lag: bool
+    state_seq: int  # 这一回合的状态块截至第几回合
     runs: list[AgentRunRecord]
     ends_story: bool = False  # 结局写完了：提交时把这局标为 ended
 
@@ -134,14 +137,11 @@ class TurnStore(Protocol):
 
     async def load_context(self, header: TurnHeader) -> TurnContext: ...
 
-    async def wait_parent_committed(self, header: TurnHeader, timeout: float) -> bool:
-        """屏障：等上一回合的状态提交（state 车道）。超时返回 False，回合带 state_lag 继续。"""
-        ...
-
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool: ...
 
     async def commit_turn(self, header: TurnHeader, outcome: TurnOutcome) -> bool:
         """一个事务：回合落库、头部前移、清租约、写账本（结局还要标记这局已完结）。
+        普通回合存为 replied，同时放一个整理世界状态的任务；结局直接是 committed。
         围栏不满足返回 False。"""
         ...
 
@@ -163,4 +163,54 @@ class RouteResolver(Protocol):
 
     async def note_window(self, user_id: str, route_id: str, window: int) -> bool:
         """服务商报超长时写明了模型的真实上限：记到这个路由上（只会往小调）。返回是否改了。"""
+        ...
+
+
+# ---- 世界状态 agent（后台） --------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class StateTurn:
+    """世界状态 agent 要整理的一回合，连同它需要的资料（由服务层一次查好）。"""
+
+    turn_id: str
+    playthrough_id: str
+    user_id: str
+    seq: int
+    epoch: int
+    language: str
+    action: PlayerAction
+    narrative: str
+    recent: tuple[tuple[int, str], ...]  # 前几回合的（回合，一句话摘要），按回合升序
+    scene_start: int  # 当前场景从第几回合开始
+    world: WorldRecords
+    failures: int = 0  # 这一回合之前整理失败过几次
+
+
+@dataclass(frozen=True)
+class StateCommit:
+    changes: tuple[RowChange, ...]
+    digest: str
+    entity_ids: tuple[str, ...]
+    scene_ended: bool
+    run: AgentRunRecord
+
+
+class StateStore(Protocol):
+    async def next_turn(self, playthrough_id: str) -> StateTurn | None:
+        """还没整理的最早一回合；都整理完了，或者下一回合还没写完，返回 None。"""
+        ...
+
+    async def commit(self, turn: StateTurn, result: StateCommit) -> bool:
+        """一个事务：整理进度前进一回合、写世界状态和撤销记录、写回合标签、回合标为 committed、
+        记下这次运行。整理进度或时间线编号对不上（期间回退过、已经整理过）时什么都不写，
+        运行记为 stale，返回 False。"""
+        ...
+
+    async def fail(self, turn: StateTurn, run: AgentRunRecord) -> None:
+        """记下一次失败的整理；世界状态不变，下一回合的任务会再从这一回合开始。"""
+        ...
+
+    async def skip(self, turn: StateTurn, run: AgentRunRecord) -> bool:
+        """失败次数用完：记下这次失败，回合标签留空并标为跳过，整理进度照样前进。"""
         ...

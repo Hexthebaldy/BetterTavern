@@ -69,6 +69,13 @@ export const settings = {
     testing: "测试中",
     add: "添加模型",
     directorPill: "导演",
+    backgroundPill: "后台",
+    background: "用于后台整理",
+    backgroundNote:
+      "每回合在后台整理人物、物品、地点和事实，不让玩家多等。建议选便宜、快的模型；没有选时用导演模型。",
+    backgroundNoTools: "这个模型不能调用工具，不能用于后台整理。测试一下这个模型可以重新确认。",
+    backgroundOn: "已设为后台整理模型",
+    backgroundOff: "已取消，后台整理改用导演模型",
     rowLabel: "{{name}}",
     rowLabelDirector: "{{name}}，导演",
     customProvider: "自定义兼容端点",

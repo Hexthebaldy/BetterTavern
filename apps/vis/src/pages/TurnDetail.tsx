@@ -22,6 +22,7 @@ import {
   TURN_STATUS,
 } from "../lib/catalog.ts";
 import { clock, duration, percent, tokens } from "../lib/format.ts";
+import { refsOf, toolCallNames, toolCalls, withRefs } from "../lib/steps.ts";
 
 const SEVERITY_ICON: Record<string, string> = { error: "✕", warn: "!", info: "i" };
 
@@ -82,20 +83,26 @@ const AGENTS: Record<string, string> = {
   director: "导演（写叙述和选项）",
   world_builder: "搭建世界",
   options_repair: "补选项",
+  state_keeper: "整理世界状态（后台）",
 };
-const RUN_STATUS: Record<string, string> = { ok: "成功", failed: "失败", cancelled: "已取消" };
+const RUN_STATUS: Record<string, string> = { ok: "成功", failed: "失败", cancelled: "已取消", stale: "作废" };
 
-const shown = (value: unknown): string =>
-  value === null ? "（隐藏）" : typeof value === "string" ? value : JSON.stringify(value);
+const shown = (value: unknown, refs: Record<string, string> | null): string =>
+  value === null ? "（隐藏）" : withRefs(typeof value === "string" ? value : JSON.stringify(value), refs);
 
-/** 一步：一行摘要，点开看参数、出错说明和原文（原文只在显示故事内容时有） */
-function StepRow({ step, story }: { step: Step; story: boolean }) {
+/**
+ * 一步：一行摘要，点开看参数、出错说明和原文（原文只在显示故事内容时有）。
+ * refs 是这次运行的编号对照表（世界状态 agent，显示故事内容时才有）：编号后面注上名字。
+ */
+function StepRow({ step, story, refs }: { step: Step; story: boolean; refs: Record<string, string> | null }) {
   const { result } = step;
   const error = typeof result.error === "string" ? result.error : null;
   const invalid = typeof result.invalid === "string" ? result.invalid : null;
   const text = typeof result.text === "string" ? result.text : null;
   const chars = typeof result.text_chars === "number" ? result.text_chars : (text?.length ?? null);
   const args = Object.entries(step.args);
+  const calls = toolCalls(result);
+  const callNames = toolCallNames(result);
   return (
     <details className="runstep">
       <summary>
@@ -106,7 +113,11 @@ function StepRow({ step, story }: { step: Step; story: boolean }) {
           {step.input_tokens || step.output_tokens
             ? ` · 输入 ${tokens(step.input_tokens)}，输出 ${tokens(step.output_tokens)}`
             : ""}
-          {chars !== null ? ` · ${chars} 字` : ""}
+          {callNames.length > 0
+            ? ` · 调了 ${callNames.length} 个工具：${callNames.join("、")}`
+            : chars !== null
+              ? ` · ${chars} 字`
+              : ""}
         </span>{" "}
         {error ? <Pill tone="error">{stepError(error)}</Pill> : invalid ? <Pill tone="warn">格式不对</Pill> : null}
       </summary>
@@ -114,7 +125,7 @@ function StepRow({ step, story }: { step: Step; story: boolean }) {
         {args.map(([key, value]) => (
           <span key={key} style={{ display: "contents" }}>
             <span className="k mono">{key}</span>
-            <span className="mono">{shown(value)}</span>
+            <span className="mono">{shown(value, refs)}</span>
           </span>
         ))}
         {invalid ? (
@@ -123,10 +134,16 @@ function StepRow({ step, story }: { step: Step; story: boolean }) {
             <span className="mono">{invalid}</span>
           </>
         ) : null}
+        {calls.map((call, i) => (
+          <span key={i} style={{ display: "contents" }}>
+            <span className="k mono">→ {call.name}</span>
+            <span className="mono">{call.arguments === null ? "（隐藏）" : withRefs(call.arguments, refs)}</span>
+          </span>
+        ))}
       </div>
-      {text !== null ? (
-        <div className="story">{text || "（空）"}</div>
-      ) : chars !== null && !story ? (
+      {text !== null && (text || calls.length === 0) ? (
+        <div className="story">{text ? withRefs(text, refs) : "（空）"}</div>
+      ) : text === null && chars && !story ? (
         <div className="mut small">打开下面的“显示故事内容”才能看原文。</div>
       ) : null}
     </details>
@@ -214,7 +231,7 @@ function RunCard({ run, story }: { run: Run; story: boolean }) {
         <div className="runsteps">
           <div className="mut small">每一步（共 {run.steps.length} 步，点开看细节）</div>
           {run.steps.map((step) => (
-            <StepRow key={step.step} step={step} story={story} />
+            <StepRow key={step.step} step={step} story={story} refs={refsOf(run.result)} />
           ))}
         </div>
       ) : null}

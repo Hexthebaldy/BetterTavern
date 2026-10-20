@@ -117,7 +117,6 @@ export const SPAN_LABELS: Record<string, string> = {
   http: "请求",
   turn: "整个回合",
   world: "搭建世界",
-  barrier: "等上一轮",
   commit: "保存",
   repair: "补选项",
   slot_wait: "等并发槽位",

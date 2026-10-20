@@ -72,6 +72,14 @@ export const settings: Messages<typeof source> = {
     testing: "Testing",
     add: "Add a model",
     directorPill: "Director",
+    backgroundPill: "Background",
+    background: "Use for background updates",
+    backgroundNote:
+      "Keeps track of characters, items, places and facts in the background after every turn, without making the player wait. A cheap, fast model works best; without one the director model is used.",
+    backgroundNoTools:
+      "This model can't call tools, so it can't do background updates. Test the model to check again.",
+    backgroundOn: "Set as the background model",
+    backgroundOff: "Removed; background updates use the director model",
     rowLabel: "{{name}}",
     rowLabelDirector: "{{name}}, director",
     customProvider: "Custom compatible endpoint",

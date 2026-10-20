@@ -33,7 +33,7 @@ pytestmark = pytest.mark.anyio
 GOOD = (
     "<narrative>\n我推开门，雨声小了。\n</narrative>\n<options>\n1. 走进去\n2. 退回去\n</options>"
 )
-CONFIG = RunnerConfig(delta_batch_s=0.0, lease_renew_s=0.05, barrier_timeout_s=0.2)
+CONFIG = RunnerConfig(delta_batch_s=0.0, lease_renew_s=0.05)
 
 
 def pieces(text: str, size: int = 7) -> list[str]:
@@ -357,14 +357,18 @@ async def test_stale_commit_reports_the_same_error_as_the_sweeper() -> None:
     assert "options.ready" not in [e for e, _ in events]
 
 
-async def test_barrier_timeout_marks_state_lag() -> None:
+async def test_turn_does_not_wait_for_world_state() -> None:
+    # 世界状态只整理到第 3 回合：这一回合照样生成，状态块写明截至第 3 回合
     hub, adapters = scripted_hub("fake")
     adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
-    store = FakeStore(parent_committed_after=5.0)
-    events = await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
-    waits = [d for e, d in events if e == "turn.waiting_state"]
-    assert len(waits) == 2 and waits[-1]["lag"] is True
-    assert store.committed[0].state_lag is True
+    store = FakeStore(state_seq=3)
+    events = await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub, seq=5)
+    completed = events[-1][1]["turn"]
+    assert isinstance(completed, dict)
+    assert completed["status"] == "replied" and completed["state_seq"] == 3
+    assert store.committed[0].state_seq == 3
+    last = adapters["fake"].requests[0].messages[-1].content
+    assert "截至第 3 回合" in last
 
 
 async def test_lost_lease_cancels_generation() -> None:

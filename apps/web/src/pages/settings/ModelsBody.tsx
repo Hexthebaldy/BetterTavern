@@ -43,6 +43,7 @@ function ModelRow({ route }: { route: ModelRoute }) {
           <StatusPill kind={statusKind(route.status)} label={modelStatusLabel(route.status)} />
         </span>
       </span>
+      {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
       {route.is_director ? (
         <Pill label={t("models.directorPill")} tone="acc" />
       ) : (

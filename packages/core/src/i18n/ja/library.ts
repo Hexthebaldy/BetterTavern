@@ -82,7 +82,8 @@ export const library: MessagesOtherOnly<typeof source> = {
     customAvoidLabel: "見たくない内容",
     customAvoidPlaceholder: "例：学校でのいじめ",
     other: "その他…",
-    names: "朝霧湊|水瀬蒼|久遠朔|七瀬遥|神崎律|白石奏|篠宮澪|月城凛|柊透|一ノ瀬紬|鳴海千尋|桐生颯|藤咲葵|天野雫|如月悠真|早瀬陽向",
+    names:
+      "朝霧湊|水瀬蒼|久遠朔|七瀬遥|神崎律|白石奏|篠宮澪|月城凛|柊透|一ノ瀬紬|鳴海千尋|桐生颯|藤咲葵|天野雫|如月悠真|早瀬陽向",
     styles: "抑えた筆致|淡々とした描写|古風|サスペンス|詩的|軽やか|ドライなユーモア",
     boundaries: "流血・残酷な描写|主要人物の死|突然の驚かし|露骨な性的描写|汚い言葉",
     length: {

@@ -62,6 +62,7 @@
 - 请求体：[`RouteIn`](#routein)
 - 成功：`201`，返回 [`RouteOut`](#routeout)。拉到了列表时 `status` 为 `ok`，否则为 `unverified`。
 - `director` 为真时同时设为导演，原来的导演不再是导演。
+- `background` 为真时同时设为后台整理用的模型（世界状态 agent 用它），原来的后台模型不再是。
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
@@ -87,6 +88,7 @@
 | `params` | [`RouteParamsIn`](#routeparamsin) | 否 | 写法设置，不传就全部用默认值 |
 | `caps_override` | object | 否 | 手动覆盖模型能力，允许的键见 [数据模型：`model_routes.caps_override`](../data-model/models.md#model_routescaps_override)；默认 `{}` |
 | `director` | boolean | 否 | 是否同时设为导演，默认 `false` |
+| `background` | boolean | 否 | 是否同时设为后台整理用的模型，默认 `false` |
 
 #### `RouteParamsIn`
 
@@ -143,6 +145,7 @@
 | `params` | [`RouteParamsIn`](#routeparamsin) / null | 否 | 整体替换写法设置：没写的键恢复默认值 |
 | `caps_override` | object / null | 否 | 整体替换能力覆盖 |
 | `director` | boolean / null | 否 | 为真时设为导演（原来的导演不再是导演）；为假时如果它是导演就取消，之后没有导演 |
+| `background` | boolean / null | 否 | 为真时设为后台整理用的模型（原来的不再是）；为假时如果它是就取消，之后后台整理用导演的模型 |
 
 ### `DELETE /v1/model-routes/{route_id}`
 
@@ -223,6 +226,8 @@
 | `last_ok_at` | string（时间）/ null | 最近一次确认 Key 可用的时间 |
 | `last_probe` | [`ProbeOut`](#probeout) / null | 最近一次测试的结果；没测过，或者之后改了 Key、端点、模型名时为 null |
 | `is_director` | boolean | 是不是导演 |
+| `is_background` | boolean | 是不是后台整理用的模型。每个用户最多一个；没有时后台整理用导演的模型 |
+| `supports_tools` | boolean | 能不能调用工具。不能的模型不能用于后台整理（世界状态 agent 靠工具改世界状态），设置页据此提示。取自能力表，测试过这个模型（`tool_call` 一项）或者在 `caps_override` 里写了 `tools` 时以它们为准 |
 | `shares_key_with` | array of string | 和它用同一个 Key 的其他模型的 ID（换 Key 时可以一起换） |
 | `window` | [`WindowOut`](#windowout) | 按当前设置算出的窗口 |
 | `created_at` | string（时间） | 添加时间 |
@@ -248,7 +253,7 @@
 | `probed_at` | string | 测试时间（ISO 8601） |
 | `fatal_error` | string / null | Key、模型或端点不可用时的错误，格式是 `类别: 说明`，例如 `auth: Invalid API key`。出现致命错误后，剩下的检查都不再执行 |
 | `checks` | array of [`ProbeCheckOut`](#probecheckout) | 各项检查的结果 |
-| `caps_overlay` | object | 根据检查结果得出的能力：`structured`（可用的结构化输出方式）、`stream_usage`（流式输出里有没有用量）。只包含真正测到的项 |
+| `caps_overlay` | object | 根据检查结果得出的能力：`structured`（可用的结构化输出方式）、`tools`（能不能调用工具，按 `tool_call` 一项的结果）、`stream_usage`（流式输出里有没有用量）。只包含真正测到的项 |
 
 ### `ProbeCheckOut`
 

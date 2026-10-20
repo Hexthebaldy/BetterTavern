@@ -78,6 +78,22 @@ def test_builtin_rules_load_and_cover_v1_providers() -> None:
     assert custom.context_window is None
 
 
+def test_official_providers_can_call_tools_unless_probed_otherwise() -> None:
+    # 世界状态 agent 只用工具调用：官方厂商默认能用，HF 和自定义端点要测试通过才能用
+    rules = load_rules()
+    for provider, model in [
+        ("deepseek", "deepseek-flash"),
+        ("openai", "gpt-5.4-mini"),
+        ("gemini", "gemini-3-flash"),
+        ("xai", "grok-4.5"),
+    ]:
+        assert resolve_capabilities(provider, model, rules).tools, provider
+    assert not resolve_capabilities("huggingface", "deepseek-ai/DeepSeek-V3", rules).tools
+    assert not resolve_capabilities("custom_openai", "qwen2.5", rules).tools
+    probed = resolve_capabilities("custom_openai", "qwen2.5", rules, probed={"tools": True})
+    assert probed.tools
+
+
 def test_negative_cache_expires() -> None:
     now = [0.0]
     cache = NegativeCapabilityCache(ttl_seconds=60, clock=lambda: now[0])

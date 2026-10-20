@@ -633,7 +633,6 @@ table.list tr.selected td {
   background: var(--c-world);
 }
 
-.bar.k-barrier,
 .bar.k-commit,
 .bar.k-repair {
   background: var(--c-steps);

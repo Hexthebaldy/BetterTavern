@@ -328,7 +328,7 @@ class TurnService:
                         "narrative": turn.narrative,
                         "options": turn.options,
                         "options_source": turn.options_source,
-                        "state_lag": turn.state_lag,
+                        "state_seq": turn.state_seq,
                     },
                     "usage": None,
                 },

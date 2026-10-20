@@ -65,6 +65,7 @@ async def create_route(body: RouteIn, user_id: UserId, services: ServicesDep) ->
             params=body.params.model_dump(exclude_none=True),
             caps_override=body.caps_override,
             director=body.director,
+            background=body.background,
         ),
     )
     return RouteOut.model_validate(view)
@@ -97,6 +98,7 @@ async def update_route(
             params=None if body.params is None else body.params.model_dump(exclude_none=True),
             caps_override=body.caps_override,
             director=body.director,
+            background=body.background,
         ),
     )
     return RouteOut.model_validate(view)

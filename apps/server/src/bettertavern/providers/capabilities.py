@@ -51,6 +51,8 @@ class Capabilities:
     roles: RoleCaps = field(default_factory=RoleCaps)
     stream_usage: bool = True
     echo_reasoning_with_tools: bool = False
+    # 能不能调用工具（世界状态 agent 靠它改世界状态）；探测里的 tool_call 一项会覆盖它
+    tools: bool = True
 
     def structured_ladder(self, disabled: Iterable[str] = ()) -> tuple[StructuredMode, ...]:
         """按 json_schema → tool_call → json_object → prompt_json 的顺序列出可用的方式。"""
@@ -99,6 +101,7 @@ class Capabilities:
             roles=RoleCaps(system=bool(roles.get("system", True)), alternation=alternation),
             stream_usage=bool(data.get("stream_usage", True)),
             echo_reasoning_with_tools=bool(data.get("echo_reasoning_with_tools", False)),
+            tools=bool(data.get("tools", True)),
         )
 
 
@@ -111,6 +114,7 @@ _TOP_KEYS = {
     "roles",
     "stream_usage",
     "echo_reasoning_with_tools",
+    "tools",
 }
 
 

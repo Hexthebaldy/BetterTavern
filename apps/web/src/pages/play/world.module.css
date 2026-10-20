@@ -332,6 +332,9 @@ dialog.sheet {
   line-height: 22px;
   color: var(--mut);
 }
+.issue {
+  margin: 12px 12px 0;
+}
 .loading {
   display: flex;
   justify-content: center;

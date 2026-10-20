@@ -129,7 +129,14 @@ class ContextAssembler:
 
     def final_message(self, ctx: TurnContext, window: int) -> RenderedPrompt:
         state_budget = min(math.floor(window * STATE_BLOCK_RATIO), STATE_BLOCK_CAP)
-        world_state = render_state_block(ctx.world, self._prompts, budget_tokens=state_budget)
+        last_narrative = ctx.history[-1].narrative if ctx.history else ""
+        world_state = render_state_block(
+            ctx.world,
+            self._prompts,
+            budget_tokens=state_budget,
+            state_seq=ctx.state_seq,
+            mention_texts=(ctx.action.text, last_narrative),
+        )
         if ctx.action.source == "opening":
             opening = ctx.seed.opening if ctx.seed is not None else None
             return self._prompts.render(

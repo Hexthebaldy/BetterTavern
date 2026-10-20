@@ -1,0 +1,42 @@
+{# version: 1 #}
+现在整理第 {{ seq }} 回合。当前场景从第 {{ scene_start }} 回合开始。
+{% if recent %}
+
+前几回合：
+{% for item in recent %}
+- 第 {{ item[0] }} 回合：{{ item[1] }}
+{% endfor %}
+{% endif %}
+
+<world-state>
+{% if clock %}
+故事里的时间：{{ clock }}
+{% endif %}
+{% if goal %}
+主角当前的目标：{{ goal }}
+{% endif %}
+相关实体：
+{% for entity in entities %}
+{{ entity }}
+{% endfor %}
+{% if facts %}
+相关事实：
+{% for fact in facts %}
+{{ fact }}
+{% endfor %}
+{% endif %}
+</world-state>
+
+<player-action>
+{% if source == "opening" %}
+（开场，没有玩家行动）
+{% else %}
+{{ action }}
+{% endif %}
+</player-action>
+
+<narrative>
+{{ narrative }}
+</narrative>
+
+把这一回合的变化记下来，最后调用 commit。

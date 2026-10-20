@@ -14,8 +14,9 @@ import { useTranslation } from "react-i18next";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { i18n } from "@bettertavern/core/i18n/index";
+import { worldIssue, worldProgress } from "@bettertavern/core/play/worldStatus";
 
-import { Button, cx, Dots, IconButton } from "../../components/controls.tsx";
+import { Button, cx, Dots, IconButton, Notice } from "../../components/controls.tsx";
 import { Dialog } from "../../overlay/Dialog.tsx";
 import { useOverlay } from "../../overlay/OverlayProvider.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
@@ -81,7 +82,7 @@ function WorldContent({
       <div className={styles.head}>
         <div className={styles.headText}>
           <h2 className={styles.title}>{t("world.title")}</h2>
-          <span className={styles.subtitle}>{t("world.subtitle")}</span>
+          {view ? <span className={styles.subtitle}>{worldProgress(view)}</span> : null}
         </div>
         <IconButton
           icon={docked ? "sidebar" : "close"}
@@ -107,6 +108,9 @@ function WorldContent({
         ))}
       </div>
       <div className={styles.body} role="tabpanel">
+        {view && worldIssue(view) ? (
+          <Notice tone="warn" message={worldIssue(view)} className={styles.issue} />
+        ) : null}
         {view ? (
           tab === "entities" ? (
             <Entities view={view} names={names} />

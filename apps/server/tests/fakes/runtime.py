@@ -211,7 +211,7 @@ class FakeStore:
     seed: Seed | None = None
     history: list[HistoryTurn] = field(default_factory=list)
     action: PlayerAction = field(default_factory=lambda: PlayerAction("text", "我推门"))
-    parent_committed_after: float = 0.0
+    state_seq: int = -1  # 世界状态已整理到第几回合
     commit_ok: bool = True
     renew_ok: bool = True
     world_input: WorldBuildInput | None = None
@@ -232,15 +232,8 @@ class FakeStore:
             seed=self.seed,
             history=tuple(self.history),
             world=self.world,
+            state_seq=self.state_seq,
         )
-
-    async def wait_parent_committed(self, header: TurnHeader, timeout: float) -> bool:
-        if self.parent_committed_after <= 0:
-            return True
-        if timeout <= 0:
-            return False
-        await asyncio.sleep(min(timeout, self.parent_committed_after))
-        return self.parent_committed_after <= timeout
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:
         self.renewals += 1

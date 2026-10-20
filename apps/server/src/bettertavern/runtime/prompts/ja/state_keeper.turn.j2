@@ -1,0 +1,42 @@
+{# version: 1 #}
+第 {{ seq }} ターンを整理してください。今の場面は第 {{ scene_start }} ターンから始まっています。
+{% if recent %}
+
+これまでのターン：
+{% for item in recent %}
+- 第 {{ item[0] }} ターン：{{ item[1] }}
+{% endfor %}
+{% endif %}
+
+<world-state>
+{% if clock %}
+物語の中の時間：{{ clock }}
+{% endif %}
+{% if goal %}
+主人公の今の目的：{{ goal }}
+{% endif %}
+関連するエンティティ：
+{% for entity in entities %}
+{{ entity }}
+{% endfor %}
+{% if facts %}
+関連する事実：
+{% for fact in facts %}
+{{ fact }}
+{% endfor %}
+{% endif %}
+</world-state>
+
+<player-action>
+{% if source == "opening" %}
+（オープニングなので、プレイヤーの行動はありません）
+{% else %}
+{{ action }}
+{% endif %}
+</player-action>
+
+<narrative>
+{{ narrative }}
+</narrative>
+
+このターンの変化を記録し、最後に commit を呼び出してください。

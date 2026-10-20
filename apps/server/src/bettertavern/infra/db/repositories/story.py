@@ -39,7 +39,7 @@ class PlaythroughRow:
     seed_source: str | None
     head_turn_id: str | None
     timeline_epoch: int
-    state_version: int
+    state_seq: int  # 世界状态已整理到第几回合，-1 表示还没整理过
     rollback_floor_seq: int
     active_turn_id: str | None
     lease_expires_at: datetime | None
@@ -60,7 +60,7 @@ class PlaythroughRow:
             seed_source=row["seed_source"],
             head_turn_id=opt_str(row["head_turn_id"]),
             timeline_epoch=int(row["timeline_epoch"]),
-            state_version=int(row["state_version"]),
+            state_seq=int(row["state_seq"]),
             rollback_floor_seq=int(row["rollback_floor_seq"]),
             active_turn_id=opt_str(row["active_turn_id"]),
             lease_expires_at=row["lease_expires_at"],
@@ -70,7 +70,7 @@ class PlaythroughRow:
 
 
 _PT_COLS = """id, user_id, scenario_id, title, status, language, settings, seed, seed_source,
-    head_turn_id, timeline_epoch, state_version, rollback_floor_seq, active_turn_id,
+    head_turn_id, timeline_epoch, state_seq, rollback_floor_seq, active_turn_id,
     lease_expires_at, created_at, updated_at"""
 
 
@@ -306,7 +306,7 @@ class TurnRow:
     narrative: str
     options: list[dict[str, Any]]
     options_source: str | None
-    state_lag: bool
+    state_seq: int  # 写这一回合时，状态块截至第几回合
     usage: dict[str, Any] | None
     error: dict[str, Any] | None
     created_at: datetime
@@ -327,7 +327,7 @@ class TurnRow:
             narrative=row["narrative"],
             options=as_json(row["options"], []),
             options_source=row["options_source"],
-            state_lag=bool(row["state_lag"]),
+            state_seq=int(row["state_seq"]),
             usage=as_json(row["usage"]),
             error=as_json(row["error"]),
             created_at=row["created_at"],
@@ -337,7 +337,7 @@ class TurnRow:
 
 
 _TURN_COLS = """id, playthrough_id, seq, parent_turn_id, attempt, status, timeline_epoch,
-    user_action, narrative, options, options_source, state_lag, usage, error, created_at,
+    user_action, narrative, options, options_source, state_seq, usage, error, created_at,
     replied_at, committed_at"""
 
 
@@ -451,7 +451,7 @@ async def complete_turn(
     options: list[dict[str, Any]],
     options_source: str | None,
     usage: dict[str, Any] | None,
-    state_lag: bool,
+    state_seq: int,
     director_run_id: str | None,
 ) -> bool:
     count = await execute(
@@ -459,7 +459,7 @@ async def complete_turn(
         """
         UPDATE turns
         SET status = :status, narrative = :narrative, options = CAST(:options AS jsonb),
-            options_source = :source, usage = CAST(:usage AS jsonb), state_lag = :lag,
+            options_source = :source, usage = CAST(:usage AS jsonb), state_seq = :state_seq,
             director_run_id = :run, error = NULL, replied_at = now(),
             committed_at = CASE WHEN :status = 'committed' THEN now() ELSE NULL END
         WHERE id = :id AND status = 'generating'
@@ -471,7 +471,7 @@ async def complete_turn(
             "options": dumps(options),
             "source": options_source,
             "usage": dumps(usage) if usage is not None else None,
-            "lag": state_lag,
+            "state_seq": state_seq,
             "run": director_run_id,
         },
     )

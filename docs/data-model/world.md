@@ -4,8 +4,9 @@
 >
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
 
-M1 只在开局时写入世界状态：把 WorldBuilder 输出的 Seed 展开写入这三张表（`domain/world/plan.py`），之后不再变化。
-agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，并把撤销日志写进 `state_patches`（[agent-runtime.md](../agent-runtime.md) 第 4、8 节）。实体和事实没有“重要程度”：需要排序时按最近一次出现的回合（`last_seen_seq`）和建立于第几回合（`created_seq`）。
+开局时把 WorldBuilder 输出的 Seed 展开写入 `entities`、`entity_links`、`facts`（`domain/world/plan.py`）。之后由后台的世界状态 agent 每回合整理：
+它的修改先在内存里的副本上逐项检查（`domain/world/draft.py`），用 commit 结束后在一个事务里按行写入，每改一行都在 `state_patches` 记下改之前和改之后的样子，
+再给这一回合写一行 `turn_notes`（[agent-runtime.md](../agent-runtime.md) 第 4、8 节）。实体和事实没有“重要程度”：需要排序时按最近一次出现的回合（`last_seen_seq`）和建立于第几回合（`created_seq`）。
 对应的只读接口是 [`GET /v1/playthroughs/{playthrough_id}/world`](../api/play.md)。
 
 ## 表
@@ -24,10 +25,10 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 | `aliases` | text[] | 否 | `'{}'` | 别名，最多 6 个，归一化后与本名相同的会被去掉；`world` 实体的别名是故事标题 |
 | `summary` | text | 否 | `''` | 外貌、性格、来历等描述 |
 | `data` | jsonb | 否 | `'{}'` | 结构化属性，按 `kind` 不同，结构见下文“JSON 列” |
-| `canon` | text | 否 | `'canon'` | `sketch` 表示推测，以后可以改写（铅笔）；`canon` 表示已成定论（钢笔）。开局写入的实体都是 `canon` |
+| `canon` | text | 否 | `'canon'` | `sketch` 表示推测，以后可以改写（铅笔）；`canon` 表示已成定论（钢笔）。开局写入的实体都是 `canon`；世界状态 agent 新建的是 `sketch`，在另一个回合再次出现时改成 `canon`。`sketch` 实体不进状态块的名册，只在名字被提到时出现 |
 | `is_protagonist` | boolean | 否 | `false` | 是否是玩家扮演的主角；每局只有一个 |
 | `first_seq` | integer | 否 | `0` | 首次出现的回合；开局写入的为 0 |
-| `last_seen_seq` | integer | 否 | `0` | 最近一次出现的回合（M2 起维护） |
+| `last_seen_seq` | integer | 否 | `0` | 最近一次出现的回合：世界状态 agent 写入时，这一回合点名的、被改过的、关系变了的、新事实涉及的实体都更新成这一回合 |
 | `rev` | integer | 否 | `1` | 修订号，每次修改加 1；开局写入场景后，`world` 实体的修订号为 2 |
 | `retired` | boolean | 否 | `false` | 是否已退场（死亡、被销毁等）。退场的实体不参与名字唯一约束，也不出现在世界视图里 |
 
@@ -45,7 +46,7 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 | --- | --- | --- | --- | --- |
 | `playthrough_id` | uuid | 否 |  | → `playthroughs.id`，级联删除 |
 | `src_id` | uuid | 否 |  | → `entities.id`，级联删除 |
-| `rel` | text | 否 |  | 关系名。M1 写入三种：`located_in`（人物或物品在某个地点）、`held_by`（物品在某人手里）、`member_of`（人物属于某个组织） |
+| `rel` | text | 否 |  | 关系名：`located_in`（人物或物品在某个地点）、`held_by`（物品在某人手里）、`member_of`（人物属于某个组织）、`part_of`（地点属于更大的地点）、`knows_of`（人物认识或知道某个实体）。一个人物或物品同一时刻只有一条 `located_in` 或 `held_by` |
 | `dst_id` | uuid | 否 |  | → `entities.id`，级联删除 |
 | `since_seq` | integer | 否 | `0` | 关系建立时的回合；开局为 0 |
 
@@ -67,9 +68,10 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 | `visibility` | text | 否 | `'public'` | `public` / `secret`；`secret` 表示主角一开始不知道 |
 | `known_by` | uuid[] | 否 | `'{}'` | 知道这个秘密的人物实体；主角在其中时，这条事实对玩家可见 |
 | `status` | text | 否 | `'active'` | `active` / `superseded` |
-| `superseded_by` | uuid | 是 |  | 无外键，指向 `facts.id`（M2） |
+| `superseded_by` | uuid | 是 |  | 无外键，指向 `facts.id`：推翻它的新事实；推翻时没有给出新事实就为空 |
 | `created_seq` | integer | 否 | `0` | 产生这条事实的回合；开局为 0 |
-| `source_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`（M2；开局写入的为空） |
+| `source_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：产生这条事实的回合；开局写入的为空 |
+| `superseded_seq` | integer | 是 |  | 从第几回合起不再成立；有效的事实为空 |
 
 约束与索引：
 - `facts_pt_active_idx (playthrough_id) WHERE status = 'active'`。
@@ -78,14 +80,64 @@ agent runtime 阶段 2 起，世界状态 agent 每回合更新世界状态，�
 
 世界视图接口（`GET /v1/playthroughs/{playthrough_id}/world`）默认隐藏主角不知道的秘密，也就是 `visibility = 'secret'` 且主角不在 `known_by` 里的事实；加上 `reveal=true` 才返回。
 
+### `state_patches`
+
+世界状态 agent 的撤销记录：一回合写入时每改一行就记一行，回退时按回合倒序、按 `idx` 倒序写回 `before`（agent runtime 阶段 2 的回退部分）。
+
+| 列 | 类型 | 可空 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `turn_id` | uuid | 否 |  | → `turns.id`，级联删除：哪一回合的整理改的 |
+| `idx` | smallint | 否 |  | 这一回合里的第几项，从 0 开始；写入时先实体、再关系、再事实 |
+| `playthrough_id` | uuid | 否 |  | → `playthroughs.id`，级联删除 |
+| `seq` | integer | 否 |  | 那一回合的 `seq` |
+| `target` | text | 否 |  | 改的是哪张表的行：`entity` / `link` / `fact` |
+| `before` | jsonb | 是 |  | 改之前这一行的全部列（结构见下文“JSON 列”）；为空表示这一行是新建的 |
+| `after` | jsonb | 是 |  | 改之后这一行的全部列；为空表示这一行被删了（关系被去掉） |
+| `created_at` | timestamptz | 否 | `now()` |  |
+
+约束与索引：
+- 主键 `(turn_id, idx)`（`state_patches_pkey`）。
+- `state_patches_change_ck`：`before` 和 `after` 不能都为空。`seq >= 0`、`idx >= 0`、`target` 的 CHECK。
+- `state_patches_pt_seq_idx (playthrough_id, seq)`：回退时按回合找。
+
+### `turn_notes`
+
+世界状态 agent 给每回合写的标签，整理完（或跳过）一回合写一行。导演的召回工具（阶段 3）按它查旧回合。
+
+| 列 | 类型 | 可空 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `turn_id` | uuid | 否 |  | 主键，→ `turns.id`，级联删除 |
+| `playthrough_id` | uuid | 否 |  | → `playthroughs.id`，级联删除 |
+| `seq` | integer | 否 |  | 回合的 `seq` |
+| `digest` | text | 否 | `''` | 这一回合发生了什么，一句话，最多 120 字；跳过的回合为空串 |
+| `entity_ids` | uuid[] | 否 | `'{}'` | 这一回合涉及的实体 |
+| `scene_ended` | boolean | 否 | `false` | 这一回合之后当前场景是否结束；当前场景从上一个结束的场景之后开始算 |
+| `skipped` | boolean | 否 | `false` | 整理失败两次后跳过了这一回合：世界状态没改，摘要为空 |
+| `created_at` | timestamptz | 否 | `now()` |  |
+
+约束与索引：
+- `turn_notes_pkey (turn_id)`。
+- `turn_notes_pt_seq_uq (playthrough_id, seq)`：一局里每个回合只有一行。
+- `turn_notes_entities_gin`：`entity_ids` 上的 GIN 索引，按人物找回合时用。
+- `seq >= 0`。
+
 ## JSON 列
 
 ### `entities.data`
 
 | `kind` | 结构 |
 | --- | --- |
-| `world` | `{ "title", "tone", "rules": [], "style", "clock": null, "scene": { "location": 地点实体 ID 或 null, "present": [人物实体 ID], "goal": "主角当前的目标" } }` |
-| `character`（主角） | `{ "goal" }` |
-| `character`（其他） | `{ "goal", "attitude", "speech_style" }`，只写不为空的键 |
-| `organization` | `{ "stance" }`，为空时是 `{}` |
-| `location`、`item` | `{}` |
+| `world` | `{ "title", "tone", "rules": [], "style", "clock": null 或 "故事里的时间", "scene": { "location": 地点实体 ID 或 null, "present": [人物实体 ID], "goal": "主角当前的目标" } }`。`clock` 和 `scene` 由世界状态 agent 的 `set_clock`、`set_scene` 改 |
+| `character` | `{ "goal", "attitude", "speech_style", "condition" }`，只写不为空的键；开局时主角只有 `goal`。`condition` 是身体和情绪状况，由世界状态 agent 写 |
+| `organization` | `{ "stance", "condition" }`，只写不为空的键 |
+| `location`、`item` | `{ "condition" }`（看得见的变化，例如门锁着、坏了），没有时是 `{}` |
+
+### `state_patches.before`、`state_patches.after`
+
+一行的全部列，键是列名（`domain/world/records.py`）：
+
+| `target` | 结构 |
+| --- | --- |
+| `entity` | `{ "id", "kind", "name", "name_norm", "aliases": [], "summary", "data": {}, "canon", "is_protagonist", "first_seq", "last_seen_seq", "rev", "retired" }` |
+| `link` | `{ "src_id", "rel", "dst_id", "since_seq" }` |
+| `fact` | `{ "id", "text", "entity_ids": [], "visibility", "known_by": [], "status", "superseded_by", "superseded_seq", "created_seq", "source_turn_id" }` |

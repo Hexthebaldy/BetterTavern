@@ -26,7 +26,6 @@ export const play: MessagesOtherOnly<typeof source> = {
     reconnecting: "接続が切れました。再接続しています…",
     polling: "ネットワークが不安定です。結果を待っています…",
     sending: "送信中…",
-    waitingState: "世界を更新しています…",
     thinking: "構想中…",
     writingOpening: "冒頭を執筆中",
     writingEnding: "結末を執筆中",
@@ -50,7 +49,8 @@ export const play: MessagesOtherOnly<typeof source> = {
     buildWorld: "世界を組み立てる",
     writeOpening: "冒頭を書く",
     writingOpeningStep: "冒頭を執筆中…",
-    slowNote: "最初の冒頭は時間がかかります。この画面を離れても大丈夫です。書き終わると「セーブ」に表示されます。",
+    slowNote:
+      "最初の冒頭は時間がかかります。この画面を離れても大丈夫です。書き終わると「セーブ」に表示されます。",
     theEnd: "完",
     noOpening: "冒頭がまだできていません。前回は途中で止まった可能性があります。",
     myActionPrefix: "自分の行動：",
@@ -78,7 +78,21 @@ export const play: MessagesOtherOnly<typeof source> = {
   },
   world: {
     title: "世界",
-    subtitle: "監督が記録したすべて · 冒頭の時点で整理",
+    asOf: "第 {{seq}} ターン時点",
+    asOfOpening: "物語開始時点",
+    issueFailed:
+      "第 {{seq}} ターンの世界の状態を整理できませんでした：{{reason}}。次のターンのあとでもう一度試します。",
+    issueSkipped:
+      "第 {{seq}} ターンの世界の状態の整理に 2 回失敗したため、飛ばしました：{{reason}}。そのターンの変化は記録されていないかもしれません。",
+    issueReason: {
+      tools_unsupported:
+        "バックグラウンド用のモデルがツールを呼び出せません。設定で別のモデルを選んでください",
+      no_commit: "バックグラウンド用のモデルが指示どおりに整理を終えませんでした",
+      route_missing: "使えるモデルがありません",
+      write_conflict: "整理の結果が既存の記録と衝突しました",
+      timeout: "整理に時間がかかりすぎました",
+      unknown: "原因不明",
+    },
     loadFailed: "世界の状態を読み込めませんでした",
     loadFailedWith: "世界の状態を読み込めませんでした：{{error}}",
     tabs: {
@@ -97,6 +111,7 @@ export const play: MessagesOtherOnly<typeof source> = {
       attitude: "態度",
       speech_style: "話し方",
       stance: "立場",
+      condition: "状態",
     },
     me: "自分",
     all: "すべて",
@@ -115,6 +130,8 @@ export const play: MessagesOtherOnly<typeof source> = {
       located_in: "所在地",
       held_by: "持ち主",
       member_of: "所属",
+      part_of: "の一部",
+      knows_of: "知っている",
     },
   },
 };

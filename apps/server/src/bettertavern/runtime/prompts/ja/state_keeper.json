@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "unknown_entity": "「{ref}」に当たるエンティティがありません。先に find_entity で名前を調べるか、e で始まる番号を使ってください。",
+    "ambiguous_entity": "「{ref}」は複数のエンティティに当たります：{candidates}。番号を使ってください。",
+    "retired_entity": "{name} はすでに退場しているので、このようには変更できません。",
+    "unknown_fact": "事実「{ref}」が見つかりません。f で始まる番号を使ってください。",
+    "retracted_fact": "事実 {ref} はすでに取り消されています。",
+    "bad_kind": "kind は character・item・location・organization のいずれかで、「{kind}」は使えません。",
+    "empty_name": "名前は空にできません。",
+    "name_taken": "同じ種類で「{name}」という名前のエンティティがすでにあります（{ref}）。それを使ってください。",
+    "too_many_new": "このターンはすでに {limit} 個作ったので、これ以上作れません。重要でない人や物は記録しなくて構いません。",
+    "canon_summary": "{name} は確定しているので長期的な説明は変えられません。変化は details か事実に記録してください。",
+    "protected_entity": "{name} は主人公なので退場させられません。",
+    "retire_scene_location": "{name} は今の場面の場所です。先に set_scene で場所を変えてください。",
+    "move_protagonist": "主人公が場所を変えるときは set_scene を使ってください。",
+    "cannot_move": "{name} は人物でも物でもないので移動できません。",
+    "self_link": "{name} は自分自身と関係を持てません。",
+    "bad_destination": "{name} は {target} へは行けません。行き先は場所か、物の場合は人物の手の中だけです。",
+    "use_move": "{rel} は move で変えてください。",
+    "bad_relation": "「{rel}」という関係はありません。使えるのは：{allowed}。",
+    "bad_link_kinds": "{src} と {dst} の間に {rel} の関係は作れません。種類が合いません。",
+    "unknown_link": "{src} と {dst} の間に {rel} の関係はありません。",
+    "empty_fact": "事実は空にできません。",
+    "not_character": "{name} は人物ではありません。",
+    "self_replace": "事実 {ref} は自分自身に置き換えられません。",
+    "fact_public": "事実 {ref} は秘密ではなく、皆が知っています。",
+    "not_location": "{name} は場所ではありません。",
+    "empty_clock": "時間は空にできません。",
+    "empty_digest": "digest は空にできません。このターンに起きたことを一文で書いてください。",
+    "already_committed": "このターンはすでに確定したので、もう変更できません。",
+    "bad_detail": "{key} はこの種類のエンティティには使えません。使えるのは：{allowed}。",
+    "world_issues": "確定時のチェックを通りませんでした：{issues}。直してからもう一度 commit を呼び出してください。"
+  },
+  "issues": {
+    "protagonist_count": "主人公はちょうど一人でなければなりません（今は {count} 人）",
+    "two_places": "{name} が同時に二か所にいます",
+    "present_retired": "退場した {name} がまだその場にいます",
+    "scene_location": "今の場面の場所 {name} が正しくありません"
+  }
+}

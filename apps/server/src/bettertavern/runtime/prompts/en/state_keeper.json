@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "unknown_entity": "No entity matches \"{ref}\". Look the name up with find_entity first, or use an id starting with e.",
+    "ambiguous_entity": "\"{ref}\" matches several entities: {candidates}. Use an id.",
+    "retired_entity": "{name} is retired and can't be changed this way.",
+    "unknown_fact": "No fact matches \"{ref}\". Use an id starting with f.",
+    "retracted_fact": "Fact {ref} has already been retracted.",
+    "bad_kind": "kind must be character, item, location or organization, not \"{kind}\".",
+    "empty_name": "The name can't be empty.",
+    "name_taken": "There is already an entity of that kind named \"{name}\" ({ref}); use it.",
+    "too_many_new": "{limit} entities were already created this turn; no more. Minor people and things don't need records.",
+    "canon_summary": "{name} is established; its long-term description can't change. Put the change in details or record a fact.",
+    "protected_entity": "{name} is the protagonist and can't be retired.",
+    "retire_scene_location": "{name} is the current scene's location. Change the location with set_scene first.",
+    "move_protagonist": "Use set_scene when the protagonist changes place.",
+    "cannot_move": "{name} isn't a character or an item, so it can't move.",
+    "self_link": "{name} can't have a relation with itself.",
+    "bad_destination": "{name} can't go to {target}: only to a location, or an item into a character's hands.",
+    "use_move": "Change {rel} with move.",
+    "bad_relation": "There is no relation \"{rel}\". Allowed: {allowed}.",
+    "bad_link_kinds": "{src} and {dst} can't have a {rel} relation; their kinds don't fit.",
+    "unknown_link": "There is no {rel} relation between {src} and {dst}.",
+    "empty_fact": "The fact can't be empty.",
+    "not_character": "{name} isn't a character.",
+    "self_replace": "Fact {ref} can't replace itself.",
+    "fact_public": "Fact {ref} isn't a secret; everyone knows it.",
+    "not_location": "{name} isn't a location.",
+    "empty_clock": "The time can't be empty.",
+    "empty_digest": "digest can't be empty: say in one sentence what happened this turn.",
+    "already_committed": "This turn has already been committed and can't change.",
+    "bad_detail": "{key} can't be used on this kind of entity. Allowed: {allowed}.",
+    "world_issues": "The commit didn't pass the checks: {issues}. Fix them and call commit again."
+  },
+  "issues": {
+    "protagonist_count": "there must be exactly one protagonist (now {count})",
+    "two_places": "{name} is in two places at once",
+    "present_retired": "{name} is retired but still present",
+    "scene_location": "the scene's location {name} is invalid"
+  }
+}

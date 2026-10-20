@@ -36,6 +36,7 @@
 | `status` | text | 否 | `'unverified'` | `unverified` / `ok` / `invalid`，状态变化见下文“状态” |
 | `last_ok_at` | timestamptz | 是 |  | 最近一次确认 Key 可用的时间（获取模型列表或测试成功） |
 | `is_director` | boolean | 否 | `false` | 是不是导演。每个用户最多一行为真 |
+| `is_background` | boolean | 否 | `false` | 是不是后台整理用的模型（世界状态 agent 用它）。每个用户最多一行为真；没有时后台整理用导演那一行 |
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `updated_at` | timestamptz | 否 | `now()` |  |
 
@@ -43,8 +44,10 @@
 - `status` 的 CHECK；三个窗口列的 CHECK（大于 0）。
 - `model_routes_user_idx (user_id, created_at)`：列表按添加时间升序排列。
 - `model_routes_director_uq (user_id) WHERE is_director`：每个用户最多一个导演。换导演时先把旧的置为假，再把新的置为真（唯一索引逐行检查，不能在一条语句里互换）。
+- `model_routes_background_uq (user_id) WHERE is_background`：每个用户最多一个后台模型，换的做法和导演一样。
 
-谁用哪一行（`services/route_service.py`）：导演、开局搭建世界（`world_builder`）、补选项（`repair`）都用 `is_director` 为真的那一行。
+谁用哪一行（`services/route_service.py`）：导演、开局搭建世界（`world_builder`）、补选项（`repair`）都用 `is_director` 为真的那一行；
+世界状态 agent（`state_keeper`）用 `is_background` 为真的那一行，没有时也用导演那一行。能力表说这个模型不能调用工具（`tools` 为假）时，世界状态整理直接失败，原因记为 `tools_unsupported`。
 没有导演时，开局和提交行动返回 409 `ROUTE_MISSING`。
 
 加密方式（`infra/crypto/envelope.py`）：
@@ -100,7 +103,8 @@
   "sampling": { "temperature": true, "top_p": true, "temperature_when_thinking": true },
   "roles": { "system": true, "alternation": "loose" },  // alternation：loose / strict
   "stream_usage": true,
-  "echo_reasoning_with_tools": false
+  "echo_reasoning_with_tools": false,
+  "tools": true  // 能不能调用工具；不能的模型不能用于后台整理
 }
 ```
 

@@ -1,6 +1,6 @@
 """TurnRunner：一个回合的热路径执行器（api 进程内，生成与客户端连接解耦）。
 
-步骤：（开场且世界未建好时）WorldBuilder → 状态屏障 → 装配上下文 → 导演流式生成（边收边解析，
+步骤：（开场且世界未建好时）WorldBuilder → 装配上下文 → 导演流式生成（边收边解析，
 叙述增量合并成至少 40 毫秒一批发出）→ 修复阶梯 → 一个事务提交 → options.ready、turn.completed。
 结局那一轮（行动来源 ending）只要叙述：不走修复阶梯，模型写了选项也丢掉，提交时把这局标为已完结。
 
@@ -11,7 +11,9 @@
   重新装配到有效窗口的 85% 以内再发一次；
 - 玩家取消、进程关闭都通过 CancelToken 关闭上游连接，回合置为 failed。
 
-M1 还没有 StateKeeper，回合提交时直接置为 committed（状态车道在 M2 接入后改为 replied 并入队）。
+提交后回合是 replied，世界状态由后台的世界状态 agent 整理（runtime/state_runner.py）。
+下一回合不等它：状态块开头写明截至第几回合，之后的变化以上下文里的原文为准
+（docs/agent-runtime.md 第 3 节）。
 """
 
 from __future__ import annotations
@@ -89,7 +91,6 @@ _STAGE_TO_SOURCE = {
 class RunnerConfig:
     lease_ttl_s: float = 120.0
     lease_renew_s: float = 30.0
-    barrier_timeout_s: float = 8.0
     world_builder_timeout_s: float = 30.0
     options_repair_timeout_s: float = 5.0
     delta_batch_s: float = 0.04
@@ -176,7 +177,7 @@ class TurnRunner:
                 duration_ms=self._elapsed_ms(started),
                 options=len(outcome.options),
                 options_source=outcome.options_source,
-                state_lag=outcome.state_lag,
+                state_seq=outcome.state_seq,
             )
             if outcome.ends_story:
                 # 只记字数，不记结局的内容
@@ -197,11 +198,11 @@ class TurnRunner:
                         "id": header.turn_id,
                         "seq": header.seq,
                         "attempt": header.attempt,
-                        "status": "committed",
+                        "status": "committed" if outcome.ends_story else "replied",
                         "narrative": outcome.narrative,
                         "options": [o.to_json() for o in outcome.options],
                         "options_source": outcome.options_source,
-                        "state_lag": outcome.state_lag,
+                        "state_seq": outcome.state_seq,
                     },
                     "usage": usage_json(outcome.usage),
                 },
@@ -292,25 +293,6 @@ class TurnRunner:
     ) -> TurnOutcome:
         if not header.world_ready:
             await self._build_world(header, stream, cancel)
-        state_lag = False
-        if header.seq > 0 and not await self._store.wait_parent_committed(header, 0.0):
-            started = self._clock()
-            await self._publish(stream, "turn.waiting_state", {"waited_ms": 0})
-            committed = await self._store.wait_parent_committed(
-                header, self.config.barrier_timeout_s
-            )
-            state_lag = not committed
-            # 等上一轮的状态写完（M1 不会等，M2 接入状态车道后才有意义）
-            log.info("turn.barrier_waited", duration_ms=self._elapsed_ms(started), lag=state_lag)
-            await self._publish(
-                stream,
-                "turn.waiting_state",
-                {
-                    "waited_ms": int((self._clock() - started) * 1000),
-                    "done": True,
-                    "lag": state_lag,
-                },
-            )
         cancel.raise_if_cancelled()
         ctx = await self._store.load_context(header)
         route = await self._routes.resolve(
@@ -328,8 +310,8 @@ class TurnRunner:
             )
         generation = await self._generate(header, ctx, route, stream, cancel)
         if ctx.action.source == "ending":
-            return self._finalize_ending(generation, state_lag)
-        return await self._finalize(header, generation, state_lag)
+            return self._finalize_ending(generation, ctx.state_seq)
+        return await self._finalize(header, generation, ctx.state_seq)
 
     async def _build_world(
         self, header: TurnHeader, stream: EventStream, cancel: CancelToken
@@ -529,7 +511,7 @@ class TurnRunner:
         )
 
     async def _finalize(
-        self, header: TurnHeader, generation: Generation, state_lag: bool
+        self, header: TurnHeader, generation: Generation, state_seq: int
     ) -> TurnOutcome:
         route = generation.route
         repair_runs: list[AgentRunRecord] = []
@@ -637,11 +619,11 @@ class TurnRunner:
             options=make_options(outcome.options),
             options_source=_STAGE_TO_SOURCE[outcome.stage].value,
             usage=generation.usage,
-            state_lag=state_lag,
+            state_seq=state_seq,
             runs=[run, *repair_runs],
         )
 
-    def _finalize_ending(self, generation: Generation, state_lag: bool) -> TurnOutcome:
+    def _finalize_ending(self, generation: Generation, state_seq: int) -> TurnOutcome:
         """结局：只要叙述，不补选项；模型照习惯写了选项也丢掉。"""
         parse = generation.parse
         if parse.stage is ParseStage.FAILED or not parse.narrative.strip():
@@ -666,7 +648,7 @@ class TurnRunner:
             options=[],
             options_source=None,
             usage=generation.usage,
-            state_lag=state_lag,
+            state_seq=state_seq,
             runs=[run],
             ends_story=True,
         )

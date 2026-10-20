@@ -341,7 +341,7 @@ v1 不做世界书模块。以后的导入器 `importers/lorebook/` 把每个条
 
 ### 结构化输出阶梯（`runtime/protocol/structured.py`）
 
-需要规定格式输出的 agent（WorldBuilder、OptionsRepair、大纲修订，以及不擅长工具调用时的世界状态 agent）都走同一个阶梯，按能力表从上到下选第一个支持的：
+需要规定格式输出的 agent（WorldBuilder、OptionsRepair、大纲修订）都走同一个阶梯，按能力表从上到下选第一个支持的。世界状态 agent 只用工具调用，不走这个阶梯：能力表说模型不能调用工具（`tools` 为假）时，它不能用于后台整理（[agent-runtime.md](agent-runtime.md) 第 4 节）：
 
 | 阶梯 | 做法 | 哪里用得上 |
 | --- | --- | --- |
@@ -544,6 +544,8 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 列表和 yaml 都不知道窗口时，界面在添加模型时请玩家填写，不填就按 32K 估计并标明是估计值；校验规则见第 4 节“窗口校验”。
 
 `POST /v1/model-routes/{id}/probe`（`providers/probe.py`）对这个模型发 4 到 5 个极小请求：普通流式聊天（验证基址、鉴权、SSE，以及 usage 字段是否出现）、`json_object`、`json_schema` strict、强制工具调用、推理开关。每个请求只有几十个 token。结果写入 `model_routes.probe` 并带时间戳，7 天有效，改了 Key、端点或模型名后清空。
+
+能力里的 `tools` 表示模型能不能调用工具：默认能，Hugging Face 和自定义端点的规则里写成不能；探测里强制工具调用那一项的结果会覆盖它。兜底规则是所有模型的底层，更具体的规则只覆盖自己写了的项，所以兜底规则里不能写 `tools: false`，否则官方厂商也会被当成不能。
 
 探测结果不是永久真相。线上请求因“不支持某能力”返回 400 时，把该能力写入负缓存 1 小时并降到下一档。这对 Hugging Face 尤其重要：路由后缀 `:fastest` 背后的 provider 会变，能力也会变。
 
@@ -905,7 +907,6 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 
 | 设计 | M1 的做法 | 原因与补齐时间 |
 | --- | --- | --- |
-| 回合提交为 `replied` 并在同一事务里放一个世界状态整理任务 | 直接提交为 `committed`，不放任务 | 还没有世界状态 agent。屏障的代码还在，但上一轮总是已提交，不会等待；agent runtime 阶段 2 去掉屏障，改回 `replied` 加整理任务 |
 | 会话通道 `/playthroughs/{id}/events` 与 `playthrough.ready` | 没有实现；开局构建在开场回合自己的事件流里报告，新增 `world.building` 与 `world.ready`（data：`source`、`entities`）两个事件 | 单设备游玩用不到会话通道。M2 有了 `state.updated` 再加 |
 | 文件存储 `infra/storage/`（本地或 S3） | 角色卡头像存在 Postgres 的 `blobs` 表（bytea），通过 `GET /v1/blobs/{id}` 读取（要带令牌，有 ETag） | 头像最大 16 MB，量小。换对象存储只影响 `infra/db/repositories/library.py` |
 | `infra/db/models/` 的 ORM 模型 | `infra/db/repositories/` 直接写 SQL（SQLAlchemy Core）；涉及用户数据的查询都带 `user_id` 条件 | 查询都是手写的围栏条件，ORM 帮不上忙 |

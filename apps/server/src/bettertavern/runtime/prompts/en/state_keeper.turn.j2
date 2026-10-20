@@ -1,0 +1,42 @@
+{# version: 1 #}
+Now process turn {{ seq }}. The current scene started at turn {{ scene_start }}.
+{% if recent %}
+
+Previous turns:
+{% for item in recent %}
+- Turn {{ item[0] }}: {{ item[1] }}
+{% endfor %}
+{% endif %}
+
+<world-state>
+{% if clock %}
+Time in the story: {{ clock }}
+{% endif %}
+{% if goal %}
+The protagonist's current goal: {{ goal }}
+{% endif %}
+Related entities:
+{% for entity in entities %}
+{{ entity }}
+{% endfor %}
+{% if facts %}
+Related facts:
+{% for fact in facts %}
+{{ fact }}
+{% endfor %}
+{% endif %}
+</world-state>
+
+<player-action>
+{% if source == "opening" %}
+(The opening; there is no player action.)
+{% else %}
+{{ action }}
+{% endif %}
+</player-action>
+
+<narrative>
+{{ narrative }}
+</narrative>
+
+Record the changes in this turn, then call commit.

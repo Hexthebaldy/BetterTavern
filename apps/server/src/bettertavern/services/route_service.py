@@ -20,7 +20,7 @@ from datetime import datetime
 import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.routing import BACKGROUND_TASKS, RouteTask
 from bettertavern.infra.crypto.keyring import Keyring
 from bettertavern.infra.db.repositories import routes as repo
 from bettertavern.infra.db.sqlutil import is_uuid
@@ -291,6 +291,7 @@ class RouteService:
             status="ok" if key_ok else "unverified",
             last_ok_at=now if key_ok else None,
             is_director=False,
+            is_background=False,
             created_at=now,
             updated_at=now,
         )
@@ -301,6 +302,8 @@ class RouteService:
             row = await repo.insert_route(conn, row)
             if data.director:
                 await repo.set_director(conn, user_id, row.id)
+            if data.background:
+                await repo.set_background(conn, user_id, row.id)
         log.info(
             "route.created",
             route_id=row.id,
@@ -310,6 +313,7 @@ class RouteService:
             copied_key=data.copy_key_from is not None,
             window_source=self._codec.model_window(row)[1],
             director=data.director,
+            background=data.background,
         )
         return await self.get(user_id, row.id)
 
@@ -414,6 +418,12 @@ class RouteService:
                 elif row.is_director:
                     await repo.set_director(conn, user_id, None)
                 changed.append("director")
+            if patch.background is not None:
+                if patch.background:
+                    await repo.set_background(conn, user_id, row.id)
+                elif row.is_background:
+                    await repo.set_background(conn, user_id, None)
+                changed.append("background")
         log.info(
             "route.updated",
             route_id=row.id,
@@ -477,9 +487,14 @@ class RouteService:
     async def resolve(
         self, user_id: str, task: RouteTask, playthrough_id: str | None = None
     ) -> ResolvedRoute | None:
-        """task 用的模型：目前所有 task 都用导演这一行。playthrough_id 留给以后的单局覆盖。"""
+        """task 用的模型：世界状态 agent 用“用于后台”的那一行，没设时和其他 task 一样用导演这一行。
+        playthrough_id 留给以后的单局覆盖。"""
         async with self._engine.connect() as conn:
-            row = await repo.get_director(conn, user_id)
+            row = None
+            if task in BACKGROUND_TASKS:
+                row = await repo.get_background(conn, user_id)
+            if row is None:
+                row = await repo.get_director(conn, user_id)
         if row is None:
             return None
         return self._resolved(row, task)

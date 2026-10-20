@@ -90,6 +90,10 @@ export const ERROR_CLASSES: Record<string, string> = {
   CancelledError: "被取消",
   slot_timeout: "等并发槽位超时",
   too_long: "写得太长，被截断",
+  route_missing: "没有配置模型",
+  tools_unsupported: "模型不支持工具调用",
+  no_commit: "模型没有用 commit 结束",
+  write_conflict: "写入时和库里已有的行冲突",
 };
 
 /** agent 运行里一步的出错原因：工具的三种，其余同 provider 的错误类别 */

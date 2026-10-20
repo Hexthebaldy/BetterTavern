@@ -159,7 +159,7 @@ describe("turnMachine", () => {
             narrative: "雨停了，我推开门。",
             options: opts(2),
             options_source: "model",
-            state_lag: false,
+            state_seq: -1,
           },
           usage: null,
         },
@@ -188,7 +188,7 @@ describe("turnMachine", () => {
     assert.equal(playReducer(idle, { type: "connection", state: "reconnecting" }), idle);
   });
 
-  it("世界构建和等待状态的提示", () => {
+  it("世界构建的提示", () => {
     let state = playReducer(submitOption(idleWithTwoTurns()), {
       type: "submitted",
       turn: makeTurn(2, { status: "generating" }),
@@ -197,10 +197,6 @@ describe("turnMachine", () => {
     assert.ok(state.pending?.buildingWorld);
     state = playReducer(state, stream({ event: "world.ready", data: { source: "model", entities: 5 } }));
     assert.ok(!state.pending?.buildingWorld);
-    state = playReducer(state, stream({ event: "turn.waiting_state", data: { waited_ms: 0 } }));
-    assert.ok(state.pending?.waitingState);
-    state = playReducer(state, stream({ event: "narrative.delta", data: { text: "我" } }));
-    assert.ok(!state.pending?.waitingState);
   });
 
   it("生成失败保留半截叙述，可以重试", () => {
@@ -375,7 +371,7 @@ describe("turnMachine", () => {
               narrative: "雨停了。",
               options: [],
               options_source: null,
-              state_lag: false,
+              state_seq: -1,
             },
             usage: null,
           },

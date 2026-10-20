@@ -20,7 +20,7 @@ class TurnView:
     narrative: str
     options: list[dict[str, Any]]
     options_source: str | None
-    state_lag: bool
+    state_seq: int
     error: dict[str, Any] | None
     created_at: datetime
     replied_at: datetime | None
@@ -37,7 +37,7 @@ class TurnView:
             narrative=row.narrative,
             options=row.options,
             options_source=row.options_source,
-            state_lag=row.state_lag,
+            state_seq=row.state_seq,
             error=row.error,
             created_at=row.created_at,
             replied_at=row.replied_at,
@@ -58,6 +58,7 @@ class PlaythroughView:
     head_excerpt: str
     active_turn_id: str | None
     rollback_floor_seq: int
+    state_seq: int
     seed_source: str | None
     created_at: datetime
     updated_at: datetime
@@ -80,6 +81,7 @@ class PlaythroughView:
             head_excerpt=head_excerpt,
             active_turn_id=row.active_turn_id,
             rollback_floor_seq=row.rollback_floor_seq,
+            state_seq=row.state_seq,
             seed_source=row.seed_source,
             created_at=row.created_at,
             updated_at=row.updated_at,

@@ -55,10 +55,9 @@ class Settings(BaseSettings):
     enable_probe_endpoints: bool | None = None
     event_buffer_retention_s: float = Field(default=600.0, gt=0)
 
-    # 热路径：租约 120 秒，生成期间每 30 秒续租；屏障最多等 8 秒
+    # 热路径：租约 120 秒，生成期间每 30 秒续租
     turn_lease_s: float = Field(default=120.0, gt=0)
     turn_lease_renew_s: float = Field(default=30.0, gt=0)
-    state_barrier_timeout_s: float = Field(default=8.0, ge=0)
     world_builder_timeout_s: float = Field(default=30.0, gt=0)
     options_repair_timeout_s: float = Field(default=5.0, gt=0)
     # 导演写一段的总时长上限，超过就停下、这一轮按失败结束（防止模型一直写不停）
@@ -70,6 +69,8 @@ class Settings(BaseSettings):
 
     credential_concurrency: int = Field(default=4, ge=1)
     worker_concurrency: int = Field(default=4, ge=1)
+    # 世界状态 agent 整理一回合最多多久（包括最多 20 轮工具），超时算这一回合整理失败
+    state_turn_timeout_s: float = Field(default=180.0, gt=0)
     job_lock_timeout_s: float = Field(default=300.0, gt=0)
 
     # 限流（每分钟次数）：登录与注册按 IP，提交行动与探测按用户

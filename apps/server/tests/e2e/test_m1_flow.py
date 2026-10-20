@@ -157,7 +157,8 @@ async def test_full_m1_flow(running: Running) -> None:
             await client.get(f"/v1/playthroughs/{playthrough_id}/turns", headers=auth)
         ).json()["turns"]
         assert [t["seq"] for t in history] == [0, 1]
-        assert history[1]["status"] == "committed"
+        # 没有 worker：世界状态还没整理，回合停在 replied，整理进度还是开局
+        assert history[1]["status"] == "replied" and history[1]["state_seq"] == -1
         r = await client.get(f"/v1/turns/{turn['id']}", headers=auth)
         assert r.json()["options_source"] == "model"
 

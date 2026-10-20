@@ -56,11 +56,14 @@ async def test_probe_records_each_capability(client: object, fake_llm: RunningFa
     }
     assert report.caps_overlay() == {
         "structured": ["tool_call", "json_object"],
+        "tools": True,
         "stream_usage": True,
     }
     assert report.fatal_error is None
     final = resolve_capabilities("custom_openai", "m", RULES, probed=report.caps_overlay())
     assert final.structured_ladder() == ("tool_call", "json_object", "prompt_json")
+    # 自定义端点默认不能调用工具，探测通过后才能用于后台整理
+    assert final.tools is True
 
 
 async def test_probe_stops_after_auth_failure(client: object, fake_llm: RunningFakeLLM) -> None:

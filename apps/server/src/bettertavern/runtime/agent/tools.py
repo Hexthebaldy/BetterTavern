@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -72,8 +72,11 @@ class ToolRegistry:
     def __contains__(self, name: object) -> bool:
         return name in self._tools
 
-    def specs(self, agent: AgentSpec, prompts: PromptLibrary) -> list[ToolSpec]:
-        """这个 agent 能用的工具，给模型看的形式；说明按这一局的语言取。"""
+    def specs(
+        self, agent: AgentSpec, prompts: PromptLibrary, *, only: Collection[str] | None = None
+    ) -> list[ToolSpec]:
+        """这个 agent 能用的工具（only 给出时只取其中这几个），给模型看的形式。
+        说明按这一局的语言取。"""
         descriptions: Mapping[str, str] = prompts.data("tools")["descriptions"]
         return [
             ToolSpec(
@@ -82,14 +85,23 @@ class ToolRegistry:
                 parameters=self._tools[name].parameters,
             )
             for name in agent.tools
+            if only is None or name in only
         ]
 
     async def call(
-        self, agent: AgentSpec, call: ToolCall, ctx: Any, prompts: PromptLibrary
+        self,
+        agent: AgentSpec,
+        call: ToolCall,
+        ctx: Any,
+        prompts: PromptLibrary,
+        *,
+        allowed: Collection[str] | None = None,
     ) -> ToolOutcome:
+        """allowed 是这一轮提供给模型的工具名；不在里面的不执行。"""
         errors: Mapping[str, str] = prompts.data("tools")["errors"]
         tool = self._tools.get(call.name)
-        if tool is None or call.name not in agent.tools:
+        offered = call.name in agent.tools and (allowed is None or call.name in allowed)
+        if tool is None or not offered:
             return ToolOutcome(
                 text=errors["unknown_tool"].format(name=sanitize_for_fence(call.name)[:80]),
                 error="unknown_tool",

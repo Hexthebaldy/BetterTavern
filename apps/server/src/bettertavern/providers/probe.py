@@ -75,6 +75,9 @@ class ProbeReport:
             overlay["structured"] = [
                 c.name for c in structured_checks if c is not None and c.ok is True
             ]
+        tool_call = self.check("tool_call")
+        if tool_call is not None and tool_call.ok is not None:
+            overlay["tools"] = tool_call.ok
         usage = self.check("stream_usage")
         if usage is not None and usage.ok is not None:
             overlay["stream_usage"] = usage.ok

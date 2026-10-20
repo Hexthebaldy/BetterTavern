@@ -1,7 +1,7 @@
-"""worker 进程：领取任务，按 kind 分派。
+"""worker 进程：领取后台任务，按 kind 分派。
 
-M0 只有队列原型和一个 noop 处理器（冒烟用）；state / summary / outline 三条车道的处理器
-在 M2、M3 接入 services/pipeline_service.py。
+现在有两种任务：state.turn（世界状态 agent 整理一局还没整理的回合，services/state_jobs.py）和
+noop（冒烟用）。只领取自己有处理器的 kind，新旧版本的 worker 可以同时运行。
 """
 
 from __future__ import annotations
@@ -18,7 +18,12 @@ from bettertavern.infra.queue.base import Job
 from bettertavern.infra.queue.notify import PgNotifyListener
 from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.infra.queue.worker import Handler, JobWorker
+from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
+from bettertavern.services.container import build_state_runner
+from bettertavern.services.state_jobs import STATE_JOB, state_handler
 from bettertavern.settings import Settings
+
+from .bootstrap import app_secrets, endpoint_policy, provider_hub
 
 log = structlog.get_logger(__name__)
 
@@ -27,17 +32,26 @@ async def noop(job: Job) -> None:
     log.info("job.noop", payload_keys=sorted(job.payload))
 
 
-def handlers() -> dict[str, Handler]:
-    return {"noop": noop}
+def handlers(state: StateRunner) -> dict[str, Handler]:
+    return {"noop": noop, STATE_JOB: state_handler(state)}
 
 
 async def run_worker(settings: Settings) -> None:
     engine = create_engine(settings.database_url)
+    policy = endpoint_policy(settings)
+    hub = provider_hub(settings, policy)
+    state = build_state_runner(
+        engine=engine,
+        secrets=app_secrets(settings),
+        hub=hub,
+        policy=policy,
+        config=StateRunnerConfig(turn_timeout_s=settings.state_turn_timeout_s),
+    )
     queue = PgJobQueue(engine, lock_timeout=settings.job_lock_timeout_s)
     listener = PgNotifyListener(engine, queue.channel)
     await listener.start()
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
-    registered = handlers()
+    registered = handlers(state)
     worker = JobWorker(
         queue,
         registered,
@@ -56,5 +70,6 @@ async def run_worker(settings: Settings) -> None:
         await worker.run(stop)
     finally:
         await listener.stop()
+        await hub.aclose()
         await engine.dispose()
         log.info("worker.stopped", worker_id=worker_id)

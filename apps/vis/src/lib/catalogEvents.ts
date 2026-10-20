@@ -16,6 +16,7 @@ import {
   PARSE_STAGES,
   plus,
   routeName,
+  stepError,
   str,
   WINDOW_SOURCES,
 } from "./catalogCodes.ts";
@@ -128,11 +129,6 @@ export const EVENTS: Record<string, EventInfo> = {
   },
   "turn.replayed": { label: "重复提交", category: "turn", say: () => "同一个幂等键又提交了一次，返回已有的回合" },
   "turn.started": { label: "开始生成", category: "turn" },
-  "turn.barrier_waited": {
-    label: "等上一轮",
-    category: "turn",
-    say: (f) => plus(`等上一轮的状态写完`, ms(f.duration_ms), f.lag ? "没等到" : null),
-  },
   "world.build.started": { label: "开始搭建世界", category: "turn" },
   "world.build.done": {
     label: "世界搭好",
@@ -248,6 +244,44 @@ export const EVENTS: Record<string, EventInfo> = {
     say: (f) => plus(`回合失败：${errorCode(f.code)}`, f.cancel_reason ? `取消原因 ${str(f.cancel_reason)}` : null),
   },
   "turn.crashed": { label: "回合崩溃", category: "turn", say: () => "执行回合时抛出了没处理的异常" },
+  "agent.tool": {
+    label: "用工具",
+    category: "model",
+    say: (f) => plus(`用工具 ${str(f.tool)}`, f.error ? `出错：${stepError(f.error)}` : null, ms(f.duration_ms)),
+  },
+  "agent.tool_calls_ignored": {
+    label: "工具调用被忽略",
+    category: "model",
+    say: (f) => `模型要用工具，但这一轮${f.closed ? "输出已经定下来" : "没提供工具"}，没有执行`,
+  },
+  "state.kept": {
+    label: "整理世界状态",
+    category: "job",
+    say: (f) =>
+      plus(
+        `第 ${str(f.seq)} 回合的世界状态整理好了，改了 ${str(f.changes)} 行`,
+        num(f.rejected) ? `${str(f.rejected)} 项修改被拒绝` : null,
+        `调了 ${str(f.model_calls)} 次模型`,
+        f.scene_ended ? "场景结束" : null,
+        ms(f.duration_ms),
+      ),
+  },
+  "state.failed": {
+    label: "整理失败",
+    category: "job",
+    say: (f) => `第 ${str(f.seq)} 回合的世界状态整理失败（第 ${str(f.failures)} 次）：${stepError(f.error_class)}`,
+  },
+  "state.skipped": {
+    label: "跳过整理",
+    category: "job",
+    say: (f) => `第 ${str(f.seq)} 回合整理失败次数用完，跳过：${stepError(f.error_class)}`,
+  },
+  "state.stale": {
+    label: "整理结果作废",
+    category: "job",
+    say: (f) => `第 ${str(f.seq)} 回合整理完时进度已经变了（回退过或别处已整理），结果作废`,
+  },
+  "state.write_conflict": { label: "整理写入冲突", category: "job", say: () => "写入世界状态时和库里已有的行冲突，算一次失败" },
   "turn.cancel_requested": { label: "停止生成", category: "turn", say: () => "玩家点了停止" },
   "turn.lease_expired": { label: "租约过期", category: "turn", say: () => "生成进程没了，回合被标为失败" },
   "turn.lease_renew_failed": { label: "续租失败", category: "turn" },

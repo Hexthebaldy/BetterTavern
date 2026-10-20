@@ -4,7 +4,7 @@
 >
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
 
-这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0003`）。
+这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0011`）。
 设计意图和还没建的表见 [backend.md 第 2 节](../backend.md)。
 
 表按领域分文件。每个领域文件写这个领域的表（列、类型、约束、索引）、JSON 列的结构和状态变化；本页写各领域共用的约定、
@@ -16,7 +16,7 @@
 | [models.md](models.md) | 模型路由（玩家配好的模型，含 Key 和端点） | `model_routes` |
 | [library.md](library.md) | 剧本库 | `blobs`、`scenarios` |
 | [story.md](story.md) | 游玩与回合，以及热路径的并发控制 | `playthroughs`、`turns`、`idempotency_keys` |
-| [world.md](world.md) | 世界状态 | `entities`、`entity_links`、`facts` |
+| [world.md](world.md) | 世界状态 | `entities`、`entity_links`、`facts`、`state_patches`、`turn_notes` |
 | [infra.md](infra.md) | 运行基础设施 | `agent_runs`、`agent_steps`、`jobs` |
 
 `tests/integration/test_data_model_doc.py` 会在真实 Postgres 上执行迁移，再把这个目录里的所有文件合在一起，逐表核对列名、类型、可空和索引名。
@@ -57,6 +57,10 @@ erDiagram
     playthroughs ||--o{ entity_links : "playthrough_id"
     playthroughs ||--o{ facts : "playthrough_id"
     playthroughs |o--o{ agent_runs : "playthrough_id"
+    playthroughs ||--o{ state_patches : "playthrough_id"
+    playthroughs ||--o{ turn_notes : "playthrough_id"
+    turns ||--o{ state_patches : "turn_id"
+    turns ||--o| turn_notes : "turn_id"
     agent_runs ||--o{ agent_steps : "run_id"
     entities ||--o{ entity_links : "src_id / dst_id"
     playthroughs |o..o| turns : "head_turn_id / active_turn_id"
@@ -76,8 +80,9 @@ erDiagram
 | `turns.parent_turn_id` | `turns.id` | 提交时的头部；开场为空 |
 | `turns.director_run_id` | `agent_runs.id` | 写出这段叙述的那次导演调用 |
 | `turns.rollback_id` | 无 | 回退批次号（M2）：同一次回退归档的回合共用一个 |
-| `facts.superseded_by` | `facts.id` | 推翻这条事实的新事实（M2） |
-| `facts.source_turn_id` | `turns.id` | 产生这条事实的回合（M2；开局写入的为空） |
+| `facts.superseded_by` | `facts.id` | 推翻这条事实的新事实 |
+| `facts.source_turn_id` | `turns.id` | 产生这条事实的回合（开局写入的为空） |
+| `turn_notes.entity_ids` | `entities.id` | uuid 数组 |
 | `facts.entity_ids`、`facts.known_by` | `entities.id` | uuid 数组，数组元素不能加外键 |
 | `agent_runs.turn_id` | `turns.id` | 这次调用所属的回合 |
 | `idempotency_keys.turn_id` | `turns.id` | 这个幂等键创建的回合 |
@@ -87,9 +92,9 @@ erDiagram
 | 操作 | 连带删除或修改 |
 | --- | --- |
 | 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`scenarios`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys` |
-| 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts` 和 `agent_runs`（连同 `agent_steps`）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
+| 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts`、`state_patches`、`turn_notes` 和 `agent_runs`（连同 `agent_steps`）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 在同一个事务里删除它的头像（`blobs`）；`playthroughs.scenario_id` 置空 |
-| 删除模型路由 | 删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING` |
+| 删除模型路由 | 删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING`；删掉的是后台模型时，后台整理改用导演的模型 |
 | 删除实体（M2） | 级联删除相关的 `entity_links`；`facts.entity_ids` 里的 ID 不会自动清理 |
 
 定期清理（`services/maintenance.py`，在 api 进程里运行）：
@@ -107,8 +112,6 @@ erDiagram
 
 | 表 | 阶段 | 放进哪个文件 | 用途 |
 | --- | --- | --- | --- |
-| state_patches | 2 | [world.md](world.md) | 世界状态的撤销日志：每条变化记一行，带 `before` 和 `after` 两份内容；回退时倒序应用 `before` |
-| turn_notes | 2 | [world.md](world.md) | 世界状态 agent 给每回合写的标签：一句话摘要、涉及的实体、场景是否结束 |
 | threads | 3 | [world.md](world.md) | 线索与伏笔 |
 | story_summaries | 4 | 新建 `memory.md`（记忆） | 场景摘要、本场景前情、章节摘要、全书梗概，只新增，记下覆盖的回合 |
 | player_profiles | 4 | 新建 `memory.md`（记忆） | 玩家画像，每次改写新增一版，回退时不动 |

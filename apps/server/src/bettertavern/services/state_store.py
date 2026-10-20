@@ -1,0 +1,148 @@
+"""StateStore 的 Postgres 实现：世界状态 agent 通过它读要整理的回合、写整理结果。
+
+写入都在一个事务里，并且先对 playthroughs 做带条件的 UPDATE（整理进度 state_seq、时间线编号），
+成功后才写世界状态表、撤销记录和回合标签（docs/agent-runtime.md 第 8 节）。
+"""
+
+from __future__ import annotations
+
+import dataclasses
+
+import structlog
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+
+from bettertavern.domain.story.turn import PlayerAction, TurnStatus
+from bettertavern.infra.db.repositories import state as state_repo
+from bettertavern.infra.db.repositories import story as story_repo
+from bettertavern.runtime.ports import AgentRunRecord, StateCommit, StateTurn
+
+from .run_records import insert_run
+
+log = structlog.get_logger(__name__)
+
+RECENT_NOTES = 3
+
+
+class _Stale(Exception):
+    """整理进度或时间线编号对不上：回滚整个事务。"""
+
+
+class PgStateStore:
+    def __init__(self, engine: AsyncEngine) -> None:
+        self._engine = engine
+
+    async def next_turn(self, playthrough_id: str) -> StateTurn | None:
+        async with self._engine.connect() as conn:
+            pt = await story_repo.get_playthrough_by_id(conn, playthrough_id)
+            if pt is None or pt.status == "building":
+                return None
+            chain = await story_repo.list_chain(
+                conn, playthrough_id, after_seq=pt.state_seq, limit=1
+            )
+            if not chain:
+                return None
+            turn = chain[0]
+            # 下一回合是结局（直接 committed，不用整理），或者链断了：没有可整理的
+            if turn.seq != pt.state_seq + 1 or turn.status != TurnStatus.REPLIED.value:
+                return None
+            world = await state_repo.load_records(conn, playthrough_id)
+            notes = await state_repo.recent_notes(
+                conn, playthrough_id, before_seq=turn.seq, limit=RECENT_NOTES
+            )
+            scene_start = await state_repo.scene_start(conn, playthrough_id, before_seq=turn.seq)
+            failures = await state_repo.failure_count(conn, turn.id)
+        return StateTurn(
+            turn_id=turn.id,
+            playthrough_id=playthrough_id,
+            user_id=pt.user_id,
+            seq=turn.seq,
+            epoch=pt.timeline_epoch,
+            language=pt.language,
+            action=PlayerAction.from_json(turn.user_action),
+            narrative=turn.narrative,
+            recent=tuple((n.seq, n.digest) for n in notes if n.digest),
+            scene_start=scene_start,
+            world=world,
+            failures=failures,
+        )
+
+    async def commit(self, turn: StateTurn, result: StateCommit) -> bool:
+        try:
+            async with self._engine.begin() as conn:
+                await self._advance(conn, turn)
+                await state_repo.apply_changes(conn, turn.playthrough_id, result.changes)
+                await state_repo.insert_patches(
+                    conn,
+                    playthrough_id=turn.playthrough_id,
+                    turn_id=turn.turn_id,
+                    seq=turn.seq,
+                    changes=result.changes,
+                )
+                await state_repo.insert_note(
+                    conn,
+                    turn_id=turn.turn_id,
+                    playthrough_id=turn.playthrough_id,
+                    seq=turn.seq,
+                    digest=result.digest,
+                    entity_ids=result.entity_ids,
+                    scene_ended=result.scene_ended,
+                )
+                await state_repo.mark_committed(conn, turn.turn_id)
+                await self._insert_run(conn, turn, result.run)
+        except _Stale:
+            await self._record(turn, dataclasses.replace(result.run, status="stale"))
+            return False
+        except IntegrityError:
+            # 检查漏掉的冲突（例如名字重复）：这次算失败，失败次数用完后这一回合会被跳过
+            log.warning("state.write_conflict", seq=turn.seq, exc_info=True)
+            failed = dataclasses.replace(result.run, status="failed", error_class="write_conflict")
+            await self._record(turn, failed)
+            return False
+        return True
+
+    async def fail(self, turn: StateTurn, run: AgentRunRecord) -> None:
+        await self._record(turn, run)
+
+    async def skip(self, turn: StateTurn, run: AgentRunRecord) -> bool:
+        try:
+            async with self._engine.begin() as conn:
+                await self._advance(conn, turn)
+                await state_repo.insert_note(
+                    conn,
+                    turn_id=turn.turn_id,
+                    playthrough_id=turn.playthrough_id,
+                    seq=turn.seq,
+                    digest="",
+                    entity_ids=(),
+                    scene_ended=False,
+                    skipped=True,
+                )
+                await state_repo.mark_committed(conn, turn.turn_id)
+                await self._insert_run(conn, turn, run)
+        except _Stale:
+            await self._record(turn, dataclasses.replace(run, status="stale"))
+            return False
+        return True
+
+    async def _advance(self, conn: AsyncConnection, turn: StateTurn) -> None:
+        advanced = await state_repo.advance_state_seq(
+            conn, turn.playthrough_id, seq=turn.seq, epoch=turn.epoch
+        )
+        if not advanced:
+            raise _Stale
+
+    async def _record(self, turn: StateTurn, run: AgentRunRecord) -> None:
+        async with self._engine.begin() as conn:
+            await self._insert_run(conn, turn, run)
+
+    async def _insert_run(
+        self, conn: AsyncConnection, turn: StateTurn, run: AgentRunRecord
+    ) -> None:
+        await insert_run(
+            conn,
+            run,
+            user_id=turn.user_id,
+            playthrough_id=turn.playthrough_id,
+            turn_id=turn.turn_id,
+        )

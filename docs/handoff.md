@@ -174,8 +174,8 @@ make dev
 1. `POST /v1/playthroughs/{id}/turns`（带 `Idempotency-Key`）。先查幂等键（重放直接返回 200 和已有回合），再确认归属，再查导演路由，
    然后在一个事务里：锁 playthroughs 行 → 再查一次幂等键 → 租约（未过期返回 409 `TURN_IN_PROGRESS` 带 `active_turn_id`；已过期就把那一轮标为 `RUNNER_LOST`）
    → 父回合必须等于 head（否则 409 `STALE_PARENT`）→ 解析行动（选项只发 `option_id`，文字由服务端从父回合的选项里取）→ 插入回合（`generating`）并领租约 → 写幂等键。返回 201。
-2. `TurnRunnerPool.start` 在 api 进程里起后台任务，和客户端连接无关。`TurnRunner`：需要时先跑 WorldBuilder（`world.building` / `world.ready`）→ 屏障（M1 里不会等待）
-   → 装配上下文 → 导演流式生成（`narrative.delta`；出错不自动重试、不换模型，这一轮直接失败，只有服务商报超窗时重新装配到 85% 以内再请求一次）→ 选项修复阶梯 → 带围栏提交 → `options.ready`、`turn.completed`。
+2. `TurnRunnerPool.start` 在 api 进程里起后台任务，和客户端连接无关。`TurnRunner`：需要时先跑 WorldBuilder（`world.building` / `world.ready`）
+   → 装配上下文（不等世界状态整理，状态块写明截至第几回合） → 导演流式生成（`narrative.delta`；出错不自动重试、不换模型，这一轮直接失败，只有服务商报超窗时重新装配到 85% 以内再请求一次）→ 选项修复阶梯 → 带围栏提交 → `options.ready`、`turn.completed`。
    失败发 `turn.failed`（半截叙述存库，`partial`）。生成期间每 30 秒续租，发现租约丢了就取消生成。
 3. 提交：先 `UPDATE playthroughs ... WHERE active_turn_id = 本轮 AND timeline_epoch = epoch`（释放租约、推进 head），成功后才写 turns 和 agent_runs；
    不成功说明租约已被清理任务收走，结果作废，推给客户端的错误与库里一致（`RUNNER_LOST`，可重试）。
@@ -243,7 +243,7 @@ make dev
 
 与设计文档的偏差（详见 [backend.md 第 12 节](backend.md)、[client.md 第 3 节](client.md)），M2 起按设计补齐：
 
-- 热路径是线性的 `TurnRunner`；回合直接提交为 `committed`，还没有世界状态 agent 和后台队列，屏障不会真的等待。
+- 热路径是线性的 `TurnRunner`；回合存为 `replied` 并放一个整理任务，worker 里的世界状态 agent 整理完改成 `committed`（[agent-runtime.md](agent-runtime.md) 第 3、4 节）。
 - 没有会话通道 `/playthroughs/{id}/events`；开局进度在开场回合的事件流里（`world.building`、`world.ready`）。
 - 头像存在 Postgres 的 `blobs` 表；仓储是手写 SQL，没有 ORM 模型。
 - 客户端类型手写（没有 OpenAPI 生成）；没有 TanStack Query、Zustand、FlashList、expo-sqlite 缓存、i18n、触觉反馈。

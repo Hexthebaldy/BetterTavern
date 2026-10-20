@@ -24,7 +24,6 @@ export const play = {
     reconnecting: "连接断了，正在重连…",
     polling: "网络不太稳定，正在等结果…",
     sending: "正在发送…",
-    waitingState: "世界还在更新…",
     thinking: "正在构思…",
     writingOpening: "正在写开场",
     writingEnding: "正在写结局",
@@ -77,7 +76,19 @@ export const play = {
   },
   world: {
     title: "世界",
-    subtitle: "导演记下的一切 · 开局时整理",
+    asOf: "截至第 {{seq}} 回合",
+    asOfOpening: "开局时的样子",
+    issueFailed: "第 {{seq}} 回合的世界状态没整理成功：{{reason}}。下一回合会再试一次。",
+    issueSkipped:
+      "第 {{seq}} 回合的世界状态整理失败了两次，已经跳过：{{reason}}。那一回合里的变化可能没记下来。",
+    issueReason: {
+      tools_unsupported: "后台模型不能调用工具，请在设置里换一个后台模型",
+      no_commit: "后台模型没有按要求整理完",
+      route_missing: "没有可用的模型",
+      write_conflict: "整理结果和已有的记录冲突",
+      timeout: "整理太久，超时了",
+      unknown: "原因不明",
+    },
     loadFailed: "世界状态没加载出来",
     loadFailedWith: "世界状态没加载出来：{{error}}",
     tabs: {
@@ -96,6 +107,7 @@ export const play = {
       attitude: "态度",
       speech_style: "说话方式",
       stance: "立场",
+      condition: "状况",
     },
     me: "我",
     all: "全部",
@@ -114,6 +126,8 @@ export const play = {
       located_in: "位于",
       held_by: "持有者",
       member_of: "属于",
+      part_of: "位于其中",
+      knows_of: "认识",
     },
   },
 };

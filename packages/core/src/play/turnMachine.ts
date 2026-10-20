@@ -46,7 +46,6 @@ export type PendingTurn = {
   narrative: string;
   options: TurnOption[];
   buildingWorld: boolean;
-  waitingState: boolean;
 };
 
 export type Submission = {
@@ -123,7 +122,6 @@ function pendingFrom(turn: Turn): PendingTurn {
     narrative: turn.status === "generating" ? "" : turn.narrative,
     options: [],
     buildingWorld: false,
-    waitingState: false,
   };
 }
 
@@ -181,7 +179,6 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
           narrative: "",
           options: [],
           buildingWorld: false,
-          waitingState: false,
         },
       };
     case "submitted":
@@ -240,12 +237,10 @@ function onStream(state: PlayState, event: TurnEvent): PlayState {
       return { ...state, pending: { ...pending, buildingWorld: true } };
     case "world.ready":
       return { ...state, pending: { ...pending, buildingWorld: false } };
-    case "turn.waiting_state":
-      return { ...state, pending: { ...pending, waitingState: event.data.done !== true } };
     case "narrative.delta":
       return {
         ...state,
-        pending: { ...pending, narrative: pending.narrative + event.data.text, waitingState: false },
+        pending: { ...pending, narrative: pending.narrative + event.data.text },
       };
     case "narrative.done":
       return state;

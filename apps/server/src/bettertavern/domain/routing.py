@@ -1,7 +1,7 @@
 """模型路由：每个 agent 槽位（task）用哪个凭据的哪个模型，以及采样参数与工作窗口上限。
 
-解析顺序：本 playthrough 的覆盖 > 用户的该 task 路由 > 用户的 director 路由
-（未配置的 task 沿用导演）。
+解析顺序：后台的 task（世界状态 agent、定期整理）用玩家设为“用于后台”的模型，其余用导演的模型；
+没设后台模型时也用导演的模型。
 """
 
 from __future__ import annotations
@@ -23,6 +23,10 @@ class RouteTask(StrEnum):
     REPAIR = "repair"
 
 
+# 在后台跑、不挡玩家的 task：用“用于后台”的模型（docs/agent-runtime.md 第 4 节）
+BACKGROUND_TASKS = frozenset({RouteTask.STATE_KEEPER, RouteTask.COMPACTOR})
+
+
 DEFAULT_MAX_TOKENS: dict[RouteTask, int] = {
     RouteTask.DIRECTOR: 4096,
     RouteTask.STATE_KEEPER: 2048,
@@ -35,6 +39,7 @@ DEFAULT_MAX_TOKENS: dict[RouteTask, int] = {
 
 DEFAULT_TEMPERATURE: dict[RouteTask, float] = {
     RouteTask.DIRECTOR: 0.9,
+    RouteTask.STATE_KEEPER: 0.3,
     RouteTask.WORLD_BUILDER: 0.7,
     RouteTask.REPAIR: 0.7,
 }

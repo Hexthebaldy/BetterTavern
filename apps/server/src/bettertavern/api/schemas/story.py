@@ -131,7 +131,7 @@ class TurnOut(Out):
     narrative: str
     options: list[OptionOut]
     options_source: str | None
-    state_lag: bool
+    state_seq: int
     error: dict[str, Any] | None
     created_at: datetime
     replied_at: datetime | None
@@ -150,6 +150,7 @@ class PlaythroughOut(Out):
     head_excerpt: str
     active_turn_id: str | None
     rollback_floor_seq: int
+    state_seq: int
     seed_source: str | None
     created_at: datetime
     updated_at: datetime
@@ -205,8 +206,16 @@ class WorldFactOut(Out):
     secret: bool
 
 
+class WorldStateIssueOut(Out):
+    seq: int
+    kind: Literal["failed", "skipped"]
+    reason: str | None
+
+
 class WorldOut(Out):
     entities: list[WorldEntityOut]
     links: list[dict[str, str]]
     facts: list[WorldFactOut]
     hidden_facts: int
+    state_seq: int
+    state_issue: WorldStateIssueOut | None

@@ -1,0 +1,40 @@
+{
+  "errors": {
+    "unknown_entity": "找不到实体“{ref}”。先用 find_entity 查一下名字，或者用 e 开头的编号。",
+    "ambiguous_entity": "“{ref}”能对上好几个实体：{candidates}。请用编号。",
+    "retired_entity": "{name} 已经退场，不能再这样改它。",
+    "unknown_fact": "找不到事实“{ref}”，请用 f 开头的编号。",
+    "retracted_fact": "事实 {ref} 已经被推翻了。",
+    "bad_kind": "kind 只能是 character、item、location、organization，不能是“{kind}”。",
+    "empty_name": "名字不能为空。",
+    "name_taken": "已经有一个叫“{name}”的同类实体（{ref}），请直接用它。",
+    "too_many_new": "这一回合已经新建了 {limit} 个实体，不能再建了。不重要的人和物不用记。",
+    "canon_summary": "{name} 已经确定，不能改长期描述；变化请写进 details 或记成事实。",
+    "protected_entity": "{name} 是主角，不能退场。",
+    "retire_scene_location": "{name} 是当前场景的地点，先用 set_scene 换地点再让它退场。",
+    "move_protagonist": "主角换地方请用 set_scene。",
+    "cannot_move": "{name} 不是人物或物品，不能移动。",
+    "self_link": "{name} 不能和自己建立关系。",
+    "bad_destination": "{name} 不能到 {target} 那里：只能到地点，或者物品到人物手里。",
+    "use_move": "{rel} 请用 move 改。",
+    "bad_relation": "没有“{rel}”这种关系，能用的是：{allowed}。",
+    "bad_link_kinds": "{src} 和 {dst} 之间不能建立 {rel} 关系，类型对不上。",
+    "unknown_link": "{src} 和 {dst} 之间没有 {rel} 关系。",
+    "empty_fact": "事实不能为空。",
+    "not_character": "{name} 不是人物。",
+    "self_replace": "事实 {ref} 不能被自己取代。",
+    "fact_public": "事实 {ref} 不是秘密，大家都知道。",
+    "not_location": "{name} 不是地点。",
+    "empty_clock": "时间不能为空。",
+    "empty_digest": "digest 不能为空：用一句话写这一回合发生了什么。",
+    "already_committed": "这一回合已经提交过了，不能再改。",
+    "bad_detail": "{key} 不能用在这类实体上，能用的是：{allowed}。",
+    "world_issues": "提交没有通过检查：{issues}。请改正后再调用 commit。"
+  },
+  "issues": {
+    "protagonist_count": "主角应该有且只有一个（现在是 {count} 个）",
+    "two_places": "{name} 同时在两处",
+    "present_retired": "已经退场的 {name} 还在场",
+    "scene_location": "当前场景的地点 {name} 无效"
+  }
+}

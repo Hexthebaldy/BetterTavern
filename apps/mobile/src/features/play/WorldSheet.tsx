@@ -16,12 +16,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { WorldView } from "@bettertavern/core/api/types";
+import { worldIssue, worldProgress } from "@bettertavern/core/play/worldStatus";
 import { pane } from "@bettertavern/design/layout";
 
 import {
   Dots,
   ErrorState,
   IconButton,
+  Notice,
   PanelSurfaces,
   Segmented,
   Sheet,
@@ -115,7 +117,9 @@ function WorldHeader({
           <Text accessibilityRole="header" style={[styles.title, { color: palette.ink }]}>
             {t("world.title")}
           </Text>
-          <Text style={{ fontSize: 12, lineHeight: 17, color: palette.mut }}>{t("world.subtitle")}</Text>
+          {view ? (
+            <Text style={{ fontSize: 12, lineHeight: 17, color: palette.mut }}>{worldProgress(view)}</Text>
+          ) : null}
         </View>
         <IconButton
           icon={docked ? "sidebar" : "close"}
@@ -153,6 +157,9 @@ function WorldBody({
   const names = useMemo(() => new Map((view?.entities ?? []).map((e) => [e.id, e.name])), [view]);
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: space.xxl }}>
+      {view && worldIssue(view) ? (
+        <Notice tone="warn" message={worldIssue(view)} style={styles.issue} />
+      ) : null}
       {view ? (
         tab === "entities" ? (
           <Entities view={view} names={names} panel={panel} />
@@ -240,6 +247,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, lineHeight: 32, fontWeight: "700" },
   tabs: { marginTop: 14, marginHorizontal: space.list },
   loading: { padding: space.xxl, alignItems: "center" },
+  issue: { marginTop: space.m, marginHorizontal: space.list },
   dock: {
     width: pane.world,
     marginRight: space.s,

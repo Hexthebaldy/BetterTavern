@@ -244,6 +244,7 @@
 | `head_excerpt` | string | 头部回合叙述的前 120 个字符，供列表显示。只有游玩列表和游玩详情会填，其他接口的响应里是空串 |
 | `active_turn_id` | string / null | 正在生成的回合 |
 | `rollback_floor_seq` | integer | 回退的下限，一直是 0；agent runtime 阶段 4 删掉（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
+| `state_seq` | integer | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态由后台整理，可能比头部回合落后几回合 |
 | `seed_source` | string / null | 开局设定的来源：`world_builder` / `minimal`；世界建好之前为 null |
 | `created_at` | string（时间） | 创建时间 |
 | `updated_at` | string（时间） | 最近更新时间（改名、开始生成、生成结束时更新） |
@@ -273,12 +274,12 @@
 | `playthrough_id` | string | 所属的游玩 |
 | `seq` | integer | 回合序号，0 是开场 |
 | `attempt` | integer | 同一个 `seq` 的第几次尝试，从 0 开始 |
-| `status` | string | `generating` / `replied` / `committed` / `failed` / `archived`。M1 里成功的回合直接是 `committed` |
+| `status` | string | `generating` / `replied`（叙述和选项已保存，世界状态还没整理）/ `committed`（世界状态已整理，或者整理失败两次后跳过了；结局那一轮保存时直接是它）/ `failed` / `archived`。客户端把 `replied` 和 `committed` 都当成已完成 |
 | `action` | object | 服务端解析后的玩家行动 `{"source", "text", "option_id"}`：`text` 由服务端确定（点选项时是选项的文字），`option_id` 只在点选项时有；开场是 `{"source": "opening", "text": ""}`；写结局是 `{"source": "ending", "text": "结局方向，没填时是空串"}` |
 | `narrative` | string | 叙述。生成中是空串，增量要从事件流里拿；失败时可能是半截草稿（此时 `error.partial` 为真） |
 | `options` | array of [`OptionOut`](#optionout) | 两个选项；生成中、失败时和结局那一轮为空数组 |
 | `options_source` | string / null | 选项的来源：`model`（模型给的）/ `repaired`（另调小模型补的）/ `fallback`（固定的兜底选项）；完成前和结局那一轮为 null |
-| `state_lag` | boolean | 生成时上一轮的状态还没提交（屏障超时）；M1 一直是 false。agent runtime 阶段 2 改为记下这一回合的状态块截至第几回合 |
+| `state_seq` | integer | 写这一回合时，状态块截至第几回合（-1 表示开局时的样子）。下一回合不等世界状态整理完，所以它可能比 `seq - 1` 小 |
 | `error` | object / null | 失败原因 `{"code", "message", "retryable", "partial"}`，`code` 见 [README.md 的“回合失败码”](README.md#回合失败码) |
 | `created_at` | string（时间） | 提交时间 |
 | `replied_at` | string（时间）/ null | 叙述和选项保存的时间 |
@@ -308,9 +309,19 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `entities` | array of [`WorldEntityOut`](#worldentityout) | 没有退场的实体，按类型、最近一次出现的回合（从近到远）、首次出现的回合、名字排序 |
-| `links` | array of object | 实体之间的关系 `{"src_id", "rel", "dst_id"}`。`rel` 是 `located_in`（在某个地点）/ `held_by`（在某人手里）/ `member_of`（属于某个组织） |
+| `links` | array of object | 实体之间的关系 `{"src_id", "rel", "dst_id"}`。`rel` 是 `located_in`（在某个地点）/ `held_by`（在某人手里）/ `member_of`（属于某个组织）/ `part_of`（地点属于更大的地点）/ `knows_of`（人物认识或知道某个实体） |
 | `facts` | array of [`WorldFactOut`](#worldfactout) | 有效的事实，按建立于第几回合从近到远排序 |
 | `hidden_facts` | integer | 被隐藏的秘密事实的数量；`reveal=true` 时为 0 |
+| `state_seq` | integer | 世界状态已整理到第几回合，同 [`PlaythroughOut`](#playthroughout) 的 `state_seq`。客户端显示“截至第几回合” |
+| `state_issue` | [`WorldStateIssueOut`](#worldstateissueout) / null | 整理世界状态时遇到的问题；没有问题时为 null |
+
+### `WorldStateIssueOut`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `seq` | integer | 出问题的回合 |
+| `kind` | string | `failed`：这一回合整理失败了，下一回合的整理会再试一次；`skipped`：失败两次，这一回合跳过了，里面的变化可能没记下来。有正在失败的回合时给 `failed`，否则给最近一次被跳过的回合 |
+| `reason` | string / null | 最近一次失败的原因（英文代码，例如 `timeout`、`rate_limit`、`tools_unsupported`、`no_commit`），客户端按它翻译 |
 
 ### `WorldEntityOut`
 

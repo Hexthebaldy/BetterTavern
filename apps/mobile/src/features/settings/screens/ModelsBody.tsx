@@ -67,6 +67,7 @@ function ModelRow({ route, onPress }: { route: ModelRoute; onPress: () => void }
           <Status kind={statusKind(route.status)} label={modelStatusLabel(route.status)} />
         </View>
       </View>
+      {route.is_background ? <Pill label={t("models.backgroundPill")} height={26} /> : null}
       {route.is_director ? (
         <Pill label={t("models.directorPill")} tone="acc" height={26} />
       ) : (

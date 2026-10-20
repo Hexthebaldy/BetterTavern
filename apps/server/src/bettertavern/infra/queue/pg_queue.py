@@ -40,12 +40,21 @@ class PgJobQueue:
         *,
         delay: float = 0.0,
         max_attempts: int = 5,
+        unique_pending: bool = False,
     ) -> int:
         """在调用方的事务里入队并发出 NOTIFY。
 
         先拿该键的事务级咨询锁（见 sql.py 的说明），所以同一个键的入队会排队到前一个事务提交。
+        unique_pending 为真时，这个键上已经有同类、还没开始的任务就不再入队，返回已有任务的 id。
         """
         await conn.execute(text(sql.ENQUEUE_LOCK), {"ordering_key": ordering_key})
+        if unique_pending:
+            existing = await conn.execute(
+                text(sql.FIND_PENDING), {"kind": kind, "ordering_key": ordering_key}
+            )
+            found = existing.scalar_one_or_none()
+            if found is not None:
+                return int(found)
         result = await conn.execute(
             text(sql.ENQUEUE),
             {

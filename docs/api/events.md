@@ -38,11 +38,10 @@ data: {"text": "雨还在下。"}
 | `turn.created` | `{"turn_id", "seq", "attempt"}` | 第一个事件 |
 | `world.building` | `{}` | 只在开场回合、世界还没建好时出现：开始搭建世界 |
 | `world.ready` | `{"source", "entities"}` | 世界建好了。`source` 是 `world_builder`（模型生成）或 `minimal`（模型失败，只用了卡片原文）；`entities` 是实体数量 |
-| `turn.waiting_state` | 先是 `{"waited_ms": 0}`，等待结束时是 `{"waited_ms", "done": true, "lag"}` | 在等上一轮的状态提交（屏障，最多 8 秒）。`lag` 为真表示等待超时，继续生成。M1 不会出现这个事件；agent runtime 阶段 2 去掉屏障后不再发出（[agent-runtime.md](../agent-runtime.md) 第 3 节） |
 | `narrative.delta` | `{"text"}` | 叙述的增量，按顺序拼接。服务端大约每 40 毫秒合并发送一批 |
 | `narrative.done` | `{"chars"}`，有时还有 `"rewritten"` | 叙述结束。`rewritten` 为真表示服务端在收尾时改写了叙述（例如模型把选项写进了叙述里），这时要以 `turn.completed` 里的 `narrative` 为准 |
 | `options.ready` | `{"options": [{"id", "text"}], "source"}` | 选项已经保存。`source` 是 `model` / `repaired` / `fallback`；结局那一轮 `options` 是空数组、`source` 是 null |
-| `turn.completed` | `{"turn", "usage"}` | 终止事件。`turn` 含 `id`、`seq`、`attempt`、`status`、`narrative`、`options`、`options_source`、`state_lag`；`usage` 是 `{"prompt", "completion", "cached", "reasoning"}`，服务商没给用量时为 null，快照模式下总是 null |
+| `turn.completed` | `{"turn", "usage"}` | 终止事件。`turn` 含 `id`、`seq`、`attempt`、`status`、`narrative`、`options`、`options_source`、`state_seq`，含义同 [`TurnOut`](play.md#turnout)（`status` 是 `replied`，结局那一轮是 `committed`）；`usage` 是 `{"prompt", "completion", "cached", "reasoning"}`，服务商没给用量时为 null，快照模式下总是 null |
 | `turn.failed` | `{"code", "message", "retryable", "partial", "reason"}` | 终止事件。`code` 见 [README.md 的“回合失败码”](README.md#回合失败码)；`message` 是英文说明；`reason` 是服务商错误的类别（`auth`、`billing`、`rate_limit`、`overloaded` 等），不是服务商错误时为 null。客户端按 `code` 和 `reason` 显示界面语言的文字（[i18n.md](../i18n.md) 第 3 节）；`partial` 为真表示已生成的部分叙述保存成了草稿 |
 | `snapshot` | `{"narrative", "options", "source"}` | 只在快照模式下出现（见下文）：用它**替换**已经拼出来的叙述，不要追加。失败回合和结局那一轮的 `options` 为空数组、`source` 为 null |
 

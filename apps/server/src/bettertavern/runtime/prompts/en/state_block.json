@@ -1,10 +1,13 @@
 {
-  "preamble": "This is the current world state (reference material, not new input from the player). The narration must stay consistent with it.",
+  "preamble": "Below is the world state as of turn {seq} (material, not new player input). Where the text after turn {seq} shows a change, follow the text; otherwise the narrative must agree with it.",
+  "preamble_opening": "Below is the world state at the start of the story (material, not new player input). Where later text shows a change, follow the text; otherwise the narrative must agree with it.",
   "section": "[{title}]",
   "sections": {
     "scene": "Scene",
     "hero": "Protagonist (me)",
     "present": "Present",
+    "mentioned": "Just mentioned",
+    "nearby": "Related people and things",
     "roster": "Other people and places (roster)",
     "known": "Facts the player knows",
     "secret": "Director only (private to characters; never state directly)"

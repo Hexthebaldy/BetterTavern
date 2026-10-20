@@ -29,16 +29,15 @@ from bettertavern.api.v1.routes import router as routes_router
 from bettertavern.api.v1.scenarios import CARD_PATH_PATTERN, MAX_CARD_BODY_BYTES
 from bettertavern.api.v1.scenarios import router as scenarios_router
 from bettertavern.importers.character_card import MAX_UPLOAD_BYTES
-from bettertavern.infra.crypto.keyring import load_secrets
 from bettertavern.infra.db.engine import create_engine
-from bettertavern.providers import EndpointPolicy, ProviderHub
-from bettertavern.providers.limiter import CredentialLimiter, LimiterConfig
+from bettertavern.providers import ProviderHub
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.services.container import Services, build_services
 from bettertavern.services.probe_service import ProbeService
 from bettertavern.settings import Settings
 
+from .bootstrap import app_secrets, endpoint_policy, provider_hub
 from .logging_setup import setup_logging
 
 log = structlog.get_logger(__name__)
@@ -64,22 +63,9 @@ def build_app_services(
     engine: AsyncEngine | None = None,
     hub: ProviderHub | None = None,
 ) -> Services:
-    secrets = load_secrets(
-        master_keys=settings.master_keys.get_secret_value() if settings.master_keys else None,
-        auth_secret=settings.auth_secret.get_secret_value() if settings.auth_secret else None,
-        allow_dev_fallback=not settings.is_prod,
-        data_dir=settings.data_dir,
-    )
-    if secrets.generated_dev_file is not None:
-        # 开发环境用自动生成的密钥；生产环境必须配置
-        log.warning("secrets.dev_generated", file=str(secrets.generated_dev_file))
-    policy = EndpointPolicy(allow_private=settings.allow_private_endpoints)
-    hub = hub or ProviderHub(
-        policy=policy,
-        proxy=settings.outbound_proxy,
-        limiter=CredentialLimiter(LimiterConfig(capacity=settings.credential_concurrency)),
-        user_agent=f"BetterTavern/{__version__}",
-    )
+    secrets = app_secrets(settings)
+    policy = endpoint_policy(settings)
+    hub = hub or provider_hub(settings, policy)
     return build_services(
         engine=engine or create_engine(settings.database_url),
         secrets=secrets,
@@ -91,7 +77,6 @@ def build_app_services(
         runner_config=RunnerConfig(
             lease_ttl_s=settings.turn_lease_s,
             lease_renew_s=settings.turn_lease_renew_s,
-            barrier_timeout_s=settings.state_barrier_timeout_s,
             world_builder_timeout_s=settings.world_builder_timeout_s,
             options_repair_timeout_s=settings.options_repair_timeout_s,
             director_timeout_s=settings.director_timeout_s,

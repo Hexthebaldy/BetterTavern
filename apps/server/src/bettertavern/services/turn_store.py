@@ -1,13 +1,11 @@
 """TurnStore 的 Postgres 实现：runtime 的热路径通过它读写数据库。
 
 所有提交先对 playthroughs 做带条件的 UPDATE（租约与 timeline_epoch 围栏），成功后才写其他表。
+普通回合存为 replied，同一个事务里放一个整理世界状态的任务；下一回合不等它整理完。
 """
 
 from __future__ import annotations
 
-import asyncio
-import time
-from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
@@ -19,10 +17,9 @@ from bettertavern.domain.world.plan import plan_world
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import EntityView, FactView, LinkView, WorldSnapshot
 from bettertavern.infra.db.repositories import library as library_repo
-from bettertavern.infra.db.repositories import runs as runs_repo
 from bettertavern.infra.db.repositories import story as story_repo
 from bettertavern.infra.db.repositories import world as world_repo
-from bettertavern.runtime.agent import AgentStep
+from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.runtime.ports import (
     AgentRunRecord,
     HistoryTurn,
@@ -34,49 +31,19 @@ from bettertavern.runtime.ports import (
     WorldBuildInput,
 )
 
-
-def run_insert(header: TurnHeader, run: AgentRunRecord) -> runs_repo.AgentRunInsert:
-    usage = run.usage
-    return runs_repo.AgentRunInsert(
-        user_id=header.user_id,
-        playthrough_id=header.playthrough_id,
-        turn_id=header.turn_id,
-        agent=run.agent,
-        task=run.task,
-        status=run.status,
-        provider=run.provider,
-        model=run.model,
-        prompt_hash=run.prompt_hash,
-        input_tokens=usage.prompt if usage else None,
-        cached_tokens=usage.cached if usage else None,
-        output_tokens=usage.completion if usage else None,
-        reasoning_tokens=usage.reasoning if usage else None,
-        ttft_ms=run.ttft_ms,
-        latency_ms=run.latency_ms,
-        error_class=run.error_class,
-        result=dict(run.result),
-    )
-
-
-def step_insert(step: AgentStep) -> runs_repo.AgentStepInsert:
-    usage = step.usage
-    return runs_repo.AgentStepInsert(
-        kind=step.kind,
-        tool=step.tool,
-        args=dict(step.args),
-        result=dict(step.result),
-        latency_ms=step.latency_ms,
-        input_tokens=usage.prompt if usage else None,
-        cached_tokens=usage.cached if usage else None,
-        output_tokens=usage.completion if usage else None,
-    )
+from .run_records import insert_run as insert_run_record
+from .state_jobs import enqueue_state
 
 
 async def insert_run(conn: AsyncConnection, header: TurnHeader, run: AgentRunRecord) -> str:
     """写一行 agent_runs，连同它的每一步（agent_steps）。返回这次运行的 id。"""
-    run_id = await runs_repo.insert_agent_run(conn, run_insert(header, run))
-    await runs_repo.insert_agent_steps(conn, run_id, [step_insert(s) for s in run.steps])
-    return run_id
+    return await insert_run_record(
+        conn,
+        run,
+        user_id=header.user_id,
+        playthrough_id=header.playthrough_id,
+        turn_id=header.turn_id,
+    )
 
 
 async def load_world(conn: AsyncConnection, playthrough_id: str) -> WorldSnapshot:
@@ -163,16 +130,9 @@ class _Stale(Exception):
 
 
 class PgTurnStore:
-    def __init__(
-        self,
-        engine: AsyncEngine,
-        *,
-        poll_interval: float = 0.2,
-        clock: Callable[[], float] = time.monotonic,
-    ) -> None:
+    def __init__(self, engine: AsyncEngine, queue: PgJobQueue | None = None) -> None:
         self._engine = engine
-        self._poll = poll_interval
-        self._clock = clock
+        self._queue = queue or PgJobQueue(engine)
 
     async def load_header(self, turn_id: str) -> TurnHeader | None:
         async with self._engine.connect() as conn:
@@ -220,29 +180,8 @@ class PgTurnStore:
                 for t in history
             ),
             world=world,
+            state_seq=pt.state_seq,
         )
-
-    async def _parent_status(self, header: TurnHeader) -> str | None:
-        async with self._engine.connect() as conn:
-            turn = await story_repo.get_turn(conn, header.turn_id)
-            if turn is None or turn.parent_turn_id is None:
-                return TurnStatus.COMMITTED.value
-            parent = await story_repo.get_turn(conn, turn.parent_turn_id)
-        return parent.status if parent is not None else TurnStatus.COMMITTED.value
-
-    async def wait_parent_committed(self, header: TurnHeader, timeout: float) -> bool:
-        deadline = self._clock() + timeout
-        delay = self._poll
-        while True:
-            status = await self._parent_status(header)
-            # 父回合被归档（发生了回退）也放行：这一轮的提交会被围栏挡住
-            if status in (TurnStatus.COMMITTED.value, TurnStatus.ARCHIVED.value, None):
-                return True
-            remaining = deadline - self._clock()
-            if remaining <= 0:
-                return False
-            await asyncio.sleep(min(delay, remaining))
-            delay = min(delay * 1.5, 1.0)
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:
         async with self._engine.begin() as conn:
@@ -279,21 +218,23 @@ class PgTurnStore:
                 "cached": outcome.usage.cached,
                 "reasoning": outcome.usage.reasoning,
             }
+        # 结局之后不再整理世界状态，直接 committed；其余存为 replied，等世界状态 agent 整理
+        status = TurnStatus.COMMITTED if outcome.ends_story else TurnStatus.REPLIED
         updated = await story_repo.complete_turn(
             conn,
             header.turn_id,
-            # M1 没有 state 车道：直接 committed。
-            # M2 接入 StateKeeper 后改为 replied，并在同一事务里入队 post_turn
-            status=TurnStatus.COMMITTED.value,
+            status=status.value,
             narrative=outcome.narrative,
             options=[o.to_json() for o in outcome.options],
             options_source=outcome.options_source,
             usage=usage,
-            state_lag=outcome.state_lag,
+            state_seq=outcome.state_seq,
             director_run_id=director_run_id,
         )
         if not updated:
             raise _Stale
+        if status is TurnStatus.REPLIED:
+            await enqueue_state(conn, self._queue, header.playthrough_id)
         await story_repo.notify_turn(conn, header.turn_id)
 
     async def fail_turn(self, header: TurnHeader, failure: TurnFailure) -> bool:

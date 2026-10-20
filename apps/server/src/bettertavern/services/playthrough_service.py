@@ -11,6 +11,7 @@ from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.story.language import DEFAULT_LANGUAGE, parse_language
 from bettertavern.domain.world.names import clean_display_name
 from bettertavern.infra.db.repositories import library as library_repo
+from bettertavern.infra.db.repositories import state as state_repo
 from bettertavern.infra.db.repositories import story as repo
 from bettertavern.infra.db.sqlutil import as_str, is_uuid
 from bettertavern.runtime.ports import Preferences
@@ -53,11 +54,20 @@ class WorldFactView:
 
 
 @dataclass(frozen=True, slots=True)
+class WorldStateIssueView:
+    seq: int
+    kind: str  # failed：这一回合整理失败，下一回合会再试；skipped：失败两次后跳过了
+    reason: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class WorldView:
     entities: list[WorldEntityView]
     links: list[dict[str, str]]
     facts: list[WorldFactView]
     hidden_facts: int
+    state_seq: int  # 世界状态已整理到第几回合，-1 表示还是开局时的样子
+    state_issue: WorldStateIssueView | None
 
 
 class PlaythroughService:
@@ -191,6 +201,7 @@ class PlaythroughService:
         pt = await self._row(user_id, playthrough_id)
         async with self._engine.connect() as conn:
             snapshot = await load_world(conn, pt.id)
+            issue = await state_repo.state_issue(conn, pt.id, state_seq=pt.state_seq)
         hero = snapshot.protagonist
         hero_id = hero.id if hero else ""
         visible = [
@@ -222,4 +233,8 @@ class PlaythroughService:
                 for f in visible
             ],
             hidden_facts=len(snapshot.facts) - len(visible),
+            state_seq=pt.state_seq,
+            state_issue=None
+            if issue is None
+            else WorldStateIssueView(seq=issue.seq, kind=issue.kind, reason=issue.reason),
         )

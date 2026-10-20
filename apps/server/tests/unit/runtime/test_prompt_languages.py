@@ -78,12 +78,16 @@ def test_state_block_follows_the_language() -> None:
     assert "【在场人物】" in zh and "【" not in en
     assert "[Present]\n- 老周" in en and "attitude toward me: 警惕" in en
     assert "北境商会 (group)" in en
-    assert en.startswith("<world-state>\nThis is the current world state")
+    assert en.startswith("<world-state>\nBelow is the world state at the start of the story")
+    later = render_state_block(WORLD, PromptLibrary("en"), state_seq=4)
+    assert later.startswith("<world-state>\nBelow is the world state as of turn 4 ")
 
 
 def test_state_block_in_japanese() -> None:
     ja = render_state_block(WORLD, PromptLibrary("ja"))
-    assert ja.startswith("<world-state>\n以下は現在の世界の状態です")
+    assert ja.startswith("<world-state>\n以下は物語開始時点の世界の状態です")
+    later = render_state_block(WORLD, PromptLibrary("ja"), state_seq=4)
+    assert later.startswith("<world-state>\n以下は第 4 ターン時点の世界の状態です")
     assert "【その場にいる人物】\n- 老周" in ja and "主人公への態度：警惕" in ja
     assert "北境商会（組織）" in ja
     # 秘密那一节的标题和系统提示词里说的“監督のみ閲覧可”是同一个说法

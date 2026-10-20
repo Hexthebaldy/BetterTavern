@@ -34,15 +34,13 @@ function LiveStatus({ state }: { state: PlayState }) {
         ? t("play.polling")
         : state.phase === "submitting"
           ? t("play.sending")
-          : pending?.waitingState
-            ? t("play.waitingState")
-            : pending?.narrative === ""
-              ? t("play.thinking")
-              : source === "opening"
-                ? t("play.writingOpening")
-                : source === "ending"
-                  ? t("play.writingEnding")
-                  : t("play.writingNext");
+          : pending?.narrative === ""
+            ? t("play.thinking")
+            : source === "opening"
+              ? t("play.writingOpening")
+              : source === "ending"
+                ? t("play.writingEnding")
+                : t("play.writingNext");
   return (
     <div className={cx(styles.status, warn && styles.statusWarn)} aria-live="polite">
       <span className={styles.liveDot} />

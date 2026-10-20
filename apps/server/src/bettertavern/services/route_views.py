@@ -52,6 +52,9 @@ class RouteView:
     last_ok_at: datetime | None
     last_probe: dict[str, Any] | None
     is_director: bool
+    is_background: bool
+    # 能不能调用工具：不能的模型不能用于后台整理（世界状态 agent 靠工具改世界状态）
+    supports_tools: bool
     shares_key_with: list[str]
     window: WindowInfo
     created_at: datetime
@@ -97,6 +100,8 @@ def _view(codec: RouteCodec, row: RouteRow, shares_key_with: list[str]) -> Route
         last_ok_at=row.last_ok_at,
         last_probe=report if isinstance(report, dict) else None,
         is_director=row.is_director,
+        is_background=row.is_background,
+        supports_tools=codec.caps(row).tools,
         shares_key_with=shares_key_with,
         window=WindowInfo(
             model_window=check.model_window,

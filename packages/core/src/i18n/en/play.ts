@@ -26,7 +26,6 @@ export const play: Messages<typeof source> = {
     reconnecting: "Connection lost. Reconnecting…",
     polling: "The network is unstable. Waiting for the result…",
     sending: "Sending…",
-    waitingState: "The world is still updating…",
     thinking: "Thinking…",
     writingOpening: "Writing the opening",
     writingEnding: "Writing the ending",
@@ -78,7 +77,20 @@ export const play: Messages<typeof source> = {
   },
   world: {
     title: "World",
-    subtitle: "Everything the director keeps track of · set up at the start",
+    asOf: "As of turn {{seq}}",
+    asOfOpening: "As at the start of the story",
+    issueFailed:
+      "The world state for turn {{seq}} couldn't be updated: {{reason}}. It will be tried again after the next turn.",
+    issueSkipped:
+      "Updating the world state for turn {{seq}} failed twice, so it was skipped: {{reason}}. Changes from that turn may be missing.",
+    issueReason: {
+      tools_unsupported: "the background model can't call tools; pick another background model in Settings",
+      no_commit: "the background model didn't finish the update as asked",
+      route_missing: "no model is available",
+      write_conflict: "the update conflicted with existing records",
+      timeout: "the update took too long",
+      unknown: "unknown reason",
+    },
     loadFailed: "The world state didn't load",
     loadFailedWith: "The world state didn't load: {{error}}",
     tabs: {
@@ -97,6 +109,7 @@ export const play: Messages<typeof source> = {
       attitude: "Attitude",
       speech_style: "Way of speaking",
       stance: "Stance",
+      condition: "condition",
     },
     me: "Me",
     all: "All",
@@ -118,6 +131,8 @@ export const play: Messages<typeof source> = {
       located_in: "in",
       held_by: "held by",
       member_of: "member of",
+      part_of: "part of",
+      knows_of: "knows",
     },
   },
 };

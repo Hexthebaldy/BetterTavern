@@ -23,6 +23,13 @@ VALUES (:kind, :ordering_key, CAST(:payload AS jsonb),
 RETURNING id
 """
 
+# 同一个键上已经有一个同类、还没开始的任务时，不再入队（调用方要求时）
+FIND_PENDING = """
+SELECT id FROM jobs
+WHERE kind = :kind AND ordering_key = :ordering_key AND status = 'pending'
+ORDER BY id LIMIT 1
+"""
+
 NOTIFY = "SELECT pg_notify(:channel, :kind)"
 
 _CLAIM_TEMPLATE = """

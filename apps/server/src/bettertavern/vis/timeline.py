@@ -204,13 +204,6 @@ def build_timeline(entries: list[Entry], *, running: bool = False) -> Timeline:
                 )
             )
             steps_end = e.t
-        elif event == "turn.barrier_waited":
-            status = "warn" if e.get("lag") else "ok"
-            spans.append(
-                Span(
-                    "steps", "barrier", _before(e), e.t, status, _pick(e, "lag", "duration_ms"), e.n
-                )
-            )
         elif event == "context.assembled":
             markers.append(
                 Marker(

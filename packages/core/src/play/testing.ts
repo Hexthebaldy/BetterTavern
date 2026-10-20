@@ -26,7 +26,7 @@ export function makeTurn(seq: number, overrides: Partial<Turn> = {}): Turn {
     narrative: `第${seq}段。`,
     options: opts(seq),
     options_source: "model",
-    state_lag: false,
+    state_seq: -1,
     error: null,
     created_at: "2026-10-14T00:00:00Z",
     replied_at: "2026-10-14T00:00:01Z",
