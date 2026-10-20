@@ -58,7 +58,7 @@
 | `user_action` | jsonb | 否 |  | 服务端解析后的玩家行动，结构见下文“JSON 列” |
 | `narrative` | text | 否 | `''` | 导演写的叙述；失败时可能是半截草稿 |
 | `options` | jsonb | 否 | `'[]'` | 两个选项，结构见下文“JSON 列” |
-| `options_source` | text | 是 |  | 选项的来源：`model` 是模型给的（包括解析器修补过的）；`repaired` 是另调小模型补的；`fallback` 表示补救失败，缺的选项用固定的兜底文案补上（模型给出的有效选项会保留）。生成完成前为空 |
+| `options_source` | text | 是 |  | 选项的来源：`model` 是模型给的（包括解析器修补过的）；`repaired` 是另调小模型补的；`missing` 表示补了两次也没补齐，`options` 不足两个（导演给出的有效选项会保留），玩家自己写下一步；`fallback` 只出现在迁移 `0013` 之前的回合，当时缺的选项用固定的兜底文案补上。生成完成前为空 |
 | `director_run_id` | uuid | 是 |  | 无外键，指向 `agent_runs.id` |
 | `state_seq` | integer | 否 | `-1` | 写这一回合时，状态块截至第几回合（当时的 `playthroughs.state_seq`）。下一回合不等世界状态整理，所以它可能比 `seq - 1` 小 |
 | `usage` | jsonb | 是 |  | 导演调用的 token 用量，结构见下文“JSON 列”；服务商没给用量时为空 |
@@ -71,7 +71,7 @@
 约束与索引：
 - `turns_chain_seq_uq (playthrough_id, seq) WHERE status NOT IN ('failed', 'archived')`：保证活跃链上每个 `seq` 只有一个回合。失败的尝试和被回退的回合不受这个约束，所以重试时可以在同一个 `seq` 上插入 `attempt + 1`。
 - `turns_pt_seq_idx (playthrough_id, seq, created_at)`：历史分页、查最近一次失败时用。
-- `status`、`options_source` 的 CHECK；`seq >= 0`；`state_seq >= -1`。
+- `status`、`options_source` 的 CHECK（`turns_options_source_check`，迁移 `0013` 加了 `missing`）；`seq >= 0`；`state_seq >= -1`。
 
 ### `idempotency_keys`
 

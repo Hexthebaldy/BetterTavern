@@ -12,7 +12,8 @@ export type Fields = Record<string, unknown>;
 export const str = (v: unknown): string => (v === null || v === undefined ? "" : String(v));
 export const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
-export const plus = (...parts: (string | false | null | undefined)[]): string => parts.filter(Boolean).join("，");
+export const plus = (...parts: (string | false | null | undefined)[]): string =>
+  parts.filter(Boolean).join("，");
 export const ms = (v: unknown): string | null => (num(v) === null ? null : duration(num(v)));
 
 // ---- 错误 ------------------------------------------------------------------------------
@@ -157,7 +158,8 @@ export const PARSE_STAGES: Record<string, string> = {
   ok: "直接合格",
   salvaged: "小修补后合格",
   repaired: "另调模型补了选项",
-  fallback: "用了兜底选项",
+  fallback: "用了兜底选项（早先的做法）",
+  missing: "选项没补齐，玩家自己写",
   ending: "结局，只要叙述",
   narrative_missing: "没写出叙述",
 };
@@ -171,7 +173,12 @@ export const WINDOW_SOURCES: Record<string, string> = {
   default: "32K 估计",
 };
 
-export const OPTION_SOURCES: Record<string, string> = { model: "模型", repaired: "补选项", fallback: "兜底文案" };
+export const OPTION_SOURCES: Record<string, string> = {
+  model: "模型",
+  repaired: "补选项",
+  fallback: "兜底文案（早先的做法）",
+  missing: "没补齐，玩家自己写",
+};
 
 export const SEVERITY_LABELS: Record<string, string> = { error: "出错", warn: "注意", info: "提示" };
 

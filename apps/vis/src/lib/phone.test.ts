@@ -41,7 +41,9 @@ describe("手机导出的诊断日志", () => {
   });
 
   it("和服务端的记录按时间合并", () => {
-    const phone = parsePhoneLog('{"ts":"2026-10-15T17:00:02.000+08:00","level":"info","event":"api.request"}').entries;
+    const phone = parsePhoneLog(
+      '{"ts":"2026-10-15T17:00:02.000+08:00","level":"info","event":"api.request"}',
+    ).entries;
     const server = [
       { n: 1, t: Date.parse("2026-10-15T17:00:01.000+08:00"), file: "api", event: "a", level: "info" },
       { n: 2, t: Date.parse("2026-10-15T17:00:03.000+08:00"), file: "api", event: "b", level: "info" },

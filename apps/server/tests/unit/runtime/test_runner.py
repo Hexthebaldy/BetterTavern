@@ -104,17 +104,25 @@ async def test_missing_options_go_through_repair() -> None:
     assert [s.result["text"] for s in repair.steps] == ['{"options": ["修一", "修二"]}']
 
 
-async def test_repair_failure_falls_back_to_default_options() -> None:
+async def test_repair_failing_twice_leaves_the_player_to_write() -> None:
     hub, adapters = scripted_hub("fake")
     adapters["fake"].streams.append(StreamScript(pieces("<narrative>\n只有叙述。\n</narrative>")))
-    adapters["fake"].completions.append(ProviderError(ErrorClass.SERVER_ERROR, "boom"))
+    adapters["fake"].completions.extend(
+        [
+            ProviderError(ErrorClass.SERVER_ERROR, "boom"),
+            ProviderError(ErrorClass.SERVER_ERROR, "boom again"),
+        ]
+    )
     store = FakeStore()
-    await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
-    assert store.committed[0].options_source == "fallback"
-    assert len(store.committed[0].options) == 2
-    repair = store.committed[0].runs[1]
-    assert repair.status == "failed" and repair.error_class == "ProviderError"
-    assert repair.steps[0].result["error"] == "server_error"
+    events = await run_turn(store, FakeRoutes({RouteTask.DIRECTOR: make_route()}), hub)
+    outcome = store.committed[0]
+    # 补了两次都失败：没有固定的默认选项，这一回合没有选项
+    assert outcome.options_source == "missing" and outcome.options == []
+    ready = next(data for name, data in events if name == "options.ready")
+    assert ready == {"options": [], "source": "missing"}
+    repairs = outcome.runs[1:]
+    assert [r.status for r in repairs] == ["failed", "failed"]
+    assert repairs[0].steps[0].result["error"] == "server_error"
 
 
 async def test_ending_keeps_only_the_narrative_and_ends_the_story() -> None:

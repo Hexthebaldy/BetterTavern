@@ -23,7 +23,10 @@ describe("格式化", () => {
   });
 
   it("路径里的长编号缩短", () => {
-    assert.equal(shortPath("/v1/turns/69932488-5e36-41a0-9b7e-f1d062753bf8/events"), "/v1/turns/69932488…/events");
+    assert.equal(
+      shortPath("/v1/turns/69932488-5e36-41a0-9b7e-f1d062753bf8/events"),
+      "/v1/turns/69932488…/events",
+    );
     assert.equal(shortPath("/v1/playthroughs"), "/v1/playthroughs");
   });
 

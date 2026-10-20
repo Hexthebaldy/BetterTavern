@@ -179,6 +179,8 @@ export function issueText(code: string, f: Fields): string {
       return "模型给的选项不完整，另调模型补了选项";
     case "parse_fallback":
       return "选项补救失败，用了兜底文案";
+    case "parse_missing":
+      return "模型没给选项，补了两次也没补齐，这一回合让玩家自己写";
     case "parse_salvaged":
       return "模型输出的格式有小问题，自动修补了";
     case "repair_failed":
@@ -190,7 +192,10 @@ export function issueText(code: string, f: Fields): string {
     case "low_cache":
       return `前缀缓存只命中了 ${percent(num(f.ratio))}，这一轮更慢也更贵`;
     case "world_minimal":
-      return plus("世界没让模型搭成，用了只含角色卡原文的最小设定", f.error_class ? errorClass(f.error_class) : null);
+      return plus(
+        "世界没让模型搭成，用了只含角色卡原文的最小设定",
+        f.error_class ? errorClass(f.error_class) : null,
+      );
     case "sse_dropped":
       return `手机的推送连接中途断了 ${str(f.count)} 次（之后续传了）`;
     case "sse_snapshot":

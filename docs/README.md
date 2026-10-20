@@ -9,7 +9,7 @@ BetterTavern 是一个服务端生成式互动小说应用：Python 后端运行
 | --- | --- |
 | [backend.md](backend.md) | 架构与选型、数据模型、世界状态、上下文与压缩、每轮管线、agent、回退、provider 层、API、后端目录、安全 |
 | [client.md](client.md) | React Native 技术栈、SSE 客户端、回合状态机、页面、客户端目录 |
-| [testing.md](testing.md) | 可观测性、测试分层、回放评估 |
+| [testing.md](testing.md) | 可观测性、测试分层、剧本试玩评估 |
 | [agent-runtime.md](agent-runtime.md) | agent runtime：几个 agent 的分工与工具、一回合怎么走、上下文怎么拼、长期记忆分层、写入与回退、分阶段计划；取代 backend.md 里后台管线、屏障、压缩、门控和回退的旧设计 |
 | [i18n.md](i18n.md) | 多语言：界面文字的资源与写法、语言设置、错误按错误码翻译、按这一局的语言选提示词 |
 | [development.md](development.md) | 开发者指南：当前进度、本地开发、测试、评测、仓库目录 |
@@ -124,8 +124,8 @@ M0 的出口标准决定是否进入 M1；可观测性与测试不等到最后�
 | --- | --- | --- | --- |
 | M0 探针 | RN 真机 SSE；provider 层对 DeepSeek 与 Hugging Face 跑通（流式、usage、错误分类）；导演协议在至少 3 个模型上的合规率；Postgres 车道队列原型 | RN 验收标准见[client.md 第 1 节](client.md)；200 回合里无需修复的合规率不低于 95%，含修复不低于 99.5%；给出 go / no-go | 1 到 2 周 |
 | M1 热路径 | 注册登录、凭据与探测、角色卡导入、WorldBuilder（最小 Seed）、回合流式与选项、幂等与租约、SSE 续传、RN 阅读主屏 | 两家厂商各完整玩 30 回合；断网续传用例通过 | 3 到 4 周（代码已完成，待真机验收；实现与设计的差异见 [backend.md 第 12 节](backend.md)、[client.md 第 3 节](client.md)） |
-| M2 runtime、世界状态与回退 | [agent-runtime.md](agent-runtime.md) 阶段 1、2：执行循环与工具、删除“重要程度”、世界状态 agent、后台模型设置、回退到任意回合、世界浏览与时间线界面 | 见 [agent-runtime.md](agent-runtime.md) 第 10 节；100 回合回放的一致性检查和回退一致性测试通过 | 3 到 4 周 |
-| M3 召回、记忆、大纲 | [agent-runtime.md](agent-runtime.md) 阶段 3 到 5：召回工具与导演隐藏备注、线索与伏笔、分层摘要与玩家画像、大纲修订、长剧本评测 | 300 回合回放：上下文长度稳定、长程问题的正确率达标；偏离剧本的评测出结果 | 3 到 4 周 |
+| M2 runtime、世界状态与回退 | [agent-runtime.md](agent-runtime.md) 阶段 1、2：执行循环与工具、删除“重要程度”、世界状态 agent、后台模型设置、回退到任意回合、世界浏览与时间线界面 | 见 [agent-runtime.md](agent-runtime.md) 第 10 节；100 回合剧本试玩的一致性检查和回退一致性测试通过 | 3 到 4 周 |
+| M3 召回、记忆、大纲 | [agent-runtime.md](agent-runtime.md) 阶段 3 到 5：召回工具与导演隐藏备注、线索与伏笔、分层摘要与玩家画像、大纲修订、长剧本评测 | 300 回合剧本试玩：上下文长度稳定、长程问题的正确率达标；偏离剧本的评测出结果 | 3 到 4 周 |
 | M4 加固与发布 | 安全审查、SSRF 测试、限流、可观测性、部署文档、性能测试、商店合规清单、内测 | 外部安全审查无高危；100 并发压测达标；自托管文档按步骤能跑通 | 2 到 3 周 |
 | 之后 | 更多厂商的专门适配（例如 Anthropic）、按意思检索（pgvector）、世界书导入器、RPG 模式、分支树界面、“纠正世界状态”界面 |  |  |
 

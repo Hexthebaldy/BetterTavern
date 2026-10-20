@@ -34,7 +34,11 @@ export const EVENTS: Record<string, EventInfo> = {
         ms(f.duration_ms) && `耗时 ${ms(f.duration_ms)}`,
       ),
   },
-  "http.error": { label: "服务端出错", category: "request", say: (f) => `处理 ${shortPath(str(f.path))} 时抛出了没处理的异常` },
+  "http.error": {
+    label: "服务端出错",
+    category: "request",
+    say: (f) => `处理 ${shortPath(str(f.path))} 时抛出了没处理的异常`,
+  },
   "auth.registered": { label: "注册成功", category: "account" },
   "auth.login": { label: "登录成功", category: "account" },
   "auth.login_failed": {
@@ -55,7 +59,11 @@ export const EVENTS: Record<string, EventInfo> = {
   },
   "auth.logout": { label: "退出登录", category: "account" },
   "account.deleted": { label: "删除账户", category: "account" },
-  "account.delete_rejected": { label: "删除账户被拒绝", category: "account", say: () => "删除账户时密码不对" },
+  "account.delete_rejected": {
+    label: "删除账户被拒绝",
+    category: "account",
+    say: () => "删除账户时密码不对",
+  },
   "route.created": {
     label: "添加模型",
     category: "route",
@@ -77,11 +85,16 @@ export const EVENTS: Record<string, EventInfo> = {
       ),
   },
   "route.deleted": { label: "删除模型", category: "route" },
-  "route.key_unreadable": { label: "Key 解不开", category: "route", say: () => "模型的 Key 无法解密，主密钥可能变了" },
+  "route.key_unreadable": {
+    label: "Key 解不开",
+    category: "route",
+    say: () => "模型的 Key 无法解密，主密钥可能变了",
+  },
   "route.probe": {
     label: "测试模型",
     category: "route",
-    say: (f) => plus(`测试 ${str(f.model)}：${f.ok ? "通过" : `没通过（${errorClass(f.fatal)}）`}`, ms(f.duration_ms)),
+    say: (f) =>
+      plus(`测试 ${str(f.model)}：${f.ok ? "通过" : `没通过（${errorClass(f.fatal)}）`}`, ms(f.duration_ms)),
   },
   "route.window_learned": {
     label: "纠正上下文窗口",
@@ -96,7 +109,8 @@ export const EVENTS: Record<string, EventInfo> = {
   "models.list_failed": {
     label: "拉取模型列表失败",
     category: "route",
-    say: (f) => plus(`拉取模型列表失败：${errorClass(f.error_class)}`, f.status ? `HTTP ${str(f.status)}` : null),
+    say: (f) =>
+      plus(`拉取模型列表失败：${errorClass(f.error_class)}`, f.status ? `HTTP ${str(f.status)}` : null),
   },
   "models.list_skipped": {
     label: "保存时没拉到模型列表",
@@ -116,7 +130,11 @@ export const EVENTS: Record<string, EventInfo> = {
           : null,
       ),
   },
-  "scenario.import_failed": { label: "导入失败", category: "import", say: (f) => `角色卡导入失败：${str(f.reason)}` },
+  "scenario.import_failed": {
+    label: "导入失败",
+    category: "import",
+    say: (f) => `角色卡导入失败：${str(f.reason)}`,
+  },
   "scenario.deleted": { label: "删除剧本", category: "import" },
   "turn.submitted": {
     label: "提交行动",
@@ -127,7 +145,11 @@ export const EVENTS: Record<string, EventInfo> = {
         num(f.text_chars) ? `${str(f.text_chars)} 字` : null,
       ),
   },
-  "turn.replayed": { label: "重复提交", category: "turn", say: () => "同一个幂等键又提交了一次，返回已有的回合" },
+  "turn.replayed": {
+    label: "重复提交",
+    category: "turn",
+    say: () => "同一个幂等键又提交了一次，返回已有的回合",
+  },
   "turn.started": { label: "开始生成", category: "turn" },
   "world.build.started": { label: "开始搭建世界", category: "turn" },
   "world.build.done": {
@@ -220,7 +242,11 @@ export const EVENTS: Record<string, EventInfo> = {
     category: "turn",
     say: (f) => plus(`另调模型补选项，拿到 ${str(f.produced)} 个`, ms(f.duration_ms)),
   },
-  "options.repair_failed": { label: "补选项失败", category: "turn", say: (f) => `补选项失败：${str(f.error_class)}` },
+  "options.repair_failed": {
+    label: "补选项失败",
+    category: "turn",
+    say: (f) => `补选项失败：${str(f.error_class)}`,
+  },
   "turn.committed": {
     label: "保存",
     category: "turn",
@@ -237,17 +263,23 @@ export const EVENTS: Record<string, EventInfo> = {
     say: (f) =>
       plus("结局写完，这个故事结束了", num(f.narrative_chars) ? `结局 ${str(f.narrative_chars)} 字` : null),
   },
-    "turn.commit_rejected": { label: "保存被拒绝", category: "turn", say: () => "保存时租约已经被收回，结果作废" },
+  "turn.commit_rejected": {
+    label: "保存被拒绝",
+    category: "turn",
+    say: () => "保存时租约已经被收回，结果作废",
+  },
   "turn.failed": {
     label: "回合失败",
     category: "turn",
-    say: (f) => plus(`回合失败：${errorCode(f.code)}`, f.cancel_reason ? `取消原因 ${str(f.cancel_reason)}` : null),
+    say: (f) =>
+      plus(`回合失败：${errorCode(f.code)}`, f.cancel_reason ? `取消原因 ${str(f.cancel_reason)}` : null),
   },
   "turn.crashed": { label: "回合崩溃", category: "turn", say: () => "执行回合时抛出了没处理的异常" },
   "agent.tool": {
     label: "用工具",
     category: "model",
-    say: (f) => plus(`用工具 ${str(f.tool)}`, f.error ? `出错：${stepError(f.error)}` : null, ms(f.duration_ms)),
+    say: (f) =>
+      plus(`用工具 ${str(f.tool)}`, f.error ? `出错：${stepError(f.error)}` : null, ms(f.duration_ms)),
   },
   "agent.tool_calls_ignored": {
     label: "工具调用被忽略",
@@ -269,7 +301,8 @@ export const EVENTS: Record<string, EventInfo> = {
   "state.failed": {
     label: "整理失败",
     category: "job",
-    say: (f) => `第 ${str(f.seq)} 回合的世界状态整理失败（第 ${str(f.failures)} 次）：${stepError(f.error_class)}`,
+    say: (f) =>
+      `第 ${str(f.seq)} 回合的世界状态整理失败（第 ${str(f.failures)} 次）：${stepError(f.error_class)}`,
   },
   "state.skipped": {
     label: "跳过整理",
@@ -281,7 +314,11 @@ export const EVENTS: Record<string, EventInfo> = {
     category: "job",
     say: (f) => `第 ${str(f.seq)} 回合整理完时进度已经变了（回退过或别处已整理），结果作废`,
   },
-  "state.write_conflict": { label: "整理写入冲突", category: "job", say: () => "写入世界状态时和库里已有的行冲突，算一次失败" },
+  "state.write_conflict": {
+    label: "整理写入冲突",
+    category: "job",
+    say: () => "写入世界状态时和库里已有的行冲突，算一次失败",
+  },
   "turn.cancel_requested": { label: "停止生成", category: "turn", say: () => "玩家点了停止" },
   "turn.lease_expired": { label: "租约过期", category: "turn", say: () => "生成进程没了，回合被标为失败" },
   "turn.lease_renew_failed": { label: "续租失败", category: "turn" },
@@ -297,7 +334,8 @@ export const EVENTS: Record<string, EventInfo> = {
   "sse.open": {
     label: "推送连接",
     category: "sse",
-    say: (f) => (num(f.resumed_from) ? `手机重新连上，从第 ${str(f.resumed_from)} 条之后续传` : "手机连上推送"),
+    say: (f) =>
+      num(f.resumed_from) ? `手机重新连上，从第 ${str(f.resumed_from)} 条之后续传` : "手机连上推送",
   },
   "sse.close": {
     label: "推送断开",
@@ -314,7 +352,8 @@ export const EVENTS: Record<string, EventInfo> = {
   "job.failed": {
     label: "任务失败",
     category: "job",
-    say: (f) => plus(`任务失败：${str(f.error_class)}`, f.will_retry ? `${str(f.retry_in_s)} 秒后重试` : "不再重试"),
+    say: (f) =>
+      plus(`任务失败：${str(f.error_class)}`, f.will_retry ? `${str(f.retry_in_s)} 秒后重试` : "不再重试"),
   },
   "job.released": { label: "任务归还", category: "job" },
   "job.lock_lost": { label: "任务锁丢失", category: "job" },
@@ -330,7 +369,11 @@ export const EVENTS: Record<string, EventInfo> = {
     say: (f) => plus(`服务启动`, f.version ? `版本 ${str(f.version)}` : null, str(f.env)),
   },
   "app.stopping": { label: "服务关闭", category: "app" },
-  "scheduler.task_failed": { label: "定时任务失败", category: "app", say: (f) => `定时任务 ${str(f.task)} 失败` },
+  "scheduler.task_failed": {
+    label: "定时任务失败",
+    category: "app",
+    say: (f) => `定时任务 ${str(f.task)} 失败`,
+  },
   "secrets.dev_generated": { label: "开发密钥", category: "app", say: () => "开发环境使用自动生成的密钥" },
   "queue.listen_failed": { label: "监听失败", category: "job" },
   "queue.listen_restored": { label: "监听恢复", category: "job" },
@@ -385,7 +428,11 @@ export const PHONE_EVENTS: Record<string, EventInfo> = {
     label: "推送出错",
     category: "sse",
     say: (f) =>
-      plus(`推送出错：${str(f.error)}`, f.status ? `HTTP ${str(f.status)}` : null, f.detail ? str(f.detail) : null),
+      plus(
+        `推送出错：${str(f.error)}`,
+        f.status ? `HTTP ${str(f.status)}` : null,
+        f.detail ? str(f.detail) : null,
+      ),
   },
   "sse.finished": {
     label: "推送结束",
@@ -406,8 +453,16 @@ export const PHONE_EVENTS: Record<string, EventInfo> = {
     category: "turn",
     say: (f) => plus(`回合状态：${str(f.from)} → ${str(f.to)}`, f.code ? errorCode(f.code) : null),
   },
-  "session.status": { label: "登录状态", category: "account", say: (f) => `登录状态：${str(f.from)} → ${str(f.to)}` },
-  "server.changed": { label: "换服务器", category: "app", say: (f) => `服务器从 ${str(f.from)} 换成 ${str(f.to)}` },
+  "session.status": {
+    label: "登录状态",
+    category: "account",
+    say: (f) => `登录状态：${str(f.from)} → ${str(f.to)}`,
+  },
+  "server.changed": {
+    label: "换服务器",
+    category: "app",
+    say: (f) => `服务器从 ${str(f.from)} 换成 ${str(f.to)}`,
+  },
   "modal.dismiss_timeout": {
     label: "浮层收回超时",
     category: "app",

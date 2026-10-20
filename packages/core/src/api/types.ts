@@ -196,7 +196,8 @@ export type Turn = {
   action: TurnAction;
   narrative: string;
   options: TurnOption[];
-  options_source: "model" | "repaired" | "fallback" | null;
+  /** missing：补选项两次都没补齐，选项不足 2 个，玩家自己写；fallback 只出现在早先的回合 */
+  options_source: "model" | "repaired" | "fallback" | "missing" | null;
   /** 写这一回合时，世界状态截至第几回合（-1 是开局时的样子） */
   state_seq: number;
   error: TurnError | null;

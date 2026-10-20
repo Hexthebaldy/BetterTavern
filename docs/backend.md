@@ -204,7 +204,7 @@ v1 不做世界书模块。以后的导入器 `importers/lorebook/` 把每个条
 
 导演上下文的顺序、各块的预算，以及记忆在什么时候、由谁整理，以 [agent-runtime.md](agent-runtime.md) 第 6、7 节为准：按“变得多慢”从前往后排，旧回合在场景结束时整块换成场景摘要，不再等占用率到 80% 才压缩。本节保留仍然有效的部分：有效窗口与窗口校验、紧急截断、回顾的包装和摘要的写法。
 
-装配器是纯函数：同样的输入产出逐字节相同的消息，模板渲染里不放时间戳、随机 ID，集合按固定顺序输出。DeepSeek 的 usage 直接返回 `prompt_cache_hit_tokens`（已核实），缓存命中要求前缀逐字节相同，所以布局稳定直接影响首 token 延迟；回放测试也依赖这一点。
+装配器是纯函数：同样的输入产出逐字节相同的消息，模板渲染里不放时间戳、随机 ID，集合按固定顺序输出。DeepSeek 的 usage 直接返回 `prompt_cache_hit_tokens`（已核实），缓存命中要求前缀逐字节相同，所以布局稳定直接影响首 token 延迟；重放测试也依赖这一点。
 
 ### 有效窗口与预算
 
@@ -337,7 +337,7 @@ v1 不做世界书模块。以后的导入器 `importers/lorebook/` 把每个条
 - 选项规范（写在规则块里）：恰好 2 项；在意图上互不重叠（例如一个直接推进，一个换个角度试探）；都是主角此刻能做的具体行动；每项不超过 30 字；不剧透后续情节；不替玩家做已经发生的决定。
 - 采样：默认 temperature 0.9 起步，由玩家在路由里调；参数是否生效由能力表决定（例如 DeepSeek 思考模式下 temperature 和惩罚项无效，不支持 temperature 的推理模型会被过滤掉这个字段）。
 - 增量解析器 `DirectorStreamParser`：状态机 `SEEK_NARRATIVE → IN_NARRATIVE → SEEK_OPTIONS → IN_OPTIONS → DONE`。标签可能被拆在两个 chunk 里，所以尾部保留 `len("</narrative>") - 1` 个字符暂不输出；标签之外的文字和 `<think>` 块直接丢弃；发送端把 delta 合并成至少 40 毫秒一批，减少小包。
-- 修复阶梯：① 叙述标签没有闭合但流正常结束，把整段当叙述；② 选项用正则从叙述之后的文本里提取（`^\s*[1-2][.、)）]\s*(.+)$`）；多于 2 个只取前 2 个；③ 少于 2 个选项就调用一次 OptionsRepair（小模型，非流式，限时 5 秒）；④ 仍然失败就用本地化的通用默认选项，`options.source = fallback`。叙述缺失则直接失败。
+- 修复阶梯：① 叙述标签没有闭合但流正常结束，把整段当叙述；② 选项用正则从叙述之后的文本里提取（`^\s*[1-2][.、)）]\s*(.+)$`）；多于 2 个只取前 2 个；③ 少于 2 个选项就调用 OptionsRepair（小模型，非流式，每次限时 5 秒），失败再试一次；④ 两次都没补齐就不补了：保留导演给出的有效选项（0 或 1 个），`options.source = missing`，客户端提示玩家自己写下一步。不用固定的默认选项。叙述缺失则直接失败。
 
 ### 结构化输出阶梯（`runtime/protocol/structured.py`）
 
@@ -663,7 +663,7 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 | `director.recalling` | tools | 导演正在用召回工具，客户端显示“正在回想……”（[agent-runtime.md](agent-runtime.md) 第 3 节）。屏障取消后不再发 `turn.waiting_state` |
 | `narrative.delta` | text | 叙述增量（UTF-8） |
 | `narrative.done` | chars | 叙述结束 |
-| `options.ready` | options\[{id, text}\]、source | source 为 model / repaired / fallback；已落库后才发 |
+| `options.ready` | options\[{id, text}\]、source | source 为 model / repaired / missing；已落库后才发 |
 | `turn.completed` | turn、usage | 终态 |
 | `turn.failed` | code、message、retryable、partial | 终态；partial 为真时 `turns.narrative` 里有半截草稿 |
 | `snapshot` | narrative、options、source | 只在断线续传时出现：缓冲已过期但回合已结束，一次给全，随后发 `turn.completed` |
@@ -827,7 +827,7 @@ apps/server/
 │   ├── contract/        # 各厂商的录制夹具（v1 是 DeepSeek 与 Hugging Face）
 │   ├── e2e/             # 整链路：创建、回合、压缩、回退、SSE 续传
 │   ├── fakes/           # 假 LLM 服务（可注入故障）、假时钟
-│   └── fixtures/        # 样例角色卡、录制的厂商响应、回放用的剧情
+│   └── fixtures/        # 样例角色卡、录制的厂商响应、剧本试玩用的剧本
 └── evals/
     ├── director_compliance.py  replay.py
     ├── datasets/

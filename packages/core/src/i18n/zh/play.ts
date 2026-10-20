@@ -55,6 +55,7 @@ export const play = {
     toolbar: "阅读操作",
     story: "故事",
     backToSaves: "返回存档列表",
+    noOptions: "这一段没有给出选项，在下面写下你接下来要做的事。",
     rollbackHere: "回到这里",
     rollbackPick: "回到更早的一段",
     rollbackPickTitle: "回到哪一段？",

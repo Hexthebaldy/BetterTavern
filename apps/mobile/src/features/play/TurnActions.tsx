@@ -18,6 +18,7 @@ import {
   canAct,
   canRetry,
   headTurn,
+  isEnded,
   needsOpening,
   type PlayState,
 } from "@bettertavern/core/play/turnMachine";
@@ -112,26 +113,31 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
             minHeight: GRID_OPTION_HEIGHT,
           }
         : null;
-    if (options.length === 0) return null;
-    content = (
-      <View style={twoColumns ? [styles.options, styles.grid] : styles.options}>
-        {options.map((option, i) => (
-          <OptionRow
-            key={option.id}
-            option={option}
-            index={i}
-            disabled={!enabled}
-            chosen={false}
-            dimmed={false}
-            onPress={() => {
-              onPicked();
-              controls.submit({ source: "option", option_id: option.id });
-            }}
-            style={optionStyle(i)}
-          />
-        ))}
-      </View>
-    );
+    // 没有选项：结局之后什么都不显示；否则是这一段的选项没补齐，提示玩家在下面自己写
+    if (options.length === 0) {
+      if (isEnded(state)) return null;
+      content = <Text style={[styles.noOptions, { color: palette.mut }]}>{t("play.noOptions")}</Text>;
+    } else {
+      content = (
+        <View style={twoColumns ? [styles.options, styles.grid] : styles.options}>
+          {options.map((option, i) => (
+            <OptionRow
+              key={option.id}
+              option={option}
+              index={i}
+              disabled={!enabled}
+              chosen={false}
+              dimmed={false}
+              onPress={() => {
+                onPicked();
+                controls.submit({ source: "option", option_id: option.id });
+              }}
+              style={optionStyle(i)}
+            />
+          ))}
+        </View>
+      );
+    }
   } else {
     return null;
   }
@@ -142,6 +148,7 @@ const styles = StyleSheet.create({
   /** 和书名页、开场步骤一样离屏幕 12，卡片里的字母键正好和正文左边对齐 */
   area: { marginHorizontal: space.list, marginTop: space.xs },
   options: { gap: 6 },
+  noOptions: { fontSize: 14, lineHeight: 22 },
   grid: { flexDirection: "row", flexWrap: "wrap" },
   column: { gap: space.s },
   failCard: {

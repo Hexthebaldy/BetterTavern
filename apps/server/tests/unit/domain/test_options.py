@@ -3,7 +3,6 @@ from __future__ import annotations
 from bettertavern.domain.story.options import (
     MAX_OPTION_CHARS,
     clean_option,
-    fallback_options,
     normalize_options,
 )
 
@@ -21,10 +20,3 @@ def test_normalize_dedupes_and_limits() -> None:
     raw = ["进去", "Go", "go", "进去", "离开"]
     assert normalize_options(raw) == ["进去", "Go", "离开"]
     assert normalize_options(raw, limit=2) == ["进去", "Go"]
-
-
-def test_fallback_options_default_to_chinese() -> None:
-    assert fallback_options("zh") == fallback_options("xx")
-    assert len(fallback_options("en")) == 2
-    japanese = fallback_options("ja")
-    assert len(japanese) == 2 and japanese != fallback_options("zh")

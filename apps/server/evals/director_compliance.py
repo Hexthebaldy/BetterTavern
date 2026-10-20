@@ -2,8 +2,8 @@
 
 在真实模型上连续跑 N 个回合（默认 200），统计：
 - 无需修复就合规的比例（解析阶段 ok）；
-- 含修复后合规的比例（ok + 解析器抢救 + OptionsRepair 补齐，不含默认选项和失败）；
-- 用了默认选项、失败的回合数；首 token 延迟；用量与缓存命中。
+- 含修复后合规的比例（ok + 解析器抢救 + OptionsRepair 补齐，不含没补齐和失败）；
+- 补了两次也没补齐选项、失败的回合数；首 token 延迟；用量与缓存命中。
 
 出口标准（docs/README.md 第 3 节）：200 回合里无需修复的合规率不低于 95%，含修复不低于 99.5%。
 
@@ -18,7 +18,7 @@
     uv run python -m evals.director_compliance --provider custom_openai \\
         --base-url http://localhost:11434/v1 --allow-private --model qwen3 --api-key-env OLLAMA_KEY
 
-剧本里的 language 决定用哪种语言的提示词和默认选项。日文的剧本：
+剧本里的 language 决定用哪种语言的提示词。日文的剧本：
 
     uv run python -m evals.director_compliance ... --scenario evals/datasets/m0/ryokan_ja.yaml
 """
@@ -44,7 +44,6 @@ import httpx
 import yaml
 
 from bettertavern.domain.story.language import parse_language
-from bettertavern.domain.story.options import fallback_options
 from bettertavern.providers import (
     Capabilities,
     ChatRequest,
@@ -286,9 +285,7 @@ class DirectorEval:
             )
 
         try:
-            outcome = await finalize_director_output(
-                parse, repair=repair, fallback=fallback_options(self.scenario.language)
-            )
+            outcome = await finalize_director_output(parse, repair=repair)
         except NarrativeMissing:
             record.error = "narrative_missing: 没有叙述"
             record.repairs = list(parse.repairs)
@@ -431,7 +428,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     def progress(record: TurnRecord) -> None:
-        mark = {"ok": ".", "salvaged": "s", "repaired": "r", "fallback": "F"}.get(record.stage, "X")
+        mark = {"ok": ".", "salvaged": "s", "repaired": "r", "missing": "M"}.get(record.stage, "X")
         print(mark, end="" if (record.index + 1) % 50 else "\n", flush=True)
 
     report = asyncio.run(run_eval(config, on_turn=progress))

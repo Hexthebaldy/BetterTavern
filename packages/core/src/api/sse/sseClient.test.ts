@@ -8,7 +8,7 @@ const encoder = new TextEncoder();
 
 type Scripted = { status?: number; chunks?: (string | Error)[]; reject?: Error; hang?: boolean };
 
-/** 按脚本回放的假 fetch：记录每次请求的头。 */
+/** 按脚本回复的假 fetch：记录每次请求的头。 */
 function scriptedFetch(script: Scripted[]): { fetch: FetchLike; calls: Record<string, string>[] } {
   const calls: Record<string, string>[] = [];
   const fetch: FetchLike = async (_url, init) => {

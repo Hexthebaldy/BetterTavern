@@ -7,7 +7,9 @@
 
 回复规则和 e2e/test_m1_flow.py 的假导演相同：
 带 stream 的请求是导演（叙述 + 两个选项，逐段流式发出），
-提示词里有 <character-card> 的是 WorldBuilder，问“接下来可以采取的行动”的是选项修复。
+提示词里有 <character-card> 的是 WorldBuilder，问“接下来可以采取的行动”的是选项修复，
+带 tools 的是后台整理世界状态的 agent：每次直接调用 commit，只写一句摘要、不改世界状态。
+自定义端点默认被当成不能调用工具：要让后台整理跑起来，先在设置里测试一下这个模型。
 """
 
 from __future__ import annotations
@@ -115,6 +117,7 @@ class StoryScript:
 
     piece_delay: float = 0.04
     director_calls: int = 0
+    state_calls: int = 0
 
     def reply(self, request: RecordedRequest) -> Reply:
         body = request.body if isinstance(request.body, dict) else {}
@@ -130,6 +133,22 @@ class StoryScript:
             items.append(sse(chunk(usage=usage, no_choices=True)))
             items.append(DONE)
             return StreamReply(items)
+        if body.get("tools"):
+            self.state_calls += 1
+            arguments = {
+                "digest": f"第 {self.state_calls} 次整理",
+                "entities": [],
+                "scene_ended": False,
+            }
+            call = {
+                "id": f"call-{self.state_calls}",
+                "type": "function",
+                "function": {
+                    "name": "commit",
+                    "arguments": json.dumps(arguments, ensure_ascii=False),
+                },
+            }
+            return JsonReply(completion("", tool_calls=[call], finish="tool_calls"))
         prompt = "\n".join(str(m.get("content", "")) for m in body.get("messages", []))
         if "<character-card>" in prompt:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))

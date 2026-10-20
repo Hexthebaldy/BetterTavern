@@ -60,7 +60,9 @@ export function clock(ms: number | null | undefined, now: number = Date.now()): 
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   const today = new Date(now);
   const sameDay =
-    d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate();
   return sameDay ? time : `${d.getMonth() + 1}月${d.getDate()}日 ${time}`;
 }
 

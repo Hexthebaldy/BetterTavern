@@ -58,7 +58,7 @@ class ParseStage(StrEnum):
     OK = "ok"  # 完全合规
     SALVAGED = "salvaged"  # 标签有缺损，叙述和选项由解析器抢救出来
     REPAIRED = "repaired"  # 选项不足，由 OptionsRepair 补齐
-    FALLBACK = "fallback"  # 补救失败，用了通用默认选项
+    MISSING = "missing"  # 补选项两次都没补齐：选项不足 2 个，玩家自己写下一步
     FAILED = "failed"  # 没有叙述
 
 

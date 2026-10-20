@@ -38,7 +38,7 @@ class TurnStatus(StrEnum):
 class OptionsSource(StrEnum):
     MODEL = "model"
     REPAIRED = "repaired"
-    FALLBACK = "fallback"
+    MISSING = "missing"  # 选项没补齐（不足 2 个）；早先的回合还可能是 fallback（用过默认选项）
 
 
 class ActionError(ValueError):

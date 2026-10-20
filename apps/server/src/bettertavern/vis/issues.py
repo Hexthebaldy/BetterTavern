@@ -135,7 +135,7 @@ def turn_issues(
         stage = parse.get("stage")
         if stage == "narrative_missing":
             issues.append(Issue("error", "parse_narrative_missing", {}, parse.n))
-        elif stage in ("repaired", "fallback"):
+        elif stage in ("repaired", "fallback", "missing"):
             issues.append(
                 Issue(
                     "warn",

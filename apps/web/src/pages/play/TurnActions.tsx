@@ -14,6 +14,7 @@ import {
   canAct,
   canRetry,
   headTurn,
+  isEnded,
   needsOpening,
   type PlayState,
 } from "@bettertavern/core/play/turnMachine";
@@ -124,7 +125,10 @@ export function TurnActions({
   }
   if (state.phase !== "idle") return null;
   const options = headTurn(state)?.options ?? [];
-  if (options.length === 0) return null;
+  // 没有选项：结局之后什么都不显示；否则是这一段的选项没补齐，提示玩家在下面自己写
+  if (options.length === 0) {
+    return isEnded(state) ? null : <p className={cx(styles.area, styles.noOptions)}>{t("play.noOptions")}</p>;
+  }
   const enabled = canAct(state);
   return (
     <div className={cx(styles.area, styles.options, twoColumns && styles.optionGrid)}>

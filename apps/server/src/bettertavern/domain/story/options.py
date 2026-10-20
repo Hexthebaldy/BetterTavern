@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 
 OPTION_COUNT = 2
 # 提示词要求每项不超过 30 字；解析时放宽，超过这个长度才视为无效
@@ -11,12 +11,6 @@ MAX_OPTION_CHARS = 80
 
 _QUOTE_PAIRS = {'"': '"', "'": "'", "“": "”", "‘": "’", "「": "」", "『": "』"}
 _WHITESPACE = re.compile(r"\s+")
-
-FALLBACK_OPTIONS: Mapping[str, tuple[str, str]] = {
-    "zh": ("先观察一下周围的情况", "按自己的想法继续行动"),
-    "en": ("Take a moment to look around", "Press on with my own plan"),
-    "ja": ("まずは周りの様子をうかがう", "自分の考えどおりに進む"),
-}
 
 
 def clean_option(text: str) -> str | None:
@@ -45,7 +39,3 @@ def normalize_options(raw: Iterable[str], limit: int | None = None) -> list[str]
         if limit is not None and len(result) >= limit:
             break
     return result
-
-
-def fallback_options(language: str) -> tuple[str, str]:
-    return FALLBACK_OPTIONS.get(language, FALLBACK_OPTIONS["zh"])

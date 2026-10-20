@@ -58,6 +58,7 @@ export const play: MessagesOtherOnly<typeof source> = {
     toolbar: "読書の操作",
     story: "物語",
     backToSaves: "セーブ一覧に戻る",
+    noOptions: "今回は選択肢がありません。下に次の行動を書いてください。",
     rollbackHere: "ここに戻る",
     rollbackPick: "前の場面に戻る",
     rollbackPickTitle: "どの場面に戻りますか？",

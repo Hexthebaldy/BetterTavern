@@ -57,6 +57,7 @@ export const play: Messages<typeof source> = {
     toolbar: "Reading actions",
     story: "Story",
     backToSaves: "Back to Saves",
+    noOptions: "No choices this time. Write what you do next below.",
     rollbackHere: "Go back here",
     rollbackPick: "Go back to an earlier part",
     rollbackPickTitle: "Go back to which part?",

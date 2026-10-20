@@ -18,8 +18,11 @@ M1 把“导入一张角色卡、一轮一轮玩下去”这条主线打通了�
   模型设置、外观（跟随系统 / 浅色 / 夜间）、平板布局、诊断日志。
 
 M1 的出口标准是 DeepSeek 与 Hugging Face 各完整玩 30 回合、断网续传用例通过，需要在真机上用真实的 Key 验收。
-和设计文档相比的简化（回合直接提交、还没有世界状态 agent 和后台队列等）见
-[backend.md 第 12 节](backend.md)和 [client.md 第 3 节](client.md)；后续的 agent runtime 计划见 [agent-runtime.md](agent-runtime.md)。
+和设计文档相比的简化见 [backend.md 第 12 节](backend.md)和 [client.md 第 3 节](client.md)。
+
+M1 之后在做 agent runtime 的升级（[agent-runtime.md](agent-runtime.md)）：阶段 1（执行循环、工具、每一步的记录）、
+阶段 2 的世界状态 agent 和回退已经完成，100 回合剧本试玩的脚本写好了，正在按试玩结果优化；阶段 3 到 5 还没开始。
+各阶段的进度和待办见 [agent-runtime.md 第 13 节](agent-runtime.md)。
 
 M0 的探针仍然保留：SSE 探针在 App 的“设置 → 连接测试”里，导演协议合规率评测见下文。
 
@@ -64,7 +67,8 @@ make web
 部署时 `make web-build` 生成 `apps/web/dist`，由反向代理和接口放在同一个域名下（见 `deploy/nginx.example.conf`）。
 
 没有模型 Key 也能从导入一路玩下去：起一个假模型服务，在“添加模型”里选“自定义兼容端点”，端点填 `http://127.0.0.1:8020/v1`，
-Key 随便填，模型选 `fake-model`（后端要设 `ALLOW_PRIVATE_ENDPOINTS=true`）：
+Key 随便填，模型选 `fake-model`（后端要设 `ALLOW_PRIVATE_ENDPOINTS=true`）。后台整理世界状态时，它每回合直接 `commit`、不改世界状态；
+自定义端点默认被当成不能调用工具，要让后台整理跑起来，先在模型详情里点“测试这个模型”：
 
 ```bash
 cd apps/server && uv run python -m tests.fakes.story_llm --port 8020
@@ -98,6 +102,16 @@ HF_TOKEN=hf_... uv run python -m evals.director_compliance --provider huggingfac
 ```
 
 报告写在 `apps/server/evals/reports/`（不入库）。至少用 3 个模型各跑一次。
+
+## 剧本试玩（agent runtime 阶段 2）
+
+用真模型把一局玩 100 回合，后台同时整理世界状态，跑完逐回合检查一致性、统计落后和用量。
+写进开发数据库（先 `make migrate`），每次新注册一个评测账号，跑完能在日志查看器里逐回合看。说明见 [`apps/server/evals/README.md`](../apps/server/evals/README.md)。
+
+```bash
+cd apps/server
+DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash
+```
 
 ## 目录
 

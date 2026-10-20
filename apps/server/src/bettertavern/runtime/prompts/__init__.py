@@ -1,7 +1,7 @@
 """提示词库：模板是数据文件（runtime/prompts/<lang>/<name>.j2），不写在 Python 字符串里。
 
 渲染必须是确定性的：模板里不调用时间和随机函数，同样的输入产出逐字节相同的文本，
-这样前缀缓存才能命中，回放测试也能复现。模板头部写 {# version: N #}，渲染结果的哈希
+这样前缀缓存才能命中，重放测试也能复现。模板头部写 {# version: N #}，渲染结果的哈希
 写入 agent_runs.prompt_hash，评测时可以按版本对比。
 
 每种语言一个目录，文件一一对应（tests/unit/runtime/test_prompt_languages.py 检查）。

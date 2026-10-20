@@ -303,7 +303,7 @@
 | `action` | object | 服务端解析后的玩家行动 `{"source", "text", "option_id"}`：`text` 由服务端确定（点选项时是选项的文字），`option_id` 只在点选项时有；开场是 `{"source": "opening", "text": ""}`；写结局是 `{"source": "ending", "text": "结局方向，没填时是空串"}` |
 | `narrative` | string | 叙述。生成中是空串，增量要从事件流里拿；失败时可能是半截草稿（此时 `error.partial` 为真） |
 | `options` | array of [`OptionOut`](#optionout) | 两个选项；生成中、失败时和结局那一轮为空数组 |
-| `options_source` | string / null | 选项的来源：`model`（模型给的）/ `repaired`（另调小模型补的）/ `fallback`（固定的兜底选项）；完成前和结局那一轮为 null |
+| `options_source` | string / null | 选项的来源：`model`（模型给的）/ `repaired`（另调小模型补的）/ `missing`（补了两次也没补齐：`options` 不足两个，可能是空数组，客户端提示玩家自己写）/ `fallback`（只出现在早先的回合：当时用过固定的兜底选项）；完成前和结局那一轮为 null |
 | `state_seq` | integer | 写这一回合时，状态块截至第几回合（-1 表示开局时的样子）。下一回合不等世界状态整理完，所以它可能比 `seq - 1` 小 |
 | `error` | object / null | 失败原因 `{"code", "message", "retryable", "partial"}`，`code` 见 [README.md 的“回合失败码”](README.md#回合失败码) |
 | `created_at` | string（时间） | 提交时间 |

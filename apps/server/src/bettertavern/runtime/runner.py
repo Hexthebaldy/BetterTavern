@@ -30,7 +30,6 @@ import structlog
 
 from bettertavern.domain.memory.thresholds import overflow_retry_budget
 from bettertavern.domain.routing import RouteTask
-from bettertavern.domain.story.options import fallback_options
 from bettertavern.domain.story.turn import OptionsSource, make_options
 from bettertavern.domain.world.seed import ProtagonistSeed, Seed, minimal_seed
 from bettertavern.providers import (
@@ -83,7 +82,7 @@ _STAGE_TO_SOURCE = {
     ParseStage.OK: OptionsSource.MODEL,
     ParseStage.SALVAGED: OptionsSource.MODEL,
     ParseStage.REPAIRED: OptionsSource.REPAIRED,
-    ParseStage.FALLBACK: OptionsSource.FALLBACK,
+    ParseStage.MISSING: OptionsSource.MISSING,
 }
 
 
@@ -591,12 +590,11 @@ class TurnRunner:
             outcome = await finalize_director_output(
                 generation.parse,
                 repair=repair,
-                fallback=fallback_options(header.language),
                 timeout=self.config.options_repair_timeout_s,
             )
         except NarrativeMissing as exc:
             raise self._narrative_missing(generation) from exc
-        # stage：ok 直接合格；salvaged / repaired 修补后合格；fallback 用了兜底选项
+        # stage：ok 直接合格；salvaged / repaired 修补后合格；missing 选项没补齐，玩家自己写
         log.info(
             "director.parse",
             stage=outcome.stage.value,
