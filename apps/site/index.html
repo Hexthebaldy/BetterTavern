@@ -4,6 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BetterTavern</title>
+    <noscript>
+      <style>
+        /* 不开 JS 时：常见问题全部展开；部署的四组命令全部显示，标签栏和复制按钮藏起来 */
+        .faq-a { grid-template-rows: 1fr; }
+        .code[hidden] { display: block; }
+        .code .nojs { display: inline; }
+        .tabs, .code .cp { display: none; }
+      </style>
+    </noscript>
   </head>
   <body>
     <div id="root"></div>
