@@ -3,7 +3,8 @@
 - 倒推每一回合的世界：从最终的世界状态开始，把撤销记录倒着套回去，得到“刚整理完第 N 回合时”的世界；
 - 逐回合检查一致性规则（domain/world/invariants.py），只看这一回合新出现的问题；
 - 找出退场（死去、永久离开）之后又被写进叙述的人和物：可能是回忆，也可能是写错了，列出来给人看；
-- 统计导演和世界状态 agent 的用量、延迟，世界状态落后几回合，失败、跳过和被拒绝的修改。
+- 统计导演和世界状态 agent 的用量、延迟，世界状态落后几回合，失败、跳过和被拒绝的修改；
+- 导演用召回工具的情况（哪些回合提供了工具、用了几轮、首字慢了多少）和召回题的结果。
 """
 
 from __future__ import annotations
@@ -21,15 +22,18 @@ from bettertavern.domain.world.records import (
     FactRecord,
     LinkRecord,
     RowChange,
+    ThreadRecord,
     WorldRecords,
 )
 
-from .playtest_checks import CheckResult
+from .playtest_checks import CheckResult, ProbeResult
 
 STATE_AGENT = "state_keeper"
 DIRECTOR_AGENT = "director"
 # 导演自己给出选项的回合至少占这么多，否则判为不合格（和 M0 合规率评测的标准一样）
 OWN_OPTIONS_TARGET = 0.95
+# 线索挂了这么多回合还没解开，算“挂太久”
+STALE_THREAD_TURNS = 50
 
 
 @dataclass(frozen=True)
@@ -67,6 +71,7 @@ def apply_changes(world: WorldRecords, changes: Iterable[RowChange]) -> WorldRec
     entities = {e.id: e for e in world.entities}
     links = {lk.key: lk for lk in world.links}
     facts = {f.id: f for f in world.facts}
+    threads = {t.id: t for t in world.threads}
     for change in changes:
         row = change.after if change.after is not None else change.before
         assert row is not None
@@ -81,12 +86,20 @@ def apply_changes(world: WorldRecords, changes: Iterable[RowChange]) -> WorldRec
                 links.pop(key, None)
             else:
                 links[key] = LinkRecord.from_json(change.after)
+        elif change.target == "thread":
+            if change.after is None:
+                threads.pop(str(row["id"]), None)
+            else:
+                threads[str(row["id"])] = ThreadRecord.from_json(change.after)
         elif change.after is None:
             facts.pop(str(row["id"]), None)
         else:
             facts[str(row["id"])] = FactRecord.from_json(change.after)
     return WorldRecords(
-        entities=tuple(entities.values()), links=tuple(links.values()), facts=tuple(facts.values())
+        entities=tuple(entities.values()),
+        links=tuple(links.values()),
+        facts=tuple(facts.values()),
+        threads=tuple(threads.values()),
     )
 
 
@@ -179,6 +192,44 @@ def own_options(turns: Sequence[TurnFacts]) -> dict[str, Any]:
     }
 
 
+def recall_use(
+    runs: Sequence[RunFacts], tool_calls: Mapping[str, int] | None = None
+) -> dict[str, Any]:
+    """导演用召回工具的情况：提供了工具的回合里用了几轮，用工具和不用工具的首字时间。"""
+    offered = [r for r in runs if int(r.result.get("recall_before") or 0) > 0]
+    used = [r for r in offered if int(r.result.get("tool_rounds") or 0) > 0]
+    unused = [r for r in offered if int(r.result.get("tool_rounds") or 0) == 0]
+
+    def ttft(items: Sequence[RunFacts]) -> float | None:
+        return percentile([float(r.ttft_ms) for r in items if r.ttft_ms is not None], 0.5)
+
+    return {
+        "offered_turns": len(offered),
+        "used_turns": len(used),
+        "used_ratio": round(len(used) / len(offered), 4) if offered else None,
+        "rounds": dict(
+            sorted(Counter(int(r.result.get("tool_rounds") or 0) for r in offered).items())
+        ),
+        "tool_calls": dict(tool_calls or {}),
+        "ttft_ms_p50_with_tools": ttft(used),
+        "ttft_ms_p50_without_tools": ttft(unused),
+    }
+
+
+def thread_quality(final: WorldRecords, *, last_seq: int) -> dict[str, Any]:
+    """线索：按种类和状态计数，挂了超过 STALE_THREAD_TURNS 回合还没解开的，写了答案的。"""
+    open_threads = [t for t in final.threads if t.status == "open"]
+    return {
+        "threads": dict(Counter(f"{t.kind}:{t.status}" for t in final.threads)),
+        "threads_stale": [
+            {"since": t.opened_seq, "text": t.text}
+            for t in sorted(open_threads, key=lambda t: t.opened_seq)
+            if last_seq - t.opened_seq > STALE_THREAD_TURNS
+        ],
+        "threads_with_answer": sum(1 for t in final.threads if t.answer),
+    }
+
+
 def world_quality(final: WorldRecords, *, protagonist: str, last_seq: int) -> dict[str, Any]:
     """看世界状态有没有记成流水账、建了多少一次性的人和地方。"""
     active = [f for f in final.facts if f.status == "active"]
@@ -207,6 +258,8 @@ def summarize(
     final_state_seq: int,
     checks: Sequence[CheckResult] = (),
     protagonist: str = "",
+    probes: Sequence[ProbeResult] = (),
+    tool_calls: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
     director = [r for r in runs if r.agent == DIRECTOR_AGENT and r.status == "ok"]
     state = [r for r in runs if r.agent == STATE_AGENT]
@@ -257,6 +310,14 @@ def summarize(
             "options_source": dict(Counter(t.options_source for t in turns if t.options_source)),
             **_tokens(director),
         },
+        "recall": {
+            **recall_use(director, tool_calls),
+            "probes": {
+                "passed": sum(1 for p in probes if p.passed),
+                "total": len(probes),
+                "results": [p.to_json() for p in probes],
+            },
+        },
         "state": {
             "processed_to": final_state_seq,
             "caught_up": final_state_seq >= head,
@@ -297,6 +358,7 @@ def summarize(
             "facts_active": sum(1 for f in final.facts if f.status == "active"),
             "facts_superseded": sum(1 for f in final.facts if f.status != "active"),
             "links": len(final.links),
+            **thread_quality(final, last_seq=final_state_seq),
         },
     }
 
@@ -343,6 +405,7 @@ def markdown(summary: Mapping[str, Any], *, title: str, playthrough_id: str) -> 
         f"- token：输入 {d['input_tokens']}（缓存命中 {d['cache_hit_ratio']}），"
         f"输出 {d['output_tokens']}",
         "",
+        *_recall_lines(summary["recall"]),
         "## 世界状态 agent",
         f"- 运行：{s['runs']}；失败原因：{s['errors'] or '无'}；"
         f"跳过的回合：{s['skipped_turns'] or '无'}",
@@ -375,6 +438,30 @@ def markdown(summary: Mapping[str, Any], *, title: str, playthrough_id: str) -> 
         f"（占有效事实 {w['facts_by_protagonist_ratio']}）",
         f"- 事实：有效 {w['facts_active']} 条，被推翻 {w['facts_superseded']} 条；"
         f"关系 {w['links']} 条",
+        f"- 线索（种类:状态）：{w['threads'] or '无'}；写了答案的 {w['threads_with_answer']} 条",
+        f"- 挂了超过 {STALE_THREAD_TURNS} 回合还没解开的线索：{len(w['threads_stale'])} 条",
+        *(f"  - 第 {t['since']} 回合起：{t['text']}" for t in w["threads_stale"][:10]),
         "",
     ]
     return "\n".join(lines)
+
+
+def _recall_lines(r: Mapping[str, Any]) -> list[str]:
+    probes = r["probes"]
+    lines = [
+        "## 召回",
+        f"- 提供了召回工具的回合：{r['offered_turns']}；用了工具的：{r['used_turns']}"
+        f"（{r['used_ratio']}）；用了几轮的分布：{r['rounds']}",
+        f"- 各工具调用次数：{r['tool_calls'] or '无'}",
+        f"- 首字等待中位：用了工具 {r['ttft_ms_p50_with_tools']} 毫秒，"
+        f"没用 {r['ttft_ms_p50_without_tools']} 毫秒",
+        f"- 召回题：答对 {probes['passed']} / {probes['total']}",
+    ]
+    for p in probes["results"]:
+        mark = "对" if p["passed"] else "错"
+        lines.append(
+            f"  - 第 {p['turn']} 回合（{mark}）：要提到 {'、'.join(p['expect'])}；"
+            f"导演用了 {p['tool_rounds']} 轮工具；{p['detail']}"
+        )
+    lines.append("")
+    return lines

@@ -5,7 +5,7 @@
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
 
 开局时把 WorldBuilder 输出的 Seed 展开写入 `entities`、`entity_links`、`facts`（`domain/world/plan.py`）。之后由后台的世界状态 agent 每回合整理：
-它的修改先在内存里的副本上逐项检查（`domain/world/draft.py`），用 commit 结束后在一个事务里按行写入，每改一行都在 `state_patches` 记下改之前和改之后的样子，
+它的修改先在内存里的副本上逐项检查（`domain/world/draft.py`，线索是 `domain/world/threads.py`），用 commit 结束后在一个事务里按行写入（实体、关系、事实、线索），每改一行都在 `state_patches` 记下改之前和改之后的样子，
 再给这一回合写一行 `turn_notes`（[agent-runtime.md](../agent-runtime.md) 第 4、8 节）。实体和事实没有“重要程度”：需要排序时按最近一次出现的回合（`last_seen_seq`）和建立于第几回合（`created_seq`）。
 对应的只读接口是 [`GET /v1/playthroughs/{playthrough_id}/world`](../api/play.md)。
 
@@ -80,6 +80,31 @@
 
 世界视图接口（`GET /v1/playthroughs/{playthrough_id}/world`）默认隐藏主角不知道的秘密，也就是 `visibility = 'secret'` 且主角不在 `known_by` 里的事实；加上 `reveal=true` 才返回。
 
+### `threads`
+
+线索与伏笔：故事里还没有着落、以后要回应的大事（[agent-runtime.md](../agent-runtime.md) 第 7 节“线索与伏笔”）。世界状态 agent 用 `open_thread` 记下（来源是叙述，以及导演写在 `turns.director_notes` 里的伏笔、真相和承诺），用 `close_thread` 标为解开，用 `merge_threads` 把说同一件事的几条合成一条，用 `update_thread` 改说法或写下导演定下的答案。
+和实体、事实一样，每次改动都记进 `state_patches`（`target` 是 `thread`），回退时倒着写回：K 之后记下的删掉，K 之后解开或合并掉的变回没解开，答案也改回原来的。
+
+| 列 | 类型 | 可空 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | uuid | 否 | `gen_random_uuid()` | 主键（由应用生成后写入，撤销记录里要用） |
+| `playthrough_id` | uuid | 否 |  | → `playthroughs.id`，级联删除 |
+| `kind` | text | 否 |  | `mystery`（没解开的悬念）/ `promise`（谁答应了什么）/ `foreshadow`（埋下的伏笔） |
+| `text` | text | 否 |  | 一句话，最多 160 字 |
+| `entity_ids` | uuid[] | 否 | `'{}'` | 涉及的实体 |
+| `status` | text | 否 | `'open'` | `open`（没解开）/ `closed`（解开了）/ `merged`（合进了另一条，迁移 `0015`） |
+| `opened_seq` | integer | 否 |  | 在第几回合记下；合并出来的那一条是合并的回合 |
+| `closed_seq` | integer | 是 |  | 在第几回合解开或被合并；没解开时为空 |
+| `source_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：记下它的那一回合 |
+| `answer` | text | 否 | `''` | 导演定下的答案（来自隐藏备注），最多 200 字，只给导演看；原文移出上下文以后答案还在（迁移 `0015`） |
+| `merged_into` | uuid | 是 |  | 无外键，指向 `threads.id`：合进了哪一条；只有 `merged` 的线索有（迁移 `0015`） |
+
+约束与索引：
+- `threads_pt_open_idx (playthrough_id, opened_seq) WHERE status = 'open'`：世界状态 agent 读没解开的线索时用。
+- `threads_closed_ck`：`status` 是 `open` 当且仅当 `closed_seq` 为空。`threads_merged_ck`：`status` 是 `merged` 当且仅当 `merged_into` 不为空。`kind`、`status` 的 CHECK（`threads_status_check`）；`opened_seq >= 0`。
+
+没解开的最多 15 条，满了要先解开或合并旧的才能记新的；每回合最多新记 2 条（合并出来的那一条也算）；同一句话已经有一条没解开的就不再记。世界状态 agent 的输入里最多列 16 条没解开的线索（也就是全部）：涉及这一回合相关实体的在前，其余按记下的回合从早到晚。
+
 ### `state_patches`
 
 世界状态 agent 的撤销记录：一回合写入时每改一行就记一行，回退时按回合倒序、按 `idx` 倒序写回 `before`（agent runtime 阶段 2 的回退部分）。
@@ -87,22 +112,22 @@
 | 列 | 类型 | 可空 | 默认 | 说明 |
 | --- | --- | --- | --- | --- |
 | `turn_id` | uuid | 否 |  | → `turns.id`，级联删除：哪一回合的整理改的 |
-| `idx` | smallint | 否 |  | 这一回合里的第几项，从 0 开始；写入时先实体、再关系、再事实 |
+| `idx` | smallint | 否 |  | 这一回合里的第几项，从 0 开始；写入时先实体、再关系、再事实、最后线索 |
 | `playthrough_id` | uuid | 否 |  | → `playthroughs.id`，级联删除 |
 | `seq` | integer | 否 |  | 那一回合的 `seq` |
-| `target` | text | 否 |  | 改的是哪张表的行：`entity` / `link` / `fact` |
+| `target` | text | 否 |  | 改的是哪张表的行：`entity` / `link` / `fact` / `thread`（迁移 `0014` 加的） |
 | `before` | jsonb | 是 |  | 改之前这一行的全部列（结构见下文“JSON 列”）；为空表示这一行是新建的 |
 | `after` | jsonb | 是 |  | 改之后这一行的全部列；为空表示这一行被删了（关系被去掉） |
 | `created_at` | timestamptz | 否 | `now()` |  |
 
 约束与索引：
 - 主键 `(turn_id, idx)`（`state_patches_pkey`）。
-- `state_patches_change_ck`：`before` 和 `after` 不能都为空。`seq >= 0`、`idx >= 0`、`target` 的 CHECK。
+- `state_patches_change_ck`：`before` 和 `after` 不能都为空。`seq >= 0`、`idx >= 0`、`target` 的 CHECK（`state_patches_target_check`）。
 - `state_patches_pt_seq_idx (playthrough_id, seq)`：回退时按回合找。
 
 ### `turn_notes`
 
-世界状态 agent 给每回合写的标签，整理完（或跳过）一回合写一行。导演的召回工具（阶段 3）按它查旧回合。
+世界状态 agent 给每回合写的标签，整理完（或跳过）一回合写一行。导演的召回工具 `recall` 按名字查旧回合时，找的是 `entity_ids` 里有这个实体的回合；按关键词查时也在 `digest` 里找。
 
 | 列 | 类型 | 可空 | 默认 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -141,3 +166,4 @@
 | `entity` | `{ "id", "kind", "name", "name_norm", "aliases": [], "summary", "data": {}, "canon", "is_protagonist", "first_seq", "last_seen_seq", "rev", "retired" }` |
 | `link` | `{ "src_id", "rel", "dst_id", "since_seq" }` |
 | `fact` | `{ "id", "text", "entity_ids": [], "visibility", "known_by": [], "status", "superseded_by", "superseded_seq", "created_seq", "source_turn_id" }` |
+| `thread` | `{ "id", "kind", "text", "entity_ids": [], "status", "opened_seq", "closed_seq", "source_turn_id", "answer", "merged_into" }` |

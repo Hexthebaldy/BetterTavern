@@ -8,7 +8,8 @@
 回复规则和 e2e/test_m1_flow.py 的假导演相同：
 带 stream 的请求是导演（叙述 + 两个选项，逐段流式发出），
 提示词里有 <character-card> 的是 WorldBuilder，问“接下来可以采取的行动”的是选项修复，
-带 tools 的是后台整理世界状态的 agent：每次直接调用 commit，只写一句摘要、不改世界状态。
+带 tools 的非流式请求是后台整理世界状态的 agent：每次直接调用 commit，只写一句摘要、不改世界状态。
+recall 打开时（--recall），导演收到召回工具会先查一次“火漆”，拿到结果再写。
 自定义端点默认被当成不能调用工具：要让后台整理跑起来，先在设置里测试一下这个模型。
 """
 
@@ -116,11 +117,39 @@ class StoryScript:
     """按请求的种类回复；piece_delay 是每一小段之间的停顿（秒），让流式输出看得见"""
 
     piece_delay: float = 0.04
+    recall: bool = False  # 导演有召回工具时先调用一次 recall
     director_calls: int = 0
+    recall_calls: int = 0
     state_calls: int = 0
 
     def reply(self, request: RecordedRequest) -> Reply:
         body = request.body if isinstance(request.body, dict) else {}
+        messages = body.get("messages") or [{}]
+        if (
+            body.get("stream")
+            and body.get("tools")
+            and self.recall
+            and messages[-1].get("role") != "tool"
+        ):
+            self.recall_calls += 1
+            call = {
+                "index": 0,
+                "id": f"recall-{self.recall_calls}",
+                "type": "function",
+                "function": {"name": "recall", "arguments": '{"query": "火漆"}'},
+            }
+            return StreamReply(
+                [
+                    sse(chunk(tool_calls=[call])),
+                    sse(chunk(finish="tool_calls")),
+                    sse(
+                        chunk(
+                            usage={"prompt_tokens": 900, "completion_tokens": 10}, no_choices=True
+                        )
+                    ),
+                    DONE,
+                ]
+            )
         if body.get("stream"):
             self.director_calls += 1
             text = director_text(self.director_calls)
@@ -165,9 +194,12 @@ def main() -> None:
     parser.add_argument(
         "--delay", type=float, default=0.04, help="流式输出每一小段之间的停顿（秒）"
     )
+    parser.add_argument(
+        "--recall", action="store_true", help="导演有召回工具时先查一次（看“正在回想”的提示用）"
+    )
     args = parser.parse_args()
     app = FakeLLM()
-    app.default_reply = StoryScript(piece_delay=args.delay).reply
+    app.default_reply = StoryScript(piece_delay=args.delay, recall=args.recall).reply
     print(f"假模型服务：http://{args.host}:{args.port}/v1 ，模型 fake-model")
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 

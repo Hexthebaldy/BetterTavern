@@ -6,8 +6,8 @@
 
 每种语言一个目录，文件一一对应（tests/unit/runtime/test_prompt_languages.py 检查）。
 除了模板，目录里还有几份 JSON 数据：状态块的标签（state_block.json）、
-结构化输出的字段说明（schema/<name>.json）、工具的说明和出错提示（tools.json）、
-世界状态 agent 修改出错时的说明（state_keeper.json）。
+结构化输出的字段说明（schema/<name>.json）、工具的说明和出错提示（tools.json，说明按 agent 分组）、
+世界状态 agent 修改出错时的说明（state_keeper.json）、导演召回工具出错时的说明（recall.json）。
 一局用哪种语言由 playthroughs.language 决定，runtime 从 PromptBook 里按它取
 （docs/i18n.md 第 4 节）。
 """

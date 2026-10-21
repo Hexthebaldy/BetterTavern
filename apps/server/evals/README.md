@@ -23,7 +23,7 @@ uv run python -m evals.director_compliance --help
 
 离线冒烟测试 `tests/e2e/test_director_eval_offline.py` 用假 LLM 服务把整条链路跑通，不需要密钥。
 
-## playtest：剧本试玩（agent runtime 阶段 2）
+## playtest：剧本试玩（agent runtime 阶段 2、3）
 
 用一份写好的剧本代替玩家，用真模型把一局玩 N 回合（默认 100），走服务端的整套流程：开局搭世界、导演写叙述和选项、回合存好后放进任务队列，
 由脚本里带的后台进程（和 worker 一样从队列领任务）整理世界状态。跑完等世界状态追上，然后分析。
@@ -41,9 +41,14 @@ uv run python -m evals.director_compliance --help
 | 落后 | 导演写某一回合时，世界状态落后几回合：最多、平均、分布 |
 | 世界状态 agent | 成功、失败、作废的次数和原因，跳过的回合，每回合调几次模型、改几行，被拒绝的修改（按工具和原因），耗时 |
 | 用量 | 导演和世界状态 agent 各自的输入、缓存命中、输出 token；导演的首字等待 |
+| 召回 | 提供了召回工具的回合有几个、用了工具的占多少、用了几轮的分布、各工具调用次数；用了工具和没用的回合各自的首字等待中位数 |
+| 召回题 | 剧本里 `recall` 写的题：玩家早先说出一个细节，后面再问，那一回合的叙述里要出现指定的词；列出每题对错、导演那一回合用了几轮工具、命中处附近的原文。只看结果，不计入结论 |
+| 线索 | 最终世界里的线索，按种类和状态（没解开、已解开）计数 |
 
 ```bash
 DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash
+# 测召回：原文每 10 回合整块移出导演的上下文，更早的回合导演用工具查
+DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash --history-block 10
 # 后台整理用另一个模型：
 DEEPSEEK_API_KEY=sk-... GEMINI_API_KEY=... uv run python -m evals.playtest \
     --provider deepseek --model deepseek-flash --state-provider gemini --state-model gemini-3-flash
@@ -54,9 +59,12 @@ uv run python -m evals.playtest --help
   报告里给出存档 id，用日志查看器（`make vis`）打开这局，能逐回合看导演和世界状态 agent 的每一步。
 - 剧本在 `datasets/m2/tavern_100.yaml`：`"@option"` 是按种子随机点一个选项（这一段没有选项时写一句继续），其余是玩家自己写的行动，
   专门考交出和藏起物品、换地方、遇到新人物、有人死去、得知秘密、有人离开；关键事件（老周死了、阿苓离开）在行动里写明白。
-  `checks` 是检查点，换剧本时照着写。
+  `checks` 是检查点，`recall` 是召回题（第 1、10、26 回合说出火漆的图案、搬运工的刺青、驿站的名字，第 84、90、99 回合再问），换剧本时照着写。
 - `--think` 是每回合之间停几秒（默认 5，模拟读叙述）；设成 0 就是一回合接一回合地点，用来看世界状态最多会落后多少。
+- `--history-block N` 和服务端的 `DIRECTOR_HISTORY_BLOCK` 一样：原文按 N 回合整块移出导演的上下文（保留最近的 N 到 2N−1 回合），
+  移出的回合导演用召回工具查。默认 0，全部保留，这时召回工具不提供，召回题考的是长上下文本身。
 - 开发环境的 worker 也开着时，两边一起从队列领任务，不会重复整理同一回合。
 - 报告写到 `reports/`（JSON 和一页中文总结，不入库）。
 
-离线冒烟测试 `tests/e2e/test_playtest_offline.py` 用假模型服务把整条链路跑几回合，需要数据库（`make test-integration`），不需要密钥。
+离线冒烟测试 `tests/e2e/test_playtest_offline.py` 用假模型服务把整条链路跑几回合，需要数据库（`make test-integration`），不需要密钥；
+其中一个用例把原文每 2 回合移出，假导演先调一次 `recall` 再写，检查工具调用走真实的流式格式也能跑通。

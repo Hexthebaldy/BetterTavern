@@ -1,19 +1,30 @@
 {
   "descriptions": {
-    "find_entity": "Find entities (characters, items, locations, organizations) by name or alias, including retired ones. Returns their ids (starting with e) and basic info. Use it first when you're not sure whether something is already recorded.",
-    "lookup": "Get an entity's full record: long-term description, state, where it is, what it carries, relations and related facts (ids starting with f). entity is an id or a name.",
-    "create_entity": "Create an entity. Only for a new character, item, location or organization in the narrative that is likely to appear again; don't create passers-by or one-off things. kind is character / item / location / organization; summary is the long-term description (looks, background, purpose); details hold the changing state: characters can have goal, attitude (towards the protagonist), speech_style and condition (physical and emotional), organizations stance and condition, items and locations only condition. At most 3 new entities per turn.",
-    "update_entity": "Change an entity: put changed state in details (an empty string clears that key) and new aliases in aliases. The summary of an established entity can't be changed; record changes in details or as facts.",
-    "retire_entity": "Retire an entity: a character died or left for good, an item was destroyed, a place no longer exists. The protagonist can't be retired.",
-    "move": "Change where a character or item is: when to is a location it is now there; when to is a character the item is now in their hands (only items can be held). Use set_scene when the protagonist changes place.",
-    "link": "Add a relation: member_of (character belongs to organization), part_of (location is part of a larger location), knows_of (character knows or knows about an entity).",
-    "unlink": "Remove a relation (located_in and held_by included, e.g. an item was lost or its whereabouts are unknown).",
-    "add_fact": "Record a new fact: one sentence about something established. about lists the entities involved. If the protagonist doesn't know it yet, set secret to true and list in known_by the characters who know.",
-    "retract_fact": "Retract a fact that no longer holds (id starting with f). If a new fact replaces it, add the new one with add_fact first and put its id in replaced_by.",
-    "share_fact": "Let more characters know a secret. Once the protagonist knows, the fact becomes visible to the player.",
-    "set_scene": "Change the current scene: location is where the protagonist is now (the protagonist moves there); present lists the characters present right now (not the protagonist) — when given it's authoritative and the listed characters move to the location; goal is the protagonist's current goal. Leave out what doesn't change.",
-    "set_clock": "Change the time in the story, e.g. \"evening of the third day\".",
-    "commit": "Finish this turn. Every turn must end with it, even when nothing changed. digest: what happened this turn, one sentence in the past tense, at most 30 words; entities: ids of the entities involved this turn; scene_ended: whether the current scene ends after this turn (a clear change of place or time, or a stretch of plot wraps up)."
+    "state_keeper": {
+      "find_entity": "Find entities (characters, items, locations, organizations) by name or alias, including retired ones. Returns their ids (starting with e) and basic info. Use it first when you're not sure whether something is already recorded.",
+      "lookup": "Get an entity's full record: long-term description, state, where it is, what it carries, relations and related facts (ids starting with f). entity is an id or a name.",
+      "create_entity": "Create an entity. Only for a new character, item, location or organization in the narrative that is likely to appear again; don't create passers-by or one-off things. kind is character / item / location / organization; summary is the long-term description (looks, background, purpose); details hold the changing state: characters can have goal, attitude (towards the protagonist), speech_style and condition (physical and emotional), organizations stance and condition, items and locations only condition. At most 3 new entities per turn.",
+      "update_entity": "Change an entity: put changed state in details (an empty string clears that key) and new aliases in aliases. The summary of an established entity can't be changed; record changes in details or as facts.",
+      "retire_entity": "Retire an entity: a character died or left for good, an item was destroyed, a place no longer exists. The protagonist can't be retired.",
+      "move": "Change where a character or item is: when to is a location it is now there; when to is a character the item is now in their hands (only items can be held). Use set_scene when the protagonist changes place.",
+      "link": "Add a relation: member_of (character belongs to organization), part_of (location is part of a larger location), knows_of (character knows or knows about an entity).",
+      "unlink": "Remove a relation (located_in and held_by included, e.g. an item was lost or its whereabouts are unknown).",
+      "add_fact": "Record a new fact: one sentence about something established. about lists the entities involved. If the protagonist doesn't know it yet, set secret to true and list in known_by the characters who know.",
+      "retract_fact": "Retract a fact that no longer holds (id starting with f). If a new fact replaces it, add the new one with add_fact first and put its id in replaced_by.",
+      "share_fact": "Let more characters know a secret. Once the protagonist knows, the fact becomes visible to the player.",
+      "set_scene": "Change the current scene: location is where the protagonist is now (the protagonist moves there); present lists the characters present right now (not the protagonist) — when given it's authoritative and the listed characters move to the location; goal is the protagonist's current goal. Leave out what doesn't change.",
+      "set_clock": "Change the time in the story, e.g. \"evening of the third day\".",
+      "open_thread": "Record a thread: something big that shapes where the story goes and must be answered later. kind is mystery (an unsolved mystery of the main plot), promise (a clear promise or agreement between characters) or foreshadow (foreshadowing the director explicitly planted); text says what it is in one sentence of at most 40 words; about lists the entities involved; when the director's hidden notes settled the answer (the truth), put it in answer — only the director sees it. At most 15 unresolved threads: when full, resolve or merge old ones first. At most 2 new threads per turn.",
+      "close_thread": "Mark a thread resolved: the mystery got its answer, the promise was kept or broken, the foreshadowing paid off. thread is an id starting with t.",
+      "update_thread": "Change an unresolved thread: text rewords it more precisely; answer writes or rewrites the answer the director settled (use it when the hidden notes newly settle a truth). Leave out whichever you don't change.",
+      "merge_threads": "Merge several threads about the same matter into one: threads are the ids to merge (at least two); kind, text, about and answer describe the merged thread. For example, \"the hooded man knows who sealed the letter\", \"two people are waiting for this letter\" and \"who the letter is really for\" become one main mystery: \"who sealed this letter and whom it must reach\". Without answer, the old threads' answers are kept.",
+      "commit": "Finish this turn. Every turn must end with it, even when nothing changed. digest: what happened this turn, one sentence in the past tense, at most 30 words; entities: ids of the entities involved this turn; scene_ended: whether the current scene ends after this turn (a clear change of place or time, or a stretch of plot wraps up)."
+    },
+    "director": {
+      "recall": "Search earlier turns that aren't in the story text above. Give either query (keywords separated by spaces) or entity (the name of a character, item, location or organization), not both. Returns up to limit turns (default 3, at most 5), newest first: the turn number, a one-sentence digest, and the text around each match. turns is empty when nothing matches.",
+      "read_turn": "Read one turn in full: the player's action and the narrative. seq is the turn number (recall returns it). Only turns that aren't in the story text above can be read.",
+      "lookup": "Get the full record of a character, item, location or organization: description, state, where it is, what it carries, relations, related facts (secrets only the director may see are marked), including retired ones. name is a name or alias."
+    }
   },
   "errors": {
     "unknown_tool": "There is no tool named {name}. Don't call it again.",

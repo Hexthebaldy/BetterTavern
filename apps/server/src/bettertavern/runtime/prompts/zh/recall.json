@@ -1,0 +1,9 @@
+{
+  "errors": {
+    "need_query": "query 和 entity 要填一个。",
+    "unknown_entity": "找不到叫“{name}”的人物、物品、地点或组织。",
+    "turn_in_context": "第 {seq} 回合的原文就在上面，不用查。",
+    "no_turn": "没有第 {seq} 回合。",
+    "budget": "这一回合已经查得够多了，请直接写。"
+  }
+}

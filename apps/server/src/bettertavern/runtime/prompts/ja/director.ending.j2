@@ -1,7 +1,10 @@
-{# version: 1 #}
+{# version: 2 #}
 {% if world_state %}
 {{ world_state }}
 
+{% endif %}
+{% if recall_before is defined and recall_before %}
+（いまは第 {{ seq }} ターン。上の本文は第 {{ recall_before }} ターンから始まる。それより前のターンは、詳細が必要ならツールで調べられる。）
 {% endif %}
 {% if wish %}
 <ending-wish>

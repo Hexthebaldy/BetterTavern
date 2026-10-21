@@ -258,6 +258,12 @@ function Story({ turn, allowed }: { turn: Turn; allowed: boolean }) {
           <div className="story">{turn.action.text || "（开场，没有行动）"}</div>
           <div className="mut small">叙述</div>
           <div className="story">{turn.narrative || "（空）"}</div>
+          {turn.director_notes ? (
+            <>
+              <div className="mut small">导演的隐藏备注（玩家看不到，世界状态 agent 会读）</div>
+              <div className="story">{turn.director_notes}</div>
+            </>
+          ) : null}
           {turn.options && turn.options.length > 0 ? (
             <>
               <div className="mut small">
@@ -271,7 +277,8 @@ function Story({ turn, allowed }: { turn: Turn; allowed: boolean }) {
         </div>
       ) : (
         <div className="notice">
-          已隐藏：行动 {turn.action.text_chars} 字，叙述 {turn.narrative_chars} 字，{turn.options_count} 个选项。
+          已隐藏：行动 {turn.action.text_chars} 字，叙述 {turn.narrative_chars} 字，{turn.options_count} 个选项
+          {turn.notes_chars ? `，导演的隐藏备注 ${turn.notes_chars} 字` : ""}。
         </div>
       )}
     </>

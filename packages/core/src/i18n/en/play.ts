@@ -27,6 +27,7 @@ export const play: Messages<typeof source> = {
     polling: "The network is unstable. Waiting for the result…",
     sending: "Sending…",
     thinking: "Thinking…",
+    recalling: "Recalling earlier events…",
     writingOpening: "Writing the opening",
     writingEnding: "Writing the ending",
     writingNext: "Writing the next part",

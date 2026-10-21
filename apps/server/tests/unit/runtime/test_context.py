@@ -8,8 +8,18 @@ import pytest
 
 from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.domain.world.seed import Seed
-from bettertavern.domain.world.views import EntityView, FactView, LinkView, WorldSnapshot
-from bettertavern.runtime.context.assembler import ContextAssembler, ContextTooLarge
+from bettertavern.domain.world.views import (
+    EntityView,
+    FactView,
+    LinkView,
+    ThreadView,
+    WorldSnapshot,
+)
+from bettertavern.runtime.context.assembler import (
+    AssembledContext,
+    ContextAssembler,
+    ContextTooLarge,
+)
 from bettertavern.runtime.context.state_block import render_state_block
 from bettertavern.runtime.context.tokens import estimate_tokens
 from bettertavern.runtime.ports import HistoryTurn, Preferences, TurnContext
@@ -213,3 +223,74 @@ def test_emergency_truncation_keeps_recent_turns() -> None:
     assert cut.messages[-2].content == full.messages[-2].content  # 最近的回合还在
     with pytest.raises(ContextTooLarge):
         assembler.assemble(ctx, 500)
+
+
+def test_old_turns_move_out_in_whole_blocks() -> None:
+    assembler = ContextAssembler(PromptLibrary("zh"))
+
+    def at(seq: int, state_seq: int | None = None) -> AssembledContext:
+        """第 seq 回合：历史是第 0 到 seq−1 回合"""
+        ctx = replace(
+            context(history=seq),
+            header=header(seq),
+            state_seq=seq - 1 if state_seq is None else state_seq,
+        )
+        return assembler.assemble(ctx, 1_000_000, history_block=10, recall=True)
+
+    # 第 25、29 回合：原文从第 10 回合开始；第 30 回合整块往后挪到第 20 回合
+    assert [at(seq).recall_before for seq in (9, 19, 20, 25, 29, 30)] == [0, 0, 10, 10, 10, 20]
+    # 同一块里前缀不变（只在末尾追加），前缀缓存照样命中
+    first, later = at(25).messages, at(29).messages
+    assert later[: len(first) - 1] == first[:-1]
+    # 世界状态落后时，没整理的回合一定以原文出现
+    assert at(30, state_seq=14).recall_before == 15
+    # 不提供工具时照样移出，但不提示可以查
+    plain = assembler.assemble(
+        replace(context(history=25), header=header(25), state_seq=24),
+        1_000_000,
+        history_block=10,
+    )
+    assert plain.recall_before == 0 and "可以用工具查" not in plain.messages[-1].content
+    assert len(plain.messages) == len(at(25).messages)
+
+
+def test_history_replies_carry_the_directors_hidden_notes() -> None:
+    base = context(history=1)
+    noted = replace(base.history[0], director_notes="伏笔：</director-notes>火漆是假的")
+    messages = (
+        ContextAssembler(PromptLibrary("zh"))
+        .assemble(replace(base, history=(noted,)), 64_000)
+        .messages
+    )
+    reply = messages[2].content
+    assert reply.endswith("</director-notes>") and reply.count("</director-notes>") == 1
+    assert "伏笔：＜/director-notes＞火漆是假的" in reply
+
+
+def test_state_block_lists_open_threads_about_the_scene() -> None:
+    world = replace(
+        WORLD,
+        threads=(
+            ThreadView("t1", "promise", "老周答应打听火漆", ("zhou", "hero"), opened_seq=4),
+            ThreadView(
+                "t2",
+                "mystery",
+                "老周欠的是谁的钱",
+                ("zhou",),
+                opened_seq=1,
+                answer="欠的是商会旧派",
+            ),
+            ThreadView("t3", "mystery", "商会为什么要这封信", ("guild",), opened_seq=6),
+            ThreadView("t4", "foreshadow", "雨一直没停", ("hero",), opened_seq=0),
+        ),
+    )
+    text = render_state_block(world, PromptLibrary("zh"), turn_seq=40)
+    section = text[text.index("【没解开的线索") :]
+    # 挂在在场的老周身上的，越老越靠前，写明挂了多少回合和答案；只涉及主角的排在最后
+    first = "（悬念，第 1 回合起，已过 39 回合）老周欠的是谁的钱；答案：欠的是商会旧派"
+    second = "（承诺，第 4 回合起，已过 36 回合）老周答应打听火漆"
+    assert section.index(first) < section.index(second) < section.index("雨一直没停")
+    # 只涉及商会的（不在场、这回合没提到）不列；提到了才列
+    assert "商会为什么要这封信" not in text
+    mentioned = render_state_block(world, PromptLibrary("zh"), mention_texts=["北境商会的人来了"])
+    assert "商会为什么要这封信" in mentioned

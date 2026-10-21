@@ -200,6 +200,19 @@ describe("turnMachine", () => {
     assert.ok(!state.pending?.buildingWorld);
   });
 
+  it("导演先查旧回合时提示“正在回想”，叙述一到就不再提示", () => {
+    let state = playReducer(submitOption(idleWithTwoTurns()), {
+      type: "submitted",
+      turn: makeTurn(2, { status: "generating" }),
+    });
+    assert.ok(!state.pending?.recalling);
+    state = playReducer(state, stream({ event: "director.recalling", data: { round: 1 } }));
+    assert.ok(state.pending?.recalling);
+    state = playReducer(state, stream({ event: "narrative.delta", data: { text: "雨停了。" } }));
+    assert.ok(!state.pending?.recalling);
+    assert.equal(state.pending?.narrative, "雨停了。");
+  });
+
   it("生成失败保留半截叙述，可以重试", () => {
     const turn = chosen();
     const state = run(

@@ -29,6 +29,14 @@
     "empty_digest": "digest 不能为空：用一句话写这一回合发生了什么。",
     "already_committed": "这一回合已经提交过了，不能再改。",
     "bad_detail": "{key} 不能用在这类实体上，能用的是：{allowed}。",
+    "unknown_thread": "找不到线索“{ref}”，请用 t 开头的编号。",
+    "bad_thread_kind": "线索的 kind 只能是 {allowed}，不能是“{kind}”。",
+    "empty_thread": "线索不能为空：用一句话写清楚悬念、承诺或伏笔是什么。",
+    "too_many_threads": "这一回合已经记了 {limit} 条线索，不能再记了。只记以后真会被追问或兑现的。",
+    "duplicate_thread": "已经有一模一样的线索 {ref}，不用再记。",
+    "thread_closed": "线索 {ref} 已经解开了。",
+    "too_many_open_threads": "没解开的线索已经有 {limit} 条了，不能再记新的：先用 close_thread 解开已经有了答案的，或者用 merge_threads 把说同一件事的几条合成一条。",
+    "merge_needs_two": "merge_threads 至少要合并两条还没解开的线索。",
     "world_issues": "提交没有通过检查：{issues}。请改正后再调用 commit。"
   },
   "issues": {

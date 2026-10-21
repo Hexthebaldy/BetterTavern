@@ -29,6 +29,14 @@
     "empty_digest": "digest can't be empty: say in one sentence what happened this turn.",
     "already_committed": "This turn has already been committed and can't change.",
     "bad_detail": "{key} can't be used on this kind of entity. Allowed: {allowed}.",
+    "unknown_thread": "No thread matches \"{ref}\". Use an id starting with t.",
+    "bad_thread_kind": "A thread's kind must be one of {allowed}, not \"{kind}\".",
+    "empty_thread": "A thread can't be empty: say in one sentence what the mystery, promise or foreshadowing is.",
+    "too_many_threads": "{limit} threads were already opened this turn; no more. Only record what will really be followed up or paid off later.",
+    "duplicate_thread": "Thread {ref} already says exactly this; no need to record it again.",
+    "thread_closed": "Thread {ref} is already resolved.",
+    "too_many_open_threads": "There are already {limit} unresolved threads, so no new one can be recorded: first resolve those already answered with close_thread, or merge threads about the same matter with merge_threads.",
+    "merge_needs_two": "merge_threads needs at least two unresolved threads to merge.",
     "world_issues": "The commit didn't pass the checks: {issues}. Fix them and call commit again."
   },
   "issues": {

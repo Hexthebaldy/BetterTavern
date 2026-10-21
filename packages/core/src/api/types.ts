@@ -283,6 +283,8 @@ export type TurnEvent =
   | { event: "turn.created"; data: { turn_id: string; seq: number; attempt: number } }
   | { event: "world.building"; data: Record<string, never> }
   | { event: "world.ready"; data: { source: string; entities: number } }
+  /** 导演在写之前先查更早的回合；round 是第几轮（最多两轮） */
+  | { event: "director.recalling"; data: { round: number } }
   | { event: "narrative.delta"; data: { text: string } }
   | { event: "narrative.done"; data: { chars: number; rewritten?: boolean } }
   /** 结局那一轮 options 是空的、source 是 null */

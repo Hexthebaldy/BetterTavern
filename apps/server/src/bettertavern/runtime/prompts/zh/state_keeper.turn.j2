@@ -1,4 +1,4 @@
-{# version: 1 #}
+{# version: 2 #}
 现在整理第 {{ seq }} 回合。当前场景从第 {{ scene_start }} 回合开始。
 {% if recent %}
 
@@ -25,6 +25,12 @@
 {{ fact }}
 {% endfor %}
 {% endif %}
+{% if threads %}
+没解开的线索：
+{% for thread in threads %}
+{{ thread }}
+{% endfor %}
+{% endif %}
 </world-state>
 
 <player-action>
@@ -38,5 +44,11 @@
 <narrative>
 {{ narrative }}
 </narrative>
+{% if notes %}
+
+<director-notes>
+{{ notes }}
+</director-notes>
+{% endif %}
 
 把这一回合的变化记下来，最后调用 commit。

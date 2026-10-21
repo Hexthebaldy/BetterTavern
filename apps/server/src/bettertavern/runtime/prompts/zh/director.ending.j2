@@ -1,7 +1,10 @@
-{# version: 1 #}
+{# version: 2 #}
 {% if world_state %}
 {{ world_state }}
 
+{% endif %}
+{% if recall_before is defined and recall_before %}
+（现在是第 {{ seq }} 回合；上面的原文从第 {{ recall_before }} 回合开始，更早的回合需要细节时可以用工具查。）
 {% endif %}
 {% if wish %}
 <ending-wish>

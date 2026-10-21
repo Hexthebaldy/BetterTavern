@@ -2,7 +2,7 @@
  * 阅读页底部固定的操作栏（同 App 的 BottomBar.tsx）：左边“世界”，右边“更多”，中间一格按状态换内容。
  *
  * - 空闲：“自己写…”（有草稿时显示草稿，桌面上右端有键帽 /），点一下原地展开成输入框（W08）；
- * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色；
+ * - 生成中：状态（正在发送 / 正在构思 / 正在回想前情 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色；
  * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）；
  * - 写完结局：旗子和灰字“故事已完结”，不能再写。
  * 离开了最新位置时，中间这一格右端展开一个下箭头圆按钮（灰底，生成中带蓝点），“自己写…”跟着变窄。
@@ -35,7 +35,9 @@ function LiveStatus({ state }: { state: PlayState }) {
         : state.phase === "submitting"
           ? t("play.sending")
           : pending?.narrative === ""
-            ? t("play.thinking")
+            ? pending.recalling
+              ? t("play.recalling")
+              : t("play.thinking")
             : source === "opening"
               ? t("play.writingOpening")
               : source === "ending"

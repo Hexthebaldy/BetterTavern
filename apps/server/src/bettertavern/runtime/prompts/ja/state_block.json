@@ -10,7 +10,8 @@
     "nearby": "関係のある人物や物",
     "roster": "ほかの人物と場所（名簿）",
     "known": "プレイヤーが知っている事実",
-    "secret": "監督のみ閲覧可（人物だけが知る秘密。直接書かないこと）"
+    "secret": "監督のみ閲覧可（人物だけが知る秘密。直接書かないこと）",
+    "threads": "未解決の伏線（物語がプレイヤーに負っている説明。答えを知っているのはあなただけ。直接明かさない。その場にいる人物に長く掛かっているものほど、回収の機会を探す。回収するときは答えと一致させる）"
   },
   "scene": {
     "location": "場所：{value}",
@@ -33,5 +34,12 @@
   "kind": "（{kind}）",
   "describe": "：{value}",
   "join_details": "／",
-  "join_names": "、"
+  "join_names": "、",
+  "thread_kinds": {
+    "mystery": "謎",
+    "promise": "約束",
+    "foreshadow": "伏線"
+  },
+  "thread": "- （{kind}、第 {since} ターンから、{age} ターン経過）{text}",
+  "thread_answer": "；答え：{answer}"
 }

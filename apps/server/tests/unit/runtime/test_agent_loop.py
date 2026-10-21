@@ -42,7 +42,10 @@ def prompts(tmp_path: Path) -> PromptLibrary:
     directory = tmp_path / "zh"
     directory.mkdir()
     data = {
-        "descriptions": {"search": "按关键词查旧回合", "note": "记一条备注"},
+        "descriptions": {
+            "tester": {"search": "按关键词查旧回合", "note": "记一条备注"},
+            "keeper": {"search": "按关键词查旧回合", "note": "记一条备注"},
+        },
         "errors": {
             "unknown_tool": "没有 {name}",
             "bad_arguments": "参数不对：{detail}",

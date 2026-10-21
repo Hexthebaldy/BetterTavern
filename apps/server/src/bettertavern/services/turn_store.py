@@ -15,7 +15,13 @@ from bettertavern.domain.story.language import unnamed_protagonist
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
 from bettertavern.domain.world.plan import plan_world
 from bettertavern.domain.world.seed import Seed
-from bettertavern.domain.world.views import EntityView, FactView, LinkView, WorldSnapshot
+from bettertavern.domain.world.views import (
+    EntityView,
+    FactView,
+    LinkView,
+    ThreadView,
+    WorldSnapshot,
+)
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import story as story_repo
 from bettertavern.infra.db.repositories import world as world_repo
@@ -50,6 +56,7 @@ async def load_world(conn: AsyncConnection, playthrough_id: str) -> WorldSnapsho
     entities = await world_repo.load_entities(conn, playthrough_id)
     links = await world_repo.load_links(conn, playthrough_id)
     facts = await world_repo.load_facts(conn, playthrough_id)
+    threads = await world_repo.load_open_threads(conn, playthrough_id)
     return WorldSnapshot(
         entities=tuple(
             EntityView(
@@ -77,6 +84,9 @@ async def load_world(conn: AsyncConnection, playthrough_id: str) -> WorldSnapsho
                 created_seq=f.created_seq,
             )
             for f in facts
+        ),
+        threads=tuple(
+            ThreadView(t.id, t.kind, t.text, t.entity_ids, t.opened_seq, t.answer) for t in threads
         ),
     )
 
@@ -181,6 +191,7 @@ class PgTurnStore:
                     options=tuple(
                         str(o.get("text") or "") for o in t.options if isinstance(o, dict)
                     ),
+                    director_notes=t.director_notes,
                 )
                 for t in history
             ),
@@ -235,6 +246,7 @@ class PgTurnStore:
             usage=usage,
             state_seq=outcome.state_seq,
             director_run_id=director_run_id,
+            director_notes=outcome.director_notes,
         )
         if not updated:
             raise _Stale

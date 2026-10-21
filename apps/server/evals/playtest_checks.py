@@ -38,6 +38,55 @@ class Check:
 
 
 @dataclass(frozen=True)
+class RecallProbe:
+    """召回题：玩家早先说出的细节，后面再问；第 turn 回合的叙述里要出现 expect 里的每个词。"""
+
+    turn: int
+    expect: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ProbeResult:
+    probe: RecallProbe
+    passed: bool
+    tool_rounds: int  # 导演那一回合用了几轮召回工具
+    detail: str  # 叙述里命中处附近的原文，或者“叙述里没有”
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "turn": self.probe.turn,
+            "expect": list(self.probe.expect),
+            "passed": self.passed,
+            "tool_rounds": self.tool_rounds,
+            "detail": self.detail,
+        }
+
+
+def parse_probes(raw: Sequence[Mapping[str, Any]] | None) -> list[RecallProbe]:
+    return [
+        RecallProbe(int(item["turn"]), tuple(str(w) for w in item["expect"])) for item in raw or ()
+    ]
+
+
+def evaluate_probes(
+    probes: Sequence[RecallProbe],
+    narratives: Mapping[int, str],
+    tool_rounds: Mapping[int, int],
+) -> list[ProbeResult]:
+    results: list[ProbeResult] = []
+    for probe in probes:
+        text = narratives.get(probe.turn, "")
+        missing = [w for w in probe.expect if w not in text]
+        if missing:
+            detail = "叙述里没有：" + "、".join(missing) if text else "这一回合没有叙述"
+        else:
+            at = text.index(probe.expect[0])
+            detail = "……" + " ".join(text[max(0, at - 30) : at + 30].split()) + "……"
+        results.append(ProbeResult(probe, not missing, tool_rounds.get(probe.turn, 0), detail))
+    return results
+
+
+@dataclass(frozen=True)
 class CheckResult:
     check: Check
     passed: bool

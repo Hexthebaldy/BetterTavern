@@ -1,7 +1,8 @@
 """工具注册表（docs/agent-runtime.md 第 5 节“工具”）。
 
 一个工具 = 名字 + 参数的 JSON 格式 + 读还是写 + 返回内容的长度上限 + 执行函数。
-给模型看的说明和出错时的提示是提示词，按语言放在 `runtime/prompts/<lang>/tools.json`。
+给模型看的说明和出错时的提示是提示词，按语言放在 `runtime/prompts/<lang>/tools.json`
+（说明按 agent 分组）。
 
 调用时的规矩：
 - agent 的定义里没有这个工具，或者注册表里没有：不执行，告诉模型“没有这个工具”；
@@ -76,8 +77,8 @@ class ToolRegistry:
         self, agent: AgentSpec, prompts: PromptLibrary, *, only: Collection[str] | None = None
     ) -> list[ToolSpec]:
         """这个 agent 能用的工具（only 给出时只取其中这几个），给模型看的形式。
-        说明按这一局的语言取。"""
-        descriptions: Mapping[str, str] = prompts.data("tools")["descriptions"]
+        说明按这一局的语言取，按 agent 分组：同名的工具在不同 agent 里可以是不同的意思。"""
+        descriptions: Mapping[str, str] = prompts.data("tools")["descriptions"][agent.name]
         return [
             ToolSpec(
                 name=name,

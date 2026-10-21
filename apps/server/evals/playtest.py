@@ -7,8 +7,10 @@
 所以跑完能在日志查看工具（make vis）里逐回合看导演和世界状态 agent 的每一步；不碰你自己的账号。
 
 剧本在 datasets/m2/tavern_100.yaml：大部分回合按种子随机点选项，中间穿插专门考世界状态整理的行动
-（交出和藏起物品、换地方、遇到新人物、有人死去、得知秘密）。玩家每回合之间停 --think 秒（默认 5），
-模拟读叙述的时间；设成 0 就是一回合接一回合地点，用来看世界状态最多会落后多少。
+（交出和藏起物品、换地方、遇到新人物、有人死去、得知秘密），以及召回题（早先说出的细节，后面再问）。
+玩家每回合之间停 --think 秒（默认 5），模拟读叙述的时间；设成 0 就是一回合接一回合地点，
+用来看世界状态最多会落后多少。--history-block N 让原文按 N 回合整块移出导演的上下文
+（和服务端的 DIRECTOR_HISTORY_BLOCK 一样），移出的回合导演用召回工具查；默认 0，全部保留。
 
 跑完等世界状态追上（最多 --settle 秒），然后用撤销记录倒推出每一回合的世界、逐回合检查，
 报告写到 reports/（JSON 和一页中文总结），见 playtest_report.py。
@@ -43,7 +45,7 @@ import yaml
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from bettertavern.domain.world.records import FactRecord, RowChange, WorldRecords
+from bettertavern.domain.world.records import FactRecord, RowChange, ThreadRecord, WorldRecords
 from bettertavern.infra.crypto.keyring import AppSecrets
 from bettertavern.infra.db.repositories import state as state_repo
 from bettertavern.infra.db.sqlutil import as_json
@@ -60,7 +62,14 @@ from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.state_jobs import STATE_JOB, state_handler
 from bettertavern.services.turn_service import ActionInput
 
-from .playtest_checks import Check, evaluate_all, parse_checks
+from .playtest_checks import (
+    Check,
+    RecallProbe,
+    evaluate_all,
+    evaluate_probes,
+    parse_checks,
+    parse_probes,
+)
 from .playtest_report import RunFacts, TurnFacts, markdown, summarize, worlds_by_turn
 
 EVALS_ROOT = Path(__file__).resolve().parent
@@ -79,6 +88,7 @@ class Scenario:
     card: Mapping[str, str]
     script: list[str]
     checks: list[Check] = field(default_factory=list)  # 检查点，见 playtest_checks.py
+    probes: list[RecallProbe] = field(default_factory=list)  # 召回题
 
 
 def load_scenario(path: Path) -> Scenario:
@@ -92,6 +102,7 @@ def load_scenario(path: Path) -> Scenario:
         card=dict(data["card"]),
         script=[str(s) for s in data["script"]],
         checks=parse_checks(data.get("checks")),
+        probes=parse_probes(data.get("recall")),
     )
 
 
@@ -115,6 +126,7 @@ class ReplayConfig:
     settle_s: float = 600.0
     max_attempts: int = 3  # 一回合失败后最多试几次
     scenario_path: Path = DEFAULT_SCENARIO
+    history_block: int = 0  # 原文按这个回合数整块移出导演的上下文，0 表示全部保留
 
 
 @dataclass
@@ -196,7 +208,7 @@ async def run_replay(
         buffers=EventBufferRegistry(),
         access_ttl_s=900,
         refresh_ttl_s=3600,
-        runner_config=RunnerConfig(),
+        runner_config=RunnerConfig(history_block=config.history_block),
         instance_id=f"playtest:{os.getpid()}",
         rollback_limit=0,
     )
@@ -354,6 +366,19 @@ async def analyse(
                 {"pt": playthrough_id},
             )
         ).mappings()
+        tool_rows = (
+            await conn.execute(
+                text(
+                    """SELECT s.tool, count(*) AS n FROM agent_steps s
+                       JOIN agent_runs r ON r.id = s.run_id
+                       WHERE r.playthrough_id = CAST(:pt AS uuid) AND r.agent = 'director'
+                         AND s.kind = 'tool'
+                       GROUP BY s.tool ORDER BY s.tool"""
+                ),
+                {"pt": playthrough_id},
+            )
+        ).mappings()
+        tool_calls = {str(r["tool"]): int(r["n"]) for r in tool_rows}
         patches: dict[int, list[RowChange]] = {}
         for r in patch_rows:
             patches.setdefault(int(r["seq"]), []).append(
@@ -394,8 +419,31 @@ async def analyse(
             )
             for r in fact_rows
         )
+        # 线索也一样：解开的也要，倒推时才能变回没解开
+        thread_rows = (
+            await conn.execute(
+                text(
+                    """SELECT id, kind, text, entity_ids, status, opened_seq, closed_seq,
+                              source_turn_id::text, answer, merged_into::text
+                       FROM threads WHERE playthrough_id = CAST(:pt AS uuid)"""
+                ),
+                {"pt": playthrough_id},
+            )
+        ).mappings()
+        threads = tuple(
+            ThreadRecord.from_json(
+                {
+                    **dict(r),
+                    "id": str(r["id"]),
+                    "entity_ids": [str(x) for x in r["entity_ids"] or ()],
+                }
+            )
+            for r in thread_rows
+        )
     final_state_seq = await _state_seq(engine, playthrough_id)
-    final = WorldRecords(entities=current.entities, links=current.links, facts=facts)
+    final = WorldRecords(
+        entities=current.entities, links=current.links, facts=facts, threads=threads
+    )
     worlds = worlds_by_turn(final, patches, final_state_seq)
     summary = summarize(
         turns,
@@ -405,6 +453,16 @@ async def analyse(
         final_state_seq=final_state_seq,
         checks=evaluate_all(scenario.checks, worlds, final_state_seq),
         protagonist=scenario.protagonist["name"],
+        probes=evaluate_probes(
+            scenario.probes,
+            {t.seq: t.narrative for t in turns},
+            {
+                r.seq: int(r.result.get("tool_rounds") or 0)
+                for r in runs
+                if r.agent == "director" and r.status == "ok" and r.seq is not None
+            },
+        ),
+        tool_calls=tool_calls,
     )
     summary["failed_turn_attempts"] = failed_attempts
     return ReplayResult(playthrough_id, summary, turns, runs, failed_attempts)
@@ -438,6 +496,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--settle", type=float, default=600.0, help="跑完后最多等世界状态追上几秒")
     parser.add_argument("--scenario", type=Path, default=DEFAULT_SCENARIO)
+    parser.add_argument(
+        "--history-block",
+        type=int,
+        default=0,
+        help="原文按这个回合数整块移出导演的上下文（测召回时用，例如 10）；0 表示全部保留",
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR)
     return parser.parse_args(argv)
 
@@ -460,6 +524,7 @@ async def _main(args: argparse.Namespace) -> None:
         seed=args.seed,
         settle_s=args.settle,
         scenario_path=args.scenario,
+        history_block=args.history_block,
     )
     policy = endpoint_policy(settings)
     hub = provider_hub(settings, policy)
@@ -482,6 +547,7 @@ async def _main(args: argparse.Namespace) -> None:
         if config.state is None
         else {"provider": config.state.provider, "model": config.state.model},
         "playthrough_id": result.playthrough_id,
+        "history_block": config.history_block,
         "summary": result.summary,
         "turns": [asdict(t) | {"narrative": len(t.narrative)} for t in result.turns],
     }

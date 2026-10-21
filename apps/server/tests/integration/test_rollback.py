@@ -1,6 +1,6 @@
 """回退（真实 Postgres，模型用可编排的假厂商）。
 
-一致性：玩到第 N 回合再回退到第 K 回合，世界状态（实体、关系、事实）、回合标签和整理进度，
+一致性：玩到第 N 回合再回退到第 K 回合，世界状态（实体、关系、事实、线索）、回合标签和整理进度，
 要和当初刚整理完第 K 回合时逐行相同。随机走很多步“往前玩几回合 / 回退到更早的某一回合”来检查。
 """
 
@@ -36,13 +36,19 @@ async def game(tmp_path: Path) -> AsyncIterator[Game]:
 
 def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
     """第 seq 回合世界状态 agent 要做的修改：轮流用到新建、移动、改状态、换场景、
-    关系、退场、事实和推翻事实。有的调用会被拒绝（例如推翻不存在的事实），也是确定的。"""
+    关系、退场、事实和推翻事实、记下、解开、合并线索和写答案。有的调用会被拒绝（例如推翻不存在的
+    事实、可合并的线索不够两条），也是确定的。"""
     kind = seq % 4
     if kind == 0:
         return [
             ("create_entity", {"kind": "item", "name": f"物品{seq}", "summary": "新东西"}),
             ("move", {"entity": f"物品{seq}", "to": "老周"}),
             ("add_fact", {"text": f"第{seq}回合老周收下了东西", "about": ["老周"]}),
+            (
+                "open_thread",
+                {"kind": "promise", "text": f"第{seq}回合老周答应的事", "about": ["老周"]},
+            ),
+            ("open_thread", {"kind": "mystery", "text": f"第{seq}回合的悬念"}),
             commit(f"第{seq}回合", "老周"),
         ]
     if kind == 1:
@@ -50,6 +56,7 @@ def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
             ("set_scene", {"location": "码头", "goal": f"目标{seq}"}),
             ("update_entity", {"entity": "老周", "details": {"condition": f"状态{seq}"}}),
             ("set_clock", {"time": f"第{seq}天"}),
+            ("update_thread", {"thread": "t1", "answer": f"第{seq}回合定下的答案"}),
             commit(f"第{seq}回合", "林川"),
         ]
     if kind == 2:
@@ -65,6 +72,7 @@ def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
                     "known_by": ["老周"],
                 },
             ),
+            ("close_thread", {"thread": "t1"}),
             commit(f"第{seq}回合", "老周"),
         ]
     return [
@@ -72,6 +80,10 @@ def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
         ("link", {"src": f"路人{seq}", "rel": "knows_of", "dst": "老周"}),
         ("move", {"entity": f"路人{seq}", "to": "码头"}),
         ("retire_entity", {"entity": f"路人{seq}"}),
+        (
+            "merge_threads",
+            {"threads": ["t1", "t2"], "kind": "mystery", "text": f"第{seq}回合合成的谜团"},
+        ),
         commit(f"第{seq}回合", f"路人{seq}"),
     ]
 
@@ -91,6 +103,9 @@ async def snapshot(game: Game) -> dict[str, list[tuple[Any, ...]]]:
         "facts": """SELECT id, text, entity_ids, visibility, known_by, status, superseded_by,
                            superseded_seq, created_seq, source_turn_id
                     FROM facts WHERE playthrough_id = :pt ORDER BY id""",
+        "threads": """SELECT id, kind, text, entity_ids, status, opened_seq, closed_seq,
+                             source_turn_id, answer, merged_into
+                      FROM threads WHERE playthrough_id = :pt ORDER BY id""",
         "notes": """SELECT turn_id, seq, digest, entity_ids, scene_ended, skipped
                     FROM turn_notes WHERE playthrough_id = :pt ORDER BY seq""",
         "progress": "SELECT state_seq FROM playthroughs WHERE id = :pt",
@@ -118,6 +133,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
     snapshots = {0: await snapshot(game)}
     head = 0
     rollbacks = 0
+    statuses: set[str] = set()  # 走过的线索状态：记下、解开、合并都要出现过
     for step in range(14):
         if head < 2 or step % 3 != 2:
             for _ in range(rng.randint(1, 3)):
@@ -125,6 +141,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
                 await play(game, head)
                 await keep(game, head)
                 snapshots[head] = await snapshot(game)
+                statuses.update(str(row[4]) for row in snapshots[head]["threads"])
             continue
         target = rng.randint(0, head - 1)
         detail = await game.services.playthroughs.rollback(
@@ -137,6 +154,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
         head = target
         rollbacks += 1
     assert rollbacks >= 3
+    assert statuses == {"open", "closed", "merged"}
     archived = await rows(game.engine, "SELECT count(*) FROM turns WHERE status = 'archived'")
     assert archived[0][0] > 0
 

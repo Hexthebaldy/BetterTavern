@@ -1,4 +1,4 @@
-"""世界状态表里一行的完整内容：实体、关系、事实。
+"""世界状态表里一行的完整内容：实体、关系、事实、线索。
 
 世界状态 agent 改的就是这些行。每改一行，改之前和改之后的样子都记进 state_patches，回退时按记录
 写回（docs/agent-runtime.md 第 8 节）。字段和数据库的列一一对应，转成 JSON 时也用列名。
@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-Target = Literal["entity", "link", "fact"]
+Target = Literal["entity", "link", "fact", "thread"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +138,52 @@ class FactRecord:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ThreadRecord:
+    """一条线索：还没解开的悬念（mystery）、答应过的事（promise）、埋下的伏笔（foreshadow）。"""
+
+    id: str
+    kind: str
+    text: str
+    entity_ids: tuple[str, ...] = ()
+    status: str = "open"  # open / closed / merged（合进了另一条）
+    opened_seq: int = 0
+    closed_seq: int | None = None  # 解开或合并的回合
+    source_turn_id: str | None = None
+    answer: str = ""  # 导演定下的答案，只给导演看
+    merged_into: str | None = None  # 合进了哪一条
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "text": self.text,
+            "entity_ids": list(self.entity_ids),
+            "status": self.status,
+            "opened_seq": self.opened_seq,
+            "closed_seq": self.closed_seq,
+            "source_turn_id": self.source_turn_id,
+            "answer": self.answer,
+            "merged_into": self.merged_into,
+        }
+
+    @classmethod
+    def from_json(cls, data: Mapping[str, Any]) -> ThreadRecord:
+        closed_seq = data.get("closed_seq")
+        return cls(
+            id=str(data["id"]),
+            kind=str(data["kind"]),
+            text=str(data["text"]),
+            entity_ids=tuple(str(x) for x in data.get("entity_ids") or ()),
+            status=str(data.get("status") or "open"),
+            opened_seq=int(data.get("opened_seq") or 0),
+            closed_seq=int(closed_seq) if closed_seq is not None else None,
+            source_turn_id=_opt_str(data.get("source_turn_id")),
+            answer=str(data.get("answer") or ""),
+            merged_into=_opt_str(data.get("merged_into")),
+        )
+
+
 def _opt_str(value: Any) -> str | None:
     return None if value is None else str(value)
 
@@ -153,8 +199,9 @@ class RowChange:
 
 @dataclass(frozen=True)
 class WorldRecords:
-    """一局世界状态的全部行：实体（包括已退场的）、关系、有效的事实。"""
+    """一局世界状态的全部行：实体（包括已退场的）、关系、有效的事实、没解开的线索。"""
 
     entities: tuple[EntityRecord, ...] = ()
     links: tuple[LinkRecord, ...] = ()
     facts: tuple[FactRecord, ...] = ()
+    threads: tuple[ThreadRecord, ...] = ()

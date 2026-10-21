@@ -65,6 +65,7 @@ class PgStateStore:
             scene_start=scene_start,
             world=world,
             failures=failures,
+            director_notes=turn.director_notes,
         )
 
     async def commit(self, turn: StateTurn, result: StateCommit) -> bool:

@@ -1,8 +1,9 @@
 """世界状态 agent：每回合在后台读这一回合的叙述，用工具改世界状态，最后用 commit 结束
 （docs/agent-runtime.md 第 4 节“世界状态 agent”）。
 
-- 输入由代码拼好：这一回合的玩家行动和叙述、前几回合的一句话摘要、当前场景、相关实体的资料
-  （主角、场景地点、在场人物、主角的随身物品、这一回合文字里提到名字的实体）和相关的事实；
+- 输入由代码拼好：这一回合的玩家行动、叙述和导演的隐藏备注、前几回合的一句话摘要、当前场景、
+  相关实体的资料（主角、场景地点、在场人物、主角的随身物品、这一回合文字里提到名字的实体）、
+  相关的事实和没解开的线索；
 - 修改只作用到这次运行的修改清单（WorldDraft），commit 通过检查后才算完成；写入数据库由调用方做；
 - 模型调用不是流式的，每次调用记一步。
 
@@ -21,6 +22,7 @@ from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.world.draft import DraftResult, WorldDraft
 from bettertavern.domain.world.mentions import mentioned
 from bettertavern.domain.world.records import EntityRecord
+from bettertavern.domain.world.threads import ThreadDraft
 from bettertavern.providers import (
     ChatRequest,
     Message,
@@ -48,6 +50,7 @@ from .state_keeper_tools import (
     StateToolContext,
     describe,
     describe_fact,
+    describe_thread,
     ref_labels,
     to_json,
 )
@@ -56,6 +59,9 @@ AGENT = "state_keeper"
 MAX_TOOL_ROUNDS = 20
 MAX_RELATED = 24  # 输入里最多列几个相关实体
 MAX_FACTS = 24  # 输入里最多列几条相关事实
+# 输入里最多列几条没解开的线索：涉及相关实体的在前，其余按记下的回合从早到晚。
+# 不少于没解开的线索的上限（threads.py），好让模型看得到每一条，才能解开或合并
+MAX_THREADS = 16
 
 SPEC = AgentSpec(
     name=AGENT,
@@ -104,11 +110,15 @@ def related_entities(draft: WorldDraft, texts: Sequence[str]) -> list[EntityReco
     return list(picked.values())[:MAX_RELATED]
 
 
-def state_messages(turn: StateTurn, draft: WorldDraft, prompts: PromptLibrary) -> list[Message]:
+def state_messages(
+    turn: StateTurn, draft: WorldDraft, threads: ThreadDraft, prompts: PromptLibrary
+) -> list[Message]:
     action = turn.action.text or ""
-    related = related_entities(draft, [action, turn.narrative])
+    related = related_entities(draft, [action, turn.narrative, turn.director_notes])
     ids = {e.id for e in related}
     facts = [f for f in reversed(draft.facts) if ids.intersection(f.entity_ids)][:MAX_FACTS]
+    open_threads = threads.open_threads
+    shown = sorted(open_threads, key=lambda t: not ids.intersection(t.entity_ids))[:MAX_THREADS]
     scene = dict(draft.world.data.get("scene") or {})
     clock = draft.world.data.get("clock")
     system = prompts.render("state_keeper.system")
@@ -124,6 +134,8 @@ def state_messages(turn: StateTurn, draft: WorldDraft, prompts: PromptLibrary) -
         goal=sanitize_for_fence(str(scene.get("goal") or "")),
         entities=[to_json(describe(draft, e, summary_chars=200)) for e in related],
         facts=[to_json(describe_fact(draft, f)) for f in facts],
+        threads=[to_json(describe_thread(draft, threads, t)) for t in shown],
+        notes=sanitize_for_fence(turn.director_notes),
     )
     return [
         Message(role="system", content=system.text),
@@ -144,7 +156,8 @@ async def keep_state(
 ) -> KeptState:
     """refs 不为空时，结束（包括出错、超时）前填进这次运行用过的编号对应的名字。"""
     draft = WorldDraft(turn.world, seq=turn.seq, turn_id=turn.turn_id, new_id=new_id)
-    ctx = StateToolContext(draft=draft, messages=prompts.data("state_keeper"))
+    threads = ThreadDraft(turn.world.threads, seq=turn.seq, turn_id=turn.turn_id, new_id=new_id)
+    ctx = StateToolContext(draft=draft, threads=threads, messages=prompts.data("state_keeper"))
     calls = 0
 
     async def call(
@@ -196,14 +209,14 @@ async def keep_state(
             reasoning=result.reasoning if route.caps.echo_reasoning_with_tools else "",
         )
 
-    messages = state_messages(turn, draft, prompts)
+    messages = state_messages(turn, draft, threads, prompts)
     try:
         await run_agent(
             SPEC, messages, call, steps=steps, prompts=prompts, registry=REGISTRY, ctx=ctx
         )
     finally:
         if refs is not None:
-            refs.update(ref_labels(draft, steps.steps))
+            refs.update(ref_labels(draft, steps.steps, threads))
     if draft.result is None:
         raise NoCommit(f"no accepted commit after {calls} model calls")
     return KeptState(result=draft.result, rejected=tuple(ctx.rejected), model_calls=calls)

@@ -40,11 +40,24 @@ class FactView:
     created_seq: int = 0  # 建立于第几回合：事实按它从近到远排
 
 
+@dataclass(frozen=True, slots=True)
+class ThreadView:
+    """一条没解开的线索：悬念（mystery）、承诺（promise）、伏笔（foreshadow）。"""
+
+    id: str
+    kind: str
+    text: str
+    entity_ids: tuple[str, ...] = ()
+    opened_seq: int = 0
+    answer: str = ""  # 导演定下的答案，只给导演看
+
+
 @dataclass(frozen=True)
 class WorldSnapshot:
     entities: tuple[EntityView, ...] = ()
     links: tuple[LinkView, ...] = ()
     facts: tuple[FactView, ...] = ()
+    threads: tuple[ThreadView, ...] = ()  # 没解开的线索，按记下的回合从早到晚
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "_by_id", {e.id: e for e in self.entities})

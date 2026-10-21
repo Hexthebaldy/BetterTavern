@@ -61,6 +61,7 @@
 | `options_source` | text | 是 |  | 选项的来源：`model` 是模型给的（包括解析器修补过的）；`repaired` 是另调小模型补的；`missing` 表示补了两次也没补齐，`options` 不足两个（导演给出的有效选项会保留），玩家自己写下一步；`fallback` 只出现在迁移 `0013` 之前的回合，当时缺的选项用固定的兜底文案补上。生成完成前为空 |
 | `director_run_id` | uuid | 是 |  | 无外键，指向 `agent_runs.id` |
 | `state_seq` | integer | 否 | `-1` | 写这一回合时，状态块截至第几回合（当时的 `playthroughs.state_seq`）。下一回合不等世界状态整理，所以它可能比 `seq - 1` 小 |
+| `director_notes` | text | 是 |  | 导演写在选项之后的隐藏备注（`<director-notes>`，最多 600 字）：埋下的伏笔、答应过的事、玩家还不知道的真相。玩家看不到，接口不返回；世界状态 agent 整理这一回合时读它，之后的回合里它跟着这一回合的叙述回到导演的上下文。没写时为空（迁移 `0014`） |
 | `usage` | jsonb | 是 |  | 导演调用的 token 用量，结构见下文“JSON 列”；服务商没给用量时为空 |
 | `error` | jsonb | 是 |  | 失败原因，结构见下文“JSON 列”；成功的回合为空 |
 | `rollback_id` | uuid | 是 |  | 回退批次号：被同一次回退归档的回合（包括失败的尝试）共用一个 |
@@ -231,7 +232,7 @@ WHERE id = :id AND state_seq = :seq - 1 AND timeline_epoch = :epoch
 
 1. 锁住 `playthroughs` 行。有未过期的租约就返回 409 `TURN_IN_PROGRESS`；租约已过期就先把那一轮标为 `RUNNER_LOST`。
 2. 检查目标回合 K 在当前故事线上、不是头部、回退次数没用完。
-3. 读出 K 之后各回合的 `state_patches`，按回合倒序、按 `idx` 倒序，把每一行写回 `before`（`before` 为空就删掉这一行），然后删掉这些撤销记录和 K 之后的 `turn_notes`。
+3. 读出 K 之后各回合的 `state_patches`，按回合倒序、按 `idx` 倒序，把每一行写回 `before`（`before` 为空就删掉这一行），然后删掉这些撤销记录和 K 之后的 `turn_notes`。线索也在撤销记录里：K 之后记下的删掉，K 之后解开的变回没解开。
 4. K 之后的回合（包括失败的尝试）标为 `archived`，共用一个新的 `rollback_id`。
 5. `head_turn_id` 指回 K，`timeline_epoch` 加 1，`state_seq` 改成 `min(state_seq, K)`，`rollbacks_used` 加 1；`ended` 改回 `active`。
 6. `state_seq` 比 K 小时（世界状态还没整理到 K），放一个 `state.turn` 任务接着整理。

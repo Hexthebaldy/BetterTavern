@@ -1,4 +1,4 @@
-{# version: 1 #}
+{# version: 2 #}
 第 {{ seq }} ターンを整理してください。今の場面は第 {{ scene_start }} ターンから始まっています。
 {% if recent %}
 
@@ -25,6 +25,12 @@
 {{ fact }}
 {% endfor %}
 {% endif %}
+{% if threads %}
+未解決の伏線：
+{% for thread in threads %}
+{{ thread }}
+{% endfor %}
+{% endif %}
 </world-state>
 
 <player-action>
@@ -38,5 +44,11 @@
 <narrative>
 {{ narrative }}
 </narrative>
+{% if notes %}
+
+<director-notes>
+{{ notes }}
+</director-notes>
+{% endif %}
 
 このターンの変化を記録し、最後に commit を呼び出してください。

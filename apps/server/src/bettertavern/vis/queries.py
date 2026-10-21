@@ -60,7 +60,8 @@ async def list_playthroughs(conn: AsyncConnection, limit: int = 200) -> list[dic
 
 _TURN_COLUMNS = """
     t.id::text AS id, t.playthrough_id::text AS playthrough_id, t.seq, t.attempt, t.status,
-    t.user_action, t.narrative, t.options, t.options_source, t.state_seq, t.usage, t.error,
+    t.user_action, t.narrative, t.options, t.options_source, t.state_seq, t.director_notes,
+    t.usage, t.error,
     t.created_at, t.replied_at, t.committed_at,
     r.provider, r.model, r.ttft_ms, r.latency_ms, r.input_tokens, r.cached_tokens,
     r.output_tokens, r.reasoning_tokens, r.status AS run_status, r.error_class AS run_error_class
@@ -91,6 +92,7 @@ def _turn(row: Any, *, story: bool) -> dict[str, Any]:
             "text_chars": len(action_text),
         },
         "narrative_chars": len(row.narrative or ""),
+        "notes_chars": len(row.director_notes or ""),
         "options_count": len(options),
         "options_source": row.options_source,
         "state_seq": row.state_seq,
@@ -119,6 +121,7 @@ def _turn(row: Any, *, story: bool) -> dict[str, Any]:
     if story:
         out["action"]["text"] = action_text
         out["narrative"] = row.narrative
+        out["director_notes"] = row.director_notes or ""
         out["options"] = [o.get("text") for o in options if isinstance(o, dict)]
     return out
 

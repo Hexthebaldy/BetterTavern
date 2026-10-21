@@ -110,6 +110,9 @@ export type Turn = {
   action: { source: string | null; option_id: string | null; text_chars: number; text?: string };
   narrative_chars: number;
   narrative?: string;
+  /** 导演的隐藏备注的字数；显示故事内容时还有原文 */
+  notes_chars: number;
+  director_notes?: string;
   options_count: number;
   options?: string[];
   options_source: string | null;

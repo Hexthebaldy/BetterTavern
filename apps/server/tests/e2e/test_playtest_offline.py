@@ -64,3 +64,44 @@ async def test_replay_runs_end_to_end_with_a_fake_model(
     assert story.state_calls == 5
     # 第 1 回合剧本是自己写的行动，第 2 回合是点选项
     assert [t.source for t in result.turns[1:3]] == ["text", "option"]
+
+
+async def test_director_recalls_through_the_real_stream_format(
+    fake_llm: RunningFakeLLM, tmp_path: Path
+) -> None:
+    """原文按 2 回合整块移出：后面几回合导演有召回工具，先查一次再写
+    （工具调用走真实的流式格式）。"""
+    assert URL is not None
+    story = StoryScript(piece_delay=0.0, recall=True)
+    fake_llm.app.default_reply = story.reply
+    policy = EndpointPolicy(allow_private=True)
+    secrets = load_secrets(
+        master_keys=new_master_key_entry("t1"),
+        auth_secret="s" * 40,
+        allow_dev_fallback=False,
+        data_dir=tmp_path,
+    )
+    model = ModelChoice(
+        "custom_openai",
+        "fake-model",
+        "sk-test-123456",
+        base_url=fake_llm.base_url,
+        caps_override={"tools": True},
+    )
+    # 每回合之间停一下，让世界状态跟上：没整理的回合不会移出上下文
+    config = ReplayConfig(director=model, turns=5, think_s=0.5, settle_s=30.0, history_block=2)
+    async with schema_engine(URL, pool_size=10) as engine:
+        hub = ProviderHub(policy=policy)
+        try:
+            result = await run_replay(
+                config, engine=engine, secrets=secrets, hub=hub, policy=policy, say=lambda _: None
+            )
+        finally:
+            await hub.aclose()
+    recall = result.summary["recall"]
+    assert recall["offered_turns"] >= 1
+    assert recall["used_turns"] == recall["offered_turns"] == story.recall_calls
+    assert recall["tool_calls"] == {"recall": story.recall_calls}
+    # 查过以后照样写完，每回合都有叙述和选项
+    assert result.summary["director"]["runs"] == 6
+    assert all(t.narrative for t in result.turns)

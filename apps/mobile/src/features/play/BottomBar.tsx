@@ -3,7 +3,7 @@
  *
  * 中间那一格：
  * - 空闲：“自己写…”（有草稿时显示草稿），点一下原地展开成输入框，跟着键盘浮起；发送或收起后缩回来；
- * - 生成中：状态（正在发送 / 正在构思 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色。
+ * - 生成中：状态（正在发送 / 正在构思 / 正在回想前情 / 世界还在更新 / 正在写下一段 / 正在写结局）和“停止”；重连、等结果时是琥珀色。
  *   这些状态只在这里显示，正文里不重复；
  * - 同步中：锁和“同步完成前暂时不能行动”；还没开场时空着（“开始故事”在正文末尾）；
  * - 写完结局：旗子和灰字“故事已完结”，不能再写。
@@ -258,7 +258,9 @@ function LiveStatus({ state }: { state: PlayState }) {
         : state.phase === "submitting"
           ? t("play.sending")
           : pending?.narrative === ""
-            ? t("play.thinking")
+            ? pending.recalling
+              ? t("play.recalling")
+              : t("play.thinking")
             : source === "opening"
               ? t("play.writingOpening")
               : source === "ending"

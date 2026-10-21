@@ -1,4 +1,4 @@
-{# version: 1 #}
+{# version: 2 #}
 Now process turn {{ seq }}. The current scene started at turn {{ scene_start }}.
 {% if recent %}
 
@@ -25,6 +25,12 @@ Related facts:
 {{ fact }}
 {% endfor %}
 {% endif %}
+{% if threads %}
+Unresolved threads:
+{% for thread in threads %}
+{{ thread }}
+{% endfor %}
+{% endif %}
 </world-state>
 
 <player-action>
@@ -38,5 +44,11 @@ Related facts:
 <narrative>
 {{ narrative }}
 </narrative>
+{% if notes %}
+
+<director-notes>
+{{ notes }}
+</director-notes>
+{% endif %}
 
 Record the changes in this turn, then call commit.

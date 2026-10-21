@@ -1,6 +1,6 @@
-"""世界状态：entities、entity_links、facts。
+"""世界状态：entities、entity_links、facts、threads 的开局写入和读取（装配上下文、世界浏览用）。
 
-现在只有开局写入和读取；修改与撤销日志随 agent runtime 阶段 2 加入。
+世界状态 agent 的修改和撤销记录在 state.py。
 """
 
 from __future__ import annotations
@@ -206,3 +206,37 @@ async def count_entities(conn: AsyncConnection, playthrough_id: str) -> int:
         {"pt": playthrough_id},
     )
     return int(row["n"]) if row else 0
+
+
+@dataclass(frozen=True, slots=True)
+class ThreadRow:
+    id: str
+    kind: str
+    text: str
+    entity_ids: tuple[str, ...]
+    opened_seq: int
+    answer: str
+
+
+async def load_open_threads(conn: AsyncConnection, playthrough_id: str) -> list[ThreadRow]:
+    """没解开的线索，按记下的回合从早到晚。"""
+    rows = await fetch_all(
+        conn,
+        """
+        SELECT id, kind, text, entity_ids, opened_seq, answer FROM threads
+        WHERE playthrough_id = :pt AND status = 'open'
+        ORDER BY opened_seq, id
+        """,
+        {"pt": playthrough_id},
+    )
+    return [
+        ThreadRow(
+            id=str(r["id"]),
+            kind=r["kind"],
+            text=r["text"],
+            entity_ids=tuple(str(x) for x in r["entity_ids"] or ()),
+            opened_seq=int(r["opened_seq"]),
+            answer=r["answer"],
+        )
+        for r in rows
+    ]

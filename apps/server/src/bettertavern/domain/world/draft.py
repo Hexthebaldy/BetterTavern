@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .invariants import Issue, new_issues
+from .mentions import find_named
 from .names import clean_display_name, normalize_name
 from .plan import REL_HELD_BY, REL_LOCATED_IN, REL_MEMBER_OF
 from .records import EntityRecord, FactRecord, LinkRecord, RowChange, Target, WorldRecords
@@ -188,20 +189,7 @@ class WorldDraft:
 
     def find(self, name: str) -> list[EntityRecord]:
         """名字或别名里包含 name 的实体（包括已退场的），完全相同的排在前面。"""
-        key = normalize_name(name)
-        if not key:
-            return []
-        exact: list[EntityRecord] = []
-        partial: list[EntityRecord] = []
-        for entity in self.entities:
-            if entity.kind == "world":
-                continue
-            names = [entity.name_norm, *(normalize_name(a) for a in entity.aliases)]
-            if key in names:
-                exact.append(entity)
-            elif any(key in n for n in names):
-                partial.append(entity)
-        return exact + partial
+        return find_named((e for e in self.entities if e.kind != "world"), name)
 
     def resolve(self, text: str, *, active: bool = True) -> EntityRecord:
         """把参数里的编号或名字换成实体。active 为真时不接受已退场的。"""
@@ -523,7 +511,15 @@ class WorldDraft:
         return value
 
     # ---- 收尾 --------------------------------------------------------------------------
-    def finish(self, *, digest: str, entities: Iterable[str], scene_ended: bool) -> DraftResult:
+    def finish(
+        self,
+        *,
+        digest: str,
+        entities: Iterable[str],
+        scene_ended: bool,
+        extra: Sequence[RowChange] = (),
+    ) -> DraftResult:
+        """extra：同一回合别的修改清单算出的改动（线索，threads.py），排在最后一起写入。"""
         self._check_open()
         summary = _clean(digest, DIGEST_CHARS)
         if not summary:
@@ -543,7 +539,7 @@ class WorldDraft:
             if record != current:
                 self._put_entity(record)
         self.result = DraftResult(
-            changes=tuple(self._changes()),
+            changes=(*self._changes(), *extra),
             digest=summary,
             entity_ids=tuple(involved),
             scene_ended=bool(scene_ended),

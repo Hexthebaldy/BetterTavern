@@ -17,6 +17,7 @@ from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
 from .auth_service import AuthService
 from .maintenance import Maintenance
 from .playthrough_service import PlaythroughService
+from .recall_store import PgRecallStore
 from .route_service import RouteService
 from .scenario_service import ScenarioService
 from .state_store import PgStateStore
@@ -60,7 +61,14 @@ def build_services(
     signer = AccessTokenSigner(secrets.auth_secret, ttl_s=access_ttl_s)
     routes = RouteService(engine, secrets.keyring, hub, policy)
     store = PgTurnStore(engine)
-    runner = TurnRunner(store=store, routes=routes, hub=hub, prompts=prompts, config=runner_config)
+    runner = TurnRunner(
+        store=store,
+        routes=routes,
+        hub=hub,
+        prompts=prompts,
+        config=runner_config,
+        recall=PgRecallStore(engine),
+    )
     runners = TurnRunnerPool(runner, buffers)
     return Services(
         engine=engine,

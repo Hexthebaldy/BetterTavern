@@ -29,6 +29,14 @@
     "empty_digest": "digest は空にできません。このターンに起きたことを一文で書いてください。",
     "already_committed": "このターンはすでに確定したので、もう変更できません。",
     "bad_detail": "{key} はこの種類のエンティティには使えません。使えるのは：{allowed}。",
+    "unknown_thread": "伏線「{ref}」が見つかりません。t で始まる番号を使ってください。",
+    "bad_thread_kind": "伏線の kind は {allowed} のいずれかで、「{kind}」は使えません。",
+    "empty_thread": "伏線は空にできません。謎・約束・伏線の中身を一文で書いてください。",
+    "too_many_threads": "このターンはすでに {limit} 件記録したので、これ以上は記録できません。あとで本当に問われる・果たされるものだけを記録してください。",
+    "duplicate_thread": "まったく同じ伏線 {ref} がすでにあるので、記録し直す必要はありません。",
+    "thread_closed": "伏線 {ref} はすでに解決済みです。",
+    "too_many_open_threads": "未解決の伏線がすでに {limit} 件あるので、新しく記録できません。先に答えの出たものを close_thread で解決するか、同じ事柄のものを merge_threads でまとめてください。",
+    "merge_needs_two": "merge_threads には未解決の伏線が 2 件以上必要です。",
     "world_issues": "確定時のチェックを通りませんでした：{issues}。直してからもう一度 commit を呼び出してください。"
   },
   "issues": {

@@ -1,0 +1,9 @@
+{
+  "errors": {
+    "need_query": "Give either query or entity.",
+    "unknown_entity": "No character, item, location or organization is called \"{name}\".",
+    "turn_in_context": "Turn {seq} is already in the story text above; no need to look it up.",
+    "no_turn": "There is no turn {seq}.",
+    "budget": "You've looked up enough this turn; write now."
+  }
+}

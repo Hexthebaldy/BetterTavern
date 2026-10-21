@@ -10,7 +10,8 @@
     "nearby": "相关的人物与事物",
     "roster": "其他人物与地点（名册）",
     "known": "玩家已知的事实",
-    "secret": "仅导演可见（角色私有，禁止直接写出）"
+    "secret": "仅导演可见（角色私有，禁止直接写出）",
+    "threads": "没解开的线索（故事欠玩家的交代，只有你知道答案：不要直接说破；在场的人身上挂得越久，越该找机会回应，回应时和答案一致）"
   },
   "scene": {
     "location": "地点：{value}",
@@ -33,5 +34,12 @@
   "kind": "（{kind}）",
   "describe": "：{value}",
   "join_details": "；",
-  "join_names": "、"
+  "join_names": "、",
+  "thread_kinds": {
+    "mystery": "悬念",
+    "promise": "承诺",
+    "foreshadow": "伏笔"
+  },
+  "thread": "- （{kind}，第 {since} 回合起，已过 {age} 回合）{text}",
+  "thread_answer": "；答案：{answer}"
 }

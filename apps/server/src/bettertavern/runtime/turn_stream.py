@@ -1,6 +1,10 @@
 """一次导演调用的流式部分（TurnRunner 用）：领这把密钥的请求名额、开流、边收边解析、
 攒一下再推送叙述。出错不在这里重试，直接交给 TurnRunner 按失败处理。
 
+提供了召回工具时，模型可能先调用工具、不写叙述：工具调用的片段按序号拼起来交回执行循环，
+第一次出现时调用 on_tool_call（runner 推 director.recalling）；这一轮标签外的文字不推给玩家，
+也不推 narrative.done。叙述一旦开始推给玩家，之后的工具调用由执行循环忽略。
+
 两道保险，防止模型（或者玩家填的、不守规矩的接口）一直写下去：从开流算起的总时长上限，
 和按 max_tokens 换算的总字数上限。碰到任何一条就主动停下，这一轮按失败结束，已写出的部分存成草稿。
 
@@ -25,7 +29,10 @@ from bettertavern.providers import (
     Message,
     ProviderError,
     ProviderHub,
+    ReasoningDelta,
     TextDelta,
+    ToolCall,
+    ToolCallDelta,
     ToolSpec,
     Usage,
     UsageEvent,
@@ -37,13 +44,15 @@ from .agent import AgentStep, StepLog, clip_text
 from .agents.director import director_request
 from .context.assembler import AssembledContext
 from .ports import TurnFailure
-from .protocol.director_parser import DirectorParse, DirectorStreamParser
+from .protocol.director_parser import TOOL_CALL_AS_TEXT, DirectorParse, DirectorStreamParser
 from .routing import ResolvedRoute
 
 log = structlog.get_logger(__name__)
 
 # 推送一条回合事件给客户端：(事件名, 数据)
 Publish = Callable[[str, dict[str, Any]], Awaitable[None]]
+# 这一轮模型开始调用工具（还没写叙述）
+OnToolCall = Callable[[], Awaitable[None]]
 
 # 叙述的总字数上限 = max_tokens × 这个数。一个 token 英文约 4 个字符、中文 1 到 2 个字，
 # 按 8 算足够宽松：守规矩的模型写到 max_tokens 就停了，碰不到它。只数正文，不数思考过程
@@ -78,6 +87,9 @@ class Generation:
     latency_ms: int = 0
     raw: str = ""  # 模型写出的原文（含标签），记进 agent_steps
     steps: tuple[AgentStep, ...] = ()  # 这一回合导演的每一步，由 runner 填上
+    tool_calls: tuple[ToolCall, ...] = ()  # 这一轮模型要调用的工具（还没写叙述时才有）
+    reasoning: str = ""  # 模型的思考内容（带工具时有的服务商要求接回去）
+    tool_rounds: int = 0  # 这一回合导演用了几轮工具，由 runner 填上
 
 
 def failure_from_provider(error: ProviderError, narrative: str = "") -> TurnFailure:
@@ -195,6 +207,7 @@ class DirectorStreamer:
         steps: StepLog,
         messages: Sequence[Message] | None = None,
         tools: Sequence[ToolSpec] | None = None,
+        on_tool_call: OnToolCall | None = None,
     ) -> Generation:
         """messages 不给就用装配好的上下文；这次调用记成 steps 里的一步（成功、失败都记）。"""
         adapter = self._hub.adapter(route.provider)
@@ -203,6 +216,8 @@ class DirectorStreamer:
         pending: list[str] = []
         streamed: list[str] = []
         raw: list[str] = []
+        thinking: list[str] = []
+        calls: dict[int, dict[str, Any]] = {}  # 工具调用的片段，按序号拼
         usage: Usage | None = None
         finish_reason: str | None = None
         ttft_ms: int | None = None
@@ -282,6 +297,18 @@ class DirectorStreamer:
                                     await publish(
                                         "narrative.done", {"chars": len("".join(streamed))}
                                     )
+                            elif isinstance(event, ToolCallDelta) and tools:
+                                part = calls.setdefault(
+                                    event.index, {"id": None, "name": None, "args": []}
+                                )
+                                part["id"] = part["id"] or event.id
+                                part["name"] = part["name"] or event.name
+                                part["args"].append(event.arguments)
+                                first = len(calls) == 1 and len(part["args"]) == 1
+                                if first and not streamed and not pending and on_tool_call:
+                                    await on_tool_call()
+                            elif isinstance(event, ReasoningDelta):
+                                thinking.append(event.text)
                             elif isinstance(event, UsageEvent):
                                 usage = event.usage
                             elif isinstance(event, Done):
@@ -350,17 +377,36 @@ class DirectorStreamer:
             reasoning_tokens=usage.reasoning if usage else None,
             streamed_chars=len("".join(streamed)),
         )
-        record(
-            {"text": clip_text("".join(raw)), "finish_reason": finish_reason, "ttft_ms": ttft_ms}
-        )
-        tail, parse = parser.finish()
-        pending.extend(tail)
-        await flush()
-        if not narrative_done:
-            await publish(
-                "narrative.done",
-                {"chars": len(parse.narrative), "rewritten": parse.rewritten},
+        tool_calls = tuple(
+            ToolCall(
+                id=part["id"] or f"call_{index}", name=part["name"], arguments="".join(part["args"])
             )
+            for index, part in sorted(calls.items())
+            if part["name"]
+        )
+        result: dict[str, Any] = {
+            "text": clip_text("".join(raw)),
+            "finish_reason": finish_reason,
+            "ttft_ms": ttft_ms,
+        }
+        if tool_calls:
+            result["tool_calls"] = [
+                {"name": c.name, "arguments": clip_text(c.arguments)} for c in tool_calls
+            ]
+        record(result)
+        tail, parse = parser.finish()
+        # 还没写叙述就调用工具：这一轮只是去查东西，标签外的字（“让我查一下”）不推给玩家。
+        # 把工具调用写成了文字也一样，什么都不推，由执行循环不带工具再请求一次
+        botched = bool(tools) and TOOL_CALL_AS_TEXT in parse.repairs
+        tool_round = (bool(tool_calls) or botched) and not streamed and not pending
+        if not tool_round:
+            pending.extend(tail)
+            await flush()
+            if not narrative_done:
+                await publish(
+                    "narrative.done",
+                    {"chars": len(parse.narrative), "rewritten": parse.rewritten},
+                )
         return Generation(
             parse=parse,
             streamed="".join(streamed),
@@ -371,4 +417,6 @@ class DirectorStreamer:
             context=context,
             latency_ms=self._elapsed_ms(started),
             raw="".join(raw),
+            tool_calls=tool_calls if tool_round else (),
+            reasoning="".join(thinking),
         )

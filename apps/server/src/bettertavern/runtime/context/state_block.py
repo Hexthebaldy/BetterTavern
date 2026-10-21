@@ -1,13 +1,16 @@
 """状态块 <world-state>：把世界状态按“场景、主角、在场人物、提到的、相关的、名册、玩家已知、
-角色私有”排版（backend.md 第 3 节“披露分层”，docs/agent-runtime.md 第 7 节“状态块”）。
+角色私有、没解开的线索”排版（backend.md 第 3 节“披露分层”，docs/agent-runtime.md 第 7 节“状态块”）。
 标签和标点随这一局的语言（runtime/prompts/<lang>/state_block.json），排版规则相同。
 
 - 开头写明截至第几回合：世界状态由后台整理，可能落后几回合，之后原文里的变化以原文为准；
 - 在场：场景地点、在场人物、主角和随身物品；
 - 提到的：玩家这次的行动和上一段叙述里出现了名字或别名的实体（包括铅笔实体）；
 - 相关的：在场实体的一跳邻居（只取钢笔实体）；
-- 名册：其余钢笔实体，按最近出现的回合从近到远，一行一个。
-预算不够时按顺序删减：名册 → 相关的 → 提到的压成一行 → 事实 → 在场人物的详情。
+- 名册：其余钢笔实体，按最近出现的回合从近到远，一行一个；
+- 线索：挂在此刻在场的人和物（在场人物、场景地点、主角带着的东西）或这回合提到的实体身上的
+  没解开的线索，不算主角（主角几乎在每条线索里）；越老越靠前，写明挂了多少回合和导演定下的答案；
+  只涉及主角或不涉及任何实体的排在后面；最多 8 条。
+预算不够时按顺序删减：名册 → 相关的 → 提到的压成一行 → 事实和线索 → 在场人物的详情。
 所有实体文字都先过 sanitize_for_fence()；输出是确定性的（同样的输入逐字节相同）。
 """
 
@@ -17,7 +20,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from bettertavern.domain.world.mentions import mentioned
-from bettertavern.domain.world.views import EntityView, FactView, WorldSnapshot
+from bettertavern.domain.world.views import EntityView, FactView, ThreadView, WorldSnapshot
 from bettertavern.runtime.prompts import PromptLibrary
 
 from .fences import sanitize_for_fence
@@ -27,6 +30,7 @@ MAX_FACTS = 12
 MAX_ROSTER = 24
 MAX_MENTIONED = 8
 MAX_NEARBY = 12
+MAX_THREADS = 8
 DETAIL_KEYS = ("goal", "attitude", "speech_style")
 
 
@@ -55,6 +59,19 @@ def _fact_line(fact: FactView) -> str:
     return f"- {_clean(fact.text, 200)}"
 
 
+def _thread_line(labels: Mapping[str, Any], thread: ThreadView, turn_seq: int) -> str:
+    kind = labels["thread_kinds"].get(thread.kind, thread.kind)
+    line = labels["thread"].format(
+        kind=kind,
+        since=thread.opened_seq,
+        age=max(turn_seq - thread.opened_seq, 0),
+        text=_clean(thread.text, 160),
+    )
+    if thread.answer:
+        line += labels["thread_answer"].format(answer=_clean(thread.answer, 200))
+    return line
+
+
 def _entity_line(labels: Mapping[str, Any], entity: EntityView, *, summary_chars: int) -> str:
     """一行：名字（类型）：简短描述"""
     name = _clean(entity.name, 40) + labels["kind"].format(
@@ -71,11 +88,13 @@ def render_state_block(
     budget_tokens: int = 2500,
     state_seq: int = -1,
     mention_texts: Sequence[str] = (),
+    turn_seq: int | None = None,
 ) -> str:
     """标签和标点取自这一局语言的 state_block.json；结构和降级规则与语言无关。
 
     state_seq：世界状态已整理到第几回合（-1 表示还是开局时的样子）；
-    mention_texts：用来找“提到的”实体的文字（玩家这次的行动、上一段叙述）。
+    mention_texts：用来找“提到的”实体的文字（玩家这次的行动、上一段叙述）；
+    turn_seq：正在写的回合，算线索挂了多少回合；不给时按 state_seq + 1。
     """
     labels: Mapping[str, Any] = prompts.data("state_block")
     hero = world.protagonist
@@ -167,6 +186,22 @@ def render_state_block(
         :MAX_FACTS
     ]
 
+    # 线索：挂在此刻在场的人和物、或者这回合提到的实体身上的，越老越靠前（越该回收）；
+    # 主角几乎在每条线索里，不算；只涉及主角或不涉及任何实体的排在后面
+    focus = present_ids | {e.id for e in named}
+    if location is not None:
+        focus.add(location.id)
+    if hero is not None:
+        focus.update(i.id for i in world.held_by(hero.id))
+
+    def others(thread: ThreadView) -> set[str]:
+        return set(thread.entity_ids) - {hero_id}
+
+    oldest = sorted(world.threads, key=lambda t: (t.opened_seq, t.id))
+    picked = [t for t in oldest if others(t) & focus] + [t for t in oldest if not others(t)]
+    now = turn_seq if turn_seq is not None else state_seq + 1
+    thread_lines = [_thread_line(labels, t, now) for t in picked[:MAX_THREADS]]
+
     preamble = (
         labels["preamble"].format(seq=state_seq) if state_seq >= 0 else labels["preamble_opening"]
     )
@@ -186,6 +221,7 @@ def render_state_block(
         lines += section("roster", roster_lines[:roster_n])
         lines += section("known", [_fact_line(f) for f in known[:facts_n]])
         lines += section("secret", [_fact_line(f) for f in secret[:facts_n]])
+        lines += section("threads", thread_lines[:facts_n])
         return "<world-state>\n" + "\n".join(lines) + "\n</world-state>"
 
     # 降级顺序：名册 → 相关的 → 提到的压成一行 → 事实条数 → 在场人物详情

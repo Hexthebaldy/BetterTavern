@@ -31,6 +31,7 @@ class DirectorOutcome:
     stage: ParseStage
     repairs: tuple[str, ...]
     notes: tuple[str, ...]
+    director_notes: str = ""  # 导演的隐藏备注，原样带过来
 
 
 async def finalize_director_output(
@@ -54,6 +55,7 @@ async def finalize_director_output(
             stage=parse.stage,
             repairs=parse.repairs,
             notes=tuple(notes),
+            director_notes=parse.director_notes,
         )
     for _ in range(attempts if repair is not None else 0):
         assert repair is not None
@@ -68,6 +70,7 @@ async def finalize_director_output(
                     stage=ParseStage.REPAIRED,
                     repairs=parse.repairs,
                     notes=tuple(notes),
+                    director_notes=parse.director_notes,
                 )
             notes.append("OptionsRepair did not produce 2 valid choices")
         except TimeoutError:

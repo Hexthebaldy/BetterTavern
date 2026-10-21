@@ -6,8 +6,11 @@
    （和导演的输出格式一样，模型看着历史也会照样写选项）；
 3. 最后一条 user：状态块在前、玩家行动在后（或开场简报、结局要求），离生成点最近。
 
-M1 还没有摘要与压缩（M3），近期原文就是全部历史；超过有效窗口 95% 时只截断发送视图，
-从最旧的回合开始丢，至少保留最近 2 个回合，直到不超过 90%。
+还没有场景摘要（agent runtime 阶段 4），近期原文默认是全部历史。history_block 大于 0 时，
+原文按这个数整块移出：保留最近的 N 到 2N−1 回合，起点每 N 回合才往后挪一次，中间前缀不变，
+前缀缓存照样命中；移出的回合由导演用召回工具查（第 4 节“导演”）。没整理进世界状态的回合
+不会被移出。超过有效窗口 95% 时只截断发送视图，从最旧的回合开始丢，至少保留最近 2 个回合，
+直到不超过 90%。
 """
 
 from __future__ import annotations
@@ -33,12 +36,17 @@ MIN_KEEP_TURNS = 2
 MAX_SYSTEM_CHARACTERS = 8
 
 
-def director_reply(narrative: str, options: tuple[str, ...] | list[str] = ()) -> str:
-    """历史回合里导演那一条消息：叙述，后面跟当时给玩家的选项（没有选项就只有叙述）。"""
+def director_reply(
+    narrative: str, options: tuple[str, ...] | list[str] = (), notes: str = ""
+) -> str:
+    """历史回合里导演那一条消息：叙述，后面跟当时给玩家的选项（没有选项就只有叙述），
+    再跟导演当时写的隐藏备注（没写就没有）。导演靠它记得自己埋过什么伏笔。"""
     reply = f"<narrative>\n{sanitize_for_fence(narrative)}\n</narrative>"
     if options:
         lines = "\n".join(f"{i}. {sanitize_for_fence(text)}" for i, text in enumerate(options, 1))
         reply += f"\n<options>\n{lines}\n</options>"
+    if notes.strip():
+        reply += f"\n<director-notes>\n{sanitize_for_fence(notes.strip())}\n</director-notes>"
     return reply
 
 
@@ -53,6 +61,8 @@ class AssembledContext:
     window: int
     dropped_turns: int
     prompt_versions: dict[str, str] = field(default_factory=dict)
+    # 上下文里的原文从第几回合开始：更早的回合不在上下文里，召回工具只查它们。0 表示没有可查的
+    recall_before: int = 0
 
     @property
     def usage_ratio(self) -> float:
@@ -67,6 +77,15 @@ class AssembledContext:
             digest.update(message.content.encode())
             digest.update(b"\x01")
         return digest.hexdigest()[:16]
+
+
+def history_start(ctx: TurnContext, block: int) -> int:
+    """原文从第几回合开始放：block 为 0 时全部放；否则起点按 block 整块往后挪，
+    并且不晚于“已整理到的回合 + 1”（没整理进世界状态的回合一定以原文出现）。"""
+    if block <= 0:
+        return 0
+    start = max(0, (ctx.header.seq // block - 1) * block)
+    return max(0, min(start, ctx.state_seq + 1))
 
 
 class ContextAssembler:
@@ -110,9 +129,11 @@ class ContextAssembler:
             length=prefs.length,
         )
 
-    def history_messages(self, ctx: TurnContext) -> list[tuple[Message, Message]]:
+    def history_messages(self, ctx: TurnContext, start: int = 0) -> list[tuple[Message, Message]]:
         pairs: list[tuple[Message, Message]] = []
         for turn in ctx.history:
+            if turn.seq < start:
+                continue
             if turn.action.source == "opening":
                 user = self._prompts.render(
                     "director.opening",
@@ -131,13 +152,17 @@ class ContextAssembler:
                 user = self._prompts.render(
                     "director.turn", action=sanitize_for_fence(turn.action.text)
                 ).text
-            assistant = director_reply(turn.narrative, turn.options)
+            assistant = director_reply(turn.narrative, turn.options, turn.director_notes)
             pairs.append(
                 (Message(role="user", content=user), Message(role="assistant", content=assistant))
             )
         return pairs
 
-    def final_message(self, ctx: TurnContext, window: int) -> RenderedPrompt:
+    def final_message(
+        self, ctx: TurnContext, window: int, *, recall_before: int = 0
+    ) -> RenderedPrompt:
+        """recall_before 大于 0 时（提供了召回工具）提示导演：
+        现在是第几回合，原文从第几回合开始。"""
         state_budget = min(math.floor(window * STATE_BLOCK_RATIO), STATE_BLOCK_CAP)
         last_narrative = ctx.history[-1].narrative if ctx.history else ""
         world_state = render_state_block(
@@ -146,6 +171,7 @@ class ContextAssembler:
             budget_tokens=state_budget,
             state_seq=ctx.state_seq,
             mention_texts=(ctx.action.text, last_narrative),
+            turn_seq=ctx.header.seq,
         )
         if ctx.action.source == "opening":
             opening = ctx.seed.opening if ctx.seed is not None else None
@@ -160,31 +186,54 @@ class ContextAssembler:
             )
         action_chars = max(math.floor(window * ACTION_RATIO), 200)
         action = clip_middle(sanitize_for_fence(ctx.action.text), action_chars)
+        hint = {"seq": ctx.header.seq, "recall_before": recall_before}
         if ctx.action.source == "ending":
-            return self._prompts.render("director.ending", wish=action, world_state=world_state)
-        return self._prompts.render("director.turn", action=action, world_state=world_state)
+            return self._prompts.render(
+                "director.ending", wish=action, world_state=world_state, **hint
+            )
+        return self._prompts.render("director.turn", action=action, world_state=world_state, **hint)
 
     def assemble(
-        self, ctx: TurnContext, window: int, *, budget: int | None = None
+        self,
+        ctx: TurnContext,
+        window: int,
+        *,
+        budget: int | None = None,
+        history_block: int = 0,
+        recall: bool = False,
     ) -> AssembledContext:
-        """budget 不为空时（厂商报超窗后的重试）直接截断到不超过 budget。"""
+        """budget 不为空时（厂商报超窗后的重试）直接截断到不超过 budget。
+        history_block 见模块说明；recall 为真表示这一回合会给导演召回工具。"""
         system = self.system_prompt(ctx)
-        final = self.final_message(ctx, window)
-        pairs = self.history_messages(ctx)
+        start = history_start(ctx, history_block)
+        seqs = [t.seq for t in ctx.history if t.seq >= start]
+        pairs = self.history_messages(ctx, start)
         head = [Message(role="system", content=system.text)]
-        tail = [Message(role="user", content=final.text)]
+        finals: dict[int, RenderedPrompt] = {}
+
+        def first_seq(kept: int) -> int:
+            """留下最后 kept 个回合时，上下文里的原文从第几回合开始（0 表示没有可查的）"""
+            if not recall or ctx.action.source == "opening" or not seqs:
+                return 0
+            return seqs[len(seqs) - kept] if kept else ctx.header.seq
+
+        def final(kept: int) -> RenderedPrompt:
+            before = first_seq(kept)
+            if before not in finals:
+                finals[before] = self.final_message(ctx, window, recall_before=before)
+            return finals[before]
 
         def build(keep: list[tuple[Message, Message]]) -> list[Message]:
             body = [m for pair in keep for m in pair]
-            return [*head, *body, *tail]
+            return [*head, *body, Message(role="user", content=final(len(keep)).text)]
 
         messages = build(pairs)
         total = estimate_messages(messages)
         dropped = 0
+        keep = list(pairs)
         limit = budget if budget is not None else window * EMERGENCY_LINE
         if total > limit:
             target = budget if budget is not None else emergency_budget(window)
-            keep = list(pairs)
             while len(keep) > MIN_KEEP_TURNS and total > target:
                 keep.pop(0)
                 dropped += 1
@@ -195,9 +244,10 @@ class ContextAssembler:
                     f"Context is about {total} tokens, "
                     f"more than the effective window {window} holds"
                 )
+        last = final(len(keep))
         versions = {
             "director.system": system.version,
-            final.name: final.version,
+            last.name: last.version,
         }
         return AssembledContext(
             messages=messages,
@@ -205,4 +255,5 @@ class ContextAssembler:
             window=window,
             dropped_turns=dropped,
             prompt_versions=versions,
+            recall_before=first_seq(len(keep)),
         )

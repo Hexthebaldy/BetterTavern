@@ -19,6 +19,8 @@ FENCE_TAGS = (
     "recall",
     "character-card",
     "opening-brief",
+    "director-notes",
+    "ending-wish",
 )
 
 _NAMES = "|".join(re.escape(t) for t in FENCE_TAGS)

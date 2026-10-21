@@ -1,5 +1,5 @@
-"""世界状态 agent 的读写：整理进度（playthroughs.state_seq）、按行写入改动、
-撤销记录（state_patches）、回合标签（turn_notes）。
+"""世界状态 agent 的读写：整理进度（playthroughs.state_seq）、
+按行写入改动（实体、关系、事实、线索）、撤销记录（state_patches）、回合标签（turn_notes）。
 
 写入顺序见 docs/agent-runtime.md 第 8 节：先对 playthroughs 做带条件的 UPDATE（整理进度和时间线编号
 都要对得上），成功后才写世界状态表。改动按行写：新建的插入、改过的整行覆盖、删掉的删除。
@@ -18,6 +18,7 @@ from bettertavern.domain.world.records import (
     FactRecord,
     LinkRecord,
     RowChange,
+    ThreadRecord,
     WorldRecords,
 )
 from bettertavern.infra.db.sqlutil import as_json, dumps, execute, fetch_all, fetch_one, fetch_value
@@ -27,7 +28,7 @@ STATE_AGENT = "state_keeper"
 
 # ---- 读 ---------------------------------------------------------------------------------
 async def load_records(conn: AsyncConnection, playthrough_id: str) -> WorldRecords:
-    """一局的全部实体（包括已退场的）、关系和有效的事实，顺序固定。"""
+    """一局的全部实体（包括已退场的）、关系、有效的事实和没解开的线索，顺序固定。"""
     entities = await fetch_all(
         conn,
         """
@@ -53,6 +54,16 @@ async def load_records(conn: AsyncConnection, playthrough_id: str) -> WorldRecor
                created_seq, source_turn_id
         FROM facts WHERE playthrough_id = :pt AND status = 'active'
         ORDER BY created_seq, id
+        """,
+        {"pt": playthrough_id},
+    )
+    threads = await fetch_all(
+        conn,
+        """
+        SELECT id, kind, text, entity_ids, status, opened_seq, closed_seq, source_turn_id,
+               answer, merged_into
+        FROM threads WHERE playthrough_id = :pt AND status = 'open'
+        ORDER BY opened_seq, id
         """,
         {"pt": playthrough_id},
     )
@@ -93,6 +104,21 @@ async def load_records(conn: AsyncConnection, playthrough_id: str) -> WorldRecor
                 source_turn_id=None if r["source_turn_id"] is None else str(r["source_turn_id"]),
             )
             for r in facts
+        ),
+        threads=tuple(
+            ThreadRecord(
+                id=str(r["id"]),
+                kind=r["kind"],
+                text=r["text"],
+                entity_ids=tuple(str(x) for x in r["entity_ids"] or ()),
+                status=r["status"],
+                opened_seq=int(r["opened_seq"]),
+                closed_seq=r["closed_seq"],
+                source_turn_id=None if r["source_turn_id"] is None else str(r["source_turn_id"]),
+                answer=r["answer"],
+                merged_into=None if r["merged_into"] is None else str(r["merged_into"]),
+            )
+            for r in threads
         ),
     )
 
@@ -293,6 +319,8 @@ async def apply_changes(
             await _apply_entity(conn, playthrough_id, change)
         elif change.target == "link":
             await _apply_link(conn, playthrough_id, change)
+        elif change.target == "thread":
+            await _apply_thread(conn, playthrough_id, change)
         else:
             await _apply_fact(conn, playthrough_id, change)
 
@@ -414,6 +442,50 @@ async def _apply_fact(conn: AsyncConnection, playthrough_id: str, change: RowCha
             known_by = CAST(:known AS uuid[]), status = :status,
             superseded_by = CAST(:by AS uuid), superseded_seq = :sseq,
             created_seq = :created, source_turn_id = CAST(:source AS uuid)
+        WHERE id = :id AND playthrough_id = :pt
+        """,
+        params,
+    )
+
+
+async def _apply_thread(conn: AsyncConnection, playthrough_id: str, change: RowChange) -> None:
+    if change.after is None:
+        assert change.before is not None
+        await execute(conn, "DELETE FROM threads WHERE id = :id", {"id": change.before["id"]})
+        return
+    row = ThreadRecord.from_json(change.after)
+    params: dict[str, Any] = {
+        "id": row.id,
+        "pt": playthrough_id,
+        "kind": row.kind,
+        "text": row.text,
+        "entities": list(row.entity_ids),
+        "status": row.status,
+        "opened": row.opened_seq,
+        "closed": row.closed_seq,
+        "source": row.source_turn_id,
+        "answer": row.answer,
+        "merged": row.merged_into,
+    }
+    if change.before is None:
+        await execute(
+            conn,
+            """
+            INSERT INTO threads (id, playthrough_id, kind, text, entity_ids, status, opened_seq,
+                                 closed_seq, source_turn_id, answer, merged_into)
+            VALUES (:id, :pt, :kind, :text, CAST(:entities AS uuid[]), :status, :opened, :closed,
+                    CAST(:source AS uuid), :answer, CAST(:merged AS uuid))
+            """,
+            params,
+        )
+        return
+    await execute(
+        conn,
+        """
+        UPDATE threads
+        SET kind = :kind, text = :text, entity_ids = CAST(:entities AS uuid[]), status = :status,
+            opened_seq = :opened, closed_seq = :closed, source_turn_id = CAST(:source AS uuid),
+            answer = :answer, merged_into = CAST(:merged AS uuid)
         WHERE id = :id AND playthrough_id = :pt
         """,
         params,

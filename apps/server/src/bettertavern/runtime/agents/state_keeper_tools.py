@@ -3,8 +3,10 @@
 
 - 查询：find_entity、lookup。
 - 修改：create_entity、update_entity、retire_entity、move、link、unlink、add_fact、retract_fact、
-  share_fact、set_scene、set_clock。只作用到这次运行的修改清单
-  （domain/world/draft.py 的 WorldDraft），当场检查，不合规的把原因交回模型，让它改正。
+  share_fact、set_scene、set_clock、open_thread、close_thread、update_thread、merge_threads。
+  只作用到这次运行的修改清单
+  （domain/world/draft.py 的 WorldDraft，线索是 domain/world/threads.py 的 ThreadDraft），
+  当场检查，不合规的把原因交回模型，让它改正。
 - 收尾：commit。整个世界再检查一遍，通过了这次运行才算完成。
 
 工具结果是紧凑的 JSON：键是英文标识，值里的故事文字都先过 sanitize_for_fence()。
@@ -20,18 +22,20 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from bettertavern.domain.world.draft import KINDS, LINK_RULES, DraftError, DraftIssues, WorldDraft
-from bettertavern.domain.world.records import EntityRecord, FactRecord
+from bettertavern.domain.world.records import EntityRecord, FactRecord, ThreadRecord
+from bettertavern.domain.world.threads import THREAD_KINDS, ThreadDraft
 from bettertavern.runtime.agent import AgentStep, Tool, ToolError, ToolRegistry
 from bettertavern.runtime.context.fences import sanitize_for_fence
 
 FINISH_TOOL = "commit"
 MAX_MATCHES = 8
-_REF = re.compile(r"\b[ef]\d+\b")
+_REF = re.compile(r"\b[eft]\d+\b")
 
 
 @dataclass
 class StateToolContext:
     draft: WorldDraft
+    threads: ThreadDraft
     messages: Mapping[str, Any]  # state_keeper.json：出错时的说明
     rejected: list[dict[str, str]] = field(default_factory=list)  # 被拒绝的修改：工具名和原因代码
     commits: int = 0  # 调用了几次 commit
@@ -109,8 +113,35 @@ def describe_fact(draft: WorldDraft, fact: FactRecord) -> dict[str, Any]:
     return out
 
 
-def ref_labels(draft: WorldDraft, steps: Iterable[AgentStep]) -> dict[str, str]:
-    """这次运行的工具参数和结果里出现过的编号，各自对应的名字（事实是开头几个字）。
+def describe_thread(
+    draft: WorldDraft, threads: ThreadDraft, thread: ThreadRecord
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "ref": threads.ref(thread.id),
+        "kind": thread.kind,
+        "text": _text(thread.text),
+        "since": thread.opened_seq,
+    }
+    about = [draft.ref(i) for i in thread.entity_ids if _known(draft, i)]
+    if about:
+        out["about"] = about
+    if thread.answer:
+        out["answer"] = _text(thread.answer)
+    return out
+
+
+def _known(draft: WorldDraft, entity_id: str) -> bool:
+    try:
+        draft.entity(entity_id)
+    except KeyError:
+        return False
+    return True
+
+
+def ref_labels(
+    draft: WorldDraft, steps: Iterable[AgentStep], threads: ThreadDraft | None = None
+) -> dict[str, str]:
+    """这次运行的工具参数和结果里出现过的编号，各自对应的名字（事实、线索是开头几个字）。
 
     编号只在这一次运行里有效，记下来给日志查看工具用：打开“显示故事内容”时把编号换成名字显示。
     """
@@ -120,7 +151,13 @@ def ref_labels(draft: WorldDraft, steps: Iterable[AgentStep]) -> dict[str, str]:
             continue
         text = to_json(dict(step.args)) + str(step.result.get("text") or "")
         seen.update(dict.fromkeys(_REF.findall(text)))
-    labels = {ref: label for ref in seen if (label := draft.label(ref)) is not None}
+
+    def label(ref: str) -> str | None:
+        if ref.startswith("t"):
+            return threads.label(ref) if threads is not None else None
+        return draft.label(ref)
+
+    labels = {ref: text for ref in seen if (text := label(ref)) is not None}
     return dict(sorted(labels.items(), key=lambda item: (item[0][0], int(item[0][1:]))))
 
 
@@ -309,6 +346,63 @@ def set_clock(args: Mapping[str, Any], ctx: StateToolContext) -> str:
     return to_json({"time": _text(ctx.draft.set_clock(str(args["time"])))})
 
 
+THREAD_KIND = {"type": "string", "enum": list(THREAD_KINDS)}
+
+
+def _about(args: Mapping[str, Any], ctx: StateToolContext) -> list[str]:
+    return [ctx.draft.resolve(str(a), active=False).id for a in args.get("about") or ()]
+
+
+@_tool(
+    "open_thread",
+    "write",
+    {"kind": THREAD_KIND, "text": STRING, "about": STRINGS, "answer": STRING},
+    ("kind", "text"),
+)
+def open_thread(args: Mapping[str, Any], ctx: StateToolContext) -> str:
+    thread = ctx.threads.open(
+        str(args["kind"]),
+        str(args["text"]),
+        _about(args, ctx),
+        answer=str(args.get("answer") or ""),
+    )
+    return to_json({"ref": ctx.threads.ref(thread.id)})
+
+
+@_tool("close_thread", "write", {"thread": STRING}, ("thread",))
+def close_thread(args: Mapping[str, Any], ctx: StateToolContext) -> str:
+    ctx.threads.close(str(args["thread"]))
+    return OK
+
+
+@_tool("update_thread", "write", {"thread": STRING, "text": STRING, "answer": STRING}, ("thread",))
+def update_thread(args: Mapping[str, Any], ctx: StateToolContext) -> str:
+    text, answer = args.get("text"), args.get("answer")
+    ctx.threads.update(
+        str(args["thread"]),
+        text=None if text is None else str(text),
+        answer=None if answer is None else str(answer),
+    )
+    return OK
+
+
+@_tool(
+    "merge_threads",
+    "write",
+    {"threads": STRINGS, "kind": THREAD_KIND, "text": STRING, "about": STRINGS, "answer": STRING},
+    ("threads", "kind", "text"),
+)
+def merge_threads(args: Mapping[str, Any], ctx: StateToolContext) -> str:
+    thread = ctx.threads.merge(
+        [str(t) for t in args.get("threads") or ()],
+        kind=str(args["kind"]),
+        text=str(args["text"]),
+        entity_ids=_about(args, ctx),
+        answer=str(args.get("answer") or ""),
+    )
+    return to_json({"ref": ctx.threads.ref(thread.id)})
+
+
 @_tool(
     FINISH_TOOL,
     "write",
@@ -321,6 +415,7 @@ def commit(args: Mapping[str, Any], ctx: StateToolContext) -> str:
         digest=str(args["digest"]),
         entities=[str(e) for e in args.get("entities") or ()],
         scene_ended=bool(args["scene_ended"]),
+        extra=ctx.threads.changes(),
     )
     return OK
 
@@ -339,6 +434,10 @@ TOOLS = (
     share_fact,
     set_scene,
     set_clock,
+    open_thread,
+    close_thread,
+    update_thread,
+    merge_threads,
     commit,
 )
 TOOL_NAMES = tuple(t.name for t in TOOLS)

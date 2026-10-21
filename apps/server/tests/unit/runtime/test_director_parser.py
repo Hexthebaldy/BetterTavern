@@ -171,3 +171,56 @@ def test_feed_after_finish_raises() -> None:
     parser.finish()
     with pytest.raises(RuntimeError):
         parser.feed("x")
+
+
+NOTES = "<director-notes>\n伏笔：信封上的火漆是假的。\n</director-notes>"
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_director_notes_are_kept_apart_from_the_narrative(seed: int) -> None:
+    rng = random.Random(seed)
+    text = GOOD + "\n" + NOTES
+    sizes = [rng.randint(1, 7) for _ in range(len(text) // 3)]
+    deltas, result = stream(text, sizes)
+    assert "".join(deltas) == NARRATIVE  # 推给玩家的只有叙述
+    assert result.stage is ParseStage.OK and result.options == OPTIONS
+    assert result.director_notes == "伏笔：信封上的火漆是假的。"
+    assert result.notes == ()  # 备注不算标签外的多余文字
+
+
+def test_notes_never_leak_into_the_narrative() -> None:
+    # 叙述没闭合就写备注：叙述到此为止，备注照样单独拿出来，选项还能接着解析
+    text = (
+        "<narrative>\n我推开门。\n<director-notes>老周在说谎</director-notes>\n"
+        "<options>\n1. 追问\n2. 离开\n</options>"
+    )
+    deltas, result = stream(text, [3] * 30)
+    assert "".join(deltas) == "我推开门。" == result.narrative
+    assert result.director_notes == "老周在说谎"
+    assert result.options == ("追问", "离开")
+    assert result.stage is ParseStage.SALVAGED
+
+
+def test_ending_may_carry_notes_without_options() -> None:
+    result = parse_director_text("<narrative>\n故事结束了。\n</narrative>\n" + NOTES)
+    assert result.narrative == "故事结束了。" and result.options == ()
+    assert result.director_notes.startswith("伏笔")
+
+
+def test_unclosed_notes_are_still_kept_and_clipped() -> None:
+    result = parse_director_text(GOOD + "<director-notes>" + "备" * 2000)
+    assert result.stage is ParseStage.OK
+    assert len(result.director_notes) == 600
+    assert "<director-notes> was not closed" in result.notes
+
+
+def test_a_tool_call_written_as_text_is_not_salvaged_as_narrative() -> None:
+    # DeepSeek 偶尔把工具调用写成正文（真实试玩里见过），不能当叙述推给玩家
+    text = (
+        "<recall>\n<query>货栈 看守 老人</query>\n</recall>\n"
+        "</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>"
+    )
+    deltas, result = stream(text, [4] * 40)
+    assert deltas == [] and result.narrative == ""
+    assert result.stage is ParseStage.FAILED
+    assert "tool call written as text" in result.repairs

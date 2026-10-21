@@ -25,6 +25,7 @@ export const play = {
     polling: "网络不太稳定，正在等结果…",
     sending: "正在发送…",
     thinking: "正在构思…",
+    recalling: "正在回想前情…",
     writingOpening: "正在写开场",
     writingEnding: "正在写结局",
     writingNext: "正在写下一段",

@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     options_repair_timeout_s: float = Field(default=5.0, gt=0)
     # 导演写一段的总时长上限，超过就停下、这一轮按失败结束（防止模型一直写不停）
     director_timeout_s: float = Field(default=600.0, gt=0)
+    # 原文按这个回合数整块移出导演的上下文，移出的回合导演用召回工具查；0 表示全部保留。
+    # 场景摘要（agent runtime 阶段 4）做好之前默认全部保留，试召回时设成例如 10
+    director_history_block: int = Field(default=0, ge=0)
 
     # 收到 SIGTERM 后等进行中的回合与任务的上限；容器的停止宽限期要比它长
     shutdown_grace_s: float = Field(default=60.0, ge=0)

@@ -9,8 +9,12 @@
     1. 选项一
     2. 选项二
     </options>
+    <director-notes>
+    导演写给后台的备注（可选，玩家看不到）
+    </director-notes>
 
-状态机 SEEK_NARRATIVE → IN_NARRATIVE → SEEK_OPTIONS → IN_OPTIONS → DONE。
+状态机 SEEK_NARRATIVE → IN_NARRATIVE → SEEK_OPTIONS → IN_OPTIONS → DONE；任何叙述之外的地方遇到
+<director-notes> 就进 IN_NOTES，读完回到原来的状态。备注一个字都不推给玩家，单独放在解析结果里。
 - 标签可能被拆在两个 chunk 里：缓冲尾部如果可能是某个标签的前缀，就先不输出；
 - 标签之外的文字和 <think> 块直接丢弃；
 - 叙述的首尾空白不输出，所以 feed()/finish() 吐出的片段拼起来正好等于最终叙述
@@ -32,6 +36,10 @@ OPTIONS_OPEN = "<options>"
 OPTIONS_CLOSE = "</options>"
 THINK_OPEN = "<think>"
 THINK_CLOSE = "</think>"
+NOTES_OPEN = "<director-notes>"
+NOTES_CLOSE = "</director-notes>"
+# 备注最多留这么多字：写给后台看的，世界状态 agent 会读，也会回到之后的上下文里
+MAX_NOTES_CHARS = 600
 
 _PATTERNS = {
     tag: re.compile(re.escape(tag), re.IGNORECASE)
@@ -42,6 +50,8 @@ _PATTERNS = {
         OPTIONS_CLOSE,
         THINK_OPEN,
         THINK_CLOSE,
+        NOTES_OPEN,
+        NOTES_CLOSE,
     )
 }
 # 只认 1、2 号：多于 2 个只取前 2 个。模型输出不可信（自定义端点可以返回任意内容），
@@ -52,6 +62,13 @@ _ANY_LIST_MARK = re.compile(r"^\s*+(?:[-*•·]|\d++\s*+[.．、)）:：])\s*+")
 
 # 结局那一轮本来就不该有选项，这条修补说明在结局里不算问题
 MISSING_OPTIONS = "missing <options> tag"
+# 提供了工具时，模型偶尔把工具调用写成正文（例如 <recall><query>…，
+# 或者 DeepSeek 内部的 DSML 标记），而不是走工具调用。这种文字不能当叙述抢救出来
+TOOL_CALL_AS_TEXT = "tool call written as text"
+_TOOL_MARKUP = re.compile(
+    r"DSML|<\s*+/?\s*+(?:recall|read_turn|lookup|tool_calls?|function_calls?|invoke)\b",
+    re.IGNORECASE,
+)
 
 
 class ParseStage(StrEnum):
@@ -68,7 +85,8 @@ class _State(Enum):
     SEEK_OPTIONS = 3
     IN_OPTIONS = 4
     IN_THINK = 5
-    DONE = 6
+    IN_NOTES = 6
+    DONE = 7
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +97,7 @@ class DirectorParse:
     repairs: tuple[str, ...]  # 影响合规判定的修补
     notes: tuple[str, ...]  # 仅供记录，例如标签外有多余文字
     rewritten: bool = False  # 最终叙述与流式输出的拼接不一致，客户端应以最终叙述为准
+    director_notes: str = ""  # <director-notes> 里的备注，玩家看不到；没写时为空
 
     @property
     def needs_options_repair(self) -> bool:
@@ -112,6 +131,9 @@ class DirectorStreamParser:
     def __init__(self) -> None:
         self._state = _State.SEEK_NARRATIVE
         self._think_return = _State.SEEK_NARRATIVE
+        self._notes_return = _State.DONE
+        self._notes: list[str] = []
+        self._notes_closed = True
         self._buf = ""
         self._preamble: list[str] = []
         self._between: list[str] = []
@@ -168,17 +190,32 @@ class DirectorStreamParser:
         while True:
             state = self._state
             if state is _State.DONE:
-                self._trailing.append(self._buf)
-                self._buf = ""
-                return
-            if state is _State.SEEK_NARRATIVE:
-                text, tag, pos = self._take((NARRATIVE_OPEN, THINK_OPEN, OPTIONS_OPEN), final)
+                text, tag, pos = self._take((NOTES_OPEN,), final)
+                self._trailing.append(text)
+                self._buf = self._buf[pos:]
+                if tag is None:
+                    return
+                self._enter_notes(_State.DONE)
+            elif state is _State.IN_NOTES:
+                text, tag, pos = self._take((NOTES_CLOSE,), final)
+                self._notes.append(text)
+                self._buf = self._buf[pos:]
+                if tag is None:
+                    return
+                self._notes_closed = True
+                self._state = self._notes_return
+            elif state is _State.SEEK_NARRATIVE:
+                text, tag, pos = self._take(
+                    (NARRATIVE_OPEN, THINK_OPEN, OPTIONS_OPEN, NOTES_OPEN), final
+                )
                 self._preamble.append(text)
                 self._buf = self._buf[pos:]
                 if tag is None:
                     return
                 if tag == THINK_OPEN:
                     self._enter_think(_State.SEEK_NARRATIVE)
+                elif tag == NOTES_OPEN:
+                    self._enter_notes(_State.SEEK_NARRATIVE)
                 elif tag == NARRATIVE_OPEN:
                     self._narrative_opened = True
                     self._state = _State.IN_NARRATIVE
@@ -192,7 +229,7 @@ class DirectorStreamParser:
                     return
                 self._state = self._think_return
             elif state is _State.IN_NARRATIVE:
-                text, tag, pos = self._take((NARRATIVE_CLOSE, OPTIONS_OPEN), final)
+                text, tag, pos = self._take((NARRATIVE_CLOSE, OPTIONS_OPEN, NOTES_OPEN), final)
                 self._emit(text, out)
                 self._buf = self._buf[pos:]
                 if tag is None:
@@ -201,33 +238,50 @@ class DirectorStreamParser:
                 if tag == NARRATIVE_CLOSE:
                     self._narrative_closed = True
                     self._state = _State.SEEK_OPTIONS
+                elif tag == NOTES_OPEN:
+                    # 备注不能混进叙述：叙述到这里为止
+                    self._repairs.append("<director-notes> started before <narrative> was closed")
+                    self._narrative_closed = True
+                    self._enter_notes(_State.SEEK_OPTIONS)
                 else:
                     self._repairs.append("<options> started before <narrative> was closed")
                     self._options_opened = True
                     self._state = _State.IN_OPTIONS
             elif state is _State.SEEK_OPTIONS:
-                text, tag, pos = self._take((OPTIONS_OPEN, THINK_OPEN), final)
+                text, tag, pos = self._take((OPTIONS_OPEN, THINK_OPEN, NOTES_OPEN), final)
                 self._between.append(text)
                 self._buf = self._buf[pos:]
                 if tag is None:
                     return
                 if tag == THINK_OPEN:
                     self._enter_think(_State.SEEK_OPTIONS)
+                elif tag == NOTES_OPEN:
+                    self._enter_notes(_State.SEEK_OPTIONS)
                 else:
                     self._options_opened = True
                     self._state = _State.IN_OPTIONS
             elif state is _State.IN_OPTIONS:
-                text, tag, pos = self._take((OPTIONS_CLOSE,), final)
+                text, tag, pos = self._take((OPTIONS_CLOSE, NOTES_OPEN), final)
                 self._options_raw.append(text)
                 self._buf = self._buf[pos:]
                 if tag is None:
                     return
-                self._options_closed = True
-                self._state = _State.DONE
+                if tag == NOTES_OPEN:
+                    self._enter_notes(_State.DONE)  # 选项没闭合就开始写备注
+                else:
+                    self._options_closed = True
+                    self._state = _State.DONE
 
     def _enter_think(self, return_to: _State) -> None:
         self._think_return = return_to
         self._state = _State.IN_THINK
+
+    def _enter_notes(self, return_to: _State) -> None:
+        if self._notes:
+            self._notes.append("\n")
+        self._notes_return = return_to
+        self._notes_closed = False
+        self._state = _State.IN_NOTES
 
     def _emit(self, text: str, out: list[str]) -> None:
         if not text:
@@ -267,11 +321,15 @@ class DirectorStreamParser:
             if not self._options_closed:
                 repairs.append("<options> was not closed")
         if not self._narrative_opened:
-            # 没有 <narrative> 标签：前面的文字一个字都没推给玩家，这里整段抢救出来
+            # 没有 <narrative> 标签：前面的文字一个字都没推给玩家，这里整段抢救出来；
+            # 写成文字的工具调用不抢救，这一段没有叙述
             text = "".join(self._preamble)
             if not self._options_opened:
                 text, options = self._split_trailing_options(text)
             repairs.append("missing <narrative> tag")
+            if _TOOL_MARKUP.search(text):
+                repairs.append(TOOL_CALL_AS_TEXT)
+                text, options = "", []
             salvaged = text.strip()
             if salvaged:
                 out.append(salvaged)
@@ -295,6 +353,8 @@ class DirectorStreamParser:
             if "".join(self._trailing).strip():
                 notes.append("extra text after </options>")
 
+        if not self._notes_closed:
+            notes.append("<director-notes> was not closed")
         cleaned = normalize_options(options)
         if len(cleaned) > 2:
             notes.append(f"{len(cleaned)} choices given, kept the first 2")
@@ -317,6 +377,7 @@ class DirectorStreamParser:
             repairs=tuple(repairs),
             notes=tuple(notes),
             rewritten=rewritten,
+            director_notes="".join(self._notes).strip()[:MAX_NOTES_CHARS],
         )
 
     @staticmethod

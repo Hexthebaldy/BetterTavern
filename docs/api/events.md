@@ -38,6 +38,7 @@ data: {"text": "雨还在下。"}
 | `turn.created` | `{"turn_id", "seq", "attempt"}` | 第一个事件 |
 | `world.building` | `{}` | 只在开场回合、世界还没建好时出现：开始搭建世界 |
 | `world.ready` | `{"source", "entities"}` | 世界建好了。`source` 是 `world_builder`（模型生成）或 `minimal`（模型失败，只用了卡片原文）；`entities` 是实体数量 |
+| `director.recalling` | `{"round"}` | 导演在写之前先用召回工具查更早的回合（[agent-runtime.md](../agent-runtime.md) 第 7 节“召回”）。`round` 是第几轮，最多 2。只在有不在上下文里的旧回合、模型能调用工具时出现；客户端显示“正在回想……”，第一个 `narrative.delta` 到了就不再显示 |
 | `narrative.delta` | `{"text"}` | 叙述的增量，按顺序拼接。服务端大约每 40 毫秒合并发送一批 |
 | `narrative.done` | `{"chars"}`，有时还有 `"rewritten"` | 叙述结束。`rewritten` 为真表示服务端在收尾时改写了叙述（例如模型把选项写进了叙述里），这时要以 `turn.completed` 里的 `narrative` 为准 |
 | `options.ready` | `{"options": [{"id", "text"}], "source"}` | 选项已经保存。`source` 是 `model` / `repaired` / `missing`（补了两次也没补齐，`options` 不足两个，可能是空数组）；结局那一轮 `options` 是空数组、`source` 是 null |
@@ -48,7 +49,7 @@ data: {"text": "雨还在下。"}
 正常情况下的顺序：
 
 - 开场、世界还没建好：`turn.created` → `world.building` → `world.ready` → `narrative.delta`（若干个）→ `narrative.done` → `options.ready` → `turn.completed`
-- 普通回合：`turn.created` → `narrative.delta`（若干个）→ `narrative.done` → `options.ready` → `turn.completed`
+- 普通回合：`turn.created` →（导演先查旧回合时：`director.recalling`，最多两个）→ `narrative.delta`（若干个）→ `narrative.done` → `options.ready` → `turn.completed`
 - 结局（行动来源 `ending`）：顺序和普通回合一样，只是 `options.ready` 和 `turn.completed` 里的选项是空的
 - 失败：在上面任意一步之后收到 `turn.failed`，前面可能已经有若干个 `narrative.delta`
 

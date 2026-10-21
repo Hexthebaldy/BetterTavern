@@ -309,6 +309,7 @@ class TurnRow:
     options: list[dict[str, Any]]
     options_source: str | None
     state_seq: int  # 写这一回合时，状态块截至第几回合
+    director_notes: str  # 导演的隐藏备注（玩家看不到）；没写时为空
     usage: dict[str, Any] | None
     error: dict[str, Any] | None
     created_at: datetime
@@ -330,6 +331,7 @@ class TurnRow:
             options=as_json(row["options"], []),
             options_source=row["options_source"],
             state_seq=int(row["state_seq"]),
+            director_notes=row["director_notes"] or "",
             usage=as_json(row["usage"]),
             error=as_json(row["error"]),
             created_at=row["created_at"],
@@ -339,8 +341,8 @@ class TurnRow:
 
 
 _TURN_COLS = """id, playthrough_id, seq, parent_turn_id, attempt, status, timeline_epoch,
-    user_action, narrative, options, options_source, state_seq, usage, error, created_at,
-    replied_at, committed_at"""
+    user_action, narrative, options, options_source, state_seq, director_notes, usage, error,
+    created_at, replied_at, committed_at"""
 
 
 def _prefixed(cols: str, prefix: str) -> str:
@@ -455,6 +457,7 @@ async def complete_turn(
     usage: dict[str, Any] | None,
     state_seq: int,
     director_run_id: str | None,
+    director_notes: str | None = None,
 ) -> bool:
     count = await execute(
         conn,
@@ -462,7 +465,7 @@ async def complete_turn(
         UPDATE turns
         SET status = :status, narrative = :narrative, options = CAST(:options AS jsonb),
             options_source = :source, usage = CAST(:usage AS jsonb), state_seq = :state_seq,
-            director_run_id = :run, error = NULL, replied_at = now(),
+            director_run_id = :run, director_notes = :notes, error = NULL, replied_at = now(),
             committed_at = CASE WHEN :status = 'committed' THEN now() ELSE NULL END
         WHERE id = :id AND status = 'generating'
         """,
@@ -475,6 +478,7 @@ async def complete_turn(
             "usage": dumps(usage) if usage is not None else None,
             "state_seq": state_seq,
             "run": director_run_id,
+            "notes": director_notes or None,
         },
     )
     return count == 1

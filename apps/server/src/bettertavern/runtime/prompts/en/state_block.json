@@ -10,7 +10,8 @@
     "nearby": "Related people and things",
     "roster": "Other people and places (roster)",
     "known": "Facts the player knows",
-    "secret": "Director only (private to characters; never state directly)"
+    "secret": "Director only (private to characters; never state directly)",
+    "threads": "Unresolved threads (what the story still owes the player; only you know the answers: don't spell them out; the longer one has hung on someone present, the more it is due — when you answer it, stay consistent with the answer)"
   },
   "scene": {
     "location": "Location: {value}",
@@ -33,5 +34,12 @@
   "kind": " ({kind})",
   "describe": ": {value}",
   "join_details": "; ",
-  "join_names": ", "
+  "join_names": ", ",
+  "thread_kinds": {
+    "mystery": "mystery",
+    "promise": "promise",
+    "foreshadow": "foreshadowing"
+  },
+  "thread": "- ({kind}, since turn {since}, {age} turns ago) {text}",
+  "thread_answer": " Answer: {answer}"
 }

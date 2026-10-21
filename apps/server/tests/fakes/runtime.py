@@ -13,6 +13,7 @@ import httpx
 from bettertavern.domain.memory.thresholds import effective_window
 from bettertavern.domain.routing import RouteParams, RouteTask
 from bettertavern.domain.story.turn import PlayerAction
+from bettertavern.domain.world.records import WorldRecords
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import WorldSnapshot
 from bettertavern.providers import (
@@ -29,6 +30,8 @@ from bettertavern.providers import (
     ResolvedCredential,
     Secret,
     TextDelta,
+    ToolCall,
+    ToolCallDelta,
     Usage,
     UsageEvent,
 )
@@ -39,6 +42,7 @@ from bettertavern.providers.registry import ProviderRegistry
 from bettertavern.runtime.ports import (
     AgentRunRecord,
     HistoryTurn,
+    PastTurn,
     Preferences,
     TurnContext,
     TurnFailure,
@@ -51,13 +55,15 @@ from bettertavern.runtime.routing import ResolvedRoute
 
 @dataclass
 class StreamScript:
-    """一次流式调用：pieces 依次作为 TextDelta 发出；error 在发完 error_after 个片段后抛出。"""
+    """一次流式调用：pieces 依次作为 TextDelta 发出；error 在发完 error_after 个片段后抛出；
+    tool_calls 在文字之后按片段发出（参数拆成两半，和真的服务商一样分几次到）。"""
 
     pieces: list[str]
     error: ProviderError | None = None
     error_after: int = 0
     delay: float = 0.0
     usage: Usage | None = field(default_factory=lambda: Usage(prompt=100, completion=50))
+    tool_calls: list[ToolCall] = field(default_factory=list)
 
 
 class ScriptedAdapter:
@@ -110,6 +116,10 @@ class ScriptedAdapter:
                 yield TextDelta(piece)
             if script.error is not None and script.error_after >= len(script.pieces):
                 raise script.error
+            for index, call in enumerate(script.tool_calls):
+                half = len(call.arguments) // 2
+                yield ToolCallDelta(index, call.id, call.name, call.arguments[:half])
+                yield ToolCallDelta(index, None, None, call.arguments[half:])
             if script.usage is not None:
                 yield UsageEvent(script.usage)
             yield Done("stop")
@@ -272,3 +282,46 @@ def header(seq: int = 1, *, world_ready: bool = True, language: str = "zh") -> T
         world_ready=world_ready,
         language=language,
     )
+
+
+@dataclass
+class FakeRecall:
+    """导演召回工具读的内存数据：turns 按回合号，notes 是每回合涉及的实体。"""
+
+    records: WorldRecords = field(default_factory=WorldRecords)
+    turns: list[PastTurn] = field(default_factory=list)
+    notes: dict[int, tuple[str, ...]] = field(default_factory=dict)
+    calls: list[tuple[str, Any]] = field(default_factory=list)
+
+    async def world(self, playthrough_id: str) -> WorldRecords:
+        self.calls.append(("world", playthrough_id))
+        return self.records
+
+    async def turns_with(
+        self, playthrough_id: str, entity_ids: Any, *, before_seq: int, limit: int
+    ) -> list[PastTurn]:
+        self.calls.append(("turns_with", tuple(entity_ids)))
+        hits = [
+            t
+            for t in self.turns
+            if t.seq < before_seq and set(entity_ids) & set(self.notes.get(t.seq, ()))
+        ]
+        return sorted(hits, key=lambda t: -t.seq)[:limit]
+
+    async def search(
+        self, playthrough_id: str, terms: Any, *, before_seq: int, limit: int
+    ) -> list[PastTurn]:
+        self.calls.append(("search", tuple(terms)))
+        hits = [
+            t
+            for t in self.turns
+            if t.seq < before_seq
+            and any(
+                term.lower() in f"{t.narrative} {t.action.text} {t.digest}".lower()
+                for term in terms
+            )
+        ]
+        return sorted(hits, key=lambda t: -t.seq)[:limit]
+
+    async def turn(self, playthrough_id: str, seq: int) -> PastTurn | None:
+        return next((t for t in self.turns if t.seq == seq), None)

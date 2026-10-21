@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
@@ -61,6 +61,7 @@ class HistoryTurn:
     action: PlayerAction
     narrative: str
     options: tuple[str, ...] = ()  # 当时给玩家的选项；结局回合、没补齐时可能少于 2 个
+    director_notes: str = ""  # 导演当时写的隐藏备注
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,7 @@ class TurnOutcome:
     state_seq: int  # 这一回合的状态块截至第几回合
     runs: list[AgentRunRecord]
     ends_story: bool = False  # 结局写完了：提交时把这局标为 ended
+    director_notes: str = ""  # 导演写在选项之后、玩家看不到的备注
 
 
 @dataclass(frozen=True)
@@ -184,8 +186,9 @@ class StateTurn:
     narrative: str
     recent: tuple[tuple[int, str], ...]  # 前几回合的（回合，一句话摘要），按回合升序
     scene_start: int  # 当前场景从第几回合开始
-    world: WorldRecords
+    world: WorldRecords  # 包括没解开的线索
     failures: int = 0  # 这一回合之前整理失败过几次
+    director_notes: str = ""  # 导演写在这一回合的隐藏备注
 
 
 @dataclass(frozen=True)
@@ -215,3 +218,39 @@ class StateStore(Protocol):
     async def skip(self, turn: StateTurn, run: AgentRunRecord) -> bool:
         """失败次数用完：记下这次失败，回合标签留空并标为跳过，整理进度照样前进。"""
         ...
+
+
+# ---- 召回（导演的只读工具） ---------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class PastTurn:
+    """当前故事线上更早的一回合（召回工具查到的）。"""
+
+    seq: int
+    action: PlayerAction
+    narrative: str
+    digest: str = ""  # 回合标签的一句话摘要；还没整理或被跳过的回合为空
+
+
+class RecallStore(Protocol):
+    """导演的召回工具读数据的接口。只看当前故事线（回合状态 replied / committed），
+    并且只看 before_seq 之前的回合：之后的回合本来就整段在上下文里。"""
+
+    async def world(self, playthrough_id: str) -> WorldRecords:
+        """这一局的全部实体（包括已退场的）、关系、有效事实。"""
+        ...
+
+    async def turns_with(
+        self, playthrough_id: str, entity_ids: Sequence[str], *, before_seq: int, limit: int
+    ) -> list[PastTurn]:
+        """回合标签里涉及这些实体之一的回合，从近到远。"""
+        ...
+
+    async def search(
+        self, playthrough_id: str, terms: Sequence[str], *, before_seq: int, limit: int
+    ) -> list[PastTurn]:
+        """玩家行动、叙述或一句话摘要里包含任一关键词的回合（不分大小写），从近到远。"""
+        ...
+
+    async def turn(self, playthrough_id: str, seq: int) -> PastTurn | None: ...

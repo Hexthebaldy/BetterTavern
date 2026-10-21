@@ -27,6 +27,7 @@ export const play: MessagesOtherOnly<typeof source> = {
     polling: "ネットワークが不安定です。結果を待っています…",
     sending: "送信中…",
     thinking: "構想中…",
+    recalling: "これまでの出来事を思い出しています…",
     writingOpening: "冒頭を執筆中",
     writingEnding: "結末を執筆中",
     writingNext: "次の場面を執筆中",

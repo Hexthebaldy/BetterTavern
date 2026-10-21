@@ -10,9 +10,10 @@ from bettertavern.domain.world.records import (
     FactRecord,
     LinkRecord,
     RowChange,
+    ThreadRecord,
     WorldRecords,
 )
-from evals.playtest_checks import Check, evaluate_all
+from evals.playtest_checks import Check, RecallProbe, evaluate_all, evaluate_probes
 from evals.playtest_report import (
     RunFacts,
     TurnFacts,
@@ -20,8 +21,10 @@ from evals.playtest_report import (
     lag_by_turn,
     markdown,
     own_options,
+    recall_use,
     retired_mentions,
     summarize,
+    thread_quality,
     world_quality,
     worlds_by_turn,
 )
@@ -184,3 +187,65 @@ def test_own_options_and_world_quality() -> None:
         "one_turn_characters": 1,
         "one_turn_locations": 1,
     }
+
+
+def test_threads_are_rebuilt_backwards_too() -> None:
+    opened = ThreadRecord(id="t", kind="promise", text="老周答应的事", opened_seq=1)
+    closed = ThreadRecord(**{**opened.to_json(), "status": "closed", "closed_seq": 2})
+    patches = {
+        1: [RowChange("thread", None, opened.to_json())],
+        2: [RowChange("thread", opened.to_json(), closed.to_json())],
+    }
+    worlds = worlds_by_turn(WorldRecords(threads=(closed,)), patches, 2)
+    assert worlds[0].threads == () and worlds[0].facts == ()
+    assert worlds[1].threads == (opened,) and worlds[2].threads == (closed,)
+
+
+def test_recall_use_and_probes() -> None:
+    runs = [
+        RunFacts(seq=5, agent="director", status="ok", ttft_ms=500, result={"recall_before": 0}),
+        RunFacts(
+            seq=30,
+            agent="director",
+            status="ok",
+            ttft_ms=800,
+            result={"recall_before": 20, "tool_rounds": 0},
+        ),
+        RunFacts(
+            seq=31,
+            agent="director",
+            status="ok",
+            ttft_ms=2400,
+            result={"recall_before": 20, "tool_rounds": 1},
+        ),
+    ]
+    use = recall_use(runs, {"recall": 2, "lookup": 1})
+    assert use["offered_turns"] == 2 and use["used_turns"] == 1 and use["used_ratio"] == 0.5
+    assert use["rounds"] == {0: 1, 1: 1}
+    assert use["ttft_ms_p50_with_tools"] == 2400 and use["ttft_ms_p50_without_tools"] == 800
+    probes = [RecallProbe(31, ("乌鸦",)), RecallProbe(32, ("归雁",))]
+    narratives = {31: "我想起来了，火漆上是一只乌鸦。", 32: "我写下了驿站的名字。"}
+    right, wrong = evaluate_probes(probes, narratives, {31: 1})
+    assert right.passed and right.tool_rounds == 1 and "乌鸦" in right.detail
+    assert not wrong.passed and wrong.tool_rounds == 0 and "归雁" in wrong.detail
+    summary = summarize(
+        [], runs, {-1: WorldRecords()}, skipped=[], final_state_seq=-1, probes=[right, wrong]
+    )
+    page = markdown(summary, title="召回", playthrough_id="pt")
+    assert "召回题：答对 1 / 2" in page and "第 32 回合（错）" in page
+
+
+def test_stale_threads_and_answers_are_counted() -> None:
+    final = WorldRecords(
+        threads=(
+            ThreadRecord(id="a", kind="mystery", text="谁封的信", opened_seq=3, answer="商会旧派"),
+            ThreadRecord(id="b", kind="promise", text="答应带阿苓走", opened_seq=70),
+            ThreadRecord(
+                id="c", kind="mystery", text="旧的", status="merged", opened_seq=1, closed_seq=9
+            ),
+        )
+    )
+    quality = thread_quality(final, last_seq=100)
+    assert quality["threads"] == {"mystery:open": 1, "promise:open": 1, "mystery:merged": 1}
+    assert quality["threads_stale"] == [{"since": 3, "text": "谁封的信"}]
+    assert quality["threads_with_answer"] == 1

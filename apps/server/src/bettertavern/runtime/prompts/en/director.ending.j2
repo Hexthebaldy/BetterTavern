@@ -1,7 +1,10 @@
-{# version: 1 #}
+{# version: 2 #}
 {% if world_state %}
 {{ world_state }}
 
+{% endif %}
+{% if recall_before is defined and recall_before %}
+(This is turn {{ seq }}; the story text above starts at turn {{ recall_before }}. Earlier turns can be looked up with the tools when you need details.)
 {% endif %}
 {% if wish %}
 <ending-wish>

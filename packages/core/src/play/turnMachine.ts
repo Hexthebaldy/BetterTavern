@@ -46,6 +46,8 @@ export type PendingTurn = {
   narrative: string;
   options: TurnOption[];
   buildingWorld: boolean;
+  /** 导演在写之前先查更早的回合（director.recalling）；第一段叙述到了就不再是 */
+  recalling: boolean;
 };
 
 export type Submission = {
@@ -126,6 +128,7 @@ function pendingFrom(turn: Turn): PendingTurn {
     narrative: turn.status === "generating" ? "" : turn.narrative,
     options: [],
     buildingWorld: false,
+    recalling: false,
   };
 }
 
@@ -184,6 +187,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
           narrative: "",
           options: [],
           buildingWorld: false,
+          recalling: false,
         },
       };
     case "submitted":
@@ -242,10 +246,12 @@ function onStream(state: PlayState, event: TurnEvent): PlayState {
       return { ...state, pending: { ...pending, buildingWorld: true } };
     case "world.ready":
       return { ...state, pending: { ...pending, buildingWorld: false } };
+    case "director.recalling":
+      return { ...state, pending: { ...pending, recalling: true } };
     case "narrative.delta":
       return {
         ...state,
-        pending: { ...pending, narrative: pending.narrative + event.data.text },
+        pending: { ...pending, narrative: pending.narrative + event.data.text, recalling: false },
       };
     case "narrative.done":
       return state;
