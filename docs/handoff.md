@@ -144,7 +144,7 @@ make dev
 
 - **键盘**：登录页、注册页、剧本详情用 `KeyboardAvoidingView`（iOS 上 `padding`）。阅读页不用它：行动面板是浮层，
   iOS 上自己监听键盘事件浮到键盘上方（`ActionBar` 的 `useKeyboardLift`），故事流的底部留白跟着加上键盘高度；Android 靠窗口随键盘缩小，
-  没有额外处理。如果 Android 上面板被键盘挡住，在 `useKeyboardLift` 里给 Android 也加上抬升。
+  没有额外处理。如果 Android 上面板被键盘挡住，在 `useKeyboardLift` 里给 Android 也加上抬升。（10-21 补：Android 上确实会挡住——App 是全面屏的，窗口不随键盘缩小——已经给 Android 也加上抬升。）
 - **自动滚动**：`StoryFeed` 停在底部时 `onContentSizeChange` 里 `scrollToEnd`，上翻超过 80px 暂停并显示“回到最新”。长故事的首次定位依赖多次 `scrollToEnd` 收敛。
   面板下面的留白必须放在列表尾部组件里：`FlatList.scrollToEnd` 只算到尾部组件，不算 `contentContainerStyle` 的内边距（放在内边距里时打开故事会停在最后两段被面板盖住的位置）。
 - **导入**：`DocumentPicker.getDocumentAsync({ type: "*/*" })` 之后按扩展名过滤，把 `new File(uri)`（expo-file-system）放进 `FormData` 上传。

@@ -60,6 +60,7 @@ export const shell: MessagesOtherOnly<typeof source> = {
     rowLabel: "サーバー {{server}}、変更",
     label: "サーバー",
     change: "変更",
+    notSet: "未設定",
     choose: "サーバーを選ぶ",
     failedRecently: "さきほど接続できませんでした",
     lastUsed: "前回の使用 · {{time}}",

@@ -31,9 +31,9 @@ export function markServerFailed(list: RecentServer[], url: string, now: Date): 
   return list.map((s) => (s.url === url ? { ...s, failedAt: now.toISOString() } : s));
 }
 
-/** 面板里要列出的服务器：当前的那个一定在，其余按最近使用 */
+/** 面板里要列出的服务器：当前的那个一定在（还没设置时是空的，不列），其余按最近使用 */
 export function serverChoices(list: RecentServer[], current: string): RecentServer[] {
-  if (list.some((s) => s.url === current)) return list;
+  if (!current || list.some((s) => s.url === current)) return list;
   return [{ url: current, lastUsedAt: "" }, ...list].slice(0, MAX_RECENT_SERVERS);
 }
 

@@ -29,7 +29,8 @@ export const zh: Copy = {
   docsLangNote: "",
   hero: {
     lead: "用 SillyTavern 角色卡玩的互动小说。AI 用第一人称写一段故事，结尾给两个选项；想做选项之外的事，可以自己写一句。",
-    status: "目前需要自己运行服务器。手机 App 还没有上架应用商店，用 Expo Go 打开；网页版在本地启动。",
+    status: "目前需要自己运行服务器。Android 可以直接下载安装包；iPhone 版还没有上架 App Store，用 Expo Go 打开；网页版在本地启动。",
+    android: "下载 Android 版",
     deploy: "部署说明",
     platforms: "iOS · Android · 平板 · 网页",
     demoCap: "点选项往下读，也可以改主角的名字、切换夜间模式、打开世界状态。实际使用时，每一段由你配置的模型生成。",
@@ -251,8 +252,9 @@ export const zh: Copy = {
     phone: {
       title: "手机",
       sub: "iOS 和 Android",
-      text: "React Native（Expo），两个平台用同一套代码。还没有上架应用商店，目前用 Expo Go 打开。",
+      text: "React Native（Expo），两个平台用同一套代码。Android 可以下载安装包直接安装；iPhone 版还没有上架 App Store，目前用 Expo Go 打开。",
       link: "手机端说明",
+      download: "下载 APK",
     },
     tablet: {
       title: "平板",
@@ -272,7 +274,7 @@ export const zh: Copy = {
     needTitle: "需要准备",
     needs: [
       { k: "服务器：", v: "Docker；或者 Python 3.12+ 和 uv、PostgreSQL 16" },
-      { k: "客户端：", v: "Node 22.18+；手机上装 Expo Go" },
+      { k: "客户端：", v: "Android 装安装包；iPhone 用 Expo Go，电脑上要 Node 22.18+" },
       { k: "模型：", v: "一个服务商的 API Key，或者兼容 OpenAI 接口的本地模型" },
     ],
     note: "生产环境第一次启动前要生成主密钥和令牌签名密钥。主密钥丢了，已保存的模型 Key 就解不开了，请另外备份。",
@@ -311,7 +313,7 @@ export const zh: Copy = {
       },
       {
         q: "手机 App 在哪里下载？",
-        a: "还没有上架 App Store 和 Google Play。现在用 Expo Go 打开：在电脑上启动客户端（见上面部署里的“手机”），用手机扫终端里的二维码。手机和电脑要在同一个网络里，或者用 Tailscale 这类组网工具连起来。",
+        a: "Android：点本页最上面的“下载 Android 版”下载安装包（APK），安装时手机提示要允许浏览器或文件管理器安装应用，允许就行；还没有上架 Google Play。iPhone：还没有上架 App Store，现在用 Expo Go 打开：在电脑上启动客户端（见上面部署里的“手机”），用手机扫终端里的二维码，手机和电脑要在同一个网络里，或者用 Tailscale 这类组网工具连起来。装好以后，在登录页底部填上你的服务器地址。",
       },
       {
         q: "支持哪些角色卡？",
@@ -347,6 +349,7 @@ export const zh: Copy = {
     clients: "客户端",
     mobile: "手机端说明",
     web: "网页端说明",
+    android: "Android 安装包",
     license: "许可证待定（MIT 或 Apache-2.0）",
   },
   demo: {

@@ -1,6 +1,7 @@
 /**
  * 服务器地址：登录、注册页底部的一条灰色胶囊，点“更改”打开服务器面板。
  * 面板里是最近用过的服务器（单选卡片）加一张“输入新地址”；连接测试页也用这个面板选地址。
+ * 安装包不带默认地址：还没设置时胶囊上写“未设置”，登录、注册时先打开面板。
  */
 
 import { useRouter } from "expo-router";
@@ -31,7 +32,9 @@ export function ServerRow({ onChange, width }: { onChange: () => void; width?: n
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t("server.rowLabel", { server: displayServer(serverUrl) })}
+      accessibilityLabel={t("server.rowLabel", {
+        server: serverUrl ? displayServer(serverUrl) : t("server.notSet"),
+      })}
       onPress={onChange}
       style={({ pressed }) => [
         styles.row,
@@ -46,7 +49,11 @@ export function ServerRow({ onChange, width }: { onChange: () => void; width?: n
       <Icon name="server" size={18} color={palette.mut} />
       <Text style={[styles.rowText, { color: palette.mut }]} numberOfLines={1}>
         {t("server.label")}{" "}
-        <Text style={{ fontFamily: font.mono, color: palette.ink }}>{displayServer(serverUrl)}</Text>
+        {serverUrl ? (
+          <Text style={{ fontFamily: font.mono, color: palette.ink }}>{displayServer(serverUrl)}</Text>
+        ) : (
+          <Text style={{ color: palette.ink }}>{t("server.notSet")}</Text>
+        )}
       </Text>
       <View style={[styles.change, { backgroundColor: palette.card }]}>
         <Text style={{ fontSize: 13, fontWeight: "500", color: palette.ink }}>{t("server.change")}</Text>
@@ -89,12 +96,13 @@ export function ServerSheet({
   const { t } = useTranslation();
   const current = value ?? serverUrl;
   const choices = serverChoices(servers, current);
-  const [selected, setSelected] = useState<string | null>(current);
+  // 还没设置服务器时一个都不选，等用户输入新地址
+  const [selected, setSelected] = useState<string | null>(current || null);
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
     if (visible) {
-      setSelected(current);
+      setSelected(current || null);
       setDraft("");
     }
   }, [visible, current]);

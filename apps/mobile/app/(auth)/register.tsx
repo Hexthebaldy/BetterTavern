@@ -67,6 +67,11 @@ export default function RegisterScreen() {
 
   const submit = async (): Promise<void> => {
     if (!ready) return;
+    // 还没设置服务器（安装包不带默认地址）：先打开服务器面板
+    if (!serverUrl) {
+      setServerOpen(true);
+      return;
+    }
     setBusy(true);
     setError(null);
     setFieldError(null);

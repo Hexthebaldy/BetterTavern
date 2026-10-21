@@ -45,8 +45,12 @@ export function langFromBrowser(language: string | undefined): Lang {
   return "en";
 }
 
+/** 从这一页回到站点根目录的相对地址：中文首页就在根目录，英文、日文页在下一级 */
+export function siteRoot(lang: Lang): string {
+  return lang === "zh" ? "./" : "../";
+}
+
 /** 从一种语言的页面链到另一种：页面都是相对地址，放在子路径下也能用（比如 GitHub Pages 的 /BetterTavern/） */
 export function langHref(from: Lang, to: Lang): string {
-  const up = from === "zh" ? "./" : "../";
-  return up + LANG_META[to].dir;
+  return siteRoot(from) + LANG_META[to].dir;
 }

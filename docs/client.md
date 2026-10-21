@@ -86,6 +86,8 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 | `settings/account` | 账户 | 导出数据、删除账户 |
 
 **发布**：EAS Build 出包，EAS Update 推 JS 补丁；补丁与服务端的兼容性靠 `X-Client-Version` 加服务端的最低版本检查兜住（[backend.md 第 9 节](backend.md)）。
+现在只配了出 Android APK 的 `preview`（`apps/mobile/eas.json`，步骤见 [apps/mobile/README.md](../apps/mobile/README.md)）：安装包不带默认服务器地址，
+允许连 `http://` 的局域网服务器。EAS Update 和服务端的最低版本检查还没做。
 
 ## 2 客户端目录结构
 

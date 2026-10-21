@@ -2,12 +2,13 @@
 
 import { Icon } from "../components/Icon.tsx";
 import { Logo } from "../components/Logo.tsx";
-import { EXTERNAL, REPO } from "../data/links.ts";
+import { androidApkHref, EXTERNAL, REPO } from "../data/links.ts";
 import { Demo } from "../demo/Demo.tsx";
-import { useCopy } from "../i18n/context.tsx";
+import { useCopy, useLang } from "../i18n/context.tsx";
 
 export function Hero() {
   const { hero } = useCopy();
+  const lang = useLang();
   return (
     <section className="hero">
       <div className="wrap grid">
@@ -29,6 +30,10 @@ export function Hero() {
               <span className="arr">
                 <Icon name="arrowOut" />
               </span>
+            </a>
+            <a className="btn sec" href={androidApkHref(lang)} download="BetterTavern.apk">
+              <Icon name="download" />
+              {hero.android}
             </a>
             <a className="btn sec" href="#deploy">
               {hero.deploy}

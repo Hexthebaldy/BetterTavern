@@ -1,13 +1,14 @@
 /** 05 客户端：手机、平板、网页 */
 
 import { Icon } from "../components/Icon.tsx";
-import { DOCS, EXTERNAL } from "../data/links.ts";
-import { useCopy } from "../i18n/context.tsx";
+import { androidApkHref, DOCS, EXTERNAL } from "../data/links.ts";
+import { useCopy, useLang } from "../i18n/context.tsx";
 import { Rich } from "../i18n/rich.tsx";
 import { DocNote } from "./DocNote.tsx";
 
 export function Clients() {
   const { clients } = useCopy();
+  const lang = useLang();
   return (
     <section className="sec" id="clients" style={{ paddingTop: 0 }}>
       <div className="wrap">
@@ -29,6 +30,10 @@ export function Clients() {
             </p>
             <p className="txt">{clients.phone.text}</p>
             <div className="acts">
+              <a className="alink" href={androidApkHref(lang)} download="BetterTavern.apk">
+                {clients.phone.download}
+                <Icon name="download" size="s" />
+              </a>
               <a className="alink" href={DOCS.mobile} hrefLang="zh-CN" {...EXTERNAL}>
                 {clients.phone.link}
                 <DocNote />

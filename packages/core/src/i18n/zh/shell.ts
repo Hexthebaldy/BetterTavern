@@ -58,6 +58,7 @@ export const shell = {
     rowLabel: "服务器 {{server}}，更改",
     label: "服务器",
     change: "更改",
+    notSet: "未设置",
     choose: "选择服务器",
     failedRecently: "刚才无法连接",
     lastUsed: "上次使用 · {{time}}",

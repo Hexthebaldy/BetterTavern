@@ -39,9 +39,21 @@ const config: ExpoConfig = {
       backgroundColor: "#FFFFFF",
     },
   },
-  plugins: ["expo-router", "expo-status-bar", "expo-font"],
+  plugins: [
+    "expo-router",
+    "expo-status-bar",
+    "expo-font",
+    // 自己部署的服务器多半是局域网里的 http:// 地址；Android 9 起正式包默认只许连 https，这里放开。
+    // Expo Go 和开发版本来就允许，所以只有打出来的安装包需要它
+    ["expo-build-properties", { android: { usesCleartextTraffic: true } }],
+  ],
   experiments: {
     typedRoutes: true,
+  },
+  // EAS 上的项目（打包用，见 README 的“打包 Android 安装包”）
+  owner: "asher77",
+  extra: {
+    eas: { projectId: "f5d2aaf3-3f94-416d-a71f-04b6a75df224" },
   },
 };
 

@@ -28,7 +28,8 @@ export const ja: Copy = {
   docsLangNote: "（中国語）",
   hero: {
     lead: "SillyTavern のキャラクターカードで遊ぶインタラクティブノベル。AI が一人称で物語を一場面書き、最後に選択肢を二つ出します。選択肢にないことをしたいときは、自分で一文書けます。",
-    status: "今のところ、サーバーは自分で動かす必要があります。スマホアプリはまだストアに出ていないので Expo Go で開き、Web 版はローカルで起動します。",
+    status: "今のところ、サーバーは自分で動かす必要があります。Android は APK をそのままインストールできます。iPhone 版はまだ App Store に出ていないので Expo Go で開き、Web 版はローカルで起動します。",
+    android: "Android 版をダウンロード",
     deploy: "デプロイ手順",
     platforms: "iOS · Android · タブレット · Web",
     demoCap: "選択肢を押すと読み進められます。主人公の名前の変更、ダークモードの切り替え、世界の状態の表示も試せます。実際には、各場面は設定したモデルが書きます。",
@@ -258,8 +259,9 @@ export const ja: Copy = {
     phone: {
       title: "スマホ",
       sub: "iOS と Android",
-      text: "React Native（Expo）で、両プラットフォームを同じコードで作っています。まだストアには出ていないので、今は Expo Go で開きます。",
+      text: "React Native（Expo）で、両プラットフォームを同じコードで作っています。Android は APK をダウンロードしてインストールできます。iPhone 版はまだ App Store に出ていないので、今は Expo Go で開きます。",
       link: "スマホ版の説明",
+      download: "APK をダウンロード",
     },
     tablet: {
       title: "タブレット",
@@ -279,7 +281,7 @@ export const ja: Copy = {
     needTitle: "用意するもの",
     needs: [
       { k: "サーバー：", v: "Docker、または Python 3.12+ と uv、PostgreSQL 16" },
-      { k: "クライアント：", v: "Node 22.18+。スマホには Expo Go" },
+      { k: "クライアント：", v: "Android は APK。iPhone は Expo Go と、パソコンに Node 22.18+" },
       { k: "モデル：", v: "プロバイダーの API キー、または OpenAI 互換 API のローカルモデル" },
     ],
     note: "本番環境で初めて起動する前に、マスターキーとトークン署名鍵を生成してください。マスターキーをなくすと保存済みのモデルのキーを復号できなくなるので、別にバックアップしておいてください。",
@@ -318,7 +320,7 @@ export const ja: Copy = {
       },
       {
         q: "スマホアプリはどこでダウンロードできますか？",
-        a: "App Store と Google Play にはまだ出ていません。今は Expo Go で開きます。パソコンでクライアントを起動し（上の「デプロイ」の「スマホ」を参照）、ターミナルの QR コードをスマホで読み取ってください。スマホとパソコンは同じネットワークにつなぐか、Tailscale などのツールでつないでください。",
+        a: "Android：このページ上部の「Android 版をダウンロード」から APK をダウンロードしてインストールします。インストール時に、ブラウザやファイル管理アプリからのインストールを許可するよう求められたら許可してください。Google Play にはまだ出ていません。iPhone：App Store にはまだ出ていないので、今は Expo Go で開きます。パソコンでクライアントを起動し（上の「デプロイ」の「スマホ」を参照）、ターミナルの QR コードをスマホで読み取ってください。スマホとパソコンは同じネットワークにつなぐか、Tailscale などのツールでつないでください。インストールしたら、ログイン画面の下にサーバーのアドレスを入力します。",
       },
       {
         q: "どんなキャラクターカードに対応していますか？",
@@ -354,6 +356,7 @@ export const ja: Copy = {
     clients: "クライアント",
     mobile: "スマホ版の説明",
     web: "Web 版の説明",
+    android: "Android 版（APK）",
     license: "ライセンス未定（MIT または Apache-2.0）",
   },
   demo: {

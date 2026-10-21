@@ -28,7 +28,8 @@ export const en: Copy = {
   docsLangNote: "(in Chinese)",
   hero: {
     lead: "Interactive fiction played with SillyTavern character cards. The AI writes a passage in the first person and ends it with two choices; to do something else, write your own line.",
-    status: "For now you run the server yourself. The mobile app isn't in the app stores yet, so you open it with Expo Go; the web version runs locally.",
+    status: "For now you run the server yourself. On Android you can install the APK directly; the iPhone app isn't on the App Store yet, so you open it with Expo Go; the web version runs locally.",
+    android: "Download for Android",
     deploy: "How to deploy",
     platforms: "iOS · Android · Tablet · Web",
     demoCap: "Pick a choice to read on. You can also rename the protagonist, switch to dark mode or open the world state. In real use, every passage is written by the model you set up.",
@@ -262,8 +263,9 @@ export const en: Copy = {
     phone: {
       title: "Phone",
       sub: "iOS and Android",
-      text: "React Native (Expo), one codebase for both platforms. It isn't in the app stores yet; for now you open it with Expo Go.",
+      text: "React Native (Expo), one codebase for both platforms. On Android, download and install the APK; the iPhone app isn't on the App Store yet, so for now you open it with Expo Go.",
       link: "Mobile client guide",
+      download: "Download APK",
     },
     tablet: {
       title: "Tablet",
@@ -283,7 +285,7 @@ export const en: Copy = {
     needTitle: "What you need",
     needs: [
       { k: "Server: ", v: "Docker; or Python 3.12+ with uv, and PostgreSQL 16" },
-      { k: "Clients: ", v: "Node 22.18+; Expo Go on your phone" },
+      { k: "Clients: ", v: "the APK on Android; on iPhone, Expo Go plus Node 22.18+ on your computer" },
       { k: "Model: ", v: "An API key from a provider, or a local model with an OpenAI-compatible API" },
     ],
     note: "Before the first production start, generate the master key and the token signing key. If the master key is lost, saved model keys can't be decrypted, so back it up separately.",
@@ -322,7 +324,7 @@ export const en: Copy = {
       },
       {
         q: "Where do I download the mobile app?",
-        a: "It isn't on the App Store or Google Play yet. For now, open it with Expo Go: start the client on your computer (see “Mobile” under Deploy above) and scan the QR code in the terminal with your phone. The phone and computer need to be on the same network, or connected with a tool like Tailscale.",
+        a: "Android: tap “Download for Android” at the top of this page to get the APK. When installing, your phone asks you to let the browser or file manager install apps; allow it. It isn't on Google Play yet. iPhone: not on the App Store yet; for now open it with Expo Go: start the client on your computer (see “Mobile” under Deploy above) and scan the QR code in the terminal with your phone. The phone and computer need to be on the same network, or connected with a tool like Tailscale. After installing, enter your server address at the bottom of the sign-in page.",
       },
       {
         q: "Which character cards work?",
@@ -358,6 +360,7 @@ export const en: Copy = {
     clients: "Clients",
     mobile: "Mobile client guide",
     web: "Web client guide",
+    android: "Android APK",
     license: "License to be decided (MIT or Apache-2.0)",
   },
   demo: {

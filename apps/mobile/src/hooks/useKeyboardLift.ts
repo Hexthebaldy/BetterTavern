@@ -1,9 +1,10 @@
 /**
- * 键盘盖住的高度，以及让浮层跟着键盘浮起的动画值（iOS）。阅读页的底部操作栏和底部面板都用它。
+ * 键盘盖住的高度，以及让浮层跟着键盘浮起的动画值。阅读页的底部操作栏和底部面板都用它。
  *
  * 不用 KeyboardAvoidingView：它靠给外层加 paddingBottom 把内容往上推，绝对定位的浮层不吃这个内边距；
  * 而且它收起键盘时走 LayoutAnimation，之后的第一次点按会丢。
- * Android 的窗口会随键盘缩小，这里不用再抬，高度一律报 0。
+ * Android 也要自己抬：App 是全面屏（edge-to-edge，Expo 现在的 Android 都是）的，弹出键盘时窗口不缩小；
+ * 底部面板又是单独的 Modal 窗口，更不会缩。Android 只有键盘已经弹出（DidShow）的事件，键盘出来以后面板再跟上。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -16,11 +17,10 @@ export function useKeyboardLift(): { height: number; lift: Animated.Value } {
     const ios = Platform.OS === "ios";
     const move = (to: number, duration: number): void => {
       setHeight(to);
-      if (!ios) return;
-      // 不用原生驱动：浮层的位置要进布局，按钮的点按区域才跟得上
+      // 不用原生驱动：浮层的位置要进布局，按钮的点按区域才跟得上。Android 的事件不带时长
       Animated.timing(lift, {
         toValue: to,
-        duration: duration || 250,
+        duration: duration || (ios ? 250 : 160),
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start();
@@ -36,5 +36,5 @@ export function useKeyboardLift(): { height: number; lift: Animated.Value } {
       hide.remove();
     };
   }, [lift]);
-  return { height: Platform.OS === "ios" ? height : 0, lift };
+  return { height, lift };
 }

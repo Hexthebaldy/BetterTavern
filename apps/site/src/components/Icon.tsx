@@ -174,6 +174,12 @@ const PATHS = {
       <path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3" />
     </>
   ),
+  download: (
+    <>
+      <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5" />
+      <path d="M5 19.5h14" />
+    </>
+  ),
   up: <path d="M12 19V5M6 11l6-6 6 6" />,
   down: <path d="M12 5v14M6 13l6 6 6-6" />,
   upDown: <path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4" />,

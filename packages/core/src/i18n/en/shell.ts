@@ -64,6 +64,7 @@ export const shell: Messages<typeof source> = {
     rowLabel: "Server {{server}}, change",
     label: "Server",
     change: "Change",
+    notSet: "Not set",
     choose: "Choose a server",
     failedRecently: "Couldn't connect just now",
     lastUsed: "Last used · {{time}}",

@@ -52,7 +52,15 @@ export type Copy = {
   /** 文档只有中文：英文和日文页上，指向文档的链接后面加这句说明；中文页是空的 */
   docsLangNote: string;
   /** 首屏。lead 也用作页面的 description */
-  hero: { lead: string; status: string; deploy: string; platforms: string; demoCap: string };
+  hero: {
+    lead: string;
+    status: string;
+    /** 首屏的“下载 Android 版”按钮 */
+    android: string;
+    deploy: string;
+    platforms: string;
+    demoCap: string;
+  };
   facts: { aria: string; items: readonly { k: string; v: string }[] };
   how: {
     title: string;
@@ -113,7 +121,7 @@ export type Copy = {
   clients: {
     title: string;
     lead: string;
-    phone: { title: string; sub: string; text: string; link: string };
+    phone: { title: string; sub: string; text: string; link: string; download: string };
     tablet: { title: string; sub: string; text: string };
     web: { title: string; sub: string; text: string; link: string };
   };
@@ -152,6 +160,7 @@ export type Copy = {
     clients: string;
     mobile: string;
     web: string;
+    android: string;
     license: string;
   };
   /** 首屏演示的界面文字；故事本身在 story */

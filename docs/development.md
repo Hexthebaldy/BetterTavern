@@ -109,6 +109,9 @@ make site
 比如 `https://example.github.io/BetterTavern/`）时，页面里会写上 canonical 和各语言版本的 hreflang；不设就不写。
 看构建出的页面用 `cd apps/site && npm run preview`（http://localhost:4174）。仓库里不放落地页的部署配置。
 
+Android 安装包不在仓库里：部署时放到站点目录的 `downloads/BetterTavern.apk`，页面上的“下载 Android 版”指向它（相对地址），
+发新版覆盖这个文件就行（`apps/mobile/README.md` 的“打包 Android 安装包”）。
+
 文案在 `apps/site/src/i18n/`：`zh`、`en`、`ja` 各一份，结构由 `types.ts` 定，改一份就改另外两份（单元测试会对照三份的结构和占位）。
 中文首页第一次打开时按浏览器语言跳一次（英文去 en/，日文去 ja/）；页面上换过语言以后按换的跳。文档只有中文，英文、日文页上指向文档的链接后面注明。
 

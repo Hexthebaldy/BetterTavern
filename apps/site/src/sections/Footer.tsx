@@ -1,12 +1,13 @@
 /** 页脚：链接、超大字标、许可证 */
 
 import { Logo } from "../components/Logo.tsx";
-import { DOCS, EXTERNAL, ISSUES, REPO } from "../data/links.ts";
-import { useCopy } from "../i18n/context.tsx";
+import { androidApkHref, DOCS, EXTERNAL, ISSUES, REPO } from "../data/links.ts";
+import { useCopy, useLang } from "../i18n/context.tsx";
 import { DocNote } from "./DocNote.tsx";
 
 export function Footer() {
   const { footer: f, nav } = useCopy();
+  const lang = useLang();
   // doc：指向仓库里的文档（只有中文）
   const columns = [
     {
@@ -28,6 +29,7 @@ export function Footer() {
     {
       title: f.clients,
       links: [
+        { label: f.android, href: androidApkHref(lang), download: true },
         { label: f.mobile, href: DOCS.mobile, doc: true },
         { label: f.web, href: DOCS.client, doc: true },
       ],
@@ -58,7 +60,8 @@ export function Footer() {
                       className="flink"
                       href={l.href}
                       hrefLang={"doc" in l ? "zh-CN" : undefined}
-                      {...(l.href.startsWith("#") ? {} : EXTERNAL)}
+                      download={"download" in l ? "BetterTavern.apk" : undefined}
+                      {...(l.href.startsWith("http") ? EXTERNAL : {})}
                     >
                       {l.label}
                     </a>

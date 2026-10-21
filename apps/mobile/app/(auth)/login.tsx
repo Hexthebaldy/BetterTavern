@@ -39,6 +39,11 @@ export default function LoginScreen() {
 
   const submit = async (): Promise<void> => {
     if (!email.trim() || !password) return;
+    // 还没设置服务器（安装包不带默认地址）：先打开服务器面板
+    if (!serverUrl) {
+      setServerOpen(true);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

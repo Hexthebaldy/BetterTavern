@@ -11,7 +11,7 @@ BetterTavern 是一个第一人称的互动小说应用。导入一张 SillyTave
 
 它由三部分组成：一台你自己运行的服务器、手机 App 或网页（任选其一，账号通用），以及你自己的 AI 模型服务（用你自己的 API Key）。
 
-> **开发中。**还没有上架应用商店，也没有公共服务器：需要自己运行服务器，手机端用 Expo Go 打开。
+> **开发中。**还没有上架应用商店，也没有公共服务器：需要自己运行服务器。Android 可以在[项目主页](https://devyangcooking.cn/)下载安装包，iPhone 用 Expo Go 打开。
 > 本页的截图里，角色和故事都是为演示写的原创内容。
 
 **目录**：[1 组成](#1-组成) · [2 安装与运行](#2-安装与运行) · [3 使用](#3-使用) · [4 长篇故事是怎么保持连贯的](#4-长篇故事是怎么保持连贯的) · [5 数据与隐私](#5-数据与隐私) · [6 服务器设置](#6-服务器设置) · [7 常见问题](#7-常见问题) · [8 已知限制](#8-已知限制) · [9 更多文档](#9-更多文档)
@@ -27,7 +27,7 @@ BetterTavern 是一个第一人称的互动小说应用。导入一张 SillyTave
 | 部分 | 做什么 | 技术 |
 | --- | --- | --- |
 | 服务器（`apps/server`） | 保存账户、剧本、故事和世界设定；调用模型写故事，并在后台整理世界状态和长期记忆 | Python 3.12、FastAPI、PostgreSQL 16。分两个进程：`api` 处理请求、写故事，`worker` 做后台整理 |
-| 手机 App（`apps/mobile`） | 在 iPhone、Android、iPad 上阅读和游玩 | React Native（Expo），开发阶段用 Expo Go 打开 |
+| 手机 App（`apps/mobile`） | 在 iPhone、Android、iPad 上阅读和游玩 | React Native（Expo）；Android 有安装包，iPhone 用 Expo Go 打开 |
 | 网页（`apps/web`） | 在电脑浏览器里游玩，有侧栏和键盘快捷键，角色卡可以直接拖进窗口导入 | React + Vite |
 | 模型服务 | 实际写故事的 AI | DeepSeek、OpenAI、Grok（xAI）、Gemini、Hugging Face，或任何兼容 OpenAI 接口的服务（包括本机运行的模型） |
 
@@ -80,7 +80,8 @@ make web
 
 浏览器打开 http://localhost:5173 。正式部署时用 `make web-build` 生成 `apps/web/dist`，由反向代理和接口放在同一个域名下。
 
-**手机**：
+**手机**：Android 直接装[项目主页](https://devyangcooking.cn/)上的安装包（点“下载 Android 版”），打开后在登录页底部填上服务器地址（比如 `http://192.168.1.10:8000`）。
+安装时手机会提示允许浏览器或文件管理器安装应用。iPhone 还没有安装包，按下面的步骤用 Expo Go 打开（Android 也可以这样用）：
 
 ```bash
 cp apps/mobile/.env.example apps/mobile/.env     # 把里面的地址改成电脑的局域网 IP
