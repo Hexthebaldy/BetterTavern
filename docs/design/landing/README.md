@@ -1,6 +1,6 @@
 # BetterTavern 落地页
 
-项目主页的设计稿：介绍 BetterTavern 是什么、怎么玩、世界状态、长篇、模型和数据、客户端、部署和常见问题。页面用自己的“粗线版”风格（见下面“风格”一节）；首屏演示里是 App 的真实界面，沿用 App 的设计稿（`docs/design/ui/`）。标志见 `docs/design/logo/`。
+项目主页的设计稿：介绍 BetterTavern 是什么、怎么玩、世界状态、长篇（含一张 agent runtime 架构图）、模型和数据、客户端、部署和常见问题。页面用自己的“粗线版”风格（见下面“风格”一节）；首屏演示里是 App 的真实界面，沿用 App 的设计稿（`docs/design/ui/`）。标志见 `docs/design/logo/`。
 
 在线画布：第 08 节“落地页”，需要 BetterTavern 作者的账号访问。
 https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
@@ -10,16 +10,18 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 | 路径 | 内容 |
 | --- | --- |
 | `png/Landing-1.png`、`png/Landing-2.png` | 宽屏整页，1440 宽，2x。整页太高，从“模型和数据”一节开头切成两张 |
-| `png/LandingPhone-1.png`、`png/LandingPhone-2.png` | 手机宽度，390 宽，2x，同样从“模型和数据”切开 |
+| `png/LandingPhone-1.png`…`png/LandingPhone-3.png` | 手机宽度，390 宽，2x，从“长篇”和“模型和数据”两节开头切成三张 |
 | `png/LandingDemo.png` | 首屏右边的演示组件，2x |
+| `png/AgentRuntime.png` | “长篇”里的 agent runtime 架构图，全景，2x |
+| `png/AgentRuntime-steps.png` | 架构图的八个状态（全景、1～6 步、回退），看每一步点亮哪些部件 |
 | `source/Landing.dc.html` | 整页画板，宽度自适应（画布上是 `expand: fill`） |
 | `source/LandingPhone.dc.html` | 把整页放进 390 宽的外框，看手机上的排版 |
 | `source/LandingDemo.dc.html` | 演示组件，整页用 `dc-import` 引入 |
-| `source/landing.css` | 三个画板共用的样式：颜色变量、字体、按钮、各节版式、断点（980 / 900 / 640） |
+| `source/landing.css` | 三个画板共用的样式：颜色变量、字体、按钮、各节版式、断点（980 / 900 / 820 / 640） |
 
 关于源码：
 
-- 画板里的 `<link href="/_blob/4d0b66bc…">` 就是 `source/landing.css`，在画布上它是上传的附件；`./support.js` 是画布的运行时，本地没有。
+- 画板里的 `<link href="/_blob/60ab09df…">` 就是 `source/landing.css`，在画布上它是上传的附件；`./support.js` 是画布的运行时，本地没有。
 - 精确数值以源码为准，外观以截图为准。截图用 Noto Sans / Serif CJK 渲染，等宽字体用的是替代字体。
 
 ## 页面结构
@@ -31,7 +33,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 | 一览 | 角色卡、模型、服务器、界面语言 |
 | `#how` 01 | 开始一个故事：导入角色卡、给主角起名字、读一段选一个 |
 | `#world` 02 | 世界状态：说明、关系图、秘密 |
-| `#more` 03 | 长篇：前情摘要、长程大纲、回退和重写、自己写、断线续写、写结局 |
+| `#more` 03 | 长篇：agent runtime 架构图（一回合里谁在做什么）；前情摘要、长程大纲、回退和重写、自己写、断线续写、写结局 |
 | `#models` 04 | 模型和数据：服务商和 Key；数据存在哪里 |
 | `#clients` 05 | 客户端：手机、平板、网页 |
 | `#deploy` 06 | 部署：需要准备什么；Docker / 源码 / 网页 / 手机四组命令 |
@@ -47,6 +49,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 - 色带：“一览”、“部署”和页脚是墨色带，“世界状态”是蓝色网点带，上下两条边斜切，往右上升。
 - 首屏：标题是一块招牌；演示后面垫一块斜放的蓝色网点板。
 - 演示组件里面保持 App 的柔和样式，只有外框是粗边和硬投影。
+- 架构图：方格纸底，分三层。上面一排是玩家在等的 api 进程（玩家行动 → 拼上下文 → 导演 → 推给玩家），中间一条 PostgreSQL 放着各层数据和任务队列，下面一排是后台 worker 的三个 agent。层名是斜切标签（前台墨色、后台蓝色），层之间是带箭头和小标签的竖线，底部是墨色说明条。
 - 字：大标题用思源宋体 900；小标签用等宽字体，加粗、加字距。
 
 ## 交互
@@ -60,7 +63,8 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 - 模型：点服务商，Key 的格式提示和“获取 Key”的链接跟着变。
 - 部署：四个标签切换命令。复制成功显示“已复制”；剪贴板不可用时自动选中命令，提示按 ⌘C 或 Ctrl+C。窄屏上命令不折行，横向滚动。
 - 常见问题：一次展开一条，高度有过渡；展开的那条标题变成墨底白字。
-- 系统打开“减少动态效果”时，演示直接显示全文，入场和循环动画都不播放。
+- 架构图：八个状态，全景、1 行动、2 拼上下文、3 导演、4 推送、5 世界状态、6 章节和大纲、回退。点上面的标签、点图里的框，或者按说明条上的“下一步”切换。当前一步用到的框、数据和连线变蓝，连线在流动，其余变淡；全景时都不淡。说明条跟着换一两句话；图比屏幕高时，说明条贴在屏幕底部。窄于 820 时三层都竖排，连线变成一行行带箭头的说明，上面的标签横向滚动。
+- 系统打开“减少动态效果”时，演示直接显示全文，入场和循环动画都不播放，架构图的连线也不流动。
 
 ## 文案
 
@@ -69,3 +73,4 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 - 功能按最终形态写。其中“世界随剧情更新”“回退和重写”“前情摘要”还没做完，见根目录 README 的“现在到哪一步了”。
 - 许可证还没定，页脚写的是“许可证待定（MIT 或 Apache-2.0）”。
 - 仓库里的链接用 `blob/HEAD/…`，跟着默认分支走。
+- 架构图照 [agent runtime 架构图解](../../agent-runtime-architecture.md)（阶段 5）画。六个 agent 里画成框的是导演、世界状态 agent、章节整理和大纲修订；开局构建没画，补选项写在“推给玩家”里。架构改了，这张图跟着改：框里的字在 `Landing.dc.html` 的“03 长篇”一节，每一步的说明和点亮哪些部件在同一文件的 `ARC` 里。
