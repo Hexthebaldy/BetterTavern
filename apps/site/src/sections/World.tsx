@@ -1,4 +1,7 @@
-/** 02 世界状态：说明、秘密、关系图 */
+/**
+ * 02 世界状态：说明、秘密、关系图。
+ * 鼠标移到节点上（或键盘聚焦），只亮它和它的邻居；点节点在下面看详情。秘密先模糊，点“揭示”要确认一次，揭开后图上多一条虚线。
+ */
 
 import { useState } from "react";
 
@@ -22,9 +25,9 @@ const KIND_ICON: Record<Kind, IconName> = { person: "person", place: "place", it
 type Secret = "hidden" | "ask" | "shown";
 
 export function World() {
-  const [secret] = useState<Secret>("hidden");
-  const [sel] = useState<NodeId>("me");
-  const [focus] = useState<NodeId | null>(null);
+  const [secret, setSecret] = useState<Secret>("hidden");
+  const [sel, setSel] = useState<NodeId>("me");
+  const [focus, setFocus] = useState<NodeId | null>(null);
   const shown = secret === "shown";
   const hl = highlight(focus, shown);
   const sn = NODES[sel];
@@ -71,12 +74,31 @@ export function World() {
                   {SECRET_TEXT}
                 </p>
                 {secret === "hidden" && (
-                  <button className="btn sec sm" type="button">
+                  <button className="btn sec sm" type="button" onClick={() => setSecret("ask")}>
                     揭示
                   </button>
                 )}
                 {shown && <span className="badge warn">已揭示</span>}
               </div>
+              {secret === "ask" && (
+                <div className="ask" role="alert">
+                  <span>揭示一条秘密？揭示后会看到主角还不知道的事。</span>
+                  <button className="btn sec sm" type="button" onClick={() => setSecret("hidden")}>
+                    取消
+                  </button>
+                  <button
+                    className="btn pri sm"
+                    type="button"
+                    style={{ padding: "0 18px" }}
+                    onClick={() => {
+                      setSecret("shown");
+                      setSel("keeper");
+                    }}
+                  >
+                    揭示
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <div className="gwrap">
@@ -84,7 +106,7 @@ export function World() {
               <span className="on-hover">鼠标移到节点上，相关的关系会高亮；点击查看详情。</span>
               <span className="on-touch">点一下节点，查看详情和相关的关系。</span>
             </p>
-            <div className="graph" role="group" aria-label="关系图：雾港守夜人">
+            <div className="graph" role="group" aria-label="关系图：雾港守夜人" onMouseLeave={() => setFocus(null)}>
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                 {[...edgesShown(false), SECRET_EDGE].map((e, i) => {
                   const isSecret = e === SECRET_EDGE;
@@ -119,6 +141,10 @@ export function World() {
                     style={{ left: `${n.x}%`, top: `${n.y}%` }}
                     aria-pressed={sel === id}
                     aria-label={nodeAria(id)}
+                    onMouseEnter={() => setFocus(id)}
+                    onFocus={() => setFocus(id)}
+                    onBlur={() => setFocus(null)}
+                    onClick={() => setSel(id)}
                   >
                     <span className="gi">
                       <Icon name={KIND_ICON[n.kind]} />

@@ -8,7 +8,7 @@ import { EXTERNAL } from "../data/links.ts";
 import { PROVIDERS } from "../data/providers.ts";
 
 export function Models() {
-  const [provId] = useState(PROVIDERS[0]!.id);
+  const [provId, setProvId] = useState(PROVIDERS[0]!.id);
   const prov = PROVIDERS.find((p) => p.id === provId) ?? PROVIDERS[0]!;
   return (
     <section className="sec" id="models" style={{ paddingTop: 0 }}>
@@ -33,6 +33,7 @@ export function Models() {
                   type="button"
                   role="radio"
                   aria-checked={p.id === prov.id}
+                  onClick={() => setProvId(p.id)}
                 >
                   <ProviderMark provider={p.id} />
                   <span>{p.name}</span>

@@ -25,7 +25,7 @@ function CardArt() {
 }
 
 export function How() {
-  const [ident] = useState(1);
+  const [ident, setIdent] = useState(1);
   return (
     <section className="sec" id="how">
       <div className="wrap">
@@ -79,6 +79,7 @@ export function How() {
                     type="button"
                     role="radio"
                     aria-checked={ident === i}
+                    onClick={() => setIdent(i)}
                   >
                     {label}
                   </button>

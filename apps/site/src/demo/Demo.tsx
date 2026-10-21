@@ -1,17 +1,33 @@
 /**
  * 首屏演示：App 阅读页的样子（里面保持 App 的柔和样式，只有外框是粗边和硬投影）。
- * 故事和推进规则在 story.ts。
+ * 段落逐字出现，点 A / B 往下走，两轮后结束；可以改主角名字、切换夜间、“自己写”一句、打开世界看新出现的条目。
+ * 故事和推进规则在 story.ts，这里只管计时器和界面状态。
+ *
+ * 预渲染和 hydrate 时第一段已经写完（initialState），不重新逐字打一遍；从第二段开始逐字出现。
+ * 系统打开“减少动态效果”时，每一段直接显示全文。
  */
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { Icon, type IconName } from "../components/Icon.tsx";
 import {
+  advance,
+  choose,
+  clampName,
+  DRAFT_MAX,
   initialState,
   isEnded,
+  rename,
+  restart,
+  seenWorld,
   segments,
+  send,
+  skip,
+  startWriting,
   statusText,
   STORY,
+  tick,
+  TIMING,
   worldEntries,
   type DemoState,
   type EntityKind,
@@ -39,14 +55,126 @@ function Cover() {
 }
 
 export function Demo() {
-  const [s] = useState<DemoState>(() => initialState());
-  const [dark] = useState(false);
-  const [world] = useState(false);
+  const [s, setS] = useState<DemoState>(() => initialState());
+  const [dark, setDark] = useState(false);
+  const [world, setWorld] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const reduce = useRef(false);
+  const feed = useRef<HTMLDivElement>(null);
+  // 正文停在最底下时，新写出的字跟着往下滚；读者自己往上翻了就不打扰
+  const follow = useRef(true);
+  // 按 Esc 取消改名时，输入框消失引起的失焦不算提交
+  const cancelName = useRef(false);
+
+  useEffect(() => {
+    try {
+      reduce.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      reduce.current = false;
+    }
+  }, []);
+
+  // 计时器跟着状态走：构思一会儿 → 逐字写 → 点了选项稍等一下进入下一段
+  useEffect(() => {
+    if (s.phase === "thinking") {
+      const t = window.setTimeout(() => setS(startWriting), s.node === "root" ? TIMING.thinkFirst : TIMING.think);
+      return () => window.clearTimeout(t);
+    }
+    if (s.phase === "writing") {
+      const t = window.setInterval(() => setS((cur) => tick(cur)), TIMING.tick);
+      return () => window.clearInterval(t);
+    }
+    return undefined;
+  }, [s.phase, s.node]);
+
+  useEffect(() => {
+    if (s.chosen === null || s.phase !== "idle") return undefined;
+    const t = window.setTimeout(() => setS((cur) => advance(cur, reduce.current)), TIMING.afterPick);
+    return () => window.clearTimeout(t);
+  }, [s.chosen, s.phase]);
+
+  useEffect(() => {
+    if (feed.current && follow.current) feed.current.scrollTop = feed.current.scrollHeight;
+  });
 
   const cur = STORY[s.node];
   const idle = s.phase === "idle";
   const ended = isEnded(s);
   const hasFresh = s.fresh.length > 0 && !world;
+
+  const doRestart = () => {
+    follow.current = true;
+    setS((x) => restart(x, reduce.current));
+    setWorld(false);
+    setComposing(false);
+    setDraft("");
+  };
+  const pick = (i: number) => {
+    if (choose(s, i) === s) return;
+    follow.current = true;
+    setS(choose(s, i));
+    setComposing(false);
+    setEditing(false);
+  };
+  const editName = () => {
+    cancelName.current = false;
+    setDraftName(s.name);
+    setEditing(true);
+    setComposing(false);
+  };
+  const commitName = () => {
+    if (cancelName.current) return;
+    setS((x) => rename(x, draftName));
+    setEditing(false);
+  };
+  const onNameKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitName();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelName.current = true;
+      setEditing(false);
+    }
+  };
+  const openCompose = () => {
+    follow.current = true;
+    setComposing(true);
+    setEditing(false);
+    setWorld(false);
+  };
+  const sendDraft = () => {
+    if (!draft.trim()) return;
+    follow.current = true;
+    setS((x) => send(x, draft));
+    setDraft("");
+    setComposing(false);
+  };
+  const onDraftKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // 输入法正在选字时的回车不算发送
+    const ime = e.nativeEvent.isComposing || e.keyCode === 229;
+    if (e.key === "Enter" && !e.shiftKey && !ime) {
+      e.preventDefault();
+      sendDraft();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setComposing(false);
+    }
+  };
+  const toggleWorld = () => {
+    if (world) {
+      setWorld(false);
+      setS(seenWorld);
+    } else {
+      setWorld(true);
+      setComposing(false);
+      setEditing(false);
+    }
+  };
 
   return (
     <section className={dark ? "dm D" : "dm"} aria-label="演示：雾港守夜人">
@@ -56,20 +184,48 @@ export function Demo() {
         </span>
         <div className="dm-ttl">
           <b>雾港守夜人</b>
-          <button className="me-pill" type="button" aria-label={`我是 ${s.name}，点一下换个名字`}>
-            我是 {s.name}
-            <Icon name="pencil" />
-          </button>
+          {editing ? (
+            <input
+              className="me-in"
+              type="text"
+              aria-label="你的名字"
+              placeholder="起个名字"
+              value={draftName}
+              onChange={(e) => setDraftName(clampName(e.target.value))}
+              onKeyDown={onNameKey}
+              onBlur={commitName}
+              onFocus={(e) => e.currentTarget.select()}
+              autoFocus
+            />
+          ) : (
+            <button className="me-pill" type="button" onClick={editName} aria-label={`我是 ${s.name}，点一下换个名字`}>
+              我是 {s.name}
+              <Icon name="pencil" />
+            </button>
+          )}
         </div>
-        <button className="ib" type="button" aria-label={dark ? "切回浅色" : "切到夜间"} aria-pressed={dark}>
+        <button
+          className="ib"
+          type="button"
+          onClick={() => setDark((d) => !d)}
+          aria-label={dark ? "切回浅色" : "切到夜间"}
+          aria-pressed={dark}
+        >
           <Icon name={dark ? "sun" : "moon"} />
         </button>
-        <button className="ib" type="button" aria-label="从头再读">
+        <button className="ib" type="button" onClick={doRestart} aria-label="从头再读">
           <Icon name="restart" />
         </button>
       </header>
 
-      <div className="dm-feed">
+      <div
+        className="dm-feed"
+        ref={feed}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+        }}
+      >
         {segments(s).map((seg, i) => (
           <Fragment key={i}>
             <p className="narr">
@@ -85,6 +241,19 @@ export function Demo() {
           </Fragment>
         ))}
 
+        {s.typed && (
+          <div className="typed appear">
+            <p className="note" style={{ margin: 0 }}>
+              <span className="sr">我的行动：</span>
+              {s.typed}
+            </p>
+            <div className="hint">
+              <Icon name="info" size="s" />
+              <span>演示不会生成新的段落。实际使用时，这一句会交给你配置的模型接着写。</span>
+            </div>
+          </div>
+        )}
+
         {idle && cur.options && (
           <div className="opts appear" role="group" aria-label="选一个行动">
             {cur.options.map((o, i) => (
@@ -92,6 +261,7 @@ export function Demo() {
                 key={o.label}
                 className={s.chosen === i ? "opt on" : "opt"}
                 type="button"
+                onClick={() => pick(i)}
                 disabled={s.chosen !== null}
                 aria-label={`${KEYS[i]}：${o.label}`}
               >
@@ -113,7 +283,7 @@ export function Demo() {
               实际使用时，故事由你配置的模型一直写下去。
             </p>
             <div className="row">
-              <button className="btn pri sm" type="button">
+              <button className="btn pri sm" type="button" onClick={doRestart}>
                 从头再读
               </button>
               <a className="btn line sm" href="#deploy">
@@ -131,6 +301,7 @@ export function Demo() {
         <button
           className={world ? "tb on" : "tb"}
           type="button"
+          onClick={toggleWorld}
           aria-label={world ? "收起世界" : hasFresh ? "世界，有新内容" : "世界"}
           aria-expanded={world}
         >
@@ -143,19 +314,40 @@ export function Demo() {
               <span className="pulse" />
               <span>{statusText(s)}</span>
             </div>
-            <button className="ghost" type="button">
+            <button className="ghost" type="button" onClick={() => setS(skip)}>
               全部显示
             </button>
           </>
         )}
-        {idle && !ended && (
-          <button className="wpill" type="button">
+        {idle && !ended && !composing && (
+          <button className="wpill" type="button" onClick={openCompose}>
             <Icon name="pencil" size="s" />
             <span style={{ flex: 1 }}>自己写…</span>
           </button>
         )}
+        {composing && (
+          <>
+            <div className="cmp">
+              <textarea
+                rows={1}
+                aria-label="我要做的事"
+                placeholder="我……"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value.slice(0, DRAFT_MAX))}
+                onKeyDown={onDraftKey}
+                autoFocus
+              />
+              <button className="send" type="button" onClick={sendDraft} disabled={!draft.trim()}>
+                发送
+              </button>
+            </div>
+            <button className="ib" type="button" onClick={() => setComposing(false)} aria-label="收起">
+              <Icon name="close" />
+            </button>
+          </>
+        )}
         {ended && (
-          <button className="wpill" type="button">
+          <button className="wpill" type="button" onClick={doRestart}>
             <Icon name="restart" size="s" />
             <span style={{ flex: 1 }}>从头再读</span>
           </button>
@@ -169,7 +361,13 @@ export function Demo() {
               <div className="t">世界</div>
               <div className="s">人物、地点、物品和已知的事实</div>
             </div>
-            <button className="ib" type="button" aria-label="收起世界" style={{ background: "var(--card)" }}>
+            <button
+              className="ib"
+              type="button"
+              onClick={toggleWorld}
+              aria-label="收起世界"
+              style={{ background: "var(--card)" }}
+            >
               <Icon name="close" />
             </button>
           </div>

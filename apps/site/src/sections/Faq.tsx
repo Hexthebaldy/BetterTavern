@@ -48,7 +48,8 @@ const ITEMS: readonly { q: string; a: ReactNode }[] = [
 ];
 
 export function Faq() {
-  const [open] = useState(0);
+  // 一次展开一条；再点展开的那条就收起
+  const [open, setOpen] = useState(0);
   return (
     <section className="sec" id="faq">
       <div className="wrap" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "24px 64px" }}>
@@ -74,7 +75,13 @@ export function Faq() {
           {ITEMS.map((item, i) => (
             <div key={i} className={open === i ? "faq-item open" : "faq-item"}>
               <h3 style={{ margin: 0 }}>
-                <button className="faq-q" type="button" aria-expanded={open === i} aria-controls={`faq-a${i}`}>
+                <button
+                  className="faq-q"
+                  type="button"
+                  aria-expanded={open === i}
+                  aria-controls={`faq-a${i}`}
+                  onClick={() => setOpen(open === i ? -1 : i)}
+                >
                   <span>{item.q}</span>
                   <span className="plus" aria-hidden="true" />
                 </button>

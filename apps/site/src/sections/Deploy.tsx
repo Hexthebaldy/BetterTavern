@@ -1,14 +1,53 @@
-/** 06 部署：需要准备什么；Docker / 源码 / 网页 / 手机四组命令 */
+/**
+ * 06 部署：需要准备什么；Docker / 源码 / 网页 / 手机四组命令。
+ * 复制成功显示“已复制”；剪贴板不可用时自动选中命令，提示按 ⌘C 或 Ctrl+C（copy.ts）。窄屏上命令不折行，横向滚动。
+ */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "../components/Icon.tsx";
-import { DEPLOY_TABS, type DeployTab } from "../data/deploy.ts";
+import { commandText, DEPLOY_TABS, type DeployTab } from "../data/deploy.ts";
 import { DOCS, EXTERNAL } from "../data/links.ts";
+import { copyCommands, copyLabel, COPY_RESET_MS, isApplePlatform, type CopyResult } from "./copy.ts";
 
-/** 一组命令：终端样式的框，右上角“复制”。不是当前标签的带 hidden。
- * 不开 JS 时 index.html 里的样式把四组都显示出来，标签栏藏起来，每组的“终端”后面写上是哪一组（.nojs） */
+/**
+ * 一组命令：终端样式的框，右上角“复制”。不是当前标签的带 hidden。
+ * 不开 JS 时 index.html 里的样式把四组都显示出来，标签栏藏起来，每组的“终端”后面写上是哪一组（.nojs）
+ */
 function CommandBox({ tab, active }: { tab: DeployTab; active: boolean }) {
+  const pre = useRef<HTMLPreElement>(null);
+  const timer = useRef(0);
+  const [copied, setCopied] = useState<CopyResult | null>(null);
+  const [apple, setApple] = useState(false);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  // 换了标签，提示回到“复制”
+  useEffect(() => {
+    if (!active) setCopied(null);
+  }, [active]);
+
+  const copy = async () => {
+    setApple(isApplePlatform(navigator.platform || navigator.userAgent));
+    const result = await copyCommands(commandText(tab.lines), {
+      writeText: navigator.clipboard?.writeText ? (text) => navigator.clipboard.writeText(text) : undefined,
+      selectAndCopy: () => {
+        const el = pre.current;
+        const selection = window.getSelection();
+        if (!el || !selection) return false;
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        const ok = document.execCommand("copy");
+        if (ok) selection.removeAllRanges();
+        return ok;
+      },
+    });
+    setCopied(result);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setCopied(null), COPY_RESET_MS[result]);
+  };
+
   return (
     <div
       className="code"
@@ -22,12 +61,12 @@ function CommandBox({ tab, active }: { tab: DeployTab; active: boolean }) {
         <span className="lab">
           终端<span className="nojs"> · {tab.label}</span>
         </span>
-        <button className="cp" type="button">
-          <Icon name="copy" size="s" />
-          <span aria-live="polite">复制</span>
+        <button className={copied === "ok" ? "cp ok" : "cp"} type="button" onClick={copy}>
+          <Icon name={copied === "ok" ? "check" : "copy"} size="s" />
+          <span aria-live="polite">{copyLabel(copied, apple)}</span>
         </button>
       </div>
-      <pre>
+      <pre ref={pre}>
         {tab.lines.map(([kind, text], i) => (
           <span key={i} className={kind === "#" ? "cm" : undefined} style={{ display: "block" }}>
             <span className="pr">{kind === "$" ? "$ " : ""}</span>
@@ -40,7 +79,7 @@ function CommandBox({ tab, active }: { tab: DeployTab; active: boolean }) {
 }
 
 export function Deploy() {
-  const [tabId] = useState<DeployTab["id"]>("docker");
+  const [tabId, setTabId] = useState<DeployTab["id"]>("docker");
   return (
     <section className="band ink" id="deploy">
       <div className="wrap">
@@ -96,6 +135,7 @@ export function Deploy() {
                   role="tab"
                   aria-selected={t.id === tabId}
                   aria-controls={`deploy-${t.id}`}
+                  onClick={() => setTabId(t.id)}
                 >
                   {t.label}
                 </button>
