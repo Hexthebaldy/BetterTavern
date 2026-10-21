@@ -4,11 +4,11 @@
 >
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
-这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0016`）。
+这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0017`）。
 设计意图和还没建的表见 [backend.md 第 2 节](../backend.md)。
 
 表按领域分文件。每个领域文件写这个领域的表（列、类型、约束、索引）、JSON 列的结构和状态变化；本页写各领域共用的约定、
-表之间的关系、跨领域的删除与清理、还没建的表，以及改表结构的流程。
+表之间的关系、跨领域的删除与清理，以及改表结构的流程。
 
 | 文件 | 领域 | 表 |
 | --- | --- | --- |
@@ -17,7 +17,7 @@
 | [library.md](library.md) | 剧本库 | `blobs`、`scenarios` |
 | [story.md](story.md) | 游玩与回合，以及热路径的并发控制 | `playthroughs`、`turns`、`idempotency_keys` |
 | [world.md](world.md) | 世界状态 | `entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes` |
-| [memory.md](memory.md) | 记忆（章节摘要、全书梗概、玩家画像） | `story_summaries`、`player_profiles` |
+| [memory.md](memory.md) | 记忆（章节摘要、全书梗概、玩家画像）和大纲 | `story_summaries`、`player_profiles`、`outline_revisions` |
 | [infra.md](infra.md) | 运行基础设施 | `agent_runs`、`agent_steps`、`jobs` |
 
 `tests/integration/test_data_model_doc.py` 会在真实 Postgres 上执行迁移，再把这个目录里的所有文件合在一起，逐表核对列名、类型、可空和索引名。
@@ -60,6 +60,7 @@ erDiagram
     playthroughs ||--o{ threads : "playthrough_id"
     playthroughs ||--o{ story_summaries : "playthrough_id"
     playthroughs ||--o{ player_profiles : "playthrough_id"
+    playthroughs ||--o{ outline_revisions : "playthrough_id"
     playthroughs |o--o{ agent_runs : "playthrough_id"
     playthroughs ||--o{ state_patches : "playthrough_id"
     playthroughs ||--o{ turn_notes : "playthrough_id"
@@ -99,7 +100,7 @@ erDiagram
 | 操作 | 连带删除或修改 |
 | --- | --- |
 | 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`scenarios`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys` |
-| 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes`、`story_summaries`、`player_profiles` 和 `agent_runs`（连同 `agent_steps`）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
+| 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes`、`story_summaries`、`player_profiles`、`outline_revisions` 和 `agent_runs`（连同 `agent_steps`）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 在同一个事务里删除它的头像（`blobs`）；`playthroughs.scenario_id` 置空 |
 | 删除模型路由 | 删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING`；删掉的是后台模型时，后台整理改用导演的模型 |
 | 删除实体（M2） | 级联删除相关的 `entity_links`；`facts.entity_ids` 里的 ID 不会自动清理 |
@@ -112,14 +113,6 @@ erDiagram
 | `idempotency_keys` | 大约每 10 分钟 | 删除 24 小时之前的 |
 | `refresh_tokens` | 大约每 10 分钟 | 删除过期超过 7 天的 |
 | `agent_runs`、已完成的 `jobs` | 不清理 | M1 没有清理；设计是 `agent_runs.result` 保留 30 天（[backend.md 第 11 节](../backend.md)） |
-
-## 还没有建的表
-
-以下几张表按 [agent-runtime.md](../agent-runtime.md) 第 10 节的阶段加入，设计见该文档第 8 节“表的变化”（同时还会删掉几列，也列在那里）。建好后从这里删掉，按下文“修改表结构”写进对应领域的文件。
-
-| 表 | 阶段 | 放进哪个文件 | 用途 |
-| --- | --- | --- | --- |
-| outline_revisions | 5 | [memory.md](memory.md) | 大纲的修订，只新增，记下依据的回合 |
 
 ## 修改表结构
 

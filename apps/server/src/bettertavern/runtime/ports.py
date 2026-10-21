@@ -9,12 +9,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
+from bettertavern.domain.memory.outline import Beat, Outline, OutlineSlice
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.scenario.card import CharacterCard
 from bettertavern.domain.story.turn import PlayerAction, TurnOption
 from bettertavern.domain.world.records import RowChange, WorldRecords
 from bettertavern.domain.world.seed import Seed
-from bettertavern.domain.world.views import WorldSnapshot
+from bettertavern.domain.world.views import ThreadView, WorldSnapshot
 from bettertavern.providers import Usage
 
 from .agent.steps import AgentStep
@@ -96,6 +97,7 @@ class TurnContext:
     # 世界状态已整理到第几回合（-1 表示还没整理过）：状态块开头写“截至第几回合”
     state_seq: int = -1
     memory: StoryMemory = field(default_factory=StoryMemory)
+    outline: OutlineSlice | None = None  # 大纲里导演要看的那一部分；还没有大纲时为空
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,6 +212,10 @@ class StateTurn:
     world: WorldRecords  # 包括没解开的线索
     failures: int = 0  # 这一回合之前整理失败过几次
     director_notes: str = ""  # 导演写在这一回合的隐藏备注
+    beat: Beat | None = None  # 大纲当前这一拍；还没有大纲时为空
+    # 前几回合已经说过“大纲要改”、大纲修订还没处理的（回合，原因）：同一件事不用再说
+    outline_pending: tuple[tuple[int, str], ...] = ()
+    outline_seq: int = -1  # 大纲修订已经看过第几回合的原因（-1 表示还没有大纲）
 
 
 @dataclass(frozen=True)
@@ -219,6 +225,7 @@ class StateCommit:
     entity_ids: tuple[str, ...]
     scene_ended: bool
     run: AgentRunRecord
+    outline_reason: str = ""  # 大纲要改的原因；不用改时为空
 
 
 class StateStore(Protocol):
@@ -327,3 +334,48 @@ class MemoryStore(Protocol):
         ...
 
     async def fail(self, work: MemoryWork, run: AgentRunRecord) -> None: ...
+
+
+# ---- 大纲修订（后台） ---------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class OutlineWork:
+    """一局待修订的情况：现在的大纲（还没有时为空，要写第一版）、上次修订以来的“要改”的原因、
+    最近几回合的一句话摘要、整理出来的记忆、没解开的线索、开局设定。"""
+
+    playthrough_id: str
+    user_id: str
+    epoch: int
+    language: str
+    protagonist_name: str
+    outline_seq: int  # 修订已经看过第几回合的原因
+    based_on_seq: int  # 这次依据到第几回合（世界状态已整理到的回合）
+    turn_id: str | None  # 那一回合的 id：这次运行记在它上面
+    outline: Outline | None
+    reasons: tuple[tuple[int, str], ...]
+    digests: tuple[tuple[int, str], ...]
+    memory: StoryMemory
+    threads: tuple[ThreadView, ...]
+    seed: Seed | None
+
+
+@dataclass(frozen=True)
+class OutlineCommit:
+    outline: Outline | None  # 新一版大纲；不改时为空
+    reason: str
+    run: AgentRunRecord
+
+
+class OutlineStore(Protocol):
+    async def pending(self, playthrough_id: str) -> OutlineWork | None:
+        """要修订时返回待修订的情况：还没有大纲（世界状态至少整理过一回合），或者有还没处理的
+        “大纲要改”的原因。别的时候返回 None。"""
+        ...
+
+    async def commit(self, work: OutlineWork, result: OutlineCommit) -> bool:
+        """一个事务：修订进度从 work.outline_seq 前进到 work.based_on_seq，记下这次决定（改或不改）
+        和这次运行。进度或时间线编号对不上时什么都不写，运行记为 stale，返回 False。"""
+        ...
+
+    async def fail(self, work: OutlineWork, run: AgentRunRecord) -> None: ...

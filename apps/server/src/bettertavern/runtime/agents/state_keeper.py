@@ -136,6 +136,15 @@ def state_messages(
         facts=[to_json(describe_fact(draft, f)) for f in facts],
         threads=[to_json(describe_thread(draft, threads, t)) for t in shown],
         notes=sanitize_for_fence(turn.director_notes),
+        beat={
+            "intent": sanitize_for_fence(turn.beat.intent),
+            "done_when": sanitize_for_fence(turn.beat.done_when),
+        }
+        if turn.beat is not None
+        else None,
+        outline_pending=[
+            {"seq": seq, "text": sanitize_for_fence(text)} for seq, text in turn.outline_pending
+        ],
     )
     return [
         Message(role="system", content=system.text),

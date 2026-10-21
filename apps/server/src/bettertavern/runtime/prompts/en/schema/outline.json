@@ -1,0 +1,15 @@
+{
+  "description": "Story outline: premise, the next beats, constraints",
+  "fields": {
+    "Outline.premise": "The story's premise in one or two sentences, at most 120 words",
+    "Outline.beats": "Beats in order, each a stage of the story (usually 10–30 turns), at most 10",
+    "Outline.constraints": "Things that must hold, at most 6, one sentence each",
+    "Beat.id": "Beat id such as b1; when revising, existing beats keep their ids",
+    "Beat.status": "pending, active (in progress; exactly one), done, or skipped",
+    "Beat.intent": "What this stage should achieve and what it changes, one or two sentences, at most 40 words",
+    "Beat.done_when": "One visible, major event that marks the end of the stage, at most 40 words",
+    "OutlineDecision.change": "Whether the outline needs changing",
+    "OutlineDecision.reason": "One sentence on why you change it or not",
+    "OutlineDecision.outline": "The complete new outline when changing; leave out otherwise"
+  }
+}

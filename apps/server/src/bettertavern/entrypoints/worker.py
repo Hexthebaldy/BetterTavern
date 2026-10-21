@@ -1,7 +1,8 @@
 """worker 进程：领取后台任务，按 kind 分派。
 
-现在有三种任务：state.turn（世界状态 agent 整理一局还没整理的回合，services/state_jobs.py）、
-memory.chapter（章节整理，services/memory_jobs.py）和 noop（冒烟用）。只领取自己有处理器的 kind，
+现在有四种任务：state.turn（世界状态 agent 整理一局还没整理的回合，services/state_jobs.py）、
+memory.chapter（章节整理，services/memory_jobs.py）、memory.outline（大纲修订，
+services/outline_jobs.py）和 noop（冒烟用）。只领取自己有处理器的 kind，
 新旧版本的 worker 可以同时运行。
 """
 
@@ -21,9 +22,15 @@ from bettertavern.infra.queue.notify import PgNotifyListener
 from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.infra.queue.worker import Handler, JobWorker
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
+from bettertavern.runtime.outline_runner import OutlineRunner
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
-from bettertavern.services.container import build_memory_runner, build_state_runner
+from bettertavern.services.container import (
+    build_memory_runner,
+    build_outline_runner,
+    build_state_runner,
+)
 from bettertavern.services.memory_jobs import MEMORY_JOB, memory_handler
+from bettertavern.services.outline_jobs import OUTLINE_JOB, outline_handler
 from bettertavern.services.state_jobs import STATE_JOB, state_handler
 from bettertavern.settings import Settings
 
@@ -36,8 +43,15 @@ async def noop(job: Job) -> None:
     log.info("job.noop", payload_keys=sorted(job.payload))
 
 
-def handlers(state: StateRunner, memory: MemoryRunner) -> dict[str, Handler]:
-    return {"noop": noop, STATE_JOB: state_handler(state), MEMORY_JOB: memory_handler(memory)}
+def handlers(
+    state: StateRunner, memory: MemoryRunner, outline: OutlineRunner
+) -> dict[str, Handler]:
+    return {
+        "noop": noop,
+        STATE_JOB: state_handler(state),
+        MEMORY_JOB: memory_handler(memory),
+        OUTLINE_JOB: outline_handler(outline),
+    }
 
 
 async def run_worker(settings: Settings) -> None:
@@ -61,11 +75,14 @@ async def run_worker(settings: Settings) -> None:
             timeout_s=settings.chapter_timeout_s,
         ),
     )
+    outline = build_outline_runner(
+        engine=engine, secrets=app_secrets(settings), hub=hub, policy=policy
+    )
     queue = PgJobQueue(engine, lock_timeout=settings.job_lock_timeout_s)
     listener = PgNotifyListener(engine, queue.channel)
     await listener.start()
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
-    registered = handlers(state, memory)
+    registered = handlers(state, memory, outline)
     worker = JobWorker(
         queue,
         registered,

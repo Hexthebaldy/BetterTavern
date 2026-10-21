@@ -1,4 +1,4 @@
-{# version: 2 #}
+{# version: 3 #}
 Now process turn {{ seq }}. The current scene started at turn {{ scene_start }}.
 {% if recent %}
 
@@ -14,6 +14,15 @@ Time in the story: {{ clock }}
 {% endif %}
 {% if goal %}
 The protagonist's current goal: {{ goal }}
+{% endif %}
+{% if beat %}
+The outline's current beat: {{ beat.intent }}{% if beat.done_when %} (done when: {{ beat.done_when }}){% endif +%}
+{% endif %}
+{% if outline_pending %}
+Already reported as needing an outline change, still waiting for the revision:
+{% for item in outline_pending %}
+- Turn {{ item.seq }}: {{ item.text }}
+{% endfor %}
 {% endif %}
 Related entities:
 {% for entity in entities %}

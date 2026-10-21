@@ -406,7 +406,12 @@ def merge_threads(args: Mapping[str, Any], ctx: StateToolContext) -> str:
 @_tool(
     FINISH_TOOL,
     "write",
-    {"digest": STRING, "entities": STRINGS, "scene_ended": {"type": "boolean"}},
+    {
+        "digest": STRING,
+        "entities": STRINGS,
+        "scene_ended": {"type": "boolean"},
+        "outline_change": STRING,
+    },
     ("digest", "entities", "scene_ended"),
 )
 def commit(args: Mapping[str, Any], ctx: StateToolContext) -> str:
@@ -416,6 +421,7 @@ def commit(args: Mapping[str, Any], ctx: StateToolContext) -> str:
         entities=[str(e) for e in args.get("entities") or ()],
         scene_ended=bool(args["scene_ended"]),
         extra=ctx.threads.changes(),
+        outline_reason=str(args.get("outline_change") or ""),
     )
     return OK
 

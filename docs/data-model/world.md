@@ -138,6 +138,7 @@
 | `entity_ids` | uuid[] | 否 | `'{}'` | 这一回合涉及的实体 |
 | `scene_ended` | boolean | 否 | `false` | 这一回合之后当前场景是否结束；当前场景从上一个结束的场景之后开始算 |
 | `skipped` | boolean | 否 | `false` | 整理失败两次后跳过了这一回合：世界状态没改，摘要为空 |
+| `outline_reason` | text | 否 | `''` | 世界状态 agent 整理这一回合时说“大纲要改”的原因（这一拍完成了、玩家走向了别处、出现了大纲里没有的大事），一句话，最多 120 字；不用改、还没有大纲、跳过的回合为空串。大纲修订按它决定改不改（[memory.md](memory.md)） |
 | `created_at` | timestamptz | 否 | `now()` |  |
 
 约束与索引：

@@ -63,6 +63,9 @@ async def test_replay_runs_end_to_end_with_a_fake_model(
     assert summary["options"]["passed"] is True
     assert summary["checks"]["passed"] == 0 and summary["checks"]["total"] == 10
     assert story.state_calls == 5
+    # 后台写了第一版大纲；假的世界状态 agent 从不说“要改”，所以只写这一次
+    assert summary["outline"]["first_seq"] is not None and summary["outline"]["revised"] == 0
+    assert story.outline_calls == 1
     # 第 1 回合剧本是自己写的行动，第 2 回合是点选项
     assert [t.source for t in result.turns[1:3]] == ["text", "option"]
 

@@ -6,7 +6,9 @@
 2. 原文：当前这一章的回合（再加上一章最后两回合），按顺序交替的 user / assistant，导演回合
    写成当时的叙述加给玩家的选项（和导演的输出格式一样，模型看着历史也会照样写选项）。
    哪些回合放进来由调用方定（TurnContext.history，见 domain/memory/chapters.py）；
-3. 最后一条 user：状态块在前、玩家行动在后（或开场简报、结局要求），离生成点最近。
+3. 最后一条 user：状态块、大纲（<outline>，有了大纲以后）在前，玩家行动在后（或开场简报、
+   结局要求），离生成点最近。大纲每隔几回合才改一次，但放进 system 会让改大纲时整段缓存失效，
+   所以和状态块一样放在这里。
 
 章节摘要之前的回合不在上下文里，导演用召回工具查（第 7 节“召回”）。超过有效窗口 95% 时只截断
 发送视图，从最旧的回合开始丢，至少保留最近 2 个回合，直到不超过 90%：这是整理跟不上时的保护。
@@ -18,6 +20,7 @@ import hashlib
 import math
 from dataclasses import dataclass, field
 
+from bettertavern.domain.memory.outline import Beat
 from bettertavern.domain.memory.thresholds import EMERGENCY_LINE, emergency_budget
 from bettertavern.domain.story.turn import clip_middle
 from bettertavern.providers import Message
@@ -161,6 +164,28 @@ class ContextAssembler:
             )
         return pairs
 
+    def outline(self, ctx: TurnContext) -> RenderedPrompt | None:
+        """<outline> 大纲里导演要看的那一部分；还没有大纲时为 None。"""
+        part = ctx.outline
+        if part is None:
+            return None
+
+        def beat(b: Beat | None) -> dict[str, str] | None:
+            if b is None:
+                return None
+            return {
+                "intent": sanitize_for_fence(b.intent),
+                "done_when": sanitize_for_fence(b.done_when),
+            }
+
+        return self._prompts.render(
+            "director.outline",
+            premise=sanitize_for_fence(part.premise),
+            current=beat(part.current),
+            upcoming=beat(part.upcoming),
+            constraints=[sanitize_for_fence(c) for c in part.constraints],
+        )
+
     def final_message(
         self, ctx: TurnContext, window: int, *, recall_before: int = 0
     ) -> RenderedPrompt:
@@ -189,7 +214,12 @@ class ContextAssembler:
             )
         action_chars = max(math.floor(window * ACTION_RATIO), 200)
         action = clip_middle(sanitize_for_fence(ctx.action.text), action_chars)
-        hint = {"seq": ctx.header.seq, "recall_before": recall_before}
+        outline = self.outline(ctx)
+        hint = {
+            "seq": ctx.header.seq,
+            "recall_before": recall_before,
+            "outline": outline.text if outline is not None else "",
+        }
         if ctx.action.source == "ending":
             return self._prompts.render(
                 "director.ending", wish=action, world_state=world_state, **hint
@@ -254,6 +284,9 @@ class ContextAssembler:
         }
         if recap is not None:
             versions[recap.name] = recap.version
+        outline = self.outline(ctx) if ctx.action.source != "opening" else None
+        if outline is not None:
+            versions[outline.name] = outline.version
         return AssembledContext(
             messages=messages,
             estimated_tokens=total,

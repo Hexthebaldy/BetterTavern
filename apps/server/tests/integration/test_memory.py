@@ -70,7 +70,8 @@ async def test_each_kept_turn_queues_a_chapter_job(game: Game) -> None:
         "SELECT kind, status FROM jobs WHERE ordering_key = :key",
         key=f"{game.playthrough_id}:memory",
     )
-    assert jobs == [("memory.chapter", "pending")]
+    # 同一条队列里还有写第一版大纲的任务（tests/integration/test_outline.py）
+    assert sorted(jobs) == [("memory.chapter", "pending"), ("memory.outline", "pending")]
     # 还不够切一章：什么都不写
     assert await game.memory.process(game.playthrough_id) == 0
     assert await summaries(game) == [] and await summarized(game) == -1

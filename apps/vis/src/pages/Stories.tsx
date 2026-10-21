@@ -157,9 +157,11 @@ const MEMORY_KINDS: Record<MemoryItem["kind"], string> = {
   chapter: "章节摘要",
   synopsis: "全书梗概",
   profile: "玩家画像",
+  outline: "大纲（改）",
+  outline_kept: "大纲（不改）",
 };
 
-/** 章节整理写的记忆，按写的先后排。原文只在打开“显示故事内容”时有 */
+/** 后台写的记忆（章节整理、大纲修订），按写的先后排。原文只在打开“显示故事内容”时有 */
 function Memory({ items }: { items: MemoryItem[] }) {
   if (items.length === 0) return null;
   return (
@@ -179,7 +181,9 @@ function Memory({ items }: { items: MemoryItem[] }) {
             <tr key={i}>
               <td className="nowrap">{MEMORY_KINDS[m.kind] ?? m.kind}</td>
               <td className="nowrap">
-                {m.kind === "profile" ? `到第 ${m.last_seq} 回合` : `第 ${m.first_seq}–${m.last_seq} 回合`}
+                {m.kind === "chapter" || m.kind === "synopsis"
+                  ? `第 ${m.first_seq}–${m.last_seq} 回合`
+                  : `到第 ${m.last_seq} 回合`}
               </td>
               <td className="nowrap mut">第 {m.written_seq} 回合</td>
               <td>{m.text ? <div className="story">{m.text}</div> : <span className="mut">已隐藏：{m.chars} 字</span>}</td>

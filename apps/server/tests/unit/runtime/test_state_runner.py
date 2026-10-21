@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from bettertavern.domain.memory.outline import Beat
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.domain.world.names import normalize_name
@@ -365,3 +366,28 @@ async def test_threads_about_the_same_matter_are_merged_with_the_answer() -> Non
     assert second.after is not None and second.after["merged_into"] == merged.after["id"]
     assert merged.after["answer"] == "信是商会旧派封的，老周知情"
     assert merged.after["entity_ids"] == ["zhou"]
+
+
+async def test_the_outline_beat_is_shown_and_a_change_reason_is_kept() -> None:
+    hub, adapter = setup()
+    reason = ("commit", {**COMMIT[1], "outline_change": "  钥匙交出去了，这一拍完成了 "})
+    adapter.completions.append(calls(reason))
+    adapter.completions.append(calls(COMMIT))
+    beat = Beat(id="b2", status="active", intent="把钥匙交给老周", done_when="老周收下钥匙")
+    store = FakeStateStore(
+        pending=[
+            dataclasses.replace(state_turn(4), beat=beat, outline_pending=((3, "老周答应了"),)),
+            state_turn(5),
+        ]
+    )
+    await runner(store, hub).process("pt-1")
+    user = adapter.requests[0].messages[1].content
+    assert "大纲当前这一拍：把钥匙交给老周（完成条件：老周收下钥匙）\n" in user
+    # 上一回合说过、还没处理的原因也列出来，免得同一件事再说一遍
+    assert "还在等大纲修订处理的：\n- 第 3 回合：老周答应了\n" in user
+    # 还没有大纲的回合不提大纲
+    assert "大纲" not in adapter.requests[1].messages[1].content
+    (_, first), (_, second) = store.committed
+    assert first.outline_reason == "钥匙交出去了，这一拍完成了"
+    assert first.run.result["outline_change"] is True
+    assert second.outline_reason == "" and second.run.result["outline_change"] is False

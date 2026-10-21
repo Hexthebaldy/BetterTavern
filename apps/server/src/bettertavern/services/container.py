@@ -11,6 +11,7 @@ from bettertavern.infra.crypto.tokens import AccessTokenSigner
 from bettertavern.providers import EndpointPolicy, ProviderHub
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
+from bettertavern.runtime.outline_runner import OutlineRunner, OutlineRunnerConfig
 from bettertavern.runtime.prompts import PromptBook
 from bettertavern.runtime.runner import RunnerConfig, TurnRunner, TurnRunnerPool
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
@@ -18,6 +19,7 @@ from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
 from .auth_service import AuthService
 from .maintenance import Maintenance
 from .memory_store import PgMemoryStore
+from .outline_store import PgOutlineStore
 from .playthrough_service import PlaythroughService
 from .recall_store import PgRecallStore
 from .route_service import RouteService
@@ -133,6 +135,26 @@ def build_memory_runner(
     routes = RouteService(engine, secrets.keyring, hub, policy)
     return MemoryRunner(
         store=PgMemoryStore(engine),
+        routes=routes,
+        hub=hub,
+        prompts=prompts or PromptBook(),
+        config=config,
+    )
+
+
+def build_outline_runner(
+    *,
+    engine: AsyncEngine,
+    secrets: AppSecrets,
+    hub: ProviderHub,
+    policy: EndpointPolicy,
+    config: OutlineRunnerConfig | None = None,
+    prompts: PromptBook | None = None,
+) -> OutlineRunner:
+    """worker 进程用：后台大纲修订。"""
+    routes = RouteService(engine, secrets.keyring, hub, policy)
+    return OutlineRunner(
+        store=PgOutlineStore(engine),
         routes=routes,
         hub=hub,
         prompts=prompts or PromptBook(),

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
@@ -153,15 +154,19 @@ async def playthrough_detail(
         ),
         {"id": playthrough_id},
     )
-    # 章节整理写的记忆：章节摘要、全书梗概的各个版本、玩家画像的各个版本
+    # 后台写的记忆：章节摘要、全书梗概和玩家画像的各个版本，大纲修订的每一次决定
     summaries = await conn.execute(
         text(
             """
-            SELECT kind, first_seq, last_seq, written_seq, text, created_at FROM story_summaries
-            WHERE playthrough_id = CAST(:id AS uuid)
+            SELECT kind, first_seq, last_seq, written_seq, text, NULL::jsonb AS content, created_at
+            FROM story_summaries WHERE playthrough_id = CAST(:id AS uuid)
             UNION ALL
-            SELECT 'profile', 0, based_on_seq, based_on_seq, text, created_at FROM player_profiles
-            WHERE playthrough_id = CAST(:id AS uuid)
+            SELECT 'profile', 0, based_on_seq, based_on_seq, text, NULL, created_at
+            FROM player_profiles WHERE playthrough_id = CAST(:id AS uuid)
+            UNION ALL
+            SELECT CASE WHEN changed THEN 'outline' ELSE 'outline_kept' END, 0, based_on_seq,
+                   based_on_seq, reason, content, created_at
+            FROM outline_revisions WHERE playthrough_id = CAST(:id AS uuid)
             ORDER BY written_seq, created_at
             """
         ),
@@ -188,13 +193,29 @@ async def playthrough_detail(
                 "first_seq": r.first_seq,
                 "last_seq": r.last_seq,
                 "written_seq": r.written_seq,
-                "chars": len(r.text),
-                **({"text": r.text} if story else {}),
+                "chars": len(memory_text(r.text, r.content)),
+                **({"text": memory_text(r.text, r.content)} if story else {}),
                 "created_at": _ms(r.created_at),
             }
             for r in summaries
         ],
     }
+
+
+def memory_text(text: str, outline: Any) -> str:
+    """一条记忆的原文。大纲修订是“原因”加上新一版大纲：前提、每一拍（编号、状态、内容）、约束。"""
+    data = json.loads(outline) if isinstance(outline, str) else outline
+    if not isinstance(data, dict):
+        return text
+    lines = [text] if text else []
+    lines.append(f"premise: {data.get('premise', '')}")
+    for beat in data.get("beats") or []:
+        if isinstance(beat, dict):
+            head = f"{beat.get('id', '')} [{beat.get('status', '')}] {beat.get('intent', '')}"
+            done_when = f" → {beat['done_when']}" if beat.get("done_when") else ""
+            lines.append(head + done_when)
+    lines.extend(f"constraint: {c}" for c in data.get("constraints") or [])
+    return "\n".join(lines)
 
 
 def run_result_view(result: Any, *, story: bool) -> Any:

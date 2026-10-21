@@ -1,7 +1,8 @@
 """数据库测试用的一局游戏：真实 Postgres 上的服务、可编排的假模型、后台整理世界状态的 runner。
 
 导演用流式脚本（director()），世界状态 agent 用一次回复里的一串工具调用（calls()）；
-章节整理由假模型按请求里的回合号回复（chapter_reply()），切章的线很低，几回合就切一章。
+章节整理由假模型按请求里的回合号回复（chapter_reply()），切章的线很低，几回合就切一章；
+大纲修订由假模型按请求里的原因回复（outline_reply()）。
 """
 
 from __future__ import annotations
@@ -22,11 +23,13 @@ from bettertavern.infra.crypto.keyring import load_secrets, new_master_key_entry
 from bettertavern.providers import ChatRequest, ChatResult, EndpointPolicy, ToolCall, Usage
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
+from bettertavern.runtime.outline_runner import OutlineRunner, OutlineRunnerConfig
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
 from bettertavern.services.container import (
     Services,
     build_memory_runner,
+    build_outline_runner,
     build_services,
     build_state_runner,
 )
@@ -65,8 +68,14 @@ def calls(*items: tuple[str, dict[str, Any]]) -> ChatResult:
     )
 
 
-def commit(digest: str, *entities: str, scene_ended: bool = False) -> tuple[str, dict[str, Any]]:
-    return ("commit", {"digest": digest, "entities": list(entities), "scene_ended": scene_ended})
+def commit(
+    digest: str, *entities: str, scene_ended: bool = False, outline_change: str = ""
+) -> tuple[str, dict[str, Any]]:
+    args: dict[str, Any] = {"digest": digest, "entities": list(entities)}
+    args["scene_ended"] = scene_ended
+    if outline_change:
+        args["outline_change"] = outline_change
+    return ("commit", args)
 
 
 # 一回合大约 50 token：过了软线以后在场景结束处切，一直没有场景结束时三回合左右到硬线
@@ -93,11 +102,60 @@ def chapter_reply(request: ChatRequest) -> ChatResult:
     )
 
 
+_UPTO = re.compile(r"一直到第 (\d+) 回合")
+_REASON = re.compile(r"^- 第 \d+ 回合：(.*)$", re.MULTILINE)
+
+
+def outline_reply(request: ChatRequest) -> ChatResult:
+    """大纲修订的假回复。第一版有三拍；之后原因里有“不改”时不改，否则把进行中的一拍标为完成、
+    往后挪一拍。前提写明依据到第几回合。"""
+    prompt = request.messages[-1].content
+    found = _UPTO.findall(prompt)
+    upto = int(found[-1]) if found else -1
+    payload: dict[str, Any]
+    if "现在的大纲：" not in prompt:
+        beats = [
+            {"id": f"b{i}", "status": "active" if i == 1 else "pending", "intent": f"第{i}拍"}
+            for i in (1, 2, 3)
+        ]
+        payload = {"premise": f"截至第{upto}回合的大纲", "beats": beats, "constraints": []}
+    else:
+        current = prompt.split("现在的大纲：\n", 1)[1].split("\n\n", 1)[0]
+        outline = json.loads(current)
+        reasons = _REASON.findall(prompt.split("可能要改的地方：", 1)[1])
+        if any("不改" in r for r in reasons):
+            payload = {"change": False, "reason": "不用改"}
+        else:
+            beats = outline["beats"]
+            index = next(i for i, b in enumerate(beats) if b["status"] == "active")
+            beats[index]["status"] = "done"
+            if index + 1 == len(beats):
+                beats.append({"id": f"b{index + 2}", "intent": f"第{index + 2}拍"})
+            beats[index + 1]["status"] = "active"
+            outline["premise"] = f"截至第{upto}回合的大纲"
+            payload = {"change": True, "reason": "；".join(reasons), "outline": outline}
+    return ChatResult(
+        text=json.dumps(payload, ensure_ascii=False),
+        reasoning="",
+        tool_calls=(),
+        finish_reason="stop",
+        usage=Usage(prompt=100, completion=20),
+    )
+
+
+def background_reply(request: ChatRequest) -> ChatResult:
+    """后台的结构化输出：按请求的内容分给章节整理或大纲修订。"""
+    if "<outline-source>" in request.messages[-1].content:
+        return outline_reply(request)
+    return chapter_reply(request)
+
+
 @dataclass
 class Game:
     services: Services
     state: StateRunner
     memory: MemoryRunner
+    outline: OutlineRunner
     adapter: ScriptedAdapter
     engine: AsyncEngine
     user_id: str
@@ -149,6 +207,13 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
             policy=EndpointPolicy(),
             config=MemoryRunnerConfig(rule=CHAPTER_RULE, timeout_s=5.0),
         )
+        outline = build_outline_runner(
+            engine=engine,
+            secrets=secrets,
+            hub=hub,
+            policy=EndpointPolicy(),
+            config=OutlineRunnerConfig(timeout_s=5.0),
+        )
         user, _ = await services.auth.register("lin@example.com", "correct horse")
         await services.routes.create(
             user.id,
@@ -158,7 +223,7 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
         )
         scenario = await services.scenarios.import_file(user.id, json.dumps(CARD).encode())
         adapter = adapters["fake"]
-        adapter.responder = chapter_reply
+        adapter.responder = background_reply
         adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))
         adapter.streams.append(StreamScript(director(0)))
         pt, opening = await services.playthroughs.create(
@@ -166,7 +231,9 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
         )
         await finish(services, opening.id)
         try:
-            yield Game(services, state, memory, adapter, engine, user.id, pt.id, opening.id)
+            yield Game(
+                services, state, memory, outline, adapter, engine, user.id, pt.id, opening.id
+            )
         finally:
             await services.runners.shutdown(1.0)
             await hub.aclose()

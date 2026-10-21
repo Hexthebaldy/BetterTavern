@@ -1,6 +1,10 @@
-{# version: 2 #}
+{# version: 3 #}
 {% if world_state is defined and world_state %}
 {{ world_state }}
+
+{% endif %}
+{% if outline is defined and outline %}
+{{ outline }}
 
 {% endif %}
 {% if recall_before is defined and recall_before %}

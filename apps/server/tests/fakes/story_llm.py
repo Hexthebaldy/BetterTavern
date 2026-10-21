@@ -10,7 +10,8 @@
 提示词里有 <character-card> 的是 WorldBuilder，问“接下来可以采取的行动”的是选项修复，
 带 tools 的非流式请求是后台整理世界状态的 agent：每次直接调用 commit，只写一句摘要、不改世界状态。
 recall 打开时（--recall），导演收到召回工具会先查一次“火漆”，拿到结果再写；
-提示词里有 <chapter-turns> 的是章节整理，回一段固定的章节摘要和玩家画像（要并梗概时也回梗概）。
+提示词里有 <chapter-turns> 的是章节整理，回一段固定的章节摘要和玩家画像（要并梗概时也回梗概）；
+有 <outline-source> 的是大纲修订：还没有大纲时回一版三拍的大纲，之后都回“不改”。
 自定义端点默认被当成不能调用工具：要让后台整理跑起来，先在设置里测试一下这个模型。
 """
 
@@ -19,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
+from typing import Any
 
 import uvicorn
 
@@ -107,6 +109,21 @@ OPTIONS = [
 ]
 
 
+# 大纲修订的提示词里有“现在的大纲”时是修订，没有时是写第一版（三种语言）
+_CURRENT_OUTLINE = ("现在的大纲：", "Current outline:", "現在の大綱：")
+
+
+def outline_payload(prompt: str) -> dict[str, Any]:
+    if any(label in prompt for label in _CURRENT_OUTLINE):
+        return {"change": False, "reason": "故事还在照着大纲走。"}
+    beats = [
+        {"id": "b1", "status": "active", "intent": "在渡口打听对岸的灯", "done_when": "上了船"},
+        {"id": "b2", "status": "pending", "intent": "跟老船夫渡河"},
+        {"id": "b3", "status": "pending", "intent": "在对岸找到点灯的人"},
+    ]
+    return {"premise": "我要弄清对岸那盏灯是谁点的。", "beats": beats, "constraints": []}
+
+
 def director_text(n: int) -> str:
     paragraph = PARAGRAPHS[(n - 1) % len(PARAGRAPHS)]
     first, second = OPTIONS[(n - 1) % len(OPTIONS)]
@@ -123,6 +140,7 @@ class StoryScript:
     recall_calls: int = 0
     state_calls: int = 0
     chapter_calls: int = 0
+    outline_calls: int = 0
 
     def reply(self, request: RecordedRequest) -> Reply:
         body = request.body if isinstance(request.body, dict) else {}
@@ -190,6 +208,9 @@ class StoryScript:
             if "要并进去的一章" in prompt or "The chapter to merge" in prompt:
                 payload["synopsis"] = "## 剧情主线\n我来到渡口，打听对岸的灯。"
             return JsonReply(completion(json.dumps(payload, ensure_ascii=False)))
+        if "<outline-source>" in prompt:
+            self.outline_calls += 1
+            return JsonReply(completion(json.dumps(outline_payload(prompt), ensure_ascii=False)))
         if "<character-card>" in prompt:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
         if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:

@@ -21,7 +21,7 @@ flowchart LR
 ### 进程拓扑
 
 - `api`：FastAPI。鉴权、校验、读接口，以及热路径（导演生成并以 SSE 推流）。无本地状态，可横向扩展。热路径由 `TurnRunner` 抽象封装，以后需要时可整体迁到 worker。
-- `worker`：后台 agent（世界状态 agent、章节整理，以后加大纲修订）和维护任务。从 Postgres 任务表领取任务，同一个 playthrough 的后台任务分 state、memory 两条队列：队列内按序执行，队列之间并行（[agent-runtime.md](agent-runtime.md) 第 3 节）。
+- `worker`：后台 agent（世界状态 agent、章节整理、大纲修订）和维护任务。从 Postgres 任务表领取任务，同一个 playthrough 的后台任务分 state、memory 两条队列：队列内按序执行，队列之间并行（[agent-runtime.md](agent-runtime.md) 第 3 节）。
 - `postgres`：事实来源，同时承担任务队列（`FOR UPDATE SKIP LOCKED`）和跨进程通知（`LISTEN/NOTIFY`）。
 - `redis`（可选）：多实例部署时缓冲 token 流以支持断线续传；单实例用进程内缓冲，所以 `docker compose up` 只需 api、worker、postgres 三个容器。
 
@@ -97,7 +97,7 @@ flowchart LR
 
 | 表 | 关键列 | 说明 |
 | --- | --- | --- |
-| `outline_revisions` | id, playthrough\_id, based\_on\_seq, content jsonb, reason, run\_id, created\_at | 大纲每次修订一行，只新增；当前版本是依据的回合不超过头部的最新一行。结构见 [agent-runtime.md](agent-runtime.md) 第 4 节 |
+| `outline_revisions` | id, playthrough\_id, based\_on\_seq, changed, content jsonb, reason, created\_at | 大纲修订的每一次决定（改或不改）一行，只新增；当前版本是改了的、依据回合最大的一行（[data-model/memory.md](data-model/memory.md)） |
 | `story_summaries` | id, playthrough\_id, kind（chapter / synopsis）, first\_seq, last\_seq, written\_seq, text, created\_at | 章节摘要和全书梗概的各个版本，只新增（[data-model/memory.md](data-model/memory.md)） |
 | `turn_notes` | turn\_id, playthrough\_id, seq, digest, entity\_ids uuid\[\], scene\_ended | 世界状态 agent 给每回合写的标签：一句话摘要、涉及的实体 |
 | `threads` | id, playthrough\_id, kind（悬念 / 承诺 / 伏笔）, text, entity\_ids, opened\_seq, closed\_seq | 线索与伏笔 |
@@ -375,10 +375,9 @@ class Seed(BaseModel):
     organizations: list[OrgSeed] = []
     facts: list[FactSeed] = []
     opening: OpeningBrief               # 开场地点、在场人物、第一人称开场要求
-    outline: OutlineDraft | None = None # 首版大纲，可以为空
 ```
 
-降级：WorldBuilder 失败或超时，用最小 Seed：世界基调取自角色卡的 scenario / description 文字，主角取玩家输入的名字，角色卡角色作为 NPC，没有大纲（第一次世界状态整理时由大纲修订补上，见 [agent-runtime.md](agent-runtime.md) 第 4 节）。
+降级：WorldBuilder 失败或超时，用最小 Seed：世界基调取自角色卡的 scenario / description 文字，主角取玩家输入的名字，角色卡角色作为 NPC。开局设定里没有大纲：开局后由后台的大纲修订照开局设定写第一版（[agent-runtime.md](agent-runtime.md) 第 4 节）。
 
 ### 提示词管理
 

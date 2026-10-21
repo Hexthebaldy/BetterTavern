@@ -1,4 +1,4 @@
-{# version: 2 #}
+{# version: 3 #}
 第 {{ seq }} ターンを整理してください。今の場面は第 {{ scene_start }} ターンから始まっています。
 {% if recent %}
 
@@ -14,6 +14,15 @@
 {% endif %}
 {% if goal %}
 主人公の今の目的：{{ goal }}
+{% endif %}
+{% if beat %}
+大綱のいまの一拍：{{ beat.intent }}{% if beat.done_when %}（完了条件：{{ beat.done_when }}）{% endif +%}
+{% endif %}
+{% if outline_pending %}
+すでに大綱を変えるべきと伝え、見直しを待っているもの：
+{% for item in outline_pending %}
+- 第 {{ item.seq }} ターン：{{ item.text }}
+{% endfor %}
 {% endif %}
 関連するエンティティ：
 {% for entity in entities %}

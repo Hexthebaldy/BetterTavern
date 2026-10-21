@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from bettertavern.domain.memory.chapters import raw_start
+from bettertavern.domain.memory.outline import outline_from_json, slice_of
 from bettertavern.domain.scenario.card import CharacterCard
 from bettertavern.domain.story.language import unnamed_protagonist
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
@@ -24,6 +25,7 @@ from bettertavern.domain.world.views import (
     WorldSnapshot,
 )
 from bettertavern.infra.db.repositories import library as library_repo
+from bettertavern.infra.db.repositories import outline as outline_repo
 from bettertavern.infra.db.repositories import story as story_repo
 from bettertavern.infra.db.repositories import world as world_repo
 from bettertavern.infra.queue.pg_queue import PgJobQueue
@@ -180,6 +182,8 @@ class PgTurnStore:
             )
             world = await load_world(conn, header.playthrough_id)
             memory = await load_story_memory(conn, header.playthrough_id, pt.summarized_seq)
+            current = await outline_repo.current_outline(conn, header.playthrough_id)
+        outline = outline_from_json(current.content) if current else None
         seed = Seed.model_validate(pt.seed) if pt.seed else None
         protagonist = (pt.settings.get("protagonist") or {}).get("name") or (
             seed.protagonist.name if seed else unnamed_protagonist(pt.language)
@@ -205,6 +209,7 @@ class PgTurnStore:
             world=world,
             state_seq=pt.state_seq,
             memory=memory,
+            outline=slice_of(outline) if outline is not None else None,
         )
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:

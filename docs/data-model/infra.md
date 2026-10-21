@@ -10,7 +10,7 @@
 
 ### `agent_runs`
 
-调用账本：每次 agent 运行记一行，用于排错、用量统计和审计；运行里的每一步记在 `agent_steps`。现在记四种 agent：
+调用账本：每次 agent 运行记一行，用于排错、用量统计和审计；运行里的每一步记在 `agent_steps`。现在记六种 agent：
 - 导演：回合成功时记一行；没写出叙述（`NARRATIVE_MISSING`）、服务商出错、碰到总时长或总字数上限时也记一行 `failed`；
   玩家取消或进程关闭打断时记 `cancelled`。
 - WorldBuilder：成功时记一行；超时、服务商出错、结构化输出失败、等不到并发槽位时记一行 `failed`（等槽位超时时其实没有调用模型）；
@@ -18,6 +18,9 @@
 - 补选项（`options_repair`）：真的调用了才记，成功是 `ok`，出错是 `failed`，超过时限被打断是 `cancelled`；和导演那一行属于同一个回合。
 - 世界状态 agent（`state_keeper`，在 worker 进程里）：整理一回合记一行，`turn_id` 是被整理的回合。写入成功是 `ok`；写入时整理进度或时间线编号对不上是 `stale`；
   调模型出错、超时、模型没用 commit 结束、模型不能调用工具、没有可用的模型、写入时和库里已有的行冲突是 `failed`（原因在 `error_class`）。`usage` 是这次运行所有模型调用的合计。
+- 章节整理（`chapter_writer`，在 worker 进程里）：写一章记一行，`turn_id` 是这一章的最后一回合。写入成功是 `ok`；写入时覆盖进度或时间线编号对不上是 `stale`；
+  调模型出错、超时、结构化输出失败、没有可用的模型是 `failed`。`task` 记 `compactor`。
+- 大纲修订（`outline_writer`，在 worker 进程里）：修订一次记一行（改或不改都算），`turn_id` 是这次依据到的那一回合。`ok`、`stale`、`failed` 的含义同章节整理。`task` 记 `outline`。
 
 | 列 | 类型 | 可空 | 默认 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -25,7 +28,7 @@
 | `user_id` | uuid | 否 |  | → `users.id`，级联删除 |
 | `playthrough_id` | uuid | 是 |  | → `playthroughs.id`，级联删除 |
 | `turn_id` | uuid | 是 |  | 无外键，指向 `turns.id` |
-| `agent` | text | 否 |  | `director`、`world_builder`、`options_repair`、`state_keeper`（以后还会有 `outline`、`consolidator`） |
+| `agent` | text | 否 |  | `director`、`world_builder`、`options_repair`、`state_keeper`、`chapter_writer`、`outline_writer` |
 | `task` | text | 否 |  | 使用的路由槽位，取值同 `model_routes.task` |
 | `provider` | text | 是 |  | 服务商 |
 | `model` | text | 是 |  | 模型名 |
@@ -66,8 +69,8 @@
 
 ### `jobs`
 
-后台任务队列，worker 进程领取执行。现在只有 `state.turn`（整理一局还没整理的世界状态，排序键 `{playthrough_id}:state`）；
-agent runtime 阶段 4 加 memory 队列。同一个 `ordering_key` 的任务严格按 `id` 顺序串行执行，不同键之间并行执行。
+后台任务队列，worker 进程领取执行。每局两条队列：`state`（世界状态整理）和 `memory`（章节整理、大纲修订）。
+同一个 `ordering_key` 的任务严格按 `id` 顺序串行执行，不同键之间并行执行，所以写一章、修订大纲时不挡下一回合的世界状态整理。
 
 | 列 | 类型 | 可空 | 默认 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -96,13 +99,15 @@ agent runtime 阶段 4 加 memory 队列。同一个 `ordering_key` 的任务严
 - `FOR UPDATE SKIP LOCKED` 让多个 worker 互不阻塞。
 - 入队前先拿这个键的事务级咨询锁，保证同一个键的 `id` 按提交顺序分配。
 - 入队和业务写入在同一个事务里完成；`NOTIFY bt_jobs` 在事务提交时送达。
-- 入队时可以要求“这个键上已经有同类、还没开始的任务就不再放”（`state.turn` 这样用：一个任务会把还没整理的回合都整理完）。
+- 入队时可以要求“这个键上已经有同类、还没开始的任务就不再放”（下面三种都这样用：一个任务会把到那时为止要做的都做完）。
 
 `kind` 和 `payload`：
 
 | `kind` | `payload` | 说明 |
 | --- | --- | --- |
 | `state.turn` | `{ "playthrough_id" }` | 回合存为 `replied` 时放进来，`max_attempts` 是 1：整理失败不靠队列重试，下一回合的任务会再从那一回合开始 |
+| `memory.chapter` | `{ "playthrough_id" }` | 世界状态整理完（或跳过）一回合时在同一个事务里放进来，排序键 `{playthrough_id}:memory`，`max_attempts` 是 1：由章节整理看够不够切一章，够就写，失败了下一回合再试 |
+| `memory.outline` | `{ "playthrough_id" }` | 世界状态整理完（或跳过）一回合时，还没有大纲或者有还没处理的“大纲要改”的原因就放进来；回退删了大纲修订时也放。排序键和 `max_attempts` 同上 |
 | `noop` | 任意 | 冒烟测试用 |
 
 ## JSON 列
@@ -117,8 +122,13 @@ agent runtime 阶段 4 加 memory 队列。同一个 `ordering_key` 的任务严
 | 补选项 | `{ "existing", "produced" }`：调用前已有几个合格选项、这次补出了几个 |
 | WorldBuilder，成功 | `{ "mode", "attempts", "characters", "locations", "facts" }`；`mode` 是实际用上的结构化输出方式（`json_schema` / `tool_call` / `json_object` / `prompt_json`） |
 | WorldBuilder，失败 | `{ "detail" }`：错误说明，最多 300 字 |
-| 世界状态 agent，`ok` 或 `stale` | `{ "changes", "rejected": [{ "tool", "code" }], "model_calls", "scene_ended", "refs": { 编号: 名字 } }`：写入了几行改动、被拒绝的修改（工具名和原因代码）、调了几次模型、场景是否结束、编号对照表 |
+| 世界状态 agent，`ok` 或 `stale` | `{ "changes", "rejected": [{ "tool", "code" }], "model_calls", "scene_ended", "outline_change", "refs": { 编号: 名字 } }`：写入了几行改动、被拒绝的修改（工具名和原因代码）、调了几次模型、场景是否结束、有没有说大纲要改、编号对照表 |
 | 世界状态 agent，`failed` | `{ "attempt", "refs" }`：这一回合第几次失败；还没调模型就失败（没有模型、模型不能调用工具）时没有 `refs`。写入冲突时同 `ok` |
+
+| 章节整理，`ok` 或 `stale` | `{ "first_seq", "last_seq", "mode", "attempts", "chapter_chars", "profile_chars", "folded_last_seq" }`：这一章的回合范围、结构化输出方式和尝试次数、摘要和画像的字数、并进梗概的那一章的最后一回合（没并时为空） |
+| 章节整理，`failed` | `{ "first_seq", "last_seq" }` |
+| 大纲修订，`ok` 或 `stale` | `{ "based_on_seq", "first", "changed", "reasons", "active", "mode", "attempts" }`：依据到第几回合、是不是第一版、改没改、处理了几条原因、改完以后进行中的那一拍的编号 |
+| 大纲修订，`failed` | `{ "based_on_seq", "first" }` |
 
 `refs` 是这次运行的工具参数和结果里出现过的编号对应什么：实体 `e3` 对应名字，事实 `f8` 对应开头 40 个字。编号只在一次运行里有效，记下来给日志查看工具在显示故事内容时把编号换成名字；不显示故事内容时接口不返回它。
 
@@ -136,6 +146,7 @@ agent runtime 阶段 4 加 memory 队列。同一个 `ordering_key` 的任务严
 | --- | --- | --- |
 | 导演调模型 | `{ "provider", "model", "route_id", "messages", "tools": [], "prompt_hash", "estimated_tokens" }`；`messages` 是发出的消息条数，`tools` 是这一轮提供的工具名 | 成功：`{ "text", "finish_reason", "ttft_ms" }`，`text` 是模型写出的原文（含标签）；失败：`{ "error", "status", "partial", "text" }` 或 `{ "error": "slot_timeout" }`；碰到上限：`{ "error": "timeout" / "too_long", "text" }` |
 | WorldBuilder 调模型 | `{ "model", "mode", "attempt" }`：用哪种结构化输出方式、第几次尝试 | 成功：`{ "text" }`；格式不合格：`{ "text", "invalid" }`，`invalid` 是校验错误的摘要；服务商出错：`{ "error", "status" }` |
+| 章节整理、大纲修订调模型 | 同 WorldBuilder | 同 WorldBuilder |
 | 补选项调模型 | `{ "model", "json_object" }` | 成功：`{ "text", "finish_reason" }`；服务商出错：`{ "error", "status" }` |
 | 世界状态 agent 调模型 | `{ "provider", "model", "round", "messages", "tools": [] }`：第几次调用、发出的消息条数、提供的工具名 | 成功：`{ "text", "tool_calls": [{ "name", "arguments" }], "finish_reason" }`；服务商出错：`{ "error", "status" }` |
 | 用工具 | 解析后的参数；参数解析不了时是 `{ "raw" }` | `{ "text", "error" }`：交回模型的内容；`error` 是 `unknown_tool` / `bad_arguments` / `failed`，成功时为 null |

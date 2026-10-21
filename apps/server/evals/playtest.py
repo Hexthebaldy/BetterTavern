@@ -9,11 +9,11 @@
 剧本在 datasets/m2/tavern_100.yaml：大部分回合按种子随机点选项，中间穿插专门考世界状态整理的行动
 （交出和藏起物品、换地方、遇到新人物、有人死去、得知秘密），以及召回题（早先说出的细节，后面再问）。
 玩家每回合之间停 --think 秒（默认 5），模拟读叙述的时间；设成 0 就是一回合接一回合地点，
-用来看世界状态最多会落后多少。章节整理也在脚本里带的后台进程里跑，切章的线用
+用来看世界状态最多会落后多少。章节整理和大纲修订也在脚本里带的后台进程里跑，切章的线用
 --chapter-soft / --chapter-hard 调（默认和服务端一样，8000 / 16000 token）。
 
-跑完等世界状态和章节整理追上（最多 --settle 秒），然后用撤销记录倒推出每一回合的世界、逐回合检查，
-报告写到 reports/（JSON 和一页中文总结），见 playtest_report.py。
+跑完等世界状态、章节整理和大纲修订追上（最多 --settle 秒），然后用撤销记录倒推出每一回合的世界、
+逐回合检查，报告写到 reports/（JSON 和一页中文总结），见 playtest_report.py、playtest_outline.py。
 
 用法（在 apps/server 下，数据库要先 make migrate）：
 
@@ -65,10 +65,12 @@ from bettertavern.runtime.state_runner import StateRunnerConfig
 from bettertavern.services.container import (
     Services,
     build_memory_runner,
+    build_outline_runner,
     build_services,
     build_state_runner,
 )
 from bettertavern.services.memory_jobs import MEMORY_JOB, memory_handler
+from bettertavern.services.outline_jobs import OUTLINE_JOB, outline_handler
 from bettertavern.services.playthrough_service import NewPlaythrough
 from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.state_jobs import STATE_JOB, state_handler
@@ -82,12 +84,20 @@ from .playtest_checks import (
     parse_checks,
     parse_probes,
 )
+from .playtest_outline import (
+    OutlineWindow,
+    outline_lines,
+    outline_summary,
+    parse_windows,
+    revision_from_row,
+)
 from .playtest_report import RunFacts, TurnFacts, markdown, summarize, worlds_by_turn
 
 EVALS_ROOT = Path(__file__).resolve().parent
 DEFAULT_SCENARIO = EVALS_ROOT / "datasets" / "m2" / "tavern_100.yaml"
 DEFAULT_OUT_DIR = EVALS_ROOT / "reports"
 OPTION = "@option"
+RETRY_WAIT_S = 15.0  # 一回合失败后，第 n 次重试前等 n 倍这么久
 
 
 @dataclass(frozen=True)
@@ -101,6 +111,7 @@ class Scenario:
     script: list[str]
     checks: list[Check] = field(default_factory=list)  # 检查点，见 playtest_checks.py
     probes: list[RecallProbe] = field(default_factory=list)  # 召回题
+    outline: list[OutlineWindow] = field(default_factory=list)  # 大纲检查，见 playtest_outline.py
 
 
 def load_scenario(path: Path) -> Scenario:
@@ -115,6 +126,7 @@ def load_scenario(path: Path) -> Scenario:
         script=[str(s) for s in data["script"]],
         checks=parse_checks(data.get("checks")),
         probes=parse_probes(data.get("recall")),
+        outline=parse_windows(data.get("outline")),
     )
 
 
@@ -191,7 +203,7 @@ async def _state_seq(engine: AsyncEngine, playthrough_id: str) -> int:
 
 
 async def _pending_jobs(engine: AsyncEngine, playthrough_id: str) -> int:
-    """这一局还没做完的世界状态整理和章节整理任务。"""
+    """这一局还没做完的后台任务：世界状态整理、章节整理、大纲修订。"""
     async with engine.connect() as conn:
         value = await conn.scalar(
             text(
@@ -235,16 +247,21 @@ async def run_replay(
         policy=policy,
         config=MemoryRunnerConfig(rule=config.chapter_rule),
     )
+    outline = build_outline_runner(engine=engine, secrets=secrets, hub=hub, policy=policy)
     # 和 worker 一样从队列领整理任务；开发环境的 worker 也开着时两边一起领，不会重复整理同一回合
     queue = PgJobQueue(engine)
     listener = PgNotifyListener(engine, queue.channel)
     await listener.start()
     worker = JobWorker(
         queue,
-        {STATE_JOB: state_handler(state), MEMORY_JOB: memory_handler(memory)},
+        {
+            STATE_JOB: state_handler(state),
+            MEMORY_JOB: memory_handler(memory),
+            OUTLINE_JOB: outline_handler(outline),
+        },
         worker_id=f"playtest:{os.getpid()}",
         wakeup=listener.event,
-        kinds=[STATE_JOB, MEMORY_JOB],
+        kinds=[STATE_JOB, MEMORY_JOB, OUTLINE_JOB],
     )
     stop = asyncio.Event()
     worker_task = asyncio.create_task(worker.run(stop))
@@ -301,12 +318,13 @@ async def run_replay(
                 say(f"第 {n} 回合失败（{code}），第 {attempt} 次")
                 if attempt == config.max_attempts:
                     raise RuntimeError(f"turn {n} failed {attempt} times: {code}")
-                await asyncio.sleep(3)
+                # 一次比一次等得久：网络断一下时，连着重试几次都会失败
+                await asyncio.sleep(RETRY_WAIT_S * attempt)
             behind = n - 1 - await _state_seq(engine, pt.id)
             say(f"第 {n} 回合 · {shown[:40]} · 世界状态落后 {max(behind, 0)} 回合")
             if config.think_s:
                 await asyncio.sleep(config.think_s)
-        say("剧本跑完，等世界状态和章节整理追上……")
+        say("剧本跑完，等后台追上……")
         loop = asyncio.get_running_loop()
         deadline = loop.time() + config.settle_s
         while loop.time() < deadline:
@@ -408,6 +426,32 @@ async def analyse(
             )
         ).mappings()
         summary_counts = {str(r["kind"]): int(r["n"]) for r in summary_rows}
+        revision_rows = (
+            await conn.execute(
+                text(
+                    """SELECT based_on_seq, changed, content, reason FROM outline_revisions
+                       WHERE playthrough_id = CAST(:pt AS uuid) ORDER BY based_on_seq"""
+                ),
+                {"pt": playthrough_id},
+            )
+        ).mappings()
+        revisions = [
+            revision_from_row(
+                int(r["based_on_seq"]), bool(r["changed"]), as_json(r["content"]), r["reason"]
+            )
+            for r in revision_rows
+        ]
+        reason_rows = (
+            await conn.execute(
+                text(
+                    """SELECT seq, outline_reason FROM turn_notes
+                       WHERE playthrough_id = CAST(:pt AS uuid) AND outline_reason <> ''
+                       ORDER BY seq"""
+                ),
+                {"pt": playthrough_id},
+            )
+        ).mappings()
+        reasons = [(int(r["seq"]), str(r["outline_reason"])) for r in reason_rows]
         patches: dict[int, list[RowChange]] = {}
         for r in patch_rows:
             patches.setdefault(int(r["seq"]), []).append(
@@ -494,6 +538,7 @@ async def analyse(
         tool_calls=tool_calls,
         summaries=summary_counts,
     )
+    summary["outline"] = outline_summary(revisions, reasons, runs, scenario.outline)
     summary["failed_turn_attempts"] = failed_attempts
     return ReplayResult(playthrough_id, summary, turns, runs, failed_attempts)
 
@@ -590,7 +635,12 @@ async def _main(args: argparse.Namespace) -> None:
     base.with_suffix(".json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
-    page = markdown(result.summary, title=scenario.title, playthrough_id=result.playthrough_id)
+    page = markdown(
+        result.summary,
+        title=scenario.title,
+        playthrough_id=result.playthrough_id,
+        extra=outline_lines(result.summary["outline"]),
+    )
     base.with_suffix(".md").write_text(page, encoding="utf-8")
     print(page)
     print(f"报告：{base.with_suffix('.md')}")

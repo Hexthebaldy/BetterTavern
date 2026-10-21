@@ -24,7 +24,7 @@ class RouteTask(StrEnum):
 
 
 # 在后台跑、不挡玩家的 task：用“用于后台”的模型（docs/agent-runtime.md 第 4 节）
-BACKGROUND_TASKS = frozenset({RouteTask.STATE_KEEPER, RouteTask.COMPACTOR})
+BACKGROUND_TASKS = frozenset({RouteTask.STATE_KEEPER, RouteTask.OUTLINE, RouteTask.COMPACTOR})
 
 
 DEFAULT_MAX_TOKENS: dict[RouteTask, int] = {

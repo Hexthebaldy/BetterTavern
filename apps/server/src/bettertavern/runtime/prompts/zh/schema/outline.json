@@ -1,0 +1,15 @@
+{
+  "description": "故事大纲：前提、接下来几拍、约束",
+  "fields": {
+    "Outline.premise": "故事的前提，一两句话，不超过 200 字",
+    "Outline.beats": "按先后排的拍，每一拍是故事的一个阶段（通常 10～30 回合），至多 10 拍",
+    "Outline.constraints": "必须守住的约束，至多 6 条，每条一句话",
+    "Beat.id": "拍的编号，如 b1；修订时原来的拍保留原来的编号",
+    "Beat.status": "pending（待写）、active（进行中，只能有一拍）、done（完成）、skipped（跳过）",
+    "Beat.intent": "这一阶段要达成什么、带来什么变化，一两句话，不超过 60 字",
+    "Beat.done_when": "标志这一阶段结束、看得见的大事，不超过 60 字",
+    "OutlineDecision.change": "大纲要不要改",
+    "OutlineDecision.reason": "一句话说为什么改或不改",
+    "OutlineDecision.outline": "改的时候写完整的新一版大纲；不改时不写"
+  }
+}

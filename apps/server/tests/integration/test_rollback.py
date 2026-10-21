@@ -1,7 +1,7 @@
 """回退（真实 Postgres，模型用可编排的假厂商）。
 
 一致性：玩到第 N 回合再回退到第 K 回合，世界状态（实体、关系、事实、线索）、回合标签、
-章节摘要和全书梗概、整理进度，
+章节摘要和全书梗概、大纲的修订、整理进度，
 要和当初刚整理完第 K 回合时逐行相同。随机走很多步“往前玩几回合 / 回退到更早的某一回合”来检查。
 """
 
@@ -39,6 +39,13 @@ async def game(tmp_path: Path) -> AsyncIterator[Game]:
         yield started
 
 
+def outline_change(seq: int) -> str:
+    """每三回合说一次大纲要改，其中一半说“不改”（假模型照着回复，见 tests/support/game.py）。"""
+    if seq % 3 != 1:
+        return ""
+    return f"第{seq}回合这一拍完成了" if seq % 2 else f"第{seq}回合岔开了，不改"
+
+
 def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
     """第 seq 回合世界状态 agent 要做的修改：轮流用到新建、移动、改状态、换场景、
     关系、退场、事实和推翻事实、记下、解开、合并线索和写答案。有的调用会被拒绝（例如推翻不存在的
@@ -54,7 +61,7 @@ def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
                 {"kind": "promise", "text": f"第{seq}回合老周答应的事", "about": ["老周"]},
             ),
             ("open_thread", {"kind": "mystery", "text": f"第{seq}回合的悬念"}),
-            commit(f"第{seq}回合", "老周"),
+            commit(f"第{seq}回合", "老周", outline_change=outline_change(seq)),
         ]
     if kind == 1:
         return [
@@ -62,7 +69,7 @@ def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
             ("update_entity", {"entity": "老周", "details": {"condition": f"状态{seq}"}}),
             ("set_clock", {"time": f"第{seq}天"}),
             ("update_thread", {"thread": "t1", "answer": f"第{seq}回合定下的答案"}),
-            commit(f"第{seq}回合", "林川"),
+            commit(f"第{seq}回合", "林川", outline_change=outline_change(seq)),
         ]
     if kind == 2:
         return [
@@ -78,7 +85,7 @@ def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
                 },
             ),
             ("close_thread", {"thread": "t1"}),
-            commit(f"第{seq}回合", "老周"),
+            commit(f"第{seq}回合", "老周", outline_change=outline_change(seq)),
         ]
     return [
         ("create_entity", {"kind": "character", "name": f"路人{seq}", "summary": "过客"}),
@@ -89,15 +96,16 @@ def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
             "merge_threads",
             {"threads": ["t1", "t2"], "kind": "mystery", "text": f"第{seq}回合合成的谜团"},
         ),
-        commit(f"第{seq}回合", f"路人{seq}"),
+        commit(f"第{seq}回合", f"路人{seq}", outline_change=outline_change(seq)),
     ]
 
 
 async def keep(game: Game, seq: int) -> None:
     game.adapter.completions.append(calls(*state_script(seq)))
     assert await game.state.process(game.playthrough_id) == 1
-    # 和 worker 一样，整理完一回合看要不要写章节（切章的线很低，几回合就切一章）
+    # 和 worker 一样，整理完一回合看要不要写章节（切章的线很低，几回合就切一章）、要不要修订大纲
     await game.memory.process(game.playthrough_id)
+    await game.outline.process(game.playthrough_id)
 
 
 async def snapshot(game: Game) -> dict[str, list[tuple[Any, ...]]]:
@@ -113,12 +121,15 @@ async def snapshot(game: Game) -> dict[str, list[tuple[Any, ...]]]:
         "threads": """SELECT id, kind, text, entity_ids, status, opened_seq, closed_seq,
                              source_turn_id, answer, merged_into
                       FROM threads WHERE playthrough_id = :pt ORDER BY id""",
-        "notes": """SELECT turn_id, seq, digest, entity_ids, scene_ended, skipped
+        "notes": """SELECT turn_id, seq, digest, entity_ids, scene_ended, skipped, outline_reason
                     FROM turn_notes WHERE playthrough_id = :pt ORDER BY seq""",
         "summaries": """SELECT id, kind, first_seq, last_seq, written_seq, text
                         FROM story_summaries
                         WHERE playthrough_id = :pt ORDER BY kind, last_seq""",
-        "progress": "SELECT state_seq, summarized_seq FROM playthroughs WHERE id = :pt",
+        "outline": """SELECT id, based_on_seq, changed, content, reason FROM outline_revisions
+                      WHERE playthrough_id = :pt ORDER BY based_on_seq""",
+        "progress": """SELECT state_seq, summarized_seq, outline_seq FROM playthroughs
+                       WHERE id = :pt""",
     }
     return {
         name: [tuple(r) for r in await rows(game.engine, sql, pt=game.playthrough_id)]
@@ -145,6 +156,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
     rollbacks = 0
     statuses: set[str] = set()  # 走过的线索状态：记下、解开、合并都要出现过
     kinds: set[str] = set()  # 写过的摘要：章节摘要和全书梗概都要出现过
+    decisions: set[bool] = set()  # 大纲修订：改和不改都要出现过
     for step in range(14):
         if head < 2 or step % 3 != 2:
             for _ in range(rng.randint(1, 3)):
@@ -154,6 +166,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
                 snapshots[head] = await snapshot(game)
                 statuses.update(str(row[4]) for row in snapshots[head]["threads"])
                 kinds.update(str(row[1]) for row in snapshots[head]["summaries"])
+                decisions.update(bool(row[2]) for row in snapshots[head]["outline"])
             continue
         target = rng.randint(0, head - 1)
         detail = await game.services.playthroughs.rollback(
@@ -168,6 +181,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
     assert rollbacks >= 3
     assert statuses == {"open", "closed", "merged"}
     assert kinds == {"chapter", "synopsis"}
+    assert decisions == {True, False}
     archived = await rows(game.engine, "SELECT count(*) FROM turns WHERE status = 'archived'")
     assert archived[0][0] > 0
 

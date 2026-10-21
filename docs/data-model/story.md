@@ -27,8 +27,8 @@
 | `head_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：活跃链的头部 |
 | `timeline_epoch` | integer | 否 | `0` | 时间线纪元，回退时加 1。回合记下发起时的值，提交时如果不一致，结果就作废；世界状态 agent 写入时也要求它没变 |
 | `state_seq` | integer | 否 | `-1` | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态 agent 写入时用带条件的 UPDATE 从 N-1 改成 N（见下文“带围栏的提交”）。迁移 `0011` 把已有的存档设成活跃链上最新的回合，不回头整理旧回合 |
-| `outline_version` | integer | 否 | `0` | 大纲的版本，一直是 0；agent runtime 阶段 5 删掉，当前大纲按依据的回合查（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `summarized_seq` | integer | 否 | `-1` | 章节摘要已经覆盖到第几回合；-1 表示还没有（[memory.md](memory.md)）。章节整理写入时用带条件的 UPDATE 从“这一章第一回合减 1”改成这一章的最后一回合；导演上下文里的原文从它减 1 开始（多留上一章最后两回合）。CHECK 不小于 -1。迁移 `0016` 加的，同时删掉了一直是 0 的 `summary_version` 和 `rollback_floor_seq` |
+| `outline_seq` | integer | 否 | `-1` | 大纲修订已经看过第几回合的“要改”的原因；-1 表示还没有大纲（[memory.md](memory.md)）。大纲修订写入时用带条件的 UPDATE 从读到的值改成这次依据到的回合。CHECK 不小于 -1。迁移 `0017` 加的，同时删掉了一直是 0 的 `outline_version` |
 | `rollbacks_used` | integer | 否 | `0` | 已经回退了几次。每个存档能回退的次数有上限（服务端设置 `ROLLBACK_LIMIT`，默认 1），用完后回退接口返回 409 `ROLLBACK_LIMIT_REACHED` |
 | `active_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：持有租约、正在生成的回合；没有正在生成的回合时为空 |
 | `lease_expires_at` | timestamptz | 是 |  | 租约的到期时间：领取时设为当前时间加 120 秒，生成期间每 30 秒续期 |
@@ -37,7 +37,7 @@
 | `updated_at` | timestamptz | 否 | `now()` | 改名、领取租约、世界建好、推进头部、释放租约时写入（续期不写）；游玩列表按它倒序排列 |
 
 约束与索引：
-- `status`、`seed_source`、`language` 的 CHECK；`state_seq >= -1`；`summarized_seq >= -1`；`rollbacks_used >= 0`。
+- `status`、`seed_source`、`language` 的 CHECK；`state_seq >= -1`；`summarized_seq >= -1`；`outline_seq >= -1`；`rollbacks_used >= 0`。
 - `playthroughs_user_idx (user_id, updated_at DESC)`。
 - `playthroughs_lease_idx (lease_expires_at) WHERE active_turn_id IS NOT NULL`：清理过期租约时用。
 
@@ -225,6 +225,9 @@ WHERE id = :id AND state_seq = :seq - 1 AND timeline_epoch = :epoch
 
 条件不满足说明期间发生了回退，或者这一回合已经被别的任务整理过：整个结果作废，这次运行在 `agent_runs` 里记为 `stale`。
 
+章节整理和大纲修订的写入也一样：先用带条件的 UPDATE 推进 `summarized_seq` 或 `outline_seq`（同时要求 `timeline_epoch` 没变），
+条件满足才写 `story_summaries`、`player_profiles` 或 `outline_revisions`，否则作废、记为 `stale`。
+
 ### 回退
 
 `POST /v1/playthroughs/{id}/rollback`（`services/playthrough_service.py`，SQL 在 `infra/db/repositories/rollback.py`）在一个事务里：
@@ -233,11 +236,12 @@ WHERE id = :id AND state_seq = :seq - 1 AND timeline_epoch = :epoch
 2. 检查目标回合 K 在当前故事线上、不是头部、回退次数没用完。
 3. 读出 K 之后各回合的 `state_patches`，按回合倒序、按 `idx` 倒序，把每一行写回 `before`（`before` 为空就删掉这一行），然后删掉这些撤销记录和 K 之后的 `turn_notes`。线索也在撤销记录里：K 之后记下的删掉，K 之后解开的变回没解开。
    在 K 之后写的章节摘要和全书梗概（`written_seq > K`）删掉，`summarized_seq` 改回剩下的最后一章；玩家画像不动（[memory.md](memory.md)）。
+   依据超过 K 的大纲修订（`based_on_seq > K`）删掉，`outline_seq` 改回剩下的最后一次。
 4. K 之后的回合（包括失败的尝试）标为 `archived`，共用一个新的 `rollback_id`。
 5. `head_turn_id` 指回 K，`timeline_epoch` 加 1，`state_seq` 改成 `min(state_seq, K)`，`rollbacks_used` 加 1；`ended` 改回 `active`。
-6. `state_seq` 比 K 小时（世界状态还没整理到 K），放一个 `state.turn` 任务接着整理。
+6. `state_seq` 比 K 小时（世界状态还没整理到 K），放一个 `state.turn` 任务接着整理；删了大纲修订时，放一个 `memory.outline` 任务。
 
-回退前已经开始的世界状态整理，写入时发现时间线编号变了，整个结果作废。归档的回合留在表里，它们的 `agent_runs` 也保留。
+回退前已经开始的世界状态整理、章节整理、大纲修订，写入时发现时间线编号变了，整个结果作废。归档的回合留在表里，它们的 `agent_runs` 也保留。
 
 ### 加锁顺序
 

@@ -487,7 +487,8 @@ class RouteService:
     async def resolve(
         self, user_id: str, task: RouteTask, playthrough_id: str | None = None
     ) -> ResolvedRoute | None:
-        """task 用的模型：世界状态 agent 用“用于后台”的那一行，没设时和其他 task 一样用导演这一行。
+        """task 用的模型：后台的 task（世界状态、大纲修订、章节整理）用“用于后台”的那一行，
+        没设时和其他 task 一样用导演这一行。
         playthrough_id 留给以后的单局覆盖。"""
         async with self._engine.connect() as conn:
             row = None

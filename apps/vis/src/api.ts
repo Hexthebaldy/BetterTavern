@@ -141,15 +141,15 @@ export type PlaythroughDetail = {
     updated_at: number;
   };
   turns: Turn[];
-  /** 章节整理写的记忆：章节摘要、全书梗概和玩家画像的各个版本（显示故事内容时才有原文） */
+  /** 后台写的记忆：章节摘要、全书梗概和玩家画像的各个版本，大纲修订的每一次决定（显示故事内容时才有原文） */
   memory: MemoryItem[];
 };
 
 export type MemoryItem = {
-  kind: "chapter" | "synopsis" | "profile";
+  kind: "chapter" | "synopsis" | "profile" | "outline" | "outline_kept";
   first_seq: number;
   last_seq: number;
-  /** 写它时章节摘要覆盖到第几回合 */
+  /** 写它时章节摘要覆盖到第几回合；大纲修订是依据到第几回合 */
   written_seq: number;
   chars: number;
   text?: string;

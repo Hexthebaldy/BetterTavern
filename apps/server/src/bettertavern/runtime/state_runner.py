@@ -13,15 +13,15 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import structlog
 
 from bettertavern.domain.routing import RouteTask
-from bettertavern.providers import ProviderError, ProviderHub, Usage
+from bettertavern.providers import ProviderError, ProviderHub
 
-from .agent import AgentStep, StepLog
+from .agent import StepLog
 from .agents.state_keeper import AGENT, NoCommit, keep_state
 from .ports import AgentRunRecord, RouteResolver, StateCommit, StateStore, StateTurn
 from .prompts import PromptBook
@@ -34,18 +34,6 @@ log = structlog.get_logger(__name__)
 class StateRunnerConfig:
     turn_timeout_s: float = 180.0  # 整理一回合最多多久，超时算失败
     max_failures: int = 2  # 同一回合失败几次后跳过
-
-
-def _total_usage(steps: Sequence[AgentStep]) -> Usage | None:
-    usages = [s.usage for s in steps if s.usage is not None]
-    if not usages:
-        return None
-    return Usage(
-        prompt=sum(u.prompt for u in usages),
-        completion=sum(u.completion for u in usages),
-        cached=sum(u.cached for u in usages),
-        reasoning=sum(u.reasoning for u in usages),
-    )
 
 
 class StateRunner:
@@ -143,13 +131,14 @@ class StateRunner:
                 status="ok",
                 provider=route.provider,
                 model=route.model,
-                usage=_total_usage(steps.steps),
+                usage=steps.total_usage(),
                 latency_ms=self._elapsed_ms(started),
                 result={
                     "changes": len(result.changes),
                     "rejected": [dict(r) for r in kept.rejected],
                     "model_calls": kept.model_calls,
                     "scene_ended": result.scene_ended,
+                    "outline_change": bool(result.outline_reason),
                     "refs": refs,
                 },
                 steps=steps.steps,
@@ -160,6 +149,7 @@ class StateRunner:
                 entity_ids=result.entity_ids,
                 scene_ended=result.scene_ended,
                 run=run,
+                outline_reason=result.outline_reason,
             )
         finally:
             structlog.contextvars.unbind_contextvars("turn_id", "playthrough_id")
@@ -186,7 +176,7 @@ class StateRunner:
             status="failed",
             provider=route.provider if route is not None else None,
             model=route.model if route is not None else None,
-            usage=_total_usage(steps.steps),
+            usage=steps.total_usage(),
             latency_ms=self._elapsed_ms(started),
             error_class=error_class,
             result={"attempt": turn.failures + 1, **({"refs": refs} if refs else {})},

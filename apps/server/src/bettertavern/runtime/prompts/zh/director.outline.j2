@@ -1,0 +1,16 @@
+{# version: 1 #}
+<outline>
+前提：{{ premise }}
+{% if current %}
+当前这一拍：{{ current.intent }}{% if current.done_when %}（完成条件：{{ current.done_when }}）{% endif +%}
+{% endif %}
+{% if upcoming %}
+下一拍：{{ upcoming.intent }}
+{% endif %}
+{% if constraints %}
+必须守住：
+{% for item in constraints %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+</outline>

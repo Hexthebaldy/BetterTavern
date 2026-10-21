@@ -78,6 +78,7 @@ class DraftResult:
     digest: str  # 这一回合的一句话摘要
     entity_ids: tuple[str, ...]  # 这一回合涉及的实体
     scene_ended: bool
+    outline_reason: str = ""  # 大纲要改的原因；不用改时为空
 
 
 def _clean(text: Any, limit: int) -> str:
@@ -518,8 +519,10 @@ class WorldDraft:
         entities: Iterable[str],
         scene_ended: bool,
         extra: Sequence[RowChange] = (),
+        outline_reason: str = "",
     ) -> DraftResult:
-        """extra：同一回合别的修改清单算出的改动（线索，threads.py），排在最后一起写入。"""
+        """extra：同一回合别的修改清单算出的改动（线索，threads.py），排在最后一起写入；
+        outline_reason：大纲要改的原因（docs/agent-runtime.md 第 4 节），不用改时为空。"""
         self._check_open()
         summary = _clean(digest, DIGEST_CHARS)
         if not summary:
@@ -543,6 +546,7 @@ class WorldDraft:
             digest=summary,
             entity_ids=tuple(involved),
             scene_ended=bool(scene_ended),
+            outline_reason=_clean(outline_reason, DIGEST_CHARS),
         )
         return self.result
 

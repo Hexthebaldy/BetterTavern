@@ -13,6 +13,7 @@ from jinja2 import meta
 
 from bettertavern.domain.story.language import PROMPT_LANGUAGES
 from bettertavern.domain.world.seed import Seed
+from bettertavern.runtime.agents.outline_writer import OutlineDecision
 from bettertavern.runtime.context.assembler import ContextAssembler
 from bettertavern.runtime.context.state_block import render_state_block
 from bettertavern.runtime.prompts import PROMPTS_ROOT, PromptBook, PromptLibrary
@@ -70,6 +71,18 @@ def test_schema_notes_name_real_fields() -> None:
             assert field in holder["properties"], (language, key)
         described = schema_of(Seed, notes)
         assert described["$defs"]["WorldSeed"]["properties"]["title"]["description"]
+
+
+def test_outline_notes_name_real_fields() -> None:
+    schema = OutlineDecision.model_json_schema()
+    for language in PROMPT_LANGUAGES:
+        notes = PromptLibrary(language).data("schema/outline")["fields"]
+        for key in notes:
+            owner, _, field = key.partition(".")
+            holder = schema if owner == schema["title"] else schema["$defs"][owner]
+            assert field in holder["properties"], (language, key)
+        described = schema_of(OutlineDecision, notes)
+        assert described["$defs"]["Beat"]["properties"]["done_when"]["description"]
 
 
 def test_state_block_follows_the_language() -> None:
@@ -136,6 +149,30 @@ def test_every_template_renders_in_every_language() -> None:
         "director.ending": {"wish": "", "world_state": ""},
         "options_repair": {"narrative": "rain", "existing": ["wait"], "count": 2},
         "structured_retry": {"error": "x"},
+        "director.outline": {
+            "premise": "p",
+            "current": {"intent": "i", "done_when": "d"},
+            "upcoming": None,
+            "constraints": ["c"],
+        },
+        "outline_writer": {
+            "first": False,
+            "protagonist": "Lin",
+            "seed": {
+                **dict.fromkeys(("title", "setting", "tone", "protagonist", "goal"), "x"),
+                **dict.fromkeys(("situation", "hook"), "x"),
+                "characters": [{"name": "n", "summary": "s", "goal": "g"}],
+            },
+            "synopsis": "",
+            "chapters": [],
+            "profile": "",
+            "based_on_seq": 3,
+            "digests": [{"seq": 3, "text": "d"}],
+            "threads": [],
+            "outline": "{}",
+            "reasons": [{"seq": 3, "text": "r"}],
+            "schema": "",
+        },
     }
     for language in PROMPT_LANGUAGES:
         library = PromptLibrary(language)

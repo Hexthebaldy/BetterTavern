@@ -39,6 +39,18 @@ class StepLog:
     def __len__(self) -> int:
         return len(self._steps)
 
+    def total_usage(self) -> Usage | None:
+        """这次运行所有模型调用的用量之和；一次都没调到时为空。"""
+        usages = [s.usage for s in self._steps if s.usage is not None]
+        if not usages:
+            return None
+        return Usage(
+            prompt=sum(u.prompt for u in usages),
+            completion=sum(u.completion for u in usages),
+            cached=sum(u.cached for u in usages),
+            reasoning=sum(u.reasoning for u in usages),
+        )
+
     def model(
         self,
         *,

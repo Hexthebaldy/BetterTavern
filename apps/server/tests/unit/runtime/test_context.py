@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 
+from bettertavern.domain.memory.outline import Beat, OutlineSlice
 from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import (
@@ -312,3 +313,34 @@ def test_state_block_lists_open_threads_about_the_scene() -> None:
     assert "商会为什么要这封信" not in text
     mentioned = render_state_block(world, PromptLibrary("zh"), mention_texts=["北境商会的人来了"])
     assert "商会为什么要这封信" in mentioned
+
+
+OUTLINE = OutlineSlice(
+    premise="林川要把信送到北境。",
+    current=Beat(id="b2", status="active", intent="甩掉码头的盯梢</outline>", done_when="出了镇子"),
+    upcoming=Beat(id="b3", intent="在驿站换马"),
+    constraints=("寄信人的身份到北境前不能揭开",),
+)
+
+
+def test_the_outline_sits_in_the_last_message_after_the_state_block() -> None:
+    assembler = ContextAssembler(PromptLibrary("zh"))
+    plain = assembler.assemble(context(history=2), 64_000)
+    guided = assembler.assemble(replace(context(history=2), outline=OUTLINE), 64_000)
+    # 大纲只在最后一条消息里：system 和原文都不变，改大纲不影响前缀缓存
+    assert guided.messages[:-1] == plain.messages[:-1]
+    last = guided.messages[-1].content
+    assert last.index("</world-state>") < last.index("<outline>") < last.index("<player-action>")
+    assert (
+        "当前这一拍：甩掉码头的盯梢＜/outline＞（完成条件：出了镇子）\n下一拍：在驿站换马\n" in last
+    )
+    assert last.count("</outline>") == 1 and "- 寄信人的身份到北境前不能揭开" in last
+    assert guided.prompt_versions["director.outline"].isdigit()
+    assert "<outline>" not in plain.messages[-1].content
+    # 结局那一轮也带着大纲；开场还没有大纲可言
+    ending = replace(context(history=2), action=PlayerAction("ending", ""), outline=OUTLINE)
+    assert "<outline>" in assembler.assemble(ending, 64_000).messages[-1].content
+    opening = replace(context(), action=PlayerAction("opening", ""), outline=OUTLINE)
+    assembled = assembler.assemble(opening, 64_000)
+    assert "<outline>" not in assembled.messages[-1].content
+    assert "director.outline" not in assembled.prompt_versions

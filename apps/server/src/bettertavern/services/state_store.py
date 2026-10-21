@@ -2,7 +2,8 @@
 
 写入都在一个事务里，并且先对 playthroughs 做带条件的 UPDATE（整理进度 state_seq、时间线编号），
 成功后才写世界状态表、撤销记录和回合标签（docs/agent-runtime.md 第 8 节）；同一个事务里往
-memory 队列放一个章节整理任务，由它看够不够切一章（services/memory_jobs.py）。
+memory 队列放一个章节整理任务，由它看够不够切一章（services/memory_jobs.py）；还没有大纲、
+或者有还没处理的“大纲要改”的原因时，再放一个大纲修订任务（services/outline_jobs.py）。
 """
 
 from __future__ import annotations
@@ -13,13 +14,16 @@ import structlog
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from bettertavern.domain.memory.outline import outline_from_json
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
+from bettertavern.infra.db.repositories import outline as outline_repo
 from bettertavern.infra.db.repositories import state as state_repo
 from bettertavern.infra.db.repositories import story as story_repo
 from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.runtime.ports import AgentRunRecord, StateCommit, StateTurn
 
 from .memory_jobs import enqueue_memory
+from .outline_jobs import enqueue_outline
 from .run_records import insert_run
 
 log = structlog.get_logger(__name__)
@@ -56,6 +60,13 @@ class PgStateStore:
             )
             scene_start = await state_repo.scene_start(conn, playthrough_id, before_seq=turn.seq)
             failures = await state_repo.failure_count(conn, turn.id)
+            current = await outline_repo.current_outline(conn, playthrough_id)
+            # 修订在后台、和这里并行：上一回合说过要改，这时可能还没改完，不让它再说一遍
+            pending = await outline_repo.pending_reasons(
+                conn, playthrough_id, after_seq=pt.outline_seq, up_to_seq=turn.seq - 1
+            )
+        outline = outline_from_json(current.content) if current is not None else None
+        beat = next((b for b in outline.beats if b.status == "active"), None) if outline else None
         return StateTurn(
             turn_id=turn.id,
             playthrough_id=playthrough_id,
@@ -70,6 +81,9 @@ class PgStateStore:
             world=world,
             failures=failures,
             director_notes=turn.director_notes,
+            beat=beat,
+            outline_pending=tuple(pending) if outline is not None else (),
+            outline_seq=pt.outline_seq,
         )
 
     async def commit(self, turn: StateTurn, result: StateCommit) -> bool:
@@ -92,10 +106,12 @@ class PgStateStore:
                     digest=result.digest,
                     entity_ids=result.entity_ids,
                     scene_ended=result.scene_ended,
+                    outline_reason=result.outline_reason,
                 )
                 await state_repo.mark_committed(conn, turn.turn_id)
                 await self._insert_run(conn, turn, result.run)
                 await enqueue_memory(conn, self._queue, turn.playthrough_id)
+                await self._maybe_revise(conn, turn)
         except _Stale:
             await self._record(turn, dataclasses.replace(result.run, status="stale"))
             return False
@@ -127,10 +143,19 @@ class PgStateStore:
                 await state_repo.mark_committed(conn, turn.turn_id)
                 await self._insert_run(conn, turn, run)
                 await enqueue_memory(conn, self._queue, turn.playthrough_id)
+                await self._maybe_revise(conn, turn)
         except _Stale:
             await self._record(turn, dataclasses.replace(run, status="stale"))
             return False
         return True
+
+    async def _maybe_revise(self, conn: AsyncConnection, turn: StateTurn) -> None:
+        """还没有大纲（第一版在后台写），或者有还没处理的“大纲要改”的原因：放一个大纲修订任务。"""
+        pending = turn.outline_seq < 0 or await outline_repo.has_pending(
+            conn, turn.playthrough_id, after_seq=turn.outline_seq
+        )
+        if pending:
+            await enqueue_outline(conn, self._queue, turn.playthrough_id)
 
     async def _advance(self, conn: AsyncConnection, turn: StateTurn) -> None:
         advanced = await state_repo.advance_state_seq(

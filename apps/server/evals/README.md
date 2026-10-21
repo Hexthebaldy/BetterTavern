@@ -23,12 +23,12 @@ uv run python -m evals.director_compliance --help
 
 离线冒烟测试 `tests/e2e/test_director_eval_offline.py` 用假 LLM 服务把整条链路跑通，不需要密钥。
 
-## playtest：剧本试玩（agent runtime 阶段 2 到 4）
+## playtest：剧本试玩（agent runtime 阶段 2 到 5）
 
 跑之前要做什么、剧本和题目怎么写、历次试玩的结果和花费，见 [docs/evals.md](../../../docs/evals.md)。
 
 用一份写好的剧本代替玩家，用真模型把一局玩 N 回合（默认 100），走服务端的整套流程：开局搭世界、导演写叙述和选项、回合存好后放进任务队列，
-由脚本里带的后台进程（和 worker 一样从队列领任务）整理世界状态。跑完等世界状态追上，然后分析。
+由脚本里带的后台进程（和 worker 一样从队列领任务）整理世界状态、整理章节、修订大纲。跑完等后台追上，然后分析。
 
 总结页第一行是结论：下面任何一条不满足就判为**不合格**，并写明是哪几条：
 导演自己给出选项的回合不到 95%（和 M0 的标准一样）；检查点没全过；有回合出现了一致性问题；世界状态没整理到最后一回合。
@@ -47,12 +47,17 @@ uv run python -m evals.director_compliance --help
 | 召回题 | 剧本里 `recall` 写的题：玩家早先说出一个细节，后面再问，那一回合的叙述里要出现指定的词；列出每题对错、导演那一回合用了几轮工具、命中处附近的原文。只看结果，不计入结论 |
 | 线索 | 最终世界里的线索，按种类和状态（没解开、已解开、已合并）计数；写了答案的条数；挂了超过 50 回合还没解开的线索 |
 | 章节整理 | 写了几章、几版全书梗概，失败的原因，每章耗时和用量；导演的上下文长度按 50 回合一段看（估算 token 的平均和最大、服务商算的平均输入、缓存命中），章节整理跟得上时应该稳定 |
+| 大纲 | 第一版依据到第几回合；之后改了几次、不改几次；世界状态 agent 说“要改”几次；修订的成功、失败、耗时和用量；每次修订依据到第几回合、改没改、改完以后进行中的那一拍、原因（`playtest_outline.py`） |
+| 大纲检查 | 剧本里 `outline` 写的检查：依据在某一段回合里的修订改了几次（至少、至多，第一版不算），这一段结束时正在用的那一版大纲里有没有出现某些词（玩家走偏以后大纲有没有跟上）。只看结果，不计入结论 |
 
 ```bash
 DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash
 # 300 回合（阶段 4 的验收）：
 DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash \
     --scenario evals/datasets/m2/tavern_300.yaml --turns 300
+# 中途改道（阶段 5 的验收）：
+DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash \
+    --scenario evals/datasets/m2/detour_60.yaml --turns 60
 # 后台整理用另一个模型：
 DEEPSEEK_API_KEY=sk-... GEMINI_API_KEY=... uv run python -m evals.playtest \
     --provider deepseek --model deepseek-flash --state-provider gemini --state-model gemini-3-flash
@@ -64,8 +69,10 @@ uv run python -m evals.playtest --help
 - 剧本在 `datasets/m2/tavern_100.yaml`：`"@option"` 是按种子随机点一个选项（这一段没有选项时写一句继续），其余是玩家自己写的行动，
   专门考交出和藏起物品、换地方、遇到新人物、有人死去、得知秘密、有人离开；关键事件（老周死了、阿苓离开）在行动里写明白。
   `checks` 是检查点，`recall` 是召回题（第 1、10、26 回合说出火漆的图案、搬运工的刺青、驿站的名字，第 84、90、99 回合再问），换剧本时照着写。
+- `datasets/m2/detour_60.yaml` 考大纲：前 20 回合照着送信的主线走，第 21～40 回合玩家放弃送信、留在镇上学打鱼攒钱买船，
+  第 41～60 回合接着新方向；`outline` 是大纲检查。
 - `--think` 是每回合之间停几秒（默认 5，模拟读叙述）；设成 0 就是一回合接一回合地点，用来看世界状态最多会落后多少。
-- 章节整理也在脚本里带的后台进程里跑；`--chapter-soft`、`--chapter-hard` 是切章的两条线（默认和服务端一样，8000、16000 token）。
+- 章节整理和大纲修订也在脚本里带的后台进程里跑；`--chapter-soft`、`--chapter-hard` 是切章的两条线（默认和服务端一样，8000、16000 token）。
   有了章节摘要以后，更早的回合不在导演的上下文里，召回题考的是召回工具和整理出来的记忆。
 - 开发环境的 worker 也开着时，两边一起从队列领任务，不会重复整理同一回合。
 - 报告写到 `reports/`（JSON 和一页中文总结，不入库）。

@@ -1,0 +1,15 @@
+{
+  "description": "物語の大綱：前提、これからの拍、制約",
+  "fields": {
+    "Outline.premise": "物語の前提を一、二文で、200 字以内",
+    "Outline.beats": "順番に並べた拍。どれも物語のひとつの段階（ふつう 10～30 ターン）、最大 10 個",
+    "Outline.constraints": "守るべき制約、最大 6 個、各一文",
+    "Beat.id": "拍の番号（b1 など）。見直しでは、もとからある拍はもとの番号のまま",
+    "Beat.status": "pending（未着手）、active（進行中、ひとつだけ）、done（完了）、skipped（飛ばした）",
+    "Beat.intent": "この段階で何を達成し何が変わるか、一、二文で 60 字以内",
+    "Beat.done_when": "この段階の終わりを示す目に見える大きな出来事、60 字以内",
+    "OutlineDecision.change": "大綱を変えるかどうか",
+    "OutlineDecision.reason": "変える・変えない理由を一文で",
+    "OutlineDecision.outline": "変えるときは新しい大綱を丸ごと。変えないときは書かない"
+  }
+}

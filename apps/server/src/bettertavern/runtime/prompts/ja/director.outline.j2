@@ -1,0 +1,16 @@
+{# version: 1 #}
+<outline>
+前提：{{ premise }}
+{% if current %}
+いまの一拍：{{ current.intent }}{% if current.done_when %}（完了条件：{{ current.done_when }}）{% endif +%}
+{% endif %}
+{% if upcoming %}
+次の一拍：{{ upcoming.intent }}
+{% endif %}
+{% if constraints %}
+守るべきこと：
+{% for item in constraints %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+</outline>

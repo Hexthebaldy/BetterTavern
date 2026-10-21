@@ -1,0 +1,16 @@
+{# version: 1 #}
+<outline>
+Premise: {{ premise }}
+{% if current %}
+Current beat: {{ current.intent }}{% if current.done_when %} (done when: {{ current.done_when }}){% endif +%}
+{% endif %}
+{% if upcoming %}
+Next beat: {{ upcoming.intent }}
+{% endif %}
+{% if constraints %}
+Must hold:
+{% for item in constraints %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+</outline>

@@ -14,17 +14,17 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import structlog
 
 from bettertavern.domain.memory.chapters import ChapterRule, TurnSize, chapter_end
 from bettertavern.domain.routing import RouteTask
-from bettertavern.providers import ProviderError, ProviderHub, Usage
+from bettertavern.providers import ProviderError, ProviderHub
 from bettertavern.providers.limiter import LimiterTimeout
 
-from .agent import AgentStep, StepLog
+from .agent import StepLog
 from .agents.chapter_writer import AGENT, write_chapter
 from .context.tokens import estimate_tokens
 from .ports import (
@@ -56,18 +56,6 @@ def turn_tokens(turn: ChapterTurn) -> int:
         estimate_tokens(turn.action.text or "")
         + estimate_tokens(turn.narrative)
         + (TURN_OVERHEAD_TOKENS)
-    )
-
-
-def _total_usage(steps: Sequence[AgentStep]) -> Usage | None:
-    usages = [s.usage for s in steps if s.usage is not None]
-    if not usages:
-        return None
-    return Usage(
-        prompt=sum(u.prompt for u in usages),
-        completion=sum(u.completion for u in usages),
-        cached=sum(u.cached for u in usages),
-        reasoning=sum(u.reasoning for u in usages),
     )
 
 
@@ -155,7 +143,7 @@ class MemoryRunner:
                 provider=route.provider,
                 model=route.model,
                 prompt_hash=written.prompt_hash,
-                usage=_total_usage(steps.steps),
+                usage=steps.total_usage(),
                 latency_ms=self._elapsed_ms(started),
                 result={
                     "first_seq": first_seq,
@@ -202,7 +190,7 @@ class MemoryRunner:
             status="failed",
             provider=route.provider if route is not None else None,
             model=route.model if route is not None else None,
-            usage=_total_usage(steps.steps),
+            usage=steps.total_usage(),
             latency_ms=self._elapsed_ms(started),
             error_class=error_class,
             result={"first_seq": work.turns[0].seq, "last_seq": last_seq},

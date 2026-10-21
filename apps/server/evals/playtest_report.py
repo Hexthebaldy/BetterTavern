@@ -6,6 +6,7 @@
 - 统计导演和世界状态 agent 的用量、延迟，世界状态落后几回合，失败、跳过和被拒绝的修改；
 - 导演用召回工具的情况（哪些回合提供了工具、用了几轮、首字慢了多少）和召回题的结果；
 - 章节整理：写了几章、并进梗概几次，导演的上下文长度按回合段看稳不稳。
+大纲的分析在 playtest_outline.py。
 """
 
 from __future__ import annotations
@@ -167,7 +168,7 @@ def percentile(values: Sequence[float], q: float) -> float | None:
     return ordered[min(round(q * (len(ordered) - 1)), len(ordered) - 1)]
 
 
-def _tokens(runs: Sequence[RunFacts]) -> dict[str, Any]:
+def token_totals(runs: Sequence[RunFacts]) -> dict[str, Any]:
     prompt = sum(r.input_tokens for r in runs)
     cached = sum(r.cached_tokens for r in runs)
     return {
@@ -342,7 +343,7 @@ def summarize(
             "ttft_ms_p95": percentile(ttfts, 0.95),
             "latency_ms_p50": percentile(director_ms, 0.5),
             "options_source": dict(Counter(t.options_source for t in turns if t.options_source)),
-            **_tokens(director),
+            **token_totals(director),
         },
         "recall": {
             **recall_use(director, tool_calls),
@@ -365,7 +366,7 @@ def summarize(
             "latency_ms_p95": percentile(state_ms, 0.95),
             "rejected": sum(rejected.values()),
             "top_rejected": rejected.most_common(10),
-            **_tokens(state),
+            **token_totals(state),
         },
         "memory": {
             "runs": dict(Counter(r.status for r in chapter_runs)),
@@ -373,7 +374,7 @@ def summarize(
             "summaries": dict(summaries or {}),
             "latency_ms_p50": percentile(chapter_ms, 0.5),
             "context": context_by_range(director),
-            **_tokens(chapter_runs),
+            **token_totals(chapter_runs),
         },
         "lag": {
             "max": max(lags, default=0),
@@ -405,8 +406,10 @@ def summarize(
     }
 
 
-def markdown(summary: Mapping[str, Any], *, title: str, playthrough_id: str) -> str:
-    """给人看的一页总结（中文）。"""
+def markdown(
+    summary: Mapping[str, Any], *, title: str, playthrough_id: str, extra: Sequence[str] = ()
+) -> str:
+    """给人看的一页总结（中文）。extra 是别的模块写的几节（例如大纲），放在章节整理后面。"""
     d, s, lag, c, w = (
         summary["director"],
         summary["state"],
@@ -449,6 +452,7 @@ def markdown(summary: Mapping[str, Any], *, title: str, playthrough_id: str) -> 
         "",
         *_recall_lines(summary["recall"]),
         *_memory_lines(summary["memory"]),
+        *extra,
         "## 世界状态 agent",
         f"- 运行：{s['runs']}；失败原因：{s['errors'] or '无'}；"
         f"跳过的回合：{s['skipped_turns'] or '无'}",

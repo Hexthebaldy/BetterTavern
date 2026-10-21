@@ -263,13 +263,14 @@ async def insert_note(
     entity_ids: Sequence[str],
     scene_ended: bool,
     skipped: bool = False,
+    outline_reason: str = "",
 ) -> None:
     await execute(
         conn,
         """
         INSERT INTO turn_notes (turn_id, playthrough_id, seq, digest, entity_ids, scene_ended,
-                                skipped)
-        VALUES (:turn, :pt, :seq, :digest, CAST(:entities AS uuid[]), :ended, :skipped)
+                                skipped, outline_reason)
+        VALUES (:turn, :pt, :seq, :digest, CAST(:entities AS uuid[]), :ended, :skipped, :reason)
         """,
         {
             "turn": turn_id,
@@ -279,6 +280,7 @@ async def insert_note(
             "entities": list(entity_ids),
             "ended": scene_ended,
             "skipped": skipped,
+            "reason": outline_reason,
         },
     )
 
