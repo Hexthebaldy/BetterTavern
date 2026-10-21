@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>工作台 · 产品流程</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="/_blob/430aac027c8250fe716721fce5f95643">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#FFFFFF} .w-tools .ic{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:500;color:#3D3C38}</style>
+</helmet>
+<div class="w-board">
+  <header>
+    <h1>工作台</h1>
+    <p class="lead">创建、导入和修改角色卡都在这里。没人想费劲设计一张角色卡，所以默认由 agent 来做：一句话说要什么，它先问清楚、出方案，确认后自己动手写，作品里的角色它会自己查资料、找图；想精确控制时切到手动，改的是同一份草稿。剧本页不再有导入。</p>
+  </header>
+  <section>
+    <div class="bh"><h2>五条原则</h2><p>每个界面都按这几条来定。</p></div>
+    <div class="w-prin">
+      <div><span class="no">01</span><b>一句话就能开始</b><span>输入框就是入口，给几条例子；不用先选“原创还是作品”，agent 自己判断。</span></div>
+      <div><span class="no">02</span><b>先问清楚再动手</b><span>像 plan 模式：先出一份问卷，再出方案，确认了才写。不会写到一半才发现方向不对。</span></div>
+      <div><span class="no">03</span><b>每题都有推荐</b><span>问卷最多 6 题，每题都替你选好推荐答案；一键“就按这些”，也可以全交给它。</span></div>
+      <div><span class="no">04</span><b>活都由 agent 干</b><span>起名字、写设定、写开场、整理世界书、查资料、找图、生成封面、按导入规则检查。</span></div>
+      <div><span class="no">05</span><b>改动先给你看</b><span>写的过程实时可见、随时能停；之后的修改用对比显示，采用了才写进卡片。</span></div>
+    </div>
+  </section>
+  <section>
+    <div class="bh"><h2>入口</h2><p>新的一栏“工作台”，放在“剧本”和“设置”之间。</p></div>
+    <div class="w-two">
+      <div class="w-box"><h3>从工作台开始</h3><ul class="w-list">
+        <li><span><b>一句话</b>：进 Agent 模式，按下面的流程走。</span></li>
+        <li><span><b>导入角色卡</b>：PNG 或 JSON，可以多张；导入后直接进剧本库，不用再确认，想改再点“改一改”。</span></li>
+        <li><span><b>手动新建</b>：空白表单，随时可以切到 Agent。</span></li>
+        <li><span><b>草稿</b>：没保存的都在这里，写一半退出也不丢；状态写明“等你回答”“方案等你确认”。</span></li></ul></div>
+      <div class="w-box"><h3>从别处进来</h3><ul class="w-list">
+        <li><span><b>剧本详情 → 编辑角色卡</b>：在工作台里打开这张卡，默认上次用的模式。</span></li>
+        <li><span><b>剧本页</b>：去掉右上角的导入；第一次进来提示一次“挪到了工作台”。空的剧本库引导去工作台。</span></li>
+        <li><span><b>保存</b>：保存到剧本库后才能开始故事；也可以“保存并开始新故事”一步到位。改已有的卡只影响之后开始的故事。</span></li></ul></div>
+    </div>
+  </section>
+  <section>
+    <div class="bh"><h2>Agent 的流程</h2><p>蓝色是要用户做决定的地方，其余都是 agent 自己做。</p></div>
+    <div class="col" style="gap: 22px">
+      <div class="w-lane"><div class="ln"><i>原创</i>“想要一个开在城隍庙边上的当铺掌柜”</div><div class="w-flow">
+        <div class="w-fn"><span class="k">理解</span><b>判断要什么</b><span>原创还是作品角色；已经说清楚的不再问</span></div><div class="w-fa">→</div>
+        <div class="w-fn user"><span class="k">问卷</span><b>确认需求</b><span>最多 6 题，每题有推荐；可跳过、可“交给你”</span></div><div class="w-fa">→</div>
+        <div class="w-fn user"><span class="k">方案</span><b>确认方案</b><span>名字候选、一句话设定、性格、世界书条目、开场、封面</span></div><div class="w-fa">→</div>
+        <div class="w-fn"><span class="k">动手</span><b>一项项写</b><span>实时出现在卡片上，可以随时停</span></div><div class="w-fa">→</div>
+        <div class="w-fn"><span class="k">检查</span><b>按导入规则查</b><span>和导入、手动保存用同一套规则；不合格自己改</span></div><div class="w-fa">→</div>
+        <div class="w-fn user"><span class="k">完成</span><b>保存或接着改</b><span>改动用对比显示，采用了才算</span></div></div></div>
+      <div class="w-lane"><div class="ln"><i>作品角色</i>“《红楼梦》里的林黛玉，我以宝玉的身份陪她过元宵”</div><div class="w-flow">
+        <div class="w-fn"><span class="k">资料</span><b>先自己查</b><span>联网搜索、读原文和百科、找图，记下每条用在哪里</span></div><div class="w-fa">→</div>
+        <div class="w-fn user"><span class="k">问卷</span><b>只问你能定的</b><span>哪个时期、你扮演谁、文风、封面用哪张</span></div><div class="w-fa">→</div>
+        <div class="w-fn user"><span class="k">方案</span><b>确认方案</b><span>附资料来源；原著没有的设定不添</span></div><div class="w-fa">→</div>
+        <div class="w-fn"><span class="k">动手</span><b>照原著写</b><span>拿不准的地方写进作者备注</span></div><div class="w-fa">→</div>
+        <div class="w-fn"><span class="k">检查</span><b>按导入规则查</b><span>来源写进作者备注</span></div><div class="w-fa">→</div>
+        <div class="w-fn user"><span class="k">完成</span><b>保存或接着改</b><span>同上</span></div></div></div>
+    </div>
+  </section>
+  <section>
+    <div class="bh"><h2>Agent 能用的工具</h2><p>都在服务端跑，过程写进干活记录，用户看得到每一步。</p></div>
+    <div class="w-tools">
+      <div><span class="ic">ASK</span><span><b>问卷</b><span>出选择题，带推荐答案；用户答完才继续</span></span></div>
+      <div><span class="ic">WEB</span><span><b>联网搜索、读网页</b><span>查作品资料；记下来源和用途</span></span></div>
+      <div><span class="ic">IMG</span><span><b>找图</b><span>标出公有领域和有版权的图，有版权的只作参考</span></span></div>
+      <div><span class="ic">GEN</span><span><b>生成封面</b><span>文生图，一次 4 张；可以改提示词和风格重来</span></span></div>
+      <div><span class="ic">CARD</span><span><b>写卡片</b><span>按字段写：基本、描述、性格、情境、开场白、对话示例、世界书</span></span></div>
+      <div><span class="ic">DIFF</span><span><b>改卡片</b><span>改已有的卡时给出对比，用户采用才写入</span></span></div>
+      <div><span class="ic">CHK</span><span><b>检查</b><span>和导入、手动编辑用同一套规则（cardEdit）</span></span></div>
+      <div><span class="ic">SAVE</span><span><b>存草稿</b><span>每一步都存，退出再进来接着做</span></span></div>
+    </div>
+  </section>
+  <section>
+    <div class="bh"><h2>要补的设置和要定的事</h2><p>这些不在工作台的界面上，但不定下来做不了。</p></div>
+    <div class="w-two">
+      <div class="w-box"><h3>设置</h3><ul class="w-list">
+        <li><span><b>工作台用哪个模型</b>：默认用导演模型；要能调用工具。可以单独选一个更强的。</span></li>
+        <li><span><b>联网搜索</b>：配一个搜索服务和 Key（或者用服务商自带的搜索）。没配时只能用模型自己知道的，作品角色会提示“没法查资料”。</span></li>
+        <li><span><b>生成封面</b>：模型详情里加一个“用于生成封面”的开关，只对能生图的模型开放。没配时封面用几何封面。</span></li></ul></div>
+      <div class="w-box"><h3>要定的事</h3><ul class="w-list">
+        <li><span><b>作品角色的图</b>：有版权的图默认不拿来做封面，只作参考；用户坚持要用时提示仅限个人使用。</span></li>
+        <li><span><b>草稿存哪</b>：存服务端，跟账户走，手机和网页都能接着做。</span></li>
+        <li><span><b>费用</b>：查资料和生图要花钱，开始前在方案里写上大概要调用几次。</span></li></ul></div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1899}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
