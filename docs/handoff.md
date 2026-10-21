@@ -1,5 +1,8 @@
 # 交接说明：M0 与 M1
 
+> **这是 2026-10-14 M1 交接时的记录，之后没有再更新。**其中“没做的”“下一步”多数已经过时：
+> 现在的进度见 [development.md](development.md) 的“当前进度”和 [agent-runtime.md](agent-runtime.md) 第 13 节，还没解决的问题见 [backlog.md](backlog.md)。
+
 > 写给接手的 Claude Code（以及之后的协作者）。记录到 2026-10-14 为止完成了什么、验证到什么程度、哪些没验证、下一步做什么。
 > 设计以 [README.md](README.md)、[backend.md](backend.md)、[client.md](client.md)、[testing.md](testing.md) 为准；
 > 已经实现的表结构和接口以 [data-model/](data-model/README.md)、[api/](api/README.md) 为准（按领域分文件，有测试检查它们与代码一致）；

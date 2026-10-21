@@ -3,7 +3,7 @@
 > 文档索引：[总览](README.md) · [后端](backend.md) · [客户端](client.md) · [测试](testing.md) · [数据模型](data-model/README.md) · [接口](api/README.md)
 
 BetterTavern 是一个服务端生成式互动小说应用：Python 后端运行 agent runtime，React Native 客户端负责阅读和操作。
-本目录有四份按读者拆分的设计文档，以及数据模型、接口两个参考文档目录。设计文档写的是完整的方案，参考文档写的是代码里已经实现的样子。本页是总览、仓库结构和里程碑。
+本目录有按读者拆分的设计文档（后端、客户端、测试、agent runtime、多语言），评测记录和待优化清单，以及数据模型、接口两个参考文档目录。设计文档写的是完整的方案，参考文档写的是代码里已经实现的样子。本页是总览、仓库结构和里程碑。
 
 | 文档 | 内容 |
 | --- | --- |
@@ -31,7 +31,7 @@ v1 交付一个服务端 agent runtime 加一个 React Native 客户端：玩家
 - 第一人称互动小说：导演每轮回复后立即给出 2 个选项，同时保留自由输入框，尽量减少打字。
 - 长篇一致性：结构化世界状态、渐进式披露、分层摘要、长程大纲配合，而不是把所有设定拼成一个大 prompt（[agent-runtime.md](agent-runtime.md)）。
 - 用户自带 API Key 并自选端点；适配 DeepSeek、OpenAI、Grok（xAI）、Gemini、Hugging Face 和玩家自定义的 OpenAI 兼容端点（都走 OpenAI 兼容接口），厂商适配按“配置加通用适配器”设计，以后可以接入大量厂商。
-- 支持回退与重新生成。
+- 支持回退到当前故事线上任意一回合（每个存档有回退次数上限）。不做“重新生成某一段”：生成失败时可以重试（[agent-runtime.md](agent-runtime.md) 第 8 节）。
 - 代码开源，服务端可自托管，一条 `docker compose up` 起全套。
 
 ### 非目标（v1 不做）
@@ -46,11 +46,11 @@ v1 交付一个服务端 agent runtime 加一个 React Native 客户端：玩家
 1. 服务端 runtime，Python + FastAPI，agent 的执行循环自己写，不用 LangGraph（LangChain 仅按需）；客户端 React Native。
 2. 玩家消息到达后，同步工作的只有导演 agent；它的回复立即返回客户端，其余 agent 随后整理状态。
 3. 每局的回合串行；下一回合不等上一回合的世界状态整理，状态块标明截至第几回合，之后回合的原文在上下文里（[agent-runtime.md](agent-runtime.md) 第 3 节）。
-4. 导演上下文 = 摘要 + 不在导演上下文中的实体状态（物品、人物、地点、机构、世界）+ 本轮玩家行为与导演回复。
+4. 导演上下文 = 规则和故事设定 + 回顾（全书梗概、最近几章的章节摘要、玩家画像）+ 当前这一章的原文 + 状态块和大纲切片 + 本轮玩家行动；更早的细节由导演用召回工具查（[agent-runtime.md](agent-runtime.md) 第 6 节）。
 5. 长程大纲：开局后由后台写第一版；世界状态 agent 每回合回答“大纲要不要改”，要改时由后台模型修订；导演在最后一条消息里看到当前这一拍，只用来把握方向，玩家的行动永远优先（[agent-runtime.md](agent-runtime.md) 第 4、6 节）。
 6. 记忆按章整理：这一章的原文够长以后，在下一个场景结束处切一章，写章节摘要、改写玩家画像；最近 3 章之前的并进全书梗概。场景是否结束由世界状态 agent 判断，切章用固定规则。原来“占到 80% 才压缩”的做法去掉，95% 紧急截断保留。不接入 Jev（[agent-runtime.md](agent-runtime.md) 第 6、7 节）。
 7. 摘要放回上下文时必须带说明：这是回顾，不是当前任务，只回应玩家最新一次行动。
-8. 允许回退到当前故事线上任意一回合和重新生成，没有回退下限：整理出来的记忆都记下来源回合，回退时作废来源在目标回合之后的部分，玩家画像不回退（[agent-runtime.md](agent-runtime.md) 第 8 节）。
+8. 允许回退到当前故事线上任意一回合，没有回退下限，每个存档能回退的次数有上限（服务端设置 `ROLLBACK_LIMIT`，默认 1）：整理出来的记忆都记下来源回合，回退时作废来源在目标回合之后的部分，玩家画像不回退。不做“重新生成最新一回合”（[agent-runtime.md](agent-runtime.md) 第 8 节）。
 9. ST 世界书导入后全部转成世界状态的一部分；v1 不做世界书模块。
 10. Provider 层只参考 SillyTavern 适配各家模型接口的思路，代码自行编写，不移植；v1 适配 DeepSeek、Hugging Face 和自定义 OpenAI 兼容端点，并按“厂商配置加通用适配器”设计，以后可以适配大量厂商。
 11. 每轮回复后给 2 个选项，同时保留自由输入。
@@ -74,65 +74,50 @@ v1 交付一个服务端 agent runtime 加一个 React Native 客户端：玩家
 
 ```
 BetterTavern/                           # Python 包名 bettertavern
-├── README.md
-├── LICENSE                             # 开源协议待定（不受 ST 的 AGPL 约束）
-├── CONTRIBUTING.md
+├── README.md                           # 使用说明
 ├── AGENTS.md                           # 给编码 agent 与贡献者的仓库约定（参考 hermes-agent）
-├── Makefile                            # make dev / test / lint / gen-api / eval
-├── .env.example
-├── .github/
-│   └── workflows/
-│       ├── server.yml                  # ruff、pyright、import-linter、pytest（带 Postgres 服务）
-│       ├── mobile.yml                  # tsc、eslint、jest
-│       ├── contract.yml                # 重新生成 OpenAPI 与 TS 类型并比对
-│       └── release.yml                 # 镜像构建与 EAS 发布
-├── package.json                        # npm 工作区：apps/mobile、apps/web、packages/*
+├── CLAUDE.md
+├── Makefile                            # 常用命令：dev、worker、migrate、test、lint、web、site、vis……
+├── package.json                        # npm 工作区：apps/mobile、apps/web、apps/site、packages/*
 ├── apps/
-│   ├── server/                         # Python 后端，见下
-│   ├── mobile/                         # React Native 客户端，见下
+│   ├── server/                         # Python 后端，见 backend.md 第 10 节
+│   ├── mobile/                         # React Native 客户端（Expo），见 client.md
 │   ├── web/                            # 电脑浏览器里的网页端（Vite + React，DOM 和 CSS），见 client.md 第 4 节
+│   ├── site/                           # 项目主页（落地页），构建时预渲染成静态 HTML
 │   └── vis/                            # 开发用的日志查看器
 ├── packages/
-│   ├── core/                           # 手机端和网页端共用的纯逻辑：接口客户端、SSE、会话、回合状态机
-│   ├── design/                         # 共用的设计数据：色板、主题、尺寸、布局函数、图标、封面、标志
-│   └── api-contract/                   # （计划中）
-│       ├── openapi.json                # 由 FastAPI 导出并提交
-│       ├── events.schema.json          # SSE 事件的 JSON Schema
-│       └── scripts/generate.sh         # 生成 TS 类型与请求函数
+│   ├── core/                           # 手机端和网页端共用的纯逻辑：接口客户端、SSE、会话、回合状态机、界面文字
+│   └── design/                         # 共用的设计数据：色板、主题、尺寸、布局函数、图标、封面、标志
 ├── deploy/
-│   ├── docker-compose.yml              # api、worker、postgres、一次性的 migrate；redis 为可选 profile
-│   ├── docker-compose.dev.yml
+│   ├── docker-compose.yml              # api、worker、postgres、一次性的 migrate
+│   ├── docker-compose.dev.yml          # 开发用的 Postgres
 │   ├── Dockerfile.server
-│   ├── nginx.example.conf              # 反向代理示例（网页和接口同源，SSE 关闭缓冲）
-│   └── k8s/                            # 可选
-├── docs/
-│   ├── architecture/                   # 本文档的版本化副本与图
-│   ├── adr/                            # 架构决策记录，每个重大取舍一篇
-│   ├── prompts/                        # 提示词设计说明与评测记录
-│   └── self-hosting.md
+│   └── nginx.example.conf              # 反向代理示例（网页和接口同源，SSE 关闭缓冲）
+├── docs/                               # 本目录
 └── scripts/
-    ├── dev_seed.py                     # 本地开发用的示例剧本
-    └── export_openapi.py
+    └── check-i18n.mjs                  # 界面代码里不能有写死的中文
 ```
+
+还没有、计划中的：开源协议文件（协议待定）、CI 配置、`packages/api-contract`（由 OpenAPI 生成客户端类型，现在客户端类型是手写的）、自托管文档。
 
 ## 3 里程碑、风险与待确认问题
 
-先用 M0 的几个探针把最不确定的三件事验掉：RN 上的 SSE、两家厂商的协议差异、导演输出协议的遵守率；再按“热路径 → 世界状态与回退 → 压缩与大纲 → 加固”的顺序推进。每个里程碑都有可检查的出口标准。人力按 1 到 2 名工程师估算，数字是粗估，M0 之后修订。
+先用 M0 的几个探针把最不确定的三件事验掉：RN 上的 SSE、两家厂商的协议差异、导演输出协议的遵守率；再按“热路径 → 世界状态与回退 → 召回、记忆与大纲 → 加固”的顺序推进。每个里程碑都有可检查的出口标准。人力按 1 到 2 名工程师估算，数字是粗估，M0 之后修订。
 
 M0 的出口标准决定是否进入 M1；可观测性与测试不等到最后，从 M1 起就和功能一起推进。
 
 ### 里程碑
 
-| 里程碑 | 范围 | 出口标准（提议） | 粗估 |
+| 里程碑 | 范围 | 出口标准 | 状态（2026-10-21） |
 | --- | --- | --- | --- |
-| M0 探针 | RN 真机 SSE；provider 层对 DeepSeek 与 Hugging Face 跑通（流式、usage、错误分类）；导演协议在至少 3 个模型上的合规率；Postgres 车道队列原型 | RN 验收标准见[client.md 第 1 节](client.md)；200 回合里无需修复的合规率不低于 95%，含修复不低于 99.5%；给出 go / no-go | 1 到 2 周 |
-| M1 热路径 | 注册登录、凭据与探测、角色卡导入、WorldBuilder（最小 Seed）、回合流式与选项、幂等与租约、SSE 续传、RN 阅读主屏 | 两家厂商各完整玩 30 回合；断网续传用例通过 | 3 到 4 周（代码已完成，待真机验收；实现与设计的差异见 [backend.md 第 12 节](backend.md)、[client.md 第 3 节](client.md)） |
-| M2 runtime、世界状态与回退 | [agent-runtime.md](agent-runtime.md) 阶段 1、2：执行循环与工具、删除“重要程度”、世界状态 agent、后台模型设置、回退到任意回合、世界浏览与时间线界面 | 见 [agent-runtime.md](agent-runtime.md) 第 10 节；100 回合剧本试玩的一致性检查和回退一致性测试通过 | 3 到 4 周 |
-| M3 召回、记忆、大纲 | [agent-runtime.md](agent-runtime.md) 阶段 3 到 5：召回工具与导演隐藏备注、线索与伏笔、分层摘要与玩家画像、大纲修订、长剧本评测 | 300 回合剧本试玩：上下文长度稳定、长程问题的正确率达标；偏离剧本的评测出结果 | 3 到 4 周 |
-| M4 加固与发布 | 安全审查、SSRF 测试、限流、可观测性、部署文档、性能测试、商店合规清单、内测 | 外部安全审查无高危；100 并发压测达标；自托管文档按步骤能跑通 | 2 到 3 周 |
+| M0 探针 | RN 真机 SSE；provider 层对 DeepSeek 与 Hugging Face 跑通（流式、usage、错误分类）；导演协议在至少 3 个模型上的合规率；Postgres 车道队列原型 | RN 验收标准见[client.md 第 1 节](client.md)；200 回合里无需修复的合规率不低于 95%，含修复不低于 99.5%；给出 go / no-go | 完成 |
+| M1 热路径 | 注册登录、凭据与探测、角色卡导入、WorldBuilder（最小 Seed）、回合流式与选项、幂等与租约、SSE 续传、RN 阅读主屏 | 两家厂商各完整玩 30 回合；断网续传用例通过 | 代码完成；同一条服务端链路用真实的 DeepSeek 跑过上百回合的剧本试玩（[evals.md](evals.md)）；按清单的真机验收（两家厂商各 30 回合、断网续传）没有单独记录。实现与设计的差异见 [backend.md 第 12 节](backend.md)、[client.md 第 3 节](client.md) |
+| M2 runtime、世界状态与回退 | [agent-runtime.md](agent-runtime.md) 阶段 1、2：执行循环与工具、删除“重要程度”、世界状态 agent、后台模型设置、回退到任意回合、世界浏览与时间线界面 | 见 [agent-runtime.md](agent-runtime.md) 第 10 节；100 回合剧本试玩的一致性检查和回退一致性测试通过 | 完成（agent runtime 阶段 1、2）。世界状态在阅读页的面板里看；时间线界面没做 |
+| M3 召回、记忆、大纲 | [agent-runtime.md](agent-runtime.md) 阶段 3 到 5：召回工具与导演隐藏备注、线索与伏笔、分层摘要与玩家画像、大纲修订、长剧本评测 | 300 回合剧本试玩：上下文长度稳定、长程问题的正确率达标；偏离剧本的评测出结果 | 完成（阶段 3 到 5）：300 回合试玩上下文稳定在 1.6～1.7 万 token；偏离剧本的评测出了结果，大纲还有待优化的问题（[backlog.md](backlog.md)） |
+| M4 加固与发布 | 安全审查、SSRF 测试、限流、可观测性、部署文档、性能测试、商店合规清单、内测 | 外部安全审查无高危；100 并发压测达标；自托管文档按步骤能跑通 | 没开始 |
 | 之后 | 更多厂商的专门适配（例如 Anthropic）、按意思检索（pgvector）、世界书导入器、RPG 模式、分支树界面、“纠正世界状态”界面 |  |  |
 
-合计约 12 到 17 周。
+最初的粗估是 M0 到 M4 合计 12 到 17 周（M0、M4 各 1 到 3 周，M1 到 M3 各 3 到 4 周）。
 
 ### 风险
 
@@ -142,10 +127,10 @@ M0 的出口标准决定是否进入 M1；可观测性与测试不等到最后�
 | 世界状态 agent 写错，错误会被后续回合当成事实 | 剧情自相矛盾 | 写入前一次性检查一致性；铅笔与钢笔；修改记录可回退；后续提供“纠正世界状态”界面，让玩家直接改实体 |
 | 摘要漂移或丢信息 | 长篇后期矛盾 | 固定模板与迭代更新；状态表兜底；保真度评测；原文永久保留，可以重新折叠 |
 | Hugging Face 路由后端差异大 | 同一个模型名的行为随时间变化 | 建议固定 provider 后缀；探测加运行时降级；文档提示 |
-| 窗口设置与模型不匹配 | 压缩过早或过晚，或请求超出模型窗口 | 保存路由和每次调用前都校验（[backend.md 第 4 节](backend.md)）；95% 紧急线兜底 |
+| 窗口设置与模型不匹配 | 请求超出模型窗口 | 保存路由和每次调用前都校验（[backend.md 第 4 节](backend.md)）；95% 紧急线兜底 |
 | 许可证 | 误把 ST 的代码照搬进仓库，就必须按 AGPL 发布 | 只参考思路、自行实现，评审时检查；复用 hermes-agent（MIT）的代码要保留版权声明 |
 | 应用商店合规 | 上架被拒 | 举报入口、年龄分级、内容过滤钩子；上架前逐条核对商店规则 |
-| 下一回合不等后台整理 | 状态块过时 | 状态块标明截至第几回合；没整理的回合一定以原文出现在上下文里；推 `pipeline.degraded` 提示 |
+| 下一回合不等后台整理 | 状态块过时 | 状态块标明截至第几回合；没整理的回合一定以原文出现在上下文里；世界状态面板显示截至第几回合和整理失败的提示 |
 | Postgres 队列在高并发下的锁竞争 | 任务延迟 | `JobQueue` 接口可换 Taskiq 或 Redis；M4 压测 |
 
 ### 待确认的问题

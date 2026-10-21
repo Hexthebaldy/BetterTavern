@@ -52,7 +52,7 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 | reconnecting | 重连成功 | streaming |  |
 | reconnecting | 连续 3 次连上却拿不到数据，或 404 | polling | 轮询直到终态 |
 | 任意 | `turn.failed` 且可重试 | failed | “重试”按钮（等于重新生成） |
-| 任意 | `timeline.rolled_back` | syncing | 重新拉取历史与状态 |
+| idle 或 failed | 回退成功（接口返回新的存档详情） | syncing | 重新拉取历史与世界状态 |
 
 最新一段是结局（行动来源 `ending`）时故事已经结束：状态仍是 idle，但 `isEnded()` 为真，`canAct()`、`canSubmit()` 都是假，不能再提交任何行动。
 结局写失败和普通回合一样进入 failed，“重试”重发同一个结局（带同样的方向）。
@@ -118,19 +118,19 @@ apps/mobile/
 
 接口类型由后端导出的 OpenAPI 和 SSE 事件 schema 生成，生成流程见 [backend.md 第 9 节](backend.md)的“契约工具链”。
 
-## 3 M1 的实现状态与偏差
+## 3 实现状态与偏差
 
-M1 实现了登录注册、剧本库与角色卡导入、故事列表、阅读主屏和模型设置。为了先把主线跑通，技术栈做了简化，
-页面和数据流按第 1 节设计，后续补齐：
+已经实现：登录注册、剧本库与角色卡导入和编辑、故事列表、阅读主屏（流式叙述、选项、自由输入、停止、重试、写结局、回到更早的一段、世界状态面板）、模型设置（导演模型、后台整理模型）、外观和语言、平板布局。
+为了先把主线跑通，技术栈做了简化，页面和数据流按第 1 节设计，下面这些还没补齐：
 
-| 设计 | M1 的做法 | 补齐时间 |
+| 设计 | 现在的做法 | 什么时候补 |
 | --- | --- | --- |
-| TanStack Query 管服务端数据 | `src/hooks/useAsync.ts`：进入或回到页面时取一次，可下拉刷新 | 页面变多、需要缓存与失效时（M2） |
+| TanStack Query 管服务端数据 | `src/hooks/useAsync.ts`：进入或回到页面时取一次，可下拉刷新 | 页面变多、需要缓存与失效时 |
 | Zustand 管登录态与回合状态 | 登录态在 `packages/core/src/auth/session.ts`（`SessionManager`，经 `useSyncExternalStore` 接入 React）；回合状态由 `PlaySession` 持有，`usePlaySession` 订阅 | 需要跨页面共享的界面状态时 |
 | `openapi-fetch` 加生成的类型 | `packages/core/src/api/client.ts` 的 `ApiClient`（带令牌、401 时刷新一次再重试、problem+json 转 `ApiError`、超时）加手写的 `types.ts` 与 `endpoints.ts`。字段与 [api/](api/README.md) 里各领域的请求和响应模型一一对应，改接口时一起改 | 契约工具链接入时 |
 | FlashList | `FlatList`：已完成的回合用 `memo` 固定，只有生成中的那一段重渲染 | 故事很长、出现卡顿时 |
-| expo-sqlite 本地缓存 | 不缓存，打开故事时整条拉取（分页，每页 200 回合） | M2 |
-| Jest、RNTL、Maestro | 纯逻辑用 `node --test`（见下）；界面还没有自动化测试，靠真机验收 | M2 |
+| expo-sqlite 本地缓存 | 不缓存，打开故事时整条拉取（分页，每页 200 回合） | 故事长到打开变慢时 |
+| Jest、RNTL、Maestro | 纯逻辑用 `node --test`（见下）；界面还没有自动化测试，靠真机验收 | M4 之前 |
 | 触觉反馈 | 没有（需要 expo-haptics） | 之后 |
 
 **回合状态机**在第 1 节的表格之外多了两点：加载失败是单独的 `load_failed` 状态（只能“重新加载”）；
@@ -175,7 +175,7 @@ iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）—�
 导演接着写一大段；写完后最后一段下面居中一行“—END—”，没有选项，操作栏中间换成旗子和灰字“故事已完结”，“更多”里不再有写结局；
 故事列表里这个故事显示“已完结”（`storyStatus()`）。改名、看世界状态、删除照常可以。没做的：世界状态的“新”标记和按钮上的变化提示（服务端还没有世界状态的变更记录）、导入进度条（上传没有进度事件，用来回扫动的线代替）、改昵称（没有接口）。
 
-还没有的页面：世界、时间线、大纲（M2、M3）。
+没有单独的世界页（世界状态在阅读页的面板里看）；时间线页还没做；大纲只给导演看，不做页面。
 
 **平板**按 [design/ui/tablet/](design/ui/tablet/README.md) 实现：同一套代码做响应式，视觉规则不变，只换布局；手机上的布局和行为不变。
 

@@ -392,25 +392,24 @@ class Seed(BaseModel):
 
 ## 7 回退与重新生成
 
-可以回退到当前故事线上的任意一回合，没有下限。回退时世界状态按修改记录撤销，整理出来的记忆作废来源在目标回合之后的部分，玩家画像不动；规则和事务步骤以 [agent-runtime.md](agent-runtime.md) 第 8 节为准。
+可以回退到当前故事线上的任意一回合，没有下限；每个存档能回退的次数有上限（服务端设置 `ROLLBACK_LIMIT`，默认 1）。回退时世界状态按修改记录撤销，整理出来的记忆作废来源在目标回合之后的部分，玩家画像不动；规则和事务步骤以 [agent-runtime.md](agent-runtime.md) 第 8 节为准，接口见 [api/play.md](api/play.md)。
 
-重新生成最新一回合，等于回退到上一回合，再用同一个行动、`attempt + 1` 重新生成：在同一个事务里继续创建新回合并领租约，提交后再启动 runner，客户端只发一次请求。开场回合（seq 0）只有它是头部时才能重新生成，走开场流程。
+**重新生成后来没有做**（[agent-runtime.md](agent-runtime.md) 第 8 节：反复刷新同一个节点没有意思）。生成失败时玩家点“重试”，用新的 `attempt` 重新生成这一回合；对写出来的内容不满意，回退到上一回合换一个行动。下面两段是原来的设计，留作记录：
 
-### 选项重新生成
-
-`POST /v1/turns/{id}/options/regenerate` 不改时间线。只允许头部回合：用叙述、状态块和已有选项调用一次小模型（和 OptionsRepair 同款，要求与已有选项不同），只覆盖 `turns.options`，不动 `timeline_epoch`。玩家一旦选了某个选项、产生了下一回合，就不再允许。
+- 重新生成最新一回合，等于回退到上一回合，再用同一个行动、`attempt + 1` 重新生成：在同一个事务里继续创建新回合并领租约，提交后再启动 runner，客户端只发一次请求。开场回合（seq 0）只有它是头部时才能重新生成，走开场流程。
+- 选项重新生成：`POST /v1/turns/{id}/options/regenerate` 不改时间线。只允许头部回合：用叙述、状态块和已有选项调用一次小模型（和 OptionsRepair 同款，要求与已有选项不同），只覆盖 `turns.options`，不动 `timeline_epoch`。
 
 ### 边界情况
 
 | 情形 | 处理 |
 | --- | --- |
-| 回退时后台任务仍在运行 | 时间线编号变了，写入时条件不满足，结果作废，`agent_runs` 记 stale；队列里还没开始的旧任务直接取消 |
+| 回退时后台任务仍在运行 | 时间线编号变了，写入时条件不满足，结果作废，`agent_runs` 记 stale；队列里还没开始的任务不用取消：任务只带一局的 id，开始时读的是回退后的进度 |
 | 世界状态整理落后于目标回合 | 目标回合及之前的回合仍然有效，回退后从最早没整理的回合重新放任务 |
-| 回退后立刻重新生成，旧的流式请求还在跑 | 旧 runner 在下一个 chunk 检测到 epoch 变化，关闭上游连接，不再写库 |
+| 回退时还有回合在生成 | 回退被拒绝（409 `TURN_IN_PROGRESS`），玩家先点停止；租约已经过期的，先把那一轮标为失败再回退 |
 | 两台设备同时操作 | 行锁串行化；后到的请求携带过期的 `parent_turn_id`，收到 409 并带上最新 head |
 | 实体名称在回退后冲突 | 倒序撤销：后创建的实体先被删除，再恢复之前同名的实体 |
 | 撤销日志缺失 | 不应出现：修改记录永不清理。若检测到缺失，拒绝回退并告警 |
-| 玩家在重新生成过程中关闭 App | 生成与连接解耦，下次打开看到结果 |
+| 玩家在生成过程中关闭 App | 生成与连接解耦，下次打开看到结果 |
 
 ## 8 Provider 层
 
@@ -634,8 +633,8 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 | 回合 | `GET /playthroughs/{id}/turns?after_seq=&limit=` | 历史分页，默认不含已归档回合 |
 | 回合 | `POST /playthroughs/{id}/turns` | 提交行动，201，带 `Idempotency-Key` |
 | 回合 | `GET /turns/{turn_id}`、`GET /turns/{turn_id}/events` | 回合详情；该回合的 SSE |
-| 回合 | `POST /turns/{turn_id}/cancel`、`POST /turns/{turn_id}/options/regenerate` | 取消生成；只重做选项（第 7 节） |
-| 时间线 | `POST /playthroughs/{id}/regenerate`、`POST /playthroughs/{id}/rollback` | 重新生成头部回合；回退到 `to_seq`（第 7 节） |
+| 回合 | `POST /turns/{turn_id}/cancel` | 取消生成（只重做选项不做，见第 7 节） |
+| 时间线 | `POST /playthroughs/{id}/rollback` | 回退到这一局里更早的一回合，参数是回合 id（第 7 节；重新生成不做） |
 | 只读视图 | `GET /playthroughs/{id}/world?kind=`、`/summary`、`/outline?reveal=true` | 世界状态默认隐藏角色私有的秘密事实，大纲默认不返回，二者都要显式 `reveal=true` |
 | 通道 | `GET /playthroughs/{id}/events` | 会话级 SSE |
 | 运维 | `GET /health`、`GET /ready`、`/metrics`（仅内网） | `/ready` 在优雅关闭时转为不就绪 |
@@ -730,108 +729,90 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 
 ```
 apps/server/
-├── pyproject.toml                      # uv 管理；直接依赖精确锁定；extras：otel、s3、redis
+├── pyproject.toml                      # uv 管理；直接依赖精确锁定
 ├── uv.lock
 ├── alembic.ini
 ├── importlinter.ini                    # 分层约束，见下
-├── migrations/
-│   ├── env.py
-│   └── versions/
+├── migrations/versions/                # Alembic 迁移，手写 SQL，DDL 冻结
 ├── src/bettertavern/
 │   ├── settings.py                     # pydantic-settings：环境变量与默认值
 │   │
 │   ├── entrypoints/                    # 组装根：唯一允许 import 所有层的地方
 │   │   ├── api.py                      # create_app()：装配路由、中间件、生命周期
-│   │   ├── worker.py                   # worker 进程：领取任务，按 kind 分派给 pipeline_service
-│   │   └── cli.py                      # bettertavern serve / worker / migrate / keygen / vis / export
+│   │   ├── worker.py                   # worker 进程：领取任务，按 kind 分派（state.turn、memory.chapter、memory.outline）
+│   │   └── cli.py  server.py  bootstrap.py  logging_setup.py   # bettertavern serve / worker / migrate / keygen / vis
 │   │
 │   ├── api/                            # HTTP 层：只做解析、鉴权、序列化
-│   │   ├── deps.py                     # 依赖注入：db 会话、当前用户、服务容器
-│   │   ├── errors.py                   # 异常到 problem+json 的映射
-│   │   ├── request_context.py          # 请求单号、访问日志、未处理的异常
-│   │   ├── sse.py                      # SSE 响应封装、Last-Event-ID 续传
-│   │   ├── schemas/                    # 对外契约（pydantic）
-│   │   │   ├── auth.py  routes.py  scenarios.py
-│   │   │   └── playthroughs.py  turns.py  world.py  events.py  common.py
-│   │   └── v1/
-│   │       ├── auth.py  me.py  routes.py  scenarios.py
-│   │       └── playthroughs.py  turns.py  timeline.py  world.py  events.py  health.py
+│   │   ├── deps.py  errors.py  request_context.py  sse.py  lifecycle.py
+│   │   ├── ratelimit.py  body_limit.py  auth_cookie.py  probe_app.py
+│   │   ├── schemas/  auth.py  routes.py  story.py  common.py
+│   │   └── v1/  auth.py  routes.py  scenarios.py  playthroughs.py  health.py
 │   │
-│   ├── services/                       # 用例层：事务边界、权限，实现 runtime 的 ports
-│   │   ├── auth_service.py  route_service.py（门面）  route_codec.py  route_models.py ...
-│   │   ├── scenario_service.py  playthrough_service.py
-│   │   ├── turn_service.py             # 创建回合、租约、幂等，启动 TurnRunner
-│   │   ├── timeline_service.py         # 回退与重新生成（第 8 节）
-│   │   ├── state_commit.py             # 补丁提交：先带条件 UPDATE，后写表
-│   │   ├── pipeline_service.py         # state、memory 两条队列的任务处理，调用 runtime 的 agent
-│   │   └── world_query.py  usage_service.py  export_service.py
+│   ├── services/                       # 用例层：事务边界、权限；*_store 实现 runtime/ports.py 的接口
+│   │   ├── auth_service.py  scenario_service.py
+│   │   ├── route_service.py（门面）  route_codec.py  route_models.py  route_inputs.py  route_views.py
+│   │   ├── playthrough_service.py      # 开局、改名、删除、回退
+│   │   ├── turn_service.py             # 提交行动：幂等、租约，启动 TurnRunner
+│   │   ├── turn_store.py  state_store.py  memory_store.py  outline_store.py  recall_store.py
+│   │   ├── state_jobs.py  memory_jobs.py  outline_jobs.py   # 放后台任务（和业务写入在同一个事务里）
+│   │   └── container.py  maintenance.py  probe_service.py  run_records.py  views.py  errors.py
 │   │
-│   ├── runtime/                        # agent runtime；唯一可以调用 providers 的层
-│   │   ├── ports.py                    # 持久化、事件、入队的接口，由 services / infra 实现
-│   │   ├── runner.py                   # TurnRunner：热路径执行器
-│   │   ├── agent/                      # AgentSpec、工具注册表、执行循环（agent-runtime.md 第 5 节）
-│   │   ├── tools/                      # 召回工具、修改世界状态的工具
-│   │   ├── agents/                     # 一个 agent 一个文件
-│   │   │   ├── director.py  state_keeper.py  outline.py  consolidator.py
-│   │   │   └── world_builder.py  options_repair.py
-│   │   ├── protocol/
-│   │   │   └── director_parser.py  repair.py  structured.py
-│   │   ├── context/
-│   │   │   └── assembler.py  budget.py  tokens.py  recap.py  truncate.py  fences.py
-│   │   ├── routing/
-│   │   │   └── resolver.py
-│   │   ├── events/
-│   │   │   └── bus.py  envelope.py  buffer.py
-│   │   └── prompts/                    # 提示词模板：数据文件，不是 Python
-│   │       ├── zh/  director.system.j2  director.turn.j2  state_keeper.j2  outline_revise.j2
-│   │       │        compactor.j2  recap_wrapper.j2  world_builder.j2  options_repair.j2  gate.j2
-│   │       └── en/  （v1 没有；以后加英文时放同名文件）
+│   ├── runtime/                        # agent runtime；唯一可以调用 providers 的层，不直接访问数据库
+│   │   ├── ports.py                    # 读写数据的接口，由 services 实现
+│   │   ├── runner.py  runner_pool.py  turn_stream.py  turn_finalize.py  director_loop.py   # 热路径：导演
+│   │   ├── state_runner.py  memory_runner.py  outline_runner.py                         # 后台：世界状态、章节、大纲
+│   │   ├── routing.py                  # 解析好的路由：模型、凭据、能力、有效窗口
+│   │   ├── agent/  spec.py  loop.py  tools.py  steps.py   # AgentSpec、执行循环、工具注册表、StepLog
+│   │   ├── agents/                     # 一个 agent 一个文件，工具在同级的 *_tools.py
+│   │   │   ├── director.py  director_tools.py  world_builder.py  options_repair.py
+│   │   │   └── state_keeper.py  state_keeper_tools.py  chapter_writer.py  outline_writer.py
+│   │   ├── context/  assembler.py  state_block.py  tokens.py  fences.py
+│   │   ├── protocol/  director_parser.py  repair.py  structured.py  json_extract.py
+│   │   ├── events/  buffer.py          # 事件缓冲：生成与连接解耦、Last-Event-ID 续传
+│   │   └── prompts/  zh/  en/  ja/     # 提示词模板和数据文件，三种语言一一对应（i18n.md 第 4 节）
 │   │
 │   ├── domain/                         # 纯业务逻辑：不依赖 FastAPI、SQLAlchemy、provider
-│   │   ├── story/  turn.py  timeline.py  options.py
-│   │   ├── world/
-│   │   │   ├── entities.py  links.py  facts.py  patch.py  invariants.py
-│   │   │   └── alias_index.py  resolver.py  state_block.py  retrieval.py
-│   │   ├── outline/  model.py  slice.py  drift.py
-│   │   └── memory/  summary.py  thresholds.py
+│   │   ├── routing.py                  # RouteTask、路由参数
+│   │   ├── story/  turn.py  options.py  language.py
+│   │   ├── scenario/  card.py  edit.py
+│   │   ├── world/  seed.py  plan.py  records.py  draft.py  threads.py  invariants.py  mentions.py  names.py  views.py
+│   │   └── memory/  chapters.py  outline.py  thresholds.py
 │   │
-│   ├── providers/                      # 模型服务适配，第 9 节
+│   ├── providers/                      # 模型服务适配，第 8 节
 │   │   ├── base.py  profile.py  registry.py  hub.py  openai_compat.py  cancel.py
 │   │   ├── profiles/  deepseek.py  openai.py  xai.py  gemini.py  huggingface.py  custom_openai.py   # 每家厂商一个文件
 │   │   ├── capabilities.py  capabilities.yaml  probe.py
-│   │   ├── message_transforms.py  sse_parser.py  errors.py
-│   │   ├── transport.py  limiter.py  usage.py
-│   │   └── langchain_compat.py         # 可选
+│   │   └── message_transforms.py  sse_parser.py  errors.py  transport.py  limiter.py  usage.py
 │   │
 │   ├── importers/
-│   │   ├── character_card/  png.py  v2.py  v3.py  normalize.py
-│   │   └── lorebook/  README.md        # v1 占位，说明将来的转换规则
+│   │   ├── character_card/  png.py  parse.py
+│   │   └── lorebook/  README.md        # 占位，说明将来的转换规则
 │   │
 │   ├── vis/                            # 本机日志查看器的接口（只读，见 testing.md 第 1 节）
 │   │   └── app.py  logstore.py  timeline.py  issues.py  queries.py  views.py
 │   │
-│   └── infra/                          # 叶子适配层：数据库、队列、事件总线、加密、存储、可观测
-│       ├── db/  engine.py  locks.py
-│       │   ├── models/                 # SQLAlchemy ORM，一个文件一组表
-│       │   └── repositories/           # 仓储：强制带 user_id 条件
+│   └── infra/                          # 叶子适配层：数据库、队列、加密、可观测
+│       ├── db/  engine.py  sqlutil.py
+│       │   └── repositories/           # 手写 SQL：accounts、library、routes、story、state、world、
+│       │                               # rollback、recall、memory、outline、runs
 │       ├── queue/  base.py  sql.py  pg_queue.py  notify.py  worker.py   # worker 主循环含锁超时回收
-│       ├── eventbus/  base.py  inproc.py  pg_notify.py  redis_streams.py
-│       ├── crypto/  envelope.py  keyring.py
-│       ├── storage/  base.py  local.py  s3.py
-│       └── observability/  logging.py  redact.py  context.py（M4 再加 tracing.py、metrics.py）
+│       ├── crypto/  envelope.py  keyring.py  passwords.py  tokens.py
+│       └── observability/  logging.py  redact.py  context.py
 │
 ├── tests/
-│   ├── unit/            # domain、context、protocol、providers 的 build_body 等纯逻辑
-│   ├── integration/     # 真实 Postgres（BT_TEST_DATABASE_URL）：后台队列、版本围栏、回退、租约
-│   ├── contract/        # 各厂商的录制夹具（v1 是 DeepSeek 与 Hugging Face）
-│   ├── e2e/             # 整链路：创建、回合、压缩、回退、SSE 续传
-│   ├── fakes/           # 假 LLM 服务（可注入故障）、假时钟
-│   └── fixtures/        # 样例角色卡、录制的厂商响应、剧本试玩用的剧本
+│   ├── unit/            # 纯逻辑：domain、runtime、providers、api、evals、vis
+│   ├── integration/     # 真实 Postgres（BT_TEST_DATABASE_URL）：队列、围栏、世界状态、章节、大纲、回退、文档和表结构对照
+│   ├── e2e/             # uvicorn 里的真实 api 加假模型服务；剧本试玩脚本的离线跑通
+│   ├── fakes/           # 假模型服务（可注入故障）、按剧情回复的假模型、内存里的假实现
+│   └── support/         # 数据库测试用的一局游戏、Postgres 临时 schema
 └── evals/
-    ├── director_compliance.py  replay.py
-    ├── datasets/
+    ├── director_compliance.py          # 导演协议合规率（M0）
+    ├── playtest.py  playtest_report.py  playtest_checks.py  playtest_outline.py   # 剧本试玩
+    ├── datasets/  m0/  m2/
     └── README.md
 ```
+
+还没有、计划中的：`tests/contract/`（各厂商的录制夹具）、`infra/storage/`（对象存储，头像现在存在 Postgres 里）、`infra/eventbus/`（多实例时跨进程推事件）、确定性重放（`evals/replay.py`）。
 
 ### 分层规则（`importlinter.ini` 在 CI 里强制）
 
@@ -841,8 +822,8 @@ apps/server/
 4. `infra` 是叶子：可以 import `domain` 来映射对象，不能 import `runtime`、`services`、`api`。
 5. `importers` 把外部格式（角色卡，以后还有世界书）翻译成 `domain` 的数据：本项目里只 import `domain`，PNG、各版本 JSON 这些格式细节不进 `domain`。
 6. `runtime` 不直接访问数据库：它通过 `runtime/ports.py` 里的接口读写，具体实现由 `services` 和 `infra` 提供，在 `entrypoints/` 里注入。这是为了让 agent 和工具能用内存假实现测试。
-7. `api` 不 import `infra.db.models`，只通过 `services` 访问数据。
-8. 提示词是数据文件：Python 里不写超过一行的提示词字符串，由测试扫描保证。
+7. `api` 不直接访问数据库，只通过 `services`。
+8. 提示词是数据文件：Python 里不写超过一行的提示词字符串（代码审查时检查；测试不读源码）。
 9. 一个 agent 一个文件，agent 之间不互相 import，由 `runtime/agent/` 的执行循环调用。
 10. `vis` 是本机的只读调试工具：业务代码不 import 它，它也不 import `api`、`services`、`runtime`、`providers`，只读日志文件和数据库。
 11. 单个文件超过约 600 行就拆成门面加同级文件（借鉴 hermes-agent 的 `AGENTS.md`：Facade + siblings 布局与 Code Shape Rules）。
@@ -851,11 +832,11 @@ apps/server/
 
 | 要做的事 | 需要改的地方 |
 | --- | --- |
-| 新增一个模型厂商 | `providers/profiles/<name>.py`、`capabilities.yaml` 规则、`tests/contract/<name>/` 夹具，在 `registry.py` 注册；runtime 不用动 |
-| 新增一个 agent | `runtime/prompts/*/<name>.j2`、`runtime/agents/<name>.py`（AgentSpec 与输入输出模型）、写一份 `AgentSpec` 并登记它能用的工具、`RouteTask` 增加枚举（[agent-runtime.md](agent-runtime.md) 第 5 节） |
-| 新增一种实体类型 | `domain/world/entities.py`（类型与 `render(level)`）、`invariants.py`、提示词里的类型说明、数据库迁移 |
-| 新增一个 SSE 事件 | `api/schemas/events.py`、发出事件的位置，重新生成契约 |
-| 向量检索 | 实现 `FactRetriever` 接口，新增 `infra/vector/`，pgvector 迁移 |
+| 新增一个模型厂商 | `providers/profiles/<name>.py`、`capabilities.yaml` 规则，在 `registry.py` 注册，客户端的服务商列表加上它；runtime 不用动 |
+| 新增一个 agent | `runtime/prompts/*/<name>.j2`（三种语言）、`runtime/agents/<name>.py`（AgentSpec 与输入输出模型，工具放同级的 `<name>_tools.py`）、`RouteTask` 增加枚举（[agent-runtime.md](agent-runtime.md) 第 5 节）。后台 agent 还要一个 runner（`runtime/<name>_runner.py`）、在 `runtime/ports.py` 定义它读写数据的接口并在 `services/<name>_store.py` 实现、一种任务（`services/<name>_jobs.py`，在 `entrypoints/worker.py` 注册） |
+| 新增一种实体类型 | `domain/world/records.py`、`draft.py`（修改的检查）、`invariants.py`、状态块（`runtime/context/state_block.py`）、提示词里的类型说明、数据库迁移 |
+| 新增一个 SSE 事件 | 发出事件的位置（`runtime/`）、[api/events.md](api/events.md)、客户端的事件处理和回合状态机（`packages/core`） |
+| 向量检索（计划中） | 召回的查询在 `services/recall_store.py` 和 `infra/db/repositories/recall.py`，按意思检索加在这里，pgvector 迁移 |
 | 导入 ST 世界书 | `importers/lorebook/`，输出 `Seed` 的片段（entities 与 facts） |
 | RPG 模式 | 新增 `domain/rules/` 与裁决 agent，扩展 `user_action` 类型；回合协议其余部分不变 |
 | 新增一种语言 | `runtime/prompts/<lang>/` 放同名的模板和数据文件，`domain/story/language.py` 和迁移的 CHECK 加上它；客户端在 `packages/core/src/i18n/` 加语言文件（[i18n.md](i18n.md)） |
@@ -896,20 +877,20 @@ apps/server/
 
 `GET /me/export` 导出全部数据（JSON，含剧本、回合、世界状态、摘要、大纲，不含密钥明文）；`DELETE /me` 异步硬删除账户和全部关联数据（包括 `blobs`）。`agent_runs.result` 等大字段默认保留 30 天，用于排错，到期清理；调试抓取（完整请求体）默认关闭，开启后 24 小时自动关闭。
 
-## 12 M1 的实现状态与偏差
+## 12 实现状态与偏差
 
 M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型一次配好）与探测、窗口校验、角色卡导入、WorldBuilder（最小 Seed）、
-开场与每轮的流式生成、选项修复阶梯、幂等与租约、SSE 续传，以及租约过期清理。下面记录与前面各节不同、或者还没做的地方，
-后续里程碑按设计补齐。实际的表结构见 [data-model/](data-model/README.md)，实际的接口见 [api/](api/README.md)。
+开场与每轮的流式生成、选项修复阶梯、幂等与租约、SSE 续传，以及租约过期清理。之后 agent runtime 的五个阶段（世界状态 agent、回退、召回、
+章节摘要与玩家画像、大纲）也已经实现，进度和取舍见 [agent-runtime.md](agent-runtime.md) 第 13 节。下面记录与前面各节不同、或者还没做的地方。实际的表结构见 [data-model/](data-model/README.md)，实际的接口见 [api/](api/README.md)。
 
 ### 与设计不同的地方
 
 | 设计 | M1 的做法 | 原因与补齐时间 |
 | --- | --- | --- |
-| 会话通道 `/playthroughs/{id}/events` 与 `playthrough.ready` | 没有实现；开局构建在开场回合自己的事件流里报告，新增 `world.building` 与 `world.ready`（data：`source`、`entities`）两个事件 | 单设备游玩用不到会话通道。M2 有了 `state.updated` 再加 |
+| 会话通道 `/playthroughs/{id}/events` 与 `playthrough.ready` | 没有实现；开局构建在开场回合自己的事件流里报告，新增 `world.building` 与 `world.ready`（data：`source`、`entities`）两个事件 | 单设备游玩用不到会话通道，还没做；世界状态面板打开时自己定时重取 |
 | 文件存储 `infra/storage/`（本地或 S3） | 角色卡头像存在 Postgres 的 `blobs` 表（bytea），通过 `GET /v1/blobs/{id}` 读取（要带令牌，有 ETag） | 头像最大 16 MB，量小。换对象存储只影响 `infra/db/repositories/library.py` |
 | `infra/db/models/` 的 ORM 模型 | `infra/db/repositories/` 直接写 SQL（SQLAlchemy Core）；涉及用户数据的查询都带 `user_id` 条件 | 查询都是手写的围栏条件，ORM 帮不上忙 |
-| 契约工具链（OpenAPI 生成客户端类型） | 客户端类型手写在 `packages/core/src/api/types.ts`，与 `api/schemas/` 一一对应 | M2 接入工具链后由生成的类型取代 |
+| 契约工具链（OpenAPI 生成客户端类型） | 客户端类型手写在 `packages/core/src/api/types.ts`，与 `api/schemas/` 一一对应 | 还没接入工具链；改接口时手动改这两份文件 |
 | 限流 | 进程内计数（`api/ratelimit.py`），每个 api 实例各算各的 | 单实例够用；多实例部署时换 Redis |
 | 租约清理在 worker 里 | api 进程每 15 秒执行一次（`services/maintenance.py`），顺带清理过期的幂等键和刷新令牌 | 回合本来就在 api 进程里跑，清理放在一起最简单 |
 | 删除账户是异步硬删除，另有导出 | `DELETE /v1/me` 需要密码，同步删除；导出还没做 | M4 |
@@ -926,7 +907,9 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | `POST /v1/providers/{provider}/models` | 用还没保存的 Key 拉模型列表，添加模型的表单在保存前用 |
 | `GET /v1/blobs/{id}` | 头像 |
 | `GET` / `PUT /v1/scenarios/{id}/card`、`POST /v1/scenarios/{id}/card/reset` | 导入后编辑角色卡、恢复导入时的内容（见下文“新增：导入后编辑角色卡”） |
-| 还没有 | `GET /me/export`、单局路由覆盖、`/options/regenerate`、`/regenerate`、`/rollback`、`/summary`、`/outline`、会话通道、`/metrics` |
+| `POST /v1/playthroughs/{id}/rollback` | 回退到这一局里更早的一回合，见 [api/play.md](api/play.md) |
+| 不做 | `/options/regenerate`、`/regenerate`（见第 7 节） |
+| 还没有 | `GET /me/export`、单局路由覆盖、`/summary`、`/outline`（大纲只给导演看）、会话通道、`/metrics` |
 
 ### 新增的错误码
 
@@ -957,7 +940,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 - runner 收尾时不走选项的修复阶梯：只要叙述，模型照习惯写了选项也丢掉；没写出叙述照常按 `NARRATIVE_MISSING` 失败。
   日志 `director.parse` 的 `stage` 是 `ending`，结局里缺 `<options>` 不算修补。
 - 提交时推进头部的那条带围栏的 UPDATE 同时把 `playthroughs.status` 改成 `ended`（[data-model/story.md](data-model/story.md)），写一条 `playthrough.ended` 日志（只记字数）。
-- `ended` 之后不能再提交任何行动（409 `STORY_ENDED`），没有撤销。M2 的回退做好后，可以考虑让“退回到结局之前”把状态改回 `active`。
+- `ended` 之后不能再提交任何行动（409 `STORY_ENDED`）。回退到结局之前的某一回合会把状态改回 `active`，可以接着玩（[data-model/story.md](data-model/story.md)）。
 
 ### 新增：导入后编辑角色卡
 

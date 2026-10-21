@@ -156,12 +156,12 @@ make vis
 | 层 | 内容 | 要点 |
 | --- | --- | --- |
 | 单元 | `domain/` 的纯逻辑（不变量、补丁应用与撤销、别名索引、状态块渲染、预算降级、阈值）；`providers` 的 `build_body`；`DirectorStreamParser`；`SseClient` 的帧解析 | 不连网络、不连数据库 |
-| 属性测试 | 解析器对任意 chunk 切分结果相同（M0 用固定种子的随机切分，服务端与客户端各一套）；M2 起用 Hypothesis：随机合法补丁序列之后回退到任意 k，世界状态逐字段等于第 k 回合时的快照；合法补丁永不违反不变量 | 回退和流式解析最容易出隐蔽 bug |
+| 随机测试 | 解析器对任意 chunk 切分结果相同（固定种子的随机切分，服务端与客户端各一套）；回退的随机走：随机地往前玩几回合、回退到更早的一回合，每次回退后世界状态、回合标签、摘要、大纲和整理进度都和当初刚整理完那一回合时逐行相同（`tests/integration/test_rollback.py`，固定种子，没用 Hypothesis） | 回退和流式解析最容易出隐蔽 bug |
 | 集成 | 真实 Postgres（`BT_TEST_DATABASE_URL` 指定，每个测试建临时 schema；本地 `make db-up`，CI 用 Postgres 服务容器）：队列内串行、队列之间并行、`SKIP LOCKED`、版本围栏（并发提交只有一个成功）、回退事务、租约过期清理、幂等键 | 数据库不 mock；异步测试用 anyio 的 pytest 插件 |
 | 契约 | 各厂商的录制夹具（v1 是 DeepSeek 与 Hugging Face，自定义端点由假 LLM 服务覆盖；请求体、流式响应、错误体）；OpenAPI 与 TS 类型比对 | 夹具来自真实调用，靠夜间 live smoke 更新 |
 | 假 LLM 服务 | `tests/fakes/llm_server.py`：模拟 OpenAI 兼容的 SSE，按脚本回复，可注入 429、中途断流、标签损坏、慢首 token、`content_filter` | 集成与端到端共用 |
-| 端到端 | docker compose 加假 LLM：创建剧本、开场、多回合、记忆整理、回退、重新生成、SSE 断线续传 | 续传用例：中途断开再带 `Last-Event-ID`，拼接结果等于最终叙述 |
-| 客户端 | `node --test`：`SseClient` 的帧解析、UTF-8 切分、重连与续传（纯 TypeScript，不依赖 RN）；M1 起加 Jest + RNTL：状态机 reducer、选项条与流式段落；Maestro：从登录走完一个回合 |  |
+| 端到端 | uvicorn 里的真实 api 加假 LLM：注册、添加模型、导入、开场、多回合、SSE 断线续传（`e2e/test_m1_flow.py`）；剧本试玩脚本整条跑几回合（`e2e/test_playtest_offline.py`，后台整理、章节、大纲都跑到）；网页端用 Playwright 从注册玩到删除账户 | 续传用例：中途断开再带 `Last-Event-ID`，拼接结果等于最终叙述 |
+| 客户端 | `node --test`：`SseClient` 的帧解析、UTF-8 切分、重连与续传、回合状态机（纯 TypeScript，不依赖 RN）。计划中、还没接：Jest + RNTL 测界面组件，Maestro 从登录走完一个回合 |  |
 | 夜间 live smoke | 可选，用维护者的密钥对两家厂商各跑一个回合 | 发现厂商 API 漂移，不进 PR 门禁 |
 | 性能 | k6 或 locust：100 个并发 playthrough 对假 LLM，观察队列延迟与数据库竞争 | M4 |
 
@@ -174,25 +174,27 @@ make vis
 
 - `evals/director_compliance.py`（M0）：在真实模型上连续跑 200 回合，统计导演协议无需修复与含修复的合规率、首 token 延迟和缓存命中，给出 go / no-go。剧本里的 `language` 决定用哪种语言的提示词：`datasets/m0/tavern.yaml` 是中文，`datasets/m0/ryokan_ja.yaml` 是日文。
 - 用真模型做剧本试玩的完整步骤、历次结果和花费见 [evals.md](evals.md)。
-- `evals/playtest.py`（agent runtime 阶段 2）：用真模型把一局玩 100 回合（`datasets/m2/tavern_100.yaml`，大部分点选项，穿插专门考世界状态整理的行动），后台同时整理世界状态；跑完用撤销记录倒推出每一回合的世界，逐回合检查一致性规则，列出退场后又被写进叙述的人和物，统计世界状态落后几回合、失败和跳过的回合、被拒绝的修改、两个 agent 的用量和延迟；剧本里写了检查点（第几回合后谁该退场、谁该在哪、谁手里该有什么），逐条判断。导演自己给出选项不到 95%、检查点没全过、出现一致性问题，都判为不合格。用法见 `apps/server/evals/README.md`。
+- `evals/playtest.py`（agent runtime 阶段 2 起）：用真模型把一局玩 100～300 回合（`datasets/m2/tavern_100.yaml`、`tavern_300.yaml`，大部分点选项，穿插专门考世界状态整理的行动；`detour_60.yaml` 中途改道，考大纲），后台同时整理世界状态、章节和大纲；跑完用撤销记录倒推出每一回合的世界，逐回合检查一致性规则，列出退场后又被写进叙述的人和物，统计世界状态落后几回合、失败和跳过的回合、被拒绝的修改、两个 agent 的用量和延迟；剧本里写了检查点（第几回合后谁该退场、谁该在哪、谁手里该有什么）、召回题（很早以前的细节后面再问）和大纲检查，逐条判断。导演自己给出选项不到 95%、检查点没全过、出现一致性问题，都判为不合格；召回题、章节整理和大纲只列结果。用法见 `apps/server/evals/README.md`。
 - 剧本试玩以后要扩展的（计划中）：用一批剧本自动试玩（合成数据，或用户明确授权的匿名数据，放在 `datasets/`），在指定的模型组合下跑完整管线，输出：协议合规率与各级修复比例；两个选项之间的词面重叠率（衡量区分度）；世界状态 agent 的修改对照人工标注的精确率与召回率；一致性探针（从状态表出若干事实问题，检查后续叙述是否与之矛盾，可选用 LLM 评审）；摘要保真度（对已整理成摘要的回合出若干问答，只用“摘要加状态表”回答，统计正确率）；用量与延迟。
 - 长剧本试玩、回退一致性测试和每回合的记录项见 [agent-runtime.md](agent-runtime.md) 第 9 节。
-- 提示词变更的门禁：模板头部有 `version`；PR 改了模板，CI 用假模型跑格式冒烟，维护者在本地用真模型跑剧本试玩（`evals/playtest.py`），把结果贴进 `docs/prompts/`。
+- 提示词变更的门禁：模板头部有 `version`；改了模板，单元测试检查三种语言一致、能渲染（还没有 CI），维护者在本地用真模型跑剧本试玩（`evals/playtest.py`），把结果记进 [evals.md](evals.md) 第 5 节。
 - 数据来源：不提交真实用户的故事；数据集只用合成数据或明确授权的数据。
 
 预算比例、阈值、采样参数这些初始值，都以剧本试玩的结果为准调整，不凭感觉改。
 
 ## 2 各里程碑的测试出口
 
-- M0：RN 真机 SSE 验收（见 [client.md 第 1 节](client.md)的“M0 探针的验收标准”）；导演协议在 200 回合里无需修复的合规率不低于 95%，含修复不低于 99.5%。
-- M1：DeepSeek 与 Hugging Face 各完整玩 30 回合；断网续传用例通过。
-- M2（[agent-runtime.md](agent-runtime.md) 阶段 1、2）：现有测试全部通过、重放结果和改造前一致；100 回合剧本试玩的一致性检查通过；回退一致性测试通过。
-- M3（[agent-runtime.md](agent-runtime.md) 阶段 3 到 5）：300 回合剧本试玩上下文长度稳定、长程问题的正确率达标；召回评测和偏离剧本的评测出结果。
-- M4：外部安全审查无高危；100 并发压测达标；自托管文档按步骤能跑通。
+状态记到 2026-10-21，详见 [README.md 第 3 节](README.md)。
+
+- M0（完成）：RN 真机 SSE 验收（见 [client.md 第 1 节](client.md)的“M0 探针的验收标准”）；导演协议在 200 回合里无需修复的合规率不低于 95%，含修复不低于 99.5%。
+- M1（代码完成，按清单的真机验收没有单独记录）：DeepSeek 与 Hugging Face 各完整玩 30 回合；断网续传用例通过。
+- M2（[agent-runtime.md](agent-runtime.md) 阶段 1、2，完成）：现有测试全部通过；100 回合剧本试玩的一致性检查通过；回退一致性测试通过。“重放结果和改造前一致”要靠确定性重放，还没做（[backlog.md](backlog.md) R1）。
+- M3（[agent-runtime.md](agent-runtime.md) 阶段 3 到 5，完成）：300 回合剧本试玩上下文长度稳定（1.6～1.7 万 token）、长程问题 6 / 8 答对；召回评测和偏离剧本的评测出了结果（[evals.md](evals.md)）。
+- M4（没开始）：外部安全审查无高危；100 并发压测达标；自托管文档按步骤能跑通。
 
 完整里程碑见 [README.md 第 3 节](README.md)。
 
-## 3 M1 已有的测试
+## 3 已有的测试
 
 后端（`apps/server/tests`）：
 

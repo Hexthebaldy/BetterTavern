@@ -1,0 +1,16 @@
+flowchart TB
+    client["手机 App / 网页<br/>读故事、点选项、自己写"]
+    subgraph server["你的 BetterTavern 服务器"]
+        api["api 进程<br/>开局：读角色卡，搭建世界<br/>导演：每一段叙述和两个选项"]
+        worker["worker 进程（后台）<br/>整理世界状态<br/>写章节摘要和玩家画像<br/>修订大纲"]
+        db[("数据库<br/>账户 · 剧本 · 故事<br/>世界状态 · 记忆<br/>加密保存的模型 Key")]
+    end
+    llm["模型服务<br/>用你自己的 API Key<br/>DeepSeek · OpenAI · Grok · Gemini<br/>Hugging Face · OpenAI 兼容接口"]
+
+    client -- "① 你的行动" --> api
+    api -- "② 前情、世界状态和你的行动" --> llm
+    llm -- "③ 下一段" --> api
+    api -- "④ 边写边推送" --> client
+    api -- "存档" --> db
+    db -- "领后台任务" --> worker
+    worker -- "后台整理" --> llm
