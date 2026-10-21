@@ -140,6 +140,17 @@ test("换语言：跳到另一种语言的页面，带上锚点，记住选择",
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
 });
 
+test("给搜索引擎的文件：robots.txt 和不让收录的 404 页", async ({ page, request }) => {
+  const robots = await request.get("robots.txt");
+  expect(robots.ok()).toBe(true);
+  expect(await robots.text()).toContain("Disallow: /downloads/");
+
+  await page.goto("404.html");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
+  await expect(page.getByRole("heading", { name: "找不到这个页面" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Back to home/ })).toBeVisible();
+});
+
 test.describe("浏览器是英文", () => {
   test.use({ locale: "en-US" });
 

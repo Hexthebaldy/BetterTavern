@@ -1,9 +1,14 @@
 /**
  * 预渲染时按语言改页面的 <head>（scripts/prerender.ts 用）：lang、标题、描述、og 信息、各语言版本的链接；
+ * 给了站点地址时还有分享配图和结构化数据（它们要完整地址）；
  * 中文首页再加一段按语言自动跳转的小脚本；en/、ja/ 两页在下一级目录，资源的相对地址多退一级。测试见 head.test.ts。
  */
 
+import { ANDROID_APK_PATH, REPO } from "../src/data/links.ts";
 import { AUTO_REDIRECT_KEY, LANG_META, LANGS, STORED_LANG_KEY, type Lang } from "../src/i18n/langs.ts";
+
+/** 分享配图（scripts/og-image.ts 生成，放在 public/og/<语言>.png，构建时原样复制）的尺寸 */
+export const OG_IMAGE = { width: 1200, height: 630 } as const;
 
 export type HeadInput = {
   lang: Lang;
@@ -43,6 +48,35 @@ export function redirectScript(): string {
   );
 }
 
+/**
+ * 结构化数据（schema.org 的 SoftwareApplication）：告诉搜索引擎这是一个免费的软件、支持哪些平台、在哪下载、源码在哪。
+ * 放进 <script type="application/ld+json">，所以把 < 转义掉，免得文字里出现 </script>
+ */
+export function softwareJsonLd(input: {
+  lang: Lang;
+  description: string;
+  pageUrl: string;
+  siteUrl: string;
+  image: string;
+}): string {
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "BetterTavern",
+    description: input.description,
+    url: input.pageUrl,
+    inLanguage: LANG_META[input.lang].html,
+    applicationCategory: "GameApplication",
+    operatingSystem: "Android, iOS, Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    isAccessibleForFree: true,
+    downloadUrl: input.siteUrl + ANDROID_APK_PATH,
+    image: input.image,
+    sameAs: [REPO],
+  };
+  return JSON.stringify(data).replace(/</g, "\\u003c");
+}
+
 export function localizeHead(template: string, input: HeadInput): string {
   const meta = LANG_META[input.lang];
   const title = escapeAttr(input.title);
@@ -71,6 +105,24 @@ export function localizeHead(template: string, input: HeadInput): string {
     }
     // 没指定语言的访客先到中文首页，那里按浏览器语言跳
     extra.push(`<link rel="alternate" hreflang="x-default" href="${url("zh")}" />`);
+    // 分享配图：链接发到社交网站时显示的大图，三种语言各一张
+    const image = `${base}og/${input.lang}.png`;
+    extra.push(
+      `<meta property="og:image" content="${escapeAttr(image)}" />`,
+      `<meta property="og:image:width" content="${OG_IMAGE.width}" />`,
+      `<meta property="og:image:height" content="${OG_IMAGE.height}" />`,
+      `<meta property="og:image:alt" content="${title}" />`,
+      `<meta name="twitter:image" content="${escapeAttr(image)}" />`,
+    );
+    setMeta("name", "twitter:card", "summary_large_image");
+    const jsonLd = softwareJsonLd({
+      lang: input.lang,
+      description: input.description,
+      pageUrl: base + LANG_META[input.lang].dir,
+      siteUrl: base,
+      image,
+    });
+    extra.push(`<script type="application/ld+json">${jsonLd}</script>`);
   }
   html = swap(html, /\n\s*<\/head>/, `\n${extra.map((line) => `    ${line}`).join("\n")}\n  </head>`);
 

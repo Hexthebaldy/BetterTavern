@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "node --test --experimental-strip-types",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "og-image": "node --experimental-strip-types scripts/og-image.ts"
   },
   "dependencies": {
     "@bettertavern/design": "*",

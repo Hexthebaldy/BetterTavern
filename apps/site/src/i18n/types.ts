@@ -40,6 +40,8 @@ export type ArcText = {
 
 export type Copy = {
   meta: { title: string };
+  /** 找不到页面时的 404 页（scripts/seo.ts 把三种语言写在同一页上） */
+  notFound: { title: string; text: string; home: string };
   nav: {
     labels: Record<SectionId, string>;
     home: string;

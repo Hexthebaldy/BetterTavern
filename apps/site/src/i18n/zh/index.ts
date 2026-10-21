@@ -9,6 +9,7 @@ import { story, world } from "./story.ts";
 
 export const zh: Copy = {
   meta: { title: "BetterTavern · 用 SillyTavern 角色卡玩的互动小说" },
+  notFound: { title: "找不到这个页面", text: "地址可能写错了，或者页面已经移走了。", home: "回到首页" },
   nav: {
     labels: {
       how: "开始",

@@ -8,6 +8,7 @@ import { story, world } from "./story.ts";
 
 export const en: Copy = {
   meta: { title: "BetterTavern · Interactive fiction with SillyTavern character cards" },
+  notFound: { title: "Page not found", text: "The address may be wrong, or the page has moved.", home: "Back to home" },
   nav: {
     labels: {
       how: "Start",

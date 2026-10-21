@@ -3,6 +3,7 @@
  * 填进 dist/index.html 的 <div id="root"></div>，按语言改好 <head>（scripts/head.ts），写成三个页面：
  * dist/index.html（中文）、dist/en/index.html、dist/ja/index.html；最后删掉 dist/.ssr。
  * 这样不开 JS 也能看到全部文字，搜索引擎和链接预览读得到；浏览器里 main.tsx 再接上交互（hydrate）。
+ * 另外写给搜索引擎的几个文件（scripts/seo.ts）：robots.txt、404.html；给了 SITE_URL 时还有 sitemap.xml。
  * 环境变量 SITE_URL（站点的绝对地址）给了时，页面里写上 canonical 和各语言版本的 hreflang。
  */
 
@@ -12,6 +13,7 @@ import type { Lang } from "../src/i18n/langs.ts";
 import { LANG_META, LANGS } from "../src/i18n/langs.ts";
 import type { Copy } from "../src/i18n/types.ts";
 import { localizeHead, rebase } from "./head.ts";
+import { normalizeSiteUrl, notFoundHtml, robotsTxt, sitemapXml } from "./seo.ts";
 
 const dist = new URL("../dist/", import.meta.url);
 const ssr = new URL(".ssr/", dist);
@@ -38,5 +40,18 @@ for (const lang of LANGS) {
   await mkdir(new URL(dir || ".", dist), { recursive: true });
   await writeFile(new URL(`${dir}index.html`, dist), page);
   console.log(`prerender: dist/${dir}index.html（${lang}，正文 ${Math.round(html.length / 1024)} KB）`);
+}
+const siteUrl = process.env.SITE_URL || undefined;
+// 404 页用站点图标：模板里是相对地址 ./assets/…，404 页出现在任意路径下，要换成从根目录算的地址
+const icon = /<link rel="icon" href="\.\/([^"]+)"/.exec(template)?.[1];
+const iconHref = icon && (siteUrl ? normalizeSiteUrl(siteUrl) : "/") + icon;
+const files: [string, string][] = [
+  ["robots.txt", robotsTxt(siteUrl)],
+  ["404.html", notFoundHtml(COPIES, { siteUrl, iconHref })],
+];
+if (siteUrl) files.push(["sitemap.xml", sitemapXml(siteUrl)]);
+for (const [name, content] of files) {
+  await writeFile(new URL(name, dist), content);
+  console.log(`prerender: dist/${name}`);
 }
 await rm(ssr, { recursive: true, force: true });

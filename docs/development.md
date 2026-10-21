@@ -106,7 +106,12 @@ make site
 打开 http://localhost:5174 （英文 /en/，日文 /ja/）。`make site-build` 生成 `apps/site/dist`：构建时把三种语言的整页各预渲染成 HTML
 （`apps/site/scripts/prerender.ts`）——中文 `index.html`、英文 `en/index.html`、日文 `ja/index.html`，浏览器里再接上交互，所以不开 JS 也能看到全部文字。
 资源用相对路径，整个目录放在任意路径下都能打开，比如 GitHub Pages 的 `/BetterTavern/`。构建时设置环境变量 `SITE_URL`（站点的绝对地址，
-比如 `https://example.github.io/BetterTavern/`）时，页面里会写上 canonical 和各语言版本的 hreflang；不设就不写。
+比如 `https://example.github.io/BetterTavern/`）时，页面里会写上 canonical、各语言版本的 hreflang、分享配图和结构化数据
+（schema.org 的 SoftwareApplication），还会生成站点地图 `sitemap.xml`；不设就都不写，因为它们要完整地址。
+构建时总会生成 `robots.txt`（安装包目录不让抓）和 `404.html`（三种语言的说明，不让收录），见 `apps/site/scripts/seo.ts`；
+服务器上要把找不到的地址指到 `404.html` 并返回 404，不要退回首页。
+分享配图是 `apps/site/public/og/<语言>.png`（1200×630），改了标题或首屏的平台说明以后，在 `apps/site` 下运行 `npm run og-image` 重新生成
+（用本机的 Chrome 截图）。
 看构建出的页面用 `cd apps/site && npm run preview`（http://localhost:4174）。仓库里不放落地页的部署配置。
 
 Android 安装包不在仓库里：部署时放到站点目录的 `downloads/BetterTavern.apk`，页面上的“下载 Android 版”指向它（相对地址），

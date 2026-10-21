@@ -8,6 +8,11 @@ import { story, world } from "./story.ts";
 
 export const ja: Copy = {
   meta: { title: "BetterTavern · SillyTavern のキャラクターカードで遊ぶインタラクティブノベル" },
+  notFound: {
+    title: "ページが見つかりません",
+    text: "アドレスが間違っているか、ページが移動した可能性があります。",
+    home: "トップページへ",
+  },
   nav: {
     labels: {
       how: "はじめる",

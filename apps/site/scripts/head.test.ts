@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { AUTO_REDIRECT_KEY, STORED_LANG_KEY } from "../src/i18n/langs.ts";
-import { localizeHead, rebase, redirectScript } from "./head.ts";
+import { localizeHead, rebase, redirectScript, softwareJsonLd } from "./head.ts";
 
 const template = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
@@ -17,8 +17,9 @@ describe("localizeHead", () => {
     assert.match(html, /og:locale:alternate" content="zh_CN"/);
     assert.match(html, /og:locale:alternate" content="ja_JP"/);
     assert.doesNotMatch(html, /og:locale:alternate" content="en_US"/);
-    // 不给站点地址就不写要绝对地址的链接；只有中文页有跳转脚本
-    assert.doesNotMatch(html, /hreflang|canonical/);
+    // 不给站点地址就不写要完整地址的东西：canonical、hreflang、分享配图、结构化数据；只有中文页有跳转脚本
+    assert.doesNotMatch(html, /hreflang|canonical|og:image|ld\+json/);
+    assert.match(html, /<meta name="twitter:card" content="summary" \/>/);
     assert.doesNotMatch(html, /<script>/);
   });
 
@@ -30,10 +31,38 @@ describe("localizeHead", () => {
     assert.match(html, /hreflang="x-default" href="https:\/\/example.com\/BT\/"/);
   });
 
+  it("给了站点地址：这种语言的分享配图（大图卡片）和结构化数据", () => {
+    const site = "https://example.com/";
+    const html = localizeHead(template, { lang: "en", title: "BT", description: "d", siteUrl: site });
+    assert.match(html, /<meta property="og:image" content="https:\/\/example\.com\/og\/en\.png" \/>/);
+    assert.match(html, /<meta property="og:image:width" content="1200" \/>/);
+    assert.match(html, /<meta name="twitter:card" content="summary_large_image" \/>/);
+    const json = /<script type="application\/ld\+json">([^<]+)<\/script>/.exec(html)?.[1];
+    const data = JSON.parse(json!);
+    assert.equal(data["@type"], "SoftwareApplication");
+    assert.equal(data.url, "https://example.com/en/");
+    assert.equal(data.inLanguage, "en");
+    assert.equal(data.downloadUrl, "https://example.com/downloads/BetterTavern.apk");
+  });
+
   it("中文页在 <head> 最前面放跳转脚本", () => {
     const html = localizeHead(template, { lang: "zh", title: "t", description: "d" });
     const script = html.indexOf("<script>");
     assert.ok(script > 0 && script < html.indexOf("<title>"));
+  });
+});
+
+describe("softwareJsonLd", () => {
+  it("文字里的 < 转义掉，不会提前结束 <script>", () => {
+    const json = softwareJsonLd({
+      lang: "zh",
+      description: "a</script><b>",
+      pageUrl: "https://e/",
+      siteUrl: "https://e/",
+      image: "https://e/og/zh.png",
+    });
+    assert.doesNotMatch(json, /</);
+    assert.equal(JSON.parse(json).description, "a</script><b>");
   });
 });
 
