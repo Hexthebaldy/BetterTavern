@@ -1,7 +1,7 @@
 /**
- * 界面文字都要走 i18n（docs/i18n.md 第 5 节）：手机端、网页端、packages/core 的代码里不能出现含汉字或假名的
- * 字符串、模板字符串和 JSX 文字。注释不算；资源目录 packages/core/src/i18n/、测试文件和测试夹具不查。
- * 落地页 apps/site 只有中文、不走 i18n，不在 DIRS 里（docs/i18n.md 第 1 节）。
+ * 界面文字都要走 i18n（docs/i18n.md 第 5 节）：手机端、网页端、packages/core 和落地页的代码里不能出现含汉字或假名的
+ * 字符串、模板字符串和 JSX 文字。注释不算；资源目录（packages/core/src/i18n/、落地页的 apps/site/src/i18n/）、
+ * 测试文件和测试夹具不查。
  * 用法：node scripts/check-i18n.mjs（make lint 里会跑）。发现问题时列出位置，退出码 1。
  */
 
@@ -12,8 +12,14 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DIRS = ["apps/mobile/app", "apps/mobile/src", "apps/web/src", "packages/core/src", "packages/design/src"];
-const SKIP = [/^packages\/core\/src\/i18n\//, /\.test\.tsx?$/, /\.d\.ts$/, /^packages\/core\/src\/play\/testing\.ts$/];
+const DIRS = ["apps/mobile/app", "apps/mobile/src", "apps/web/src", "apps/site/src", "packages/core/src", "packages/design/src"];
+const SKIP = [
+  /^packages\/core\/src\/i18n\//,
+  /^apps\/site\/src\/i18n\//,
+  /\.test\.tsx?$/,
+  /\.d\.ts$/,
+  /^packages\/core\/src\/play\/testing\.ts$/,
+];
 // 汉字，加上日文的平假名和片假名（写死的日文往往只有假名）
 const HAN = /[぀-ヿ㐀-䶿一-鿿]/;
 
@@ -53,7 +59,7 @@ for (const dir of DIRS) {
 }
 
 if (problems.length > 0) {
-  console.error("这些界面文字没有走 i18n（放进 packages/core/src/i18n/ 的资源，用 t() 取）：");
+  console.error("这些界面文字没有走 i18n（App 的放进 packages/core/src/i18n/ 的资源，用 t() 取；落地页的放进 apps/site/src/i18n/ 的文案，用 useCopy() 取）：");
   for (const p of problems) console.error(`  ${p}`);
   process.exit(1);
 }

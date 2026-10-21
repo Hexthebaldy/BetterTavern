@@ -6,6 +6,7 @@
 import { useState } from "react";
 
 import { Icon, type IconName } from "../components/Icon.tsx";
+import { useCopy } from "../i18n/context.tsx";
 import {
   edgesShown,
   highlight,
@@ -15,7 +16,6 @@ import {
   nodeAria,
   relations,
   SECRET_EDGE,
-  SECRET_TEXT,
   type Kind,
   type NodeId,
 } from "../world/graph.ts";
@@ -25,12 +25,15 @@ const KIND_ICON: Record<Kind, IconName> = { person: "person", place: "place", it
 type Secret = "hidden" | "ask" | "shown";
 
 export function World() {
+  const { world, story } = useCopy();
+  const g = world.graph;
+  const name = story.defaultName;
   const [secret, setSecret] = useState<Secret>("hidden");
   const [sel, setSel] = useState<NodeId>("me");
   const [focus, setFocus] = useState<NodeId | null>(null);
   const shown = secret === "shown";
   const hl = highlight(focus, shown);
-  const sn = NODES[sel];
+  const sn = g.nodes[sel];
 
   return (
     <section className="band blue" id="world">
@@ -40,28 +43,26 @@ export function World() {
             <span className="num">
               <b>02</b>
             </span>
-            <h2 className="h-l">世界状态</h2>
-            <p className="lead">
-              开局时，AI 先读角色卡，整理出人物、地点、物品、组织和秘密。之后每一段都参照这些来写，并随剧情更新。
-            </p>
+            <h2 className="h-l">{world.title}</h2>
+            <p className="lead">{world.lead}</p>
             <ul className="ticks">
               <li>
                 <span className="tic">
                   <Icon name="person" size="s" />
                 </span>
-                人物、地点、物品、组织，各自记录当前状态
+                {world.ticks[0]}
               </li>
               <li>
                 <span className="tic">
                   <Icon name="graph" size="s" />
                 </span>
-                关系图：谁在哪里、谁拿着什么、谁和谁有关系
+                {world.ticks[1]}
               </li>
               <li>
                 <span className="tic">
                   <Icon name="lock" size="s" />
                 </span>
-                主角还不知道的秘密默认隐藏，确认后才显示
+                {world.ticks[2]}
               </li>
             </ul>
             <div className="secret">
@@ -69,22 +70,22 @@ export function World() {
                 <span className="lock">
                   <Icon name="lock" size="s" />
                 </span>
-                {!shown && <span className="sr">1 条未揭示的秘密</span>}
+                {!shown && <span className="sr">{world.secretCount}</span>}
                 <p className={shown ? "sx" : "sx hid"} aria-hidden={!shown} style={{ margin: 0 }}>
-                  {SECRET_TEXT}
+                  {g.secret}
                 </p>
                 {secret === "hidden" && (
                   <button className="btn sec sm" type="button" onClick={() => setSecret("ask")}>
-                    揭示
+                    {world.reveal}
                   </button>
                 )}
-                {shown && <span className="badge warn">已揭示</span>}
+                {shown && <span className="badge warn">{world.revealed}</span>}
               </div>
               {secret === "ask" && (
                 <div className="ask" role="alert">
-                  <span>揭示一条秘密？揭示后会看到主角还不知道的事。</span>
+                  <span>{world.ask}</span>
                   <button className="btn sec sm" type="button" onClick={() => setSecret("hidden")}>
-                    取消
+                    {world.cancel}
                   </button>
                   <button
                     className="btn pri sm"
@@ -95,7 +96,7 @@ export function World() {
                       setSel("keeper");
                     }}
                   >
-                    揭示
+                    {world.reveal}
                   </button>
                 </div>
               )}
@@ -103,13 +104,13 @@ export function World() {
           </div>
           <div className="gwrap">
             <p className="cap" style={{ padding: "0 6px" }}>
-              <span className="on-hover">鼠标移到节点上，相关的关系会高亮；点击查看详情。</span>
-              <span className="on-touch">点一下节点，查看详情和相关的关系。</span>
+              <span className="on-hover">{world.capHover}</span>
+              <span className="on-touch">{world.capTouch}</span>
             </p>
-            <div className="graph" role="group" aria-label="关系图：雾港守夜人" onMouseLeave={() => setFocus(null)}>
+            <div className="graph" role="group" aria-label={world.graphAria} onMouseLeave={() => setFocus(null)}>
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
                 {[...edgesShown(false), SECRET_EDGE].map((e, i) => {
-                  const isSecret = e === SECRET_EDGE;
+                  const isSecret = e.id === SECRET_EDGE.id;
                   // 秘密那条线一直画着，揭开前看不见；高亮按当前画出来的线算
                   const index = isSecret ? (shown ? edgesShown(true).length - 1 : -1) : i;
                   const cls = [
@@ -120,7 +121,7 @@ export function World() {
                   ];
                   return (
                     <line
-                      key={`${e.a}-${e.b}${isSecret ? "-sec" : ""}`}
+                      key={e.id}
                       className={cls.filter(Boolean).join(" ")}
                       x1={NODES[e.a].x}
                       y1={NODES[e.a].y}
@@ -140,7 +141,7 @@ export function World() {
                     type="button"
                     style={{ left: `${n.x}%`, top: `${n.y}%` }}
                     aria-pressed={sel === id}
-                    aria-label={nodeAria(id)}
+                    aria-label={nodeAria(id, g, name)}
                     onMouseEnter={() => setFocus(id)}
                     onFocus={() => setFocus(id)}
                     onBlur={() => setFocus(null)}
@@ -149,22 +150,22 @@ export function World() {
                     <span className="gi">
                       <Icon name={KIND_ICON[n.kind]} />
                     </span>
-                    <span>{n.label}</span>
-                    {id === "me" && <span className="hide-sm">· 林深</span>}
+                    <span>{g.nodes[id].label}</span>
+                    {id === "me" && <span className="hide-sm">· {name}</span>}
                   </button>
                 );
               })}
             </div>
             <div className="info" aria-live="polite">
               <div className="top">
-                <span className={sel === "me" ? "badge acc" : "badge"}>{kindLabel(sel)}</span>
-                <span className="nm">{sel === "me" ? "我 · 林深" : sn.label}</span>
+                <span className={sel === "me" ? "badge acc" : "badge"}>{kindLabel(sel, g)}</span>
+                <span className="nm">{sel === "me" ? `${sn.label} · ${name}` : sn.label}</span>
               </div>
               <p className="txt" style={{ fontSize: 14.5, lineHeight: "24px" }}>
                 {sn.desc}
               </p>
               <div className="rels">
-                {relations(sel, shown).map((r, i) => (
+                {relations(sel, shown, g).map((r, i) => (
                   <span key={i} className={r.secret ? "rel secr" : "rel"}>
                     {r.pre}
                     <b>{r.target}</b>

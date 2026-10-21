@@ -1,16 +1,22 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { COPIES } from "../i18n/all.ts";
 import { commandText, DEPLOY_TABS } from "./deploy.ts";
 
 describe("commandText", () => {
-  it("复制的文字：命令不带 $，注释带 #，一行一条", () => {
+  it("复制的文字：命令不带 $，注释换成这种语言的文字、带 #，一行一条", () => {
+    const lines = [
+      ["$", "make js-install"],
+      ["#", "browser"],
+    ] as const;
     assert.equal(
-      commandText([
-        ["$", "make js-install"],
-        ["#", "浏览器打开 http://localhost:5173"],
-      ]),
+      commandText(lines, COPIES.zh.deploy.notes),
       "make js-install\n# 浏览器打开 http://localhost:5173",
+    );
+    assert.equal(
+      commandText(lines, COPIES.en.deploy.notes),
+      "make js-install\n# Open http://localhost:5173 in a browser",
     );
   });
 

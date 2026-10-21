@@ -135,6 +135,48 @@ const PATHS = {
       <path d="M15.5 8.5l-2 5-5 2 2-5z" />
     </>
   ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.6 3.7 5.6 3.7 9s-1.2 6.4-3.7 9c-2.5-2.6-3.7-5.6-3.7-9S9.5 5.6 12 3z" />
+    </>
+  ),
+  // 下面是“长篇”架构图里的：玩家行动、拼上下文、导演、推给玩家、章节整理、大纲修订、数据库；层间连线的箭头
+  turnIn: <path d="M6 5v7h12M14 8l4 4-4 4" />,
+  layers: (
+    <>
+      <path d="M12 3l9 5-9 5-9-5 9-5z" />
+      <path d="M3 13l9 5 9-5" />
+    </>
+  ),
+  clapper: (
+    <>
+      <rect x="3" y="9" width="18" height="12" rx="3" />
+      <path d="M3.5 9l2-5h14l-1.5 5M10 4L8.5 9M15.5 4L14 9" />
+    </>
+  ),
+  stream: (
+    <>
+      <path d="M4 6h16M4 12h11M4 18h7" />
+      <path d="M18 15v6" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z" />
+      <path d="M12 6.5v13" />
+    </>
+  ),
+  signpost: <path d="M12 3v18M12 5h6l2.5 2.5L18 10h-6M12 12H6l-2.5 2.5L6 17h6" />,
+  database: (
+    <>
+      <ellipse cx="12" cy="6" rx="7" ry="3" />
+      <path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3" />
+    </>
+  ),
+  up: <path d="M12 19V5M6 11l6-6 6 6" />,
+  down: <path d="M12 5v14M6 13l6 6 6-6" />,
+  upDown: <path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4" />,
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof PATHS;
@@ -143,13 +185,16 @@ export function Icon({
   name,
   size,
   style,
+  className,
 }: {
   name: IconName;
   size?: "s" | "l";
   style?: CSSProperties;
+  /** 换掉默认的 .i（比如架构图连线上的小箭头用 .gi） */
+  className?: string;
 }) {
   return (
-    <svg className={size ? `i ${size}` : "i"} viewBox="0 0 24 24" aria-hidden="true" style={style}>
+    <svg className={className ?? (size ? `i ${size}` : "i")} viewBox="0 0 24 24" aria-hidden="true" style={style}>
       {PATHS[name]}
     </svg>
   );

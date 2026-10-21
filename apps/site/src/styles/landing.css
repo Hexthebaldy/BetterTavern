@@ -6,6 +6,7 @@
  * - 标题的思源宋体只托管 600 / 700 / 900（见 src/fonts.ts），400 的宋体（演示正文、秘密、自己写）用系统宋体 --font-text-serif；
  * - 关系图的高亮由脚本算好，写成 .dim / .lit（原来按 data-focus 列出每个节点的选择器）；
  * - 服务商图块里的字母换成真标志；去掉这一版不用的“收尾”一节。
+ * 同目录还有两份：arc.css（“长篇”的架构图），lang.css（换语言的控件，英文、日文页的字体和排版）。
  *
  * 风格：粗黑描边、硬投影（叠层挤出，往右下）、高对比；斜切的色带和标签。
  * 只用三种颜色：墨黑、白、蓝。图形用标志的“错版”：蓝色那层总是往右下错开一点。
@@ -60,8 +61,6 @@ body{margin:0}
 /* ---------- 字 ---------- */
 .mono{font-family:var(--font-mono)}
 .sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.eyebrow{display:inline-flex;align-items:center;gap:10px;margin:0;font-family:var(--font-mono);font-size:12.5px;line-height:18px;letter-spacing:.08em;color:var(--mut)}
-.eyebrow i{display:block;width:6px;height:6px;border-radius:3px;background:var(--acc)}
 .h-xl{margin:0;font-family:var(--font-serif);font-weight:700;font-size:clamp(46px,5.6vw,80px);line-height:1.14;letter-spacing:-.02em;color:var(--ink);word-break:keep-all;overflow-wrap:anywhere}
 .h-l{margin:0;font-family:var(--font-serif);font-weight:900;font-size:clamp(34px,4.2vw,58px);line-height:1.12;letter-spacing:-.02em;color:var(--ink);text-wrap:balance;word-break:keep-all;overflow-wrap:anywhere}
 .h-m{margin:0;font-family:var(--font-serif);font-weight:700;font-size:22px;line-height:32px;color:var(--ink)}
@@ -73,27 +72,29 @@ body{margin:0}
 
 /* 大标题的立体边：实色挤出，靠近字面的一侧亮、远的一侧深；加载时从纸面立起来，悬停再抬高一点 */
 @property --d{syntax:'<length>';inherits:true;initial-value:0px}
-.reg{--d:.07em;text-shadow:calc(var(--d)*.0625) calc(var(--d)*.0625) 0 #385BF1,calc(var(--d)*.1250) calc(var(--d)*.1250) 0 #3659EC,calc(var(--d)*.1875) calc(var(--d)*.1875) 0 #3456E7,calc(var(--d)*.2500) calc(var(--d)*.2500) 0 #3254E2,calc(var(--d)*.3125) calc(var(--d)*.3125) 0 #3051DD,calc(var(--d)*.3750) calc(var(--d)*.3750) 0 #2E4ED8,calc(var(--d)*.4375) calc(var(--d)*.4375) 0 #2C4CD3,calc(var(--d)*.5000) calc(var(--d)*.5000) 0 #2A49CE,calc(var(--d)*.5625) calc(var(--d)*.5625) 0 #2946C9,calc(var(--d)*.6250) calc(var(--d)*.6250) 0 #2744C4,calc(var(--d)*.6875) calc(var(--d)*.6875) 0 #2541BF,calc(var(--d)*.7500) calc(var(--d)*.7500) 0 #233EBA,calc(var(--d)*.8125) calc(var(--d)*.8125) 0 #213CB5,calc(var(--d)*.8750) calc(var(--d)*.8750) 0 #1F39B0,calc(var(--d)*.9375) calc(var(--d)*.9375) 0 #1D37AB,var(--d) var(--d) 0 #1B34A6;transition:--d .45s var(--ease)}
-@media (hover:hover){.reg:hover{--d:.1em}}
+.reg{--d:.07em;text-shadow:calc(var(--d)*.0625) calc(var(--d)*.0625) 0 #385BF1,calc(var(--d)*.1250) calc(var(--d)*.1250) 0 #3659EC,calc(var(--d)*.1875) calc(var(--d)*.1875) 0 #3456E7,calc(var(--d)*.2500) calc(var(--d)*.2500) 0 #3254E2,calc(var(--d)*.3125) calc(var(--d)*.3125) 0 #3051DD,calc(var(--d)*.3750) calc(var(--d)*.3750) 0 #2E4ED8,calc(var(--d)*.4375) calc(var(--d)*.4375) 0 #2C4CD3,calc(var(--d)*.5000) calc(var(--d)*.5000) 0 #2A49CE,calc(var(--d)*.5625) calc(var(--d)*.5625) 0 #2946C9,calc(var(--d)*.6250) calc(var(--d)*.6250) 0 #2744C4,calc(var(--d)*.6875) calc(var(--d)*.6875) 0 #2541BF,calc(var(--d)*.7500) calc(var(--d)*.7500) 0 #233EBA,calc(var(--d)*.8125) calc(var(--d)*.8125) 0 #213CB5,calc(var(--d)*.8750) calc(var(--d)*.8750) 0 #1F39B0,calc(var(--d)*.9375) calc(var(--d)*.9375) 0 #1D37AB,var(--d) var(--d) 0 #1B34A6;transition:--d .7s var(--ease)}
 @media (prefers-reduced-motion:no-preference){
   .reg{animation:lift .9s .5s var(--ease) backwards}
 }
 @keyframes lift{from{--d:0px}}
 /* 首屏标题做成一块招牌：黑边圆角的牌子带硬投影，里面是标志和带立体边的字。
-   牌子的尺寸都跟着字号走，字号跟着这一栏的宽度走（容器单位），窄屏也放得下。悬停时牌子和字一起抬起来，标志的两条外框错得更开 */
+   牌子的尺寸都跟着字号走，字号跟着这一栏的宽度走（容器单位），窄屏也放得下；宽屏上最大 76.8px。
+   悬停由外面不动的 .plateHit 接：牌子抬起来也不会从鼠标下面移开，不会反复进出、来回抖。
+   悬停时牌子慢慢往左上抬起来（.7s），投影加深，字的立体边变厚，标志的两条外框错得更开 */
 .reg{white-space:nowrap}
 .hero .copy{container-type:inline-size}
 @property --pd{syntax:'<length>';inherits:true;initial-value:0px}
-.plate{--pd:.125em;display:inline-flex;align-items:center;gap:.28em;padding:.19em .53em .31em .34em;border:var(--bw) solid var(--ink);border-radius:.44em;background:var(--bg);font-size:clamp(28px,calc((100cqi - 16px) / 8.75),64px);box-shadow:calc(var(--pd)*0.125) calc(var(--pd)*0.125) 0 var(--ink),calc(var(--pd)*0.250) calc(var(--pd)*0.250) 0 var(--ink),calc(var(--pd)*0.375) calc(var(--pd)*0.375) 0 var(--ink),calc(var(--pd)*0.500) calc(var(--pd)*0.500) 0 var(--ink),calc(var(--pd)*0.625) calc(var(--pd)*0.625) 0 var(--ink),calc(var(--pd)*0.750) calc(var(--pd)*0.750) 0 var(--ink),calc(var(--pd)*0.875) calc(var(--pd)*0.875) 0 var(--ink),var(--pd) var(--pd) 0 var(--ink);transition:--pd .45s var(--ease),transform .45s var(--ease)}
+.plateHit{display:inline-block;font-size:clamp(28px,calc((100cqi - 8px) / 8),76.8px)}
+.plate{--pd:.125em;display:inline-flex;align-items:center;gap:.02em;padding:.19em .35em .31em .29em;border:var(--bw) solid var(--ink);border-radius:.44em;background:var(--bg);box-shadow:calc(var(--pd)*0.125) calc(var(--pd)*0.125) 0 var(--ink),calc(var(--pd)*0.250) calc(var(--pd)*0.250) 0 var(--ink),calc(var(--pd)*0.375) calc(var(--pd)*0.375) 0 var(--ink),calc(var(--pd)*0.500) calc(var(--pd)*0.500) 0 var(--ink),calc(var(--pd)*0.625) calc(var(--pd)*0.625) 0 var(--ink),calc(var(--pd)*0.750) calc(var(--pd)*0.750) 0 var(--ink),calc(var(--pd)*0.875) calc(var(--pd)*0.875) 0 var(--ink),var(--pd) var(--pd) 0 var(--ink);transition:--pd .7s var(--ease),transform .7s var(--ease)}
 .plate .h-xl{font-size:1em;max-width:none}
-.plate .mk{display:block;width:.84em;height:.84em;margin-top:.06em;flex:none;color:var(--ink);overflow:visible}
-.plate .mk .o1,.plate .mk .o2{transition:transform .5s var(--ease)}
+.plate .mk{display:block;width:.76em;height:.76em;margin-top:.06em;flex:none;color:var(--ink);overflow:visible}
+.plate .mk .o1,.plate .mk .o2{transition:transform .7s var(--ease)}
 @media (max-width:640px){.plate .mk .fr{stroke-width:3.84}.plate .mk .inr{stroke-width:4.16}}
 @media (hover:hover){
-  .plate:hover{--pd:.17em;transform:translate(-.045em,-.045em)}
-  .plate:hover .reg{--d:.1em}
-  .plate:hover .mk .o2{transform:translate(5px,-3.5px)}
-  .plate:hover .mk .o1{transform:translate(-2px,1.5px)}
+  .plateHit:hover .plate{--pd:.22em;transform:translate(-.09em,-.09em)}
+  .plateHit:hover .reg{--d:.13em}
+  .plateHit:hover .mk .o2{transform:translate(5.5px,-7px)}
+  .plateHit:hover .mk .o1{transform:translate(-3.2px,2.3px)}
 }
 
 /* ---------- 版心、段落和色带 ---------- */
@@ -173,13 +174,13 @@ body{margin:0}
 @media (hover:hover){.brand:hover .o2{transform:translate(3.5px,-2.5px)}.brand:hover .o1{transform:translate(-1.5px,1px)}}
 .links{display:flex;align-items:center;gap:2px;margin-left:auto}
 /* 链接底下垫一块斜切的色块：悬停是浅灰，当前所在的一节是蓝 */
-.links a{position:relative;z-index:0;height:40px;padding:0 14px;display:inline-flex;align-items:center;font-size:15px;font-weight:500;color:var(--ink);text-decoration:none;transition:color .15s var(--ease)}
+.links a{position:relative;z-index:0;height:40px;padding:0 14px;display:inline-flex;align-items:center;font-size:15px;font-weight:500;color:var(--ink);text-decoration:none;white-space:nowrap;transition:color .15s var(--ease)}
 .links a::before{content:"";position:absolute;inset:6px 2px;z-index:-1;transform:skewX(-16deg);background:transparent;transition:background-color .15s var(--ease),box-shadow .15s var(--ease)}
 .links a.on{color:#FFFFFF;font-weight:700}
 .links a.on::before{background:var(--acc);box-shadow:3px 3px 0 var(--ink)}
 @media (hover:hover){.links a:not(.on):hover::before{background:var(--bg3)}}
 .tools{display:flex;align-items:center;gap:10px}
-.gh{position:relative;z-index:0;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px 0 12px;font-size:14.5px;font-weight:500;color:var(--ink);text-decoration:none}
+.gh{position:relative;z-index:0;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px 0 12px;font-size:14.5px;font-weight:500;color:var(--ink);text-decoration:none;white-space:nowrap}
 .gh::before{content:"";position:absolute;inset:6px 2px;z-index:-1;transform:skewX(-16deg);transition:background-color .15s var(--ease)}
 @media (hover:hover){.gh:hover::before{background:var(--bg3)}}
 .menuBtn{display:none}
@@ -187,28 +188,26 @@ body{margin:0}
 .drawer a{height:52px;padding:0 16px;border-radius:12px;display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:500;color:var(--ink);text-decoration:none}
 .drawer a:active{background:var(--bg3)}
 @keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.98)}}
-@media (max-width:900px){.links,.gh{display:none}.menuBtn{display:inline-flex;margin-left:auto}}
+/* 导航放不下时：先把语言按钮缩成地球图标、链接收紧一点，再窄就收进菜单。英文、日文的字长，收得早一些（三种语言的宽度都量过） */
+@media (max-width:1319px){.lsw>summary span{display:none}.links a{padding:0 11px}}
+@media (max-width:960px){.links,.gh,.lsw{display:none}.menuBtn{display:inline-flex;margin-left:auto}}
+@media (max-width:1079px){.lp.en .links,.lp.en .gh,.lp.en .lsw{display:none}.lp.en .menuBtn{display:inline-flex;margin-left:auto}}
+@media (max-width:1199px){.lp.ja .links,.lp.ja .gh,.lp.ja .lsw{display:none}.lp.ja .menuBtn{display:inline-flex;margin-left:auto}}
 /* 窄于 360 时导航放不下标志、字标、GitHub 和菜单，只留标志（设计稿只画到 390；首屏招牌上就是项目名） */
 @media (max-width:359px){.nav .brand span{display:none}}
 
 /* ---------- 首屏 ---------- */
 .hero{padding:clamp(32px,5vw,80px) 0 clamp(64px,8vw,112px)}
-.hero .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,500px);gap:clamp(40px,5vw,72px);align-items:center}
+.hero .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,500px);gap:clamp(40px,3.1vw,44px);align-items:center}
 .hero .copy{display:flex;flex-direction:column;align-items:flex-start;gap:28px}
-.hero .h-xl{max-width:8.3em}
-/* 首屏的小标签：斜切的蓝块，墨色投影 */
-.hero .eyebrow{position:relative;z-index:0;height:30px;padding:0 15px;color:#FFFFFF;font-weight:700;letter-spacing:.12em}
-.hero .eyebrow::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--acc);transform:skewX(-16deg);box-shadow:3px 3px 0 var(--ink)}
-.hero .eyebrow i{display:none}
+.hero .copy>.lead{max-width:31em}
+.hero .copy>.txt{max-width:34em}
 .ctas{display:flex;flex-wrap:wrap;gap:16px}
 .meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13.5px;line-height:20px;color:var(--ink2);font-weight:500}
 .meta span{display:inline-flex;align-items:center;gap:8px}
-/* 演示后面垫一块斜着的蓝板，带网点 */
+/* 演示后面垫一块斜着的蓝板，带网点；往左只伸出 6%，不压到左栏的字（首屏两栏之间只有 40～44px） */
 .demoCol{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:14px;min-width:0}
-.demoCol::before{content:"";position:absolute;z-index:-1;left:-9%;right:-11%;top:13%;bottom:11%;border:var(--bw) solid var(--ink);border-radius:20px;background-color:var(--acc);background-image:radial-gradient(rgba(255,255,255,.26) 1.4px,transparent 1.9px);background-size:11px 11px;transform:rotate(-4deg) skewX(-5deg);box-shadow:var(--x8)}
-.demoHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 6px}
-.demoHead .eyebrow{color:#FFFFFF;height:28px;padding:0 14px;letter-spacing:.1em}
-.demoHead .eyebrow::before{background:var(--ink);box-shadow:3px 3px 0 var(--acc)}
+.demoCol::before{content:"";position:absolute;z-index:-1;left:-6%;right:-11%;top:13%;bottom:11%;border:var(--bw) solid var(--ink);border-radius:20px;background-color:var(--acc);background-image:radial-gradient(rgba(255,255,255,.26) 1.4px,transparent 1.9px);background-size:11px 11px;transform:rotate(-4deg) skewX(-5deg);box-shadow:var(--x8)}
 .demoCol>.cap{color:var(--ink2);font-weight:500}
 @media (prefers-reduced-motion:no-preference){
   .in1{animation:rise .9s .05s var(--ease) both}
@@ -414,6 +413,8 @@ body{margin:0}
 .tabs{display:inline-flex;gap:4px;padding:4px;border-radius:24px;background:#FFFFFF;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
 .tab{height:38px;padding:0 16px;border:0;border-radius:19px;background:transparent;color:var(--ink);font-family:var(--font-sans);font-size:14px;font-weight:500;cursor:pointer;transition:background-color .15s var(--ease),color .15s var(--ease)}
 .tab.on{background:var(--ink);color:#FFFFFF;font-weight:700}
+/* 很窄的屏幕上四个标签挤一挤（英文的字长一些） */
+@media (max-width:400px){.tabs{max-width:100%}.tab{padding:0 11px}}
 @media (hover:hover){.tab:not(.on):hover{background:var(--bg3)}}
 .code{position:relative;border-radius:16px;background:var(--ink);color:#E9E9E5;border:2px solid var(--ink);box-shadow:4px 4px 0 var(--acc);padding:10px 10px 20px 22px;min-height:120px}
 .code .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}

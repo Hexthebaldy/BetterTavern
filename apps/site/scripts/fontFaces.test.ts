@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { codePoints, parseUnicodeRange, pruneFontFaces } from "./fontFaces.ts";
+import { codePoints, fontsourcePackage, parseUnicodeRange, pruneFontFaces } from "./fontFaces.ts";
 
 describe("parseUnicodeRange", () => {
   it("单个码位、区间和通配", () => {
@@ -60,5 +60,14 @@ describe("pruneFontFaces", () => {
 describe("codePoints", () => {
   it("按码位收集，四字节的字算一个", () => {
     assert.deepEqual([...codePoints(["a😀", "a"])], [0x61, 0x1f600]);
+  });
+});
+
+describe("fontsourcePackage", () => {
+  it("从样式表的地址认出是哪个字体包", () => {
+    assert.equal(fontsourcePackage("/x/node_modules/@fontsource/noto-serif-jp/700.css"), "noto-serif-jp");
+    assert.equal(fontsourcePackage("C:\\x\\@fontsource\\ibm-plex-mono\\400.css?v=1"), "ibm-plex-mono");
+    assert.equal(fontsourcePackage("/x/node_modules/@fontsource/noto-serif-jp/japanese-700.css"), null);
+    assert.equal(fontsourcePackage("/src/styles/landing.css"), null);
   });
 });

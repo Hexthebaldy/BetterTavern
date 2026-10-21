@@ -58,10 +58,10 @@ describe("copyCommands", () => {
 
 describe("copyLabel", () => {
   it("按结果和平台给出提示", () => {
-    assert.equal(copyLabel(null, true), "复制");
-    assert.equal(copyLabel("ok", false), "已复制");
-    assert.equal(copyLabel("sel", true), "已选中，按 ⌘C 复制");
-    assert.equal(copyLabel("sel", false), "已选中，按 Ctrl+C 复制");
+    assert.equal(copyLabel(null, true), "copy");
+    assert.equal(copyLabel("ok", false), "copied");
+    assert.equal(copyLabel("sel", true), "selectedMac");
+    assert.equal(copyLabel("sel", false), "selectedOther");
   });
 
   it("苹果的设备提示 ⌘C", () => {

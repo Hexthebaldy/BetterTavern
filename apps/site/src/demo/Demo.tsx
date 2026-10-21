@@ -10,6 +10,8 @@
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { Icon, type IconName } from "../components/Icon.tsx";
+import { useCopy } from "../i18n/context.tsx";
+import { fill } from "../i18n/format.ts";
 import {
   advance,
   choose,
@@ -17,6 +19,7 @@ import {
   DRAFT_MAX,
   initialState,
   isEnded,
+  optionsOf,
   rename,
   restart,
   seenWorld,
@@ -25,7 +28,6 @@ import {
   skip,
   startWriting,
   statusText,
-  STORY,
   tick,
   TIMING,
   worldEntries,
@@ -55,7 +57,8 @@ function Cover() {
 }
 
 export function Demo() {
-  const [s, setS] = useState<DemoState>(() => initialState());
+  const { demo: d, hero, story } = useCopy();
+  const [s, setS] = useState<DemoState>(() => initialState(story));
   const [dark, setDark] = useState(false);
   const [world, setWorld] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -101,7 +104,7 @@ export function Demo() {
     if (feed.current && follow.current) feed.current.scrollTop = feed.current.scrollHeight;
   });
 
-  const cur = STORY[s.node];
+  const options = optionsOf(s.story, s.node);
   const idle = s.phase === "idle";
   const ended = isEnded(s);
   const hasFresh = s.fresh.length > 0 && !world;
@@ -177,29 +180,29 @@ export function Demo() {
   };
 
   return (
-    <section className={dark ? "dm D" : "dm"} aria-label="演示：雾港守夜人">
+    <section className={dark ? "dm D" : "dm"} aria-label={fill(d.aria, { title: story.title })}>
       <header className="dm-top">
         <span className="dm-cover">
           <Cover />
         </span>
         <div className="dm-ttl">
-          <b>雾港守夜人</b>
+          <b>{story.title}</b>
           {editing ? (
             <input
               className="me-in"
               type="text"
-              aria-label="你的名字"
-              placeholder="起个名字"
+              aria-label={d.nameAria}
+              placeholder={d.namePlaceholder}
               value={draftName}
-              onChange={(e) => setDraftName(clampName(e.target.value))}
+              onChange={(e) => setDraftName(clampName(story, e.target.value))}
               onKeyDown={onNameKey}
               onBlur={commitName}
               onFocus={(e) => e.currentTarget.select()}
               autoFocus
             />
           ) : (
-            <button className="me-pill" type="button" onClick={editName} aria-label={`我是 ${s.name}，点一下换个名字`}>
-              我是 {s.name}
+            <button className="me-pill" type="button" onClick={editName} aria-label={fill(d.meAria, { name: s.name })}>
+              {fill(d.me, { name: s.name })}
               <Icon name="pencil" />
             </button>
           )}
@@ -208,12 +211,12 @@ export function Demo() {
           className="ib"
           type="button"
           onClick={() => setDark((d) => !d)}
-          aria-label={dark ? "切回浅色" : "切到夜间"}
+          aria-label={dark ? d.toLight : d.toDark}
           aria-pressed={dark}
         >
           <Icon name={dark ? "sun" : "moon"} />
         </button>
-        <button className="ib" type="button" onClick={doRestart} aria-label="从头再读">
+        <button className="ib" type="button" onClick={doRestart} aria-label={d.restart}>
           <Icon name="restart" />
         </button>
       </header>
@@ -234,7 +237,7 @@ export function Demo() {
             </p>
             {seg.act && (
               <p className="note">
-                <span className="sr">我的行动：</span>
+                <span className="sr">{d.myAction}</span>
                 {seg.act}
               </p>
             )}
@@ -244,26 +247,26 @@ export function Demo() {
         {s.typed && (
           <div className="typed appear">
             <p className="note" style={{ margin: 0 }}>
-              <span className="sr">我的行动：</span>
+              <span className="sr">{d.myAction}</span>
               {s.typed}
             </p>
             <div className="hint">
               <Icon name="info" size="s" />
-              <span>演示不会生成新的段落。实际使用时，这一句会交给你配置的模型接着写。</span>
+              <span>{d.typedHint}</span>
             </div>
           </div>
         )}
 
-        {idle && cur.options && (
-          <div className="opts appear" role="group" aria-label="选一个行动">
-            {cur.options.map((o, i) => (
+        {idle && options && (
+          <div className="opts appear" role="group" aria-label={d.optionsAria}>
+            {options.map((o, i) => (
               <button
                 key={o.label}
                 className={s.chosen === i ? "opt on" : "opt"}
                 type="button"
                 onClick={() => pick(i)}
                 disabled={s.chosen !== null}
-                aria-label={`${KEYS[i]}：${o.label}`}
+                aria-label={fill(d.optionAria, { key: KEYS[i]!, label: o.label })}
               >
                 <span className="key" aria-hidden="true">
                   {KEYS[i]}
@@ -277,17 +280,17 @@ export function Demo() {
         {ended && (
           <div className="endc appear">
             <p className="t" style={{ margin: 0 }}>
-              演示到这里结束。
+              {d.endTitle}
             </p>
             <p className="txt" style={{ fontSize: 14.5, lineHeight: "24px" }}>
-              实际使用时，故事由你配置的模型一直写下去。
+              {d.endText}
             </p>
             <div className="row">
               <button className="btn pri sm" type="button" onClick={doRestart}>
-                从头再读
+                {d.restart}
               </button>
               <a className="btn line sm" href="#deploy">
-                部署说明
+                {hero.deploy}
               </a>
             </div>
           </div>
@@ -302,7 +305,7 @@ export function Demo() {
           className={world ? "tb on" : "tb"}
           type="button"
           onClick={toggleWorld}
-          aria-label={world ? "收起世界" : hasFresh ? "世界，有新内容" : "世界"}
+          aria-label={world ? d.worldClose : hasFresh ? d.worldFresh : d.world}
           aria-expanded={world}
         >
           <Icon name="compass" style={{ width: 21, height: 21 }} />
@@ -315,14 +318,14 @@ export function Demo() {
               <span>{statusText(s)}</span>
             </div>
             <button className="ghost" type="button" onClick={() => setS(skip)}>
-              全部显示
+              {d.showAll}
             </button>
           </>
         )}
         {idle && !ended && !composing && (
           <button className="wpill" type="button" onClick={openCompose}>
             <Icon name="pencil" size="s" />
-            <span style={{ flex: 1 }}>自己写…</span>
+            <span style={{ flex: 1 }}>{d.writeOwn}</span>
           </button>
         )}
         {composing && (
@@ -330,18 +333,18 @@ export function Demo() {
             <div className="cmp">
               <textarea
                 rows={1}
-                aria-label="我要做的事"
-                placeholder="我……"
+                aria-label={d.composeAria}
+                placeholder={d.composePlaceholder}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value.slice(0, DRAFT_MAX))}
                 onKeyDown={onDraftKey}
                 autoFocus
               />
               <button className="send" type="button" onClick={sendDraft} disabled={!draft.trim()}>
-                发送
+                {d.send}
               </button>
             </div>
-            <button className="ib" type="button" onClick={() => setComposing(false)} aria-label="收起">
+            <button className="ib" type="button" onClick={() => setComposing(false)} aria-label={d.collapse}>
               <Icon name="close" />
             </button>
           </>
@@ -349,23 +352,23 @@ export function Demo() {
         {ended && (
           <button className="wpill" type="button" onClick={doRestart}>
             <Icon name="restart" size="s" />
-            <span style={{ flex: 1 }}>从头再读</span>
+            <span style={{ flex: 1 }}>{d.restart}</span>
           </button>
         )}
       </footer>
 
       {world && (
-        <div className="ws" role="dialog" aria-label="世界">
+        <div className="ws" role="dialog" aria-label={d.world}>
           <div className="ws-h">
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="t">世界</div>
-              <div className="s">人物、地点、物品和已知的事实</div>
+              <div className="t">{d.world}</div>
+              <div className="s">{d.worldSub}</div>
             </div>
             <button
               className="ib"
               type="button"
               onClick={toggleWorld}
-              aria-label="收起世界"
+              aria-label={d.worldClose}
               style={{ background: "var(--card)" }}
             >
               <Icon name="close" />
@@ -383,12 +386,12 @@ export function Demo() {
                     {e.kindLabel} · {e.note}
                   </span>
                 </span>
-                {e.isNew && <span className="tag new">新</span>}
-                {e.isUpd && <span className="tag upd">更新</span>}
+                {e.isNew && <span className="tag new">{d.isNew}</span>}
+                {e.isUpd && <span className="tag upd">{d.isUpd}</span>}
               </div>
             ))}
           </div>
-          <div className="ws-f">主角还不知道的秘密默认隐藏，确认后才会显示。</div>
+          <div className="ws-f">{d.worldFoot}</div>
         </div>
       )}
     </section>

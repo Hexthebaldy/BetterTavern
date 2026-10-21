@@ -2,58 +2,67 @@
 
 import { Logo } from "../components/Logo.tsx";
 import { DOCS, EXTERNAL, ISSUES, REPO } from "../data/links.ts";
-
-const COLUMNS = [
-  {
-    title: "项目",
-    links: [
-      { label: "GitHub", href: REPO },
-      { label: "反馈问题", href: ISSUES },
-      { label: "部署", href: "#deploy" },
-    ],
-  },
-  {
-    title: "文档",
-    links: [
-      { label: "开发者指南", href: DOCS.development },
-      { label: "技术方案", href: DOCS.overview },
-      { label: "界面设计", href: DOCS.uiDesign },
-    ],
-  },
-  {
-    title: "客户端",
-    links: [
-      { label: "手机端说明", href: DOCS.mobile },
-      { label: "网页端说明", href: DOCS.client },
-    ],
-  },
-];
+import { useCopy } from "../i18n/context.tsx";
+import { DocNote } from "./DocNote.tsx";
 
 export function Footer() {
+  const { footer: f, nav } = useCopy();
+  // doc：指向仓库里的文档（只有中文）
+  const columns = [
+    {
+      title: f.project,
+      links: [
+        { label: "GitHub", href: REPO },
+        { label: f.issues, href: ISSUES },
+        { label: f.deploy, href: "#deploy" },
+      ],
+    },
+    {
+      title: f.docs,
+      links: [
+        { label: f.devGuide, href: DOCS.development, doc: true },
+        { label: f.overview, href: DOCS.overview, doc: true },
+        { label: f.uiDesign, href: DOCS.uiDesign, doc: true },
+      ],
+    },
+    {
+      title: f.clients,
+      links: [
+        { label: f.mobile, href: DOCS.mobile, doc: true },
+        { label: f.web, href: DOCS.client, doc: true },
+      ],
+    },
+  ];
   return (
     <footer className="foot">
       <div className="wrap">
         <div className="cols">
           <div className="about" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 14 }}>
-            <a className="brand" href="#top" aria-label="BetterTavern，回到顶部">
+            <a className="brand" href="#top" aria-label={nav.home}>
               <Logo size={28} sized />
               <span>BetterTavern</span>
             </a>
             <p className="txt">
-              用 SillyTavern 角色卡玩的互动小说。
+              {f.about[0]}
               <br />
-              开源，需要自己部署。
+              {f.about[1]}
             </p>
           </div>
-          {COLUMNS.map((col) => (
+          {columns.map((col) => (
             <div key={col.title}>
               <h4>{col.title}</h4>
               <ul>
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <a className="flink" href={l.href} {...(l.href.startsWith("#") ? {} : EXTERNAL)}>
+                    <a
+                      className="flink"
+                      href={l.href}
+                      hrefLang={"doc" in l ? "zh-CN" : undefined}
+                      {...(l.href.startsWith("#") ? {} : EXTERNAL)}
+                    >
                       {l.label}
                     </a>
+                    {"doc" in l && <DocNote />}
                   </li>
                 ))}
               </ul>
@@ -64,7 +73,7 @@ export function Footer() {
           BetterTavern
         </div>
         <div className="base">
-          <span>© 2026 BetterTavern · 许可证待定（MIT 或 Apache-2.0）</span>
+          <span>© 2026 BetterTavern · {f.license}</span>
         </div>
       </div>
     </footer>

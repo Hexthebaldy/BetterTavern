@@ -1,0 +1,39 @@
+/* 落地页样式的一部分（总说明见 landing.css 开头）：换语言的控件，英文、日文页的字体和排版 */
+
+/* ---------- 换语言：导航条上的下拉（<details>），菜单里的一行（src/sections/LangSwitch.tsx） ---------- */
+.lsw{position:relative}
+.lsw>summary{position:relative;z-index:0;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 12px;list-style:none;font-size:14.5px;font-weight:500;color:var(--ink);white-space:nowrap;cursor:pointer;user-select:none;border-radius:8px}
+.lsw>summary::-webkit-details-marker{display:none}
+.lsw>summary::before{content:"";position:absolute;inset:6px 2px;z-index:-1;transform:skewX(-16deg);transition:background-color .15s var(--ease)}
+.lsw[open]>summary::before{background:var(--bg3)}
+@media (hover:hover){.lsw>summary:hover::before{background:var(--bg3)}}
+.lsw>summary:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+.lsw-m{position:absolute;right:0;top:calc(100% + 12px);z-index:50;min-width:156px;padding:6px;border:var(--bw) solid var(--ink);border-radius:14px;background:#FFFFFF;box-shadow:var(--x4);display:flex;flex-direction:column;animation:pop .18s var(--snap) both}
+.lsw-m a{display:flex;align-items:center;justify-content:space-between;gap:12px;height:40px;padding:0 12px;border-radius:9px;font-size:15px;font-weight:500;color:var(--ink);text-decoration:none}
+.lsw-m a[aria-current]{font-weight:700;color:var(--acc)}
+@media (hover:hover){.lsw-m a:hover{background:var(--bg3)}}
+.lsw-m a:focus-visible,.lsw-row a:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+.lsw-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;padding:12px 10px 6px;border-top:2px solid var(--bg3);color:var(--mut)}
+.drawer .lsw-row a{height:38px;padding:0 12px;border:1.5px solid var(--line2);border-radius:10px;justify-content:center;font-size:14.5px}
+.drawer .lsw-row a[aria-current]{background:var(--ink);border-color:var(--ink);color:#FFFFFF}
+.lsw-row a .i{display:none}
+
+/* 文档只有中文：英文、日文页上，指向文档的链接后面跟一句小字 */
+.dl-note{margin-left:4px;font-size:.82em;font-weight:500;color:var(--mut)}
+.band.ink .dl-note{color:#A9A8A2}
+.foot .dl-note{color:#8E8D88}
+
+/* ---------- 英文、日文页（根元素上的 .en、.ja，见 src/App.tsx） ---------- */
+/* 日文：黑体、宋体都换成日文字体（和网页端 apps/web/src/theme/tokens.css 一样），汉字按日文的写法画；
+   标题用托管的 Noto Serif JP（600 / 700 / 900），400 的明朝体用系统字体 */
+.lp.ja,.lp.ja .dm{
+  --font-sans:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Yu Gothic",Meiryo,system-ui,sans-serif;
+  --font-serif:"Noto Serif JP","Source Han Serif JP","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-text-serif:"Source Han Serif JP","Hiragino Mincho ProN","Yu Mincho","YuMincho",serif;
+}
+/* 导航和页脚的字标是标志的一部分，三种语言用同一种字体（日文黑体的拉丁字母宽，窄屏上导航放不下） */
+.lp.ja .brand{font-family:"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif}
+/* 日文没有空格，标题按词组断行（Chrome 支持 auto-phrase；不支持的浏览器按普通规则断，不会整句不断而溢出） */
+.lp.ja .h-l,.lp.ja .h-m,.lp.ja .arc-cap .tx b{word-break:normal;word-break:auto-phrase}
+/* 英文：演示正文两端对齐会拉出大空隙，改成左对齐 */
+.lp.en .narr{text-align:left}

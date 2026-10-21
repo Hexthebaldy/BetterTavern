@@ -103,12 +103,18 @@ cd apps/server && uv run python -m tests.fakes.story_llm --port 8020
 make site
 ```
 
-打开 http://localhost:5174 。`make site-build` 生成 `apps/site/dist`：构建时把整页预渲染成 HTML（`apps/site/scripts/prerender.ts`），
-浏览器里再接上交互，所以不开 JS 也能看到全部文字。资源用相对路径，整个目录放在任意路径下都能打开，比如 GitHub Pages 的 `/BetterTavern/`。
+打开 http://localhost:5174 （英文 /en/，日文 /ja/）。`make site-build` 生成 `apps/site/dist`：构建时把三种语言的整页各预渲染成 HTML
+（`apps/site/scripts/prerender.ts`）——中文 `index.html`、英文 `en/index.html`、日文 `ja/index.html`，浏览器里再接上交互，所以不开 JS 也能看到全部文字。
+资源用相对路径，整个目录放在任意路径下都能打开，比如 GitHub Pages 的 `/BetterTavern/`。构建时设置环境变量 `SITE_URL`（站点的绝对地址，
+比如 `https://example.github.io/BetterTavern/`）时，页面里会写上 canonical 和各语言版本的 hreflang；不设就不写。
 看构建出的页面用 `cd apps/site && npm run preview`（http://localhost:4174）。仓库里不放落地页的部署配置。
 
-标题的思源宋体（600 / 700 / 900）和等宽的 IBM Plex Mono 用 `@fontsource` 的包自己托管，不走 Google Fonts；样式表按 unicode-range 切片，
-浏览器只下载页面上用到的片，构建时再去掉一个字都用不上的片（`apps/site/scripts/fontFaces.ts`）。正文黑体用系统字体。
+文案在 `apps/site/src/i18n/`：`zh`、`en`、`ja` 各一份，结构由 `types.ts` 定，改一份就改另外两份（单元测试会对照三份的结构和占位）。
+中文首页第一次打开时按浏览器语言跳一次（英文去 en/，日文去 ja/）；页面上换过语言以后按换的跳。文档只有中文，英文、日文页上指向文档的链接后面注明。
+
+标题的思源宋体（600 / 700 / 900，日文页换成 Noto Serif JP 的同样三档）和等宽的 IBM Plex Mono 用 `@fontsource` 的包自己托管，不走 Google Fonts；
+样式表按 unicode-range 切片，浏览器只下载页面上用到的片，构建时再去掉一个字都用不上的片（`apps/site/scripts/fontFaces.ts`，日文字体只看日文文案）。
+正文黑体用系统字体。
 
 ## 测试
 

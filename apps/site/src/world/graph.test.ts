@@ -1,7 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { EDGES, edgesShown, highlight, kindLabel, NODE_IDS, neighbors, nodeAria, relations, SECRET_EDGE } from "./graph.ts";
+import { COPIES } from "../i18n/all.ts";
+import { LANGS } from "../i18n/langs.ts";
+import { world as W } from "../i18n/zh/story.ts";
+import {
+  EDGES,
+  edgesShown,
+  highlight,
+  kindLabel,
+  NODE_IDS,
+  neighbors,
+  nodeAria,
+  relations,
+  SECRET_EDGE,
+} from "./graph.ts";
 
 const sorted = (xs: Iterable<string>) => [...xs].sort();
 
@@ -51,26 +64,42 @@ describe("highlight", () => {
 
 describe("relations", () => {
   it("从选中的节点这一头读", () => {
-    assert.deepEqual(relations("me", false), [{ pre: "在", target: "灯塔", post: "", secret: false }]);
+    assert.deepEqual(relations("me", false, W), [{ pre: "在", target: "灯塔", post: "", secret: false }]);
     assert.deepEqual(
-      relations("tower", false).map((r) => `${r.pre}${r.target}${r.post}`),
+      relations("tower", false, W).map((r) => `${r.pre}${r.target}${r.post}`),
       ["我在这里", "灰外套的女人在这里", "在雾港码头的尽头"],
     );
   });
 
   it("秘密揭开以后，老周和旧船各多一条，标成秘密", () => {
-    assert.equal(relations("keeper", false).length, 2);
-    const keeper = relations("keeper", true);
+    assert.equal(relations("keeper", false, W).length, 2);
+    const keeper = relations("keeper", true, W);
     assert.deepEqual(keeper.at(-1), { pre: "三十年前死在", target: "无名旧船", post: "上", secret: true });
-    assert.deepEqual(relations("ship", true).at(-1), { pre: "", target: "老周", post: "三十年前死在这里", secret: true });
+    assert.deepEqual(relations("ship", true, W).at(-1), { pre: "", target: "老周", post: "三十年前死在这里", secret: true });
   });
 });
 
 describe("标签", () => {
   it("主角写“主角”，其余按类别", () => {
-    assert.equal(kindLabel("me"), "主角");
-    assert.equal(kindLabel("log"), "物品");
-    assert.equal(nodeAria("me"), "我，林深，主角");
-    assert.equal(nodeAria("pier"), "雾港码头，地点");
+    assert.equal(kindLabel("me", W), "主角");
+    assert.equal(kindLabel("log", W), "物品");
+    assert.equal(nodeAria("me", W, "林深"), "我，林深，主角");
+    assert.equal(nodeAria("pier", W, "林深"), "雾港码头，地点");
+    assert.equal(nodeAria("me", COPIES.en.world.graph, "Rowan"), "Me, Rowan, Protagonist");
   });
+});
+
+describe("三种语言", () => {
+  for (const lang of LANGS) {
+    it(`${lang}：每个节点、每条线从两头读都有字`, () => {
+      const g = COPIES[lang].world.graph;
+      for (const id of NODE_IDS) {
+        assert.ok(g.nodes[id].label && g.nodes[id].desc, id);
+        // 揭开秘密以后每个节点都至少有一条关系，对方的名字不空
+        const rels = relations(id, true, g);
+        assert.ok(rels.length > 0, id);
+        for (const r of rels) assert.ok(r.target, `${lang} ${id}`);
+      }
+    });
+  }
 });

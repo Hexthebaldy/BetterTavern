@@ -37,8 +37,11 @@ export function isApplePlatform(platform: string): boolean {
   return /Mac|iPhone|iPad/.test(platform);
 }
 
-export function copyLabel(result: CopyResult | null, apple: boolean): string {
-  if (result === "ok") return "已复制";
-  if (result === "sel") return apple ? "已选中，按 ⌘C 复制" : "已选中，按 Ctrl+C 复制";
-  return "复制";
+/** 复制按钮上显示哪一句（文字在文案的 copy.deploy 里）：复制 / 已复制 / 已选中，按 ⌘C 或 Ctrl+C 复制 */
+export type CopyLabel = "copy" | "copied" | "selectedMac" | "selectedOther";
+
+export function copyLabel(result: CopyResult | null, apple: boolean): CopyLabel {
+  if (result === "ok") return "copied";
+  if (result === "sel") return apple ? "selectedMac" : "selectedOther";
+  return "copy";
 }
