@@ -79,6 +79,19 @@ cd apps/server && uv run python -m tests.fakes.story_llm --port 8020
 
 后端的直接依赖在 `apps/server/pyproject.toml` 里精确锁定，与 `uv.lock` 一致；升级依赖时先改 pyproject，再执行 `uv lock` 并提交锁文件。
 
+## 落地页
+
+项目主页在 `apps/site`（React + Vite，和网页端在同一个 npm 工作区，`make js-install` 一起装依赖）。
+设计稿和交互说明见 [design/landing/README.md](design/landing/README.md)。页面只有静态内容，不需要后端：
+
+```bash
+make site
+```
+
+打开 http://localhost:5174 。`make site-build` 生成 `apps/site/dist`：构建时把整页预渲染成 HTML（`apps/site/scripts/prerender.ts`），
+浏览器里再接上交互，所以不开 JS 也能看到全部文字。资源用相对路径，整个目录放在任意路径下都能打开，比如 GitHub Pages 的 `/BetterTavern/`。
+看构建出的页面用 `cd apps/site && npm run preview`（http://localhost:4174）。现在还没有部署。
+
 ## 测试
 
 | 命令 | 内容 |
@@ -119,6 +132,7 @@ DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --mo
 | --- | --- |
 | `apps/server` | 后端：FastAPI、agent runtime、provider 层、队列、迁移、测试、评测 |
 | `apps/mobile` | 客户端：Expo + TypeScript |
+| `apps/site` | 项目主页（落地页）：React + Vite，构建时预渲染成静态 HTML |
 | `apps/vis` | 本机日志查看器的网页（接口在 `apps/server` 的 `bettertavern vis`） |
 | `deploy` | docker compose 与镜像 |
 | `docs` | 设计文档，数据模型和接口的参考文档，界面与标志的设计稿 |
