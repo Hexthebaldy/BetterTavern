@@ -1,0 +1,20 @@
+flowchart TB
+    spec["AgentSpec<br/>名字 · 用哪个模型 · 输出方式<br/>工具 · 轮数上限"]
+    agentloop["执行循环 run_agent<br/>调模型 → 执行工具<br/>→ 把结果接回去 → 再调"]
+    modelcall["调一次模型<br/>导演：流式，边收边解析<br/>JSON 输出：结构化输出阶梯<br/>世界状态 agent：带工具"]
+    tools["工具注册表<br/>检查参数 · 执行<br/>结果过围栏、截断"]
+    routes["路由<br/>这个任务用哪个模型<br/>解密后的 Key · 能力 · 有效窗口"]
+    hub["服务商适配层<br/>各家的请求格式<br/>每个 Key 的并发名额 · 能力表"]
+    prompts["提示词库<br/>zh / en / ja 三套模板<br/>按这一局的语言选"]
+    steps["StepLog<br/>每次调模型、每次用工具<br/>记一步"]
+    runsdb[("agent_runs · agent_steps")]
+
+    spec --> agentloop
+    agentloop --> modelcall
+    agentloop --> tools
+    routes --> modelcall
+    prompts --> modelcall
+    modelcall --> hub
+    agentloop --> steps
+    modelcall --> steps
+    steps --> runsdb

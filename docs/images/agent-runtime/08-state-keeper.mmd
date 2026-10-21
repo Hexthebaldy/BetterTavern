@@ -1,0 +1,11 @@
+flowchart TD
+    input["输入（代码拼好，不调模型）<br/>这一回合的行动、叙述、隐藏备注 · 前三回合的一句话摘要<br/>相关实体和事实（带临时编号 e1、f1）· 没解开的线索（t1）<br/>大纲当前这一拍 · 还在等修订的“要改”原因"]
+    input --> model["模型调用工具"]
+    model -- "修改工具" --> check{"当场检查<br/>修改清单 WorldDraft"}
+    check -- "不合规" --> reject["原因作为工具结果交回模型，当场改正"]
+    reject --> model
+    check -- "合规" --> draft["记进修改清单<br/>（内存里的一份世界副本）"]
+    draft --> model
+    model -- "commit" --> inv{"整个世界再查一遍<br/>只看这次新出现的问题"}
+    inv -- "有问题" --> reject
+    inv -- "没问题" --> write["一个事务写入<br/>① 推进 state_seq（围栏）<br/>② 实体 · 关系 · 事实 · 线索<br/>③ 撤销记录 · 回合标签<br/>④ 回合改成 committed<br/>⑤ 放章节整理任务，需要时放大纲修订任务"]

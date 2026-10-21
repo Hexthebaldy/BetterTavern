@@ -1,0 +1,5 @@
+flowchart TB
+    pending["pending 待写"] -- "前一拍完成" --> active["active 进行中"]
+    active -- "完成条件达到" --> done["done 完成"]
+    pending -- "玩家绕过" --> skipped["skipped 跳过"]
+    active -- "玩家绕过" --> skipped

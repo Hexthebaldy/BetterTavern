@@ -1,0 +1,8 @@
+flowchart TB
+    keeper["世界状态 agent<br/>每回合对照当前这一拍"] -- "要改：写一句原因" --> notes[("turn_notes<br/>outline_reason")]
+    notes --> job[["memory 队列<br/>大纲修订任务"]]
+    job --> writer["大纲修订（后台模型）<br/>第一版：照开局设定写<br/>之后：决定改不改"]
+    writer --> settle["代码修正<br/>截长 · 完成的拍不能改回去<br/>完成和跳过的只留两拍<br/>只有一拍进行中"]
+    settle --> rev[("outline_revisions<br/>每次决定记一行")]
+    rev -- "当前这一拍" --> keeper
+    rev -- "＜outline＞ 切片" --> director["导演"]

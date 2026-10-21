@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    participant C as 客户端
+    participant A as api：回合服务
+    participant R as 回合执行器
+    participant M as 导演的模型
+    participant DB as Postgres
+    participant W as worker
+
+    C->>A: 提交行动（带幂等键）
+    A->>DB: 锁存档行 · 领租约<br/>插入回合（generating）
+    A-->>C: 201，回合 id
+    C->>A: 订阅事件流（SSE）
+    A->>R: 开始生成
+    R->>DB: 读上下文<br/>原文 · 世界状态 · 记忆 · 大纲
+    Note over R: 拼上下文
+    opt 有不在上下文里的旧回合
+        R->>M: 第 1 轮，带召回工具
+        M-->>R: 调用召回工具
+        R-->>C: director.recalling<br/>（正在回想）
+        R->>DB: 查旧回合（只读）
+    end
+    R->>M: 流式请求
+    M-->>R: 叙述 · 选项 · 隐藏备注
+    R-->>C: narrative.delta<br/>（约 40 毫秒一批）
+    Note over R: 解析，缺选项就补
+    R->>DB: 一个事务：推进头部（围栏）<br/>存回合（replied）· 放整理任务
+    R-->>C: options.ready · turn.completed
+    DB-->>W: 通知有新任务
+    W->>DB: 整理这一回合的世界状态<br/>回合改成 committed
+    W->>DB: 需要时放章节整理<br/>和大纲修订任务

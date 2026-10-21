@@ -12,6 +12,7 @@ BetterTavern 是一个服务端生成式互动小说应用：Python 后端运行
 | [testing.md](testing.md) | 可观测性、测试分层、剧本试玩评估 |
 | [evals.md](evals.md) | 评测：用真模型做剧本试玩的步骤、剧本和题目怎么写、报告怎么读、历次试玩的结果和花费、踩过的坑 |
 | [agent-runtime.md](agent-runtime.md) | agent runtime：几个 agent 的分工与工具、一回合怎么走、上下文怎么拼、长期记忆分层、写入与回退、分阶段计划；取代 backend.md 里后台管线、屏障、压缩、门控和回退的旧设计 |
+| [agent-runtime-architecture.md](agent-runtime-architecture.md) | agent runtime 架构图解：用十几张图从头讲一遍进程、一回合怎么走、六个 agent、上下文怎么拼、后台队列、世界状态 agent、记忆分层、大纲、围栏、回退、代码分层；第一次读 agent runtime 从这里开始 |
 | [i18n.md](i18n.md) | 多语言：界面文字的资源与写法、语言设置、错误按错误码翻译、按这一局的语言选提示词 |
 | [backlog.md](backlog.md) | 待优化清单：开发和剧本试玩里发现、还没解决的问题，按方面分组，每条写现象、出处和想到的做法 |
 | [development.md](development.md) | 开发者指南：当前进度、本地开发、测试、评测、仓库目录 |

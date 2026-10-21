@@ -1,0 +1,8 @@
+flowchart TB
+    apiL["api<br/>HTTP 路由 · SSE"] --> svc["services<br/>事务 · 组合仓储 · 放任务<br/>各种 *_store 实现 runtime 的接口"]
+    svc --> rt["runtime<br/>agent · 执行循环 · 上下文 · 提示词<br/>只通过 ports.py 的接口读写数据"]
+    rt --> dom["domain<br/>纯规则：修改清单 · 一致性规则 · 切章 · 大纲修正"]
+    svc --> infra["infra<br/>数据库仓储 · 任务队列 · 加密 · 日志"]
+    infra --> dom
+    svc --> prov["providers<br/>各家模型服务的适配"]
+    rt --> prov

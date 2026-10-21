@@ -1,0 +1,26 @@
+flowchart LR
+    subgraph hot["玩家在等（api 进程）"]
+        director["导演"]
+        builder["开局构建"]
+        repair["补选项"]
+    end
+    subgraph bg["后台（worker 进程）"]
+        keeper["世界状态 agent"]
+        chapter["章节整理"]
+        outline["大纲修订"]
+    end
+    turns[("turns<br/>叙述 · 选项 · 隐藏备注")]
+    seed[("开局设定<br/>playthroughs.seed")]
+    worldt[("世界状态<br/>entities · entity_links<br/>facts · threads")]
+    notes[("撤销记录 · 回合标签<br/>state_patches<br/>turn_notes")]
+    summ[("章节摘要 · 梗概 · 画像<br/>story_summaries<br/>player_profiles")]
+    outl[("大纲<br/>outline_revisions")]
+
+    director --> turns
+    repair --> turns
+    builder --> seed
+    builder --> worldt
+    keeper --> worldt
+    keeper --> notes
+    chapter --> summ
+    outline --> outl

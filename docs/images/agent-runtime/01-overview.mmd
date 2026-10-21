@@ -1,0 +1,14 @@
+flowchart TB
+    client["客户端<br/>App / 网页"]
+    api["api 进程（FastAPI）<br/>玩家在等的那一段<br/>──────────<br/>回合服务：提交行动 · 领租约<br/>回合执行器：导演 · 开局构建 · 补选项<br/>事件缓冲：SSE 推送 · 断线续传"]
+    pg[("PostgreSQL<br/>唯一的数据来源<br/>──────────<br/>存档 · 回合<br/>世界状态<br/>记忆 · 大纲<br/>任务队列 · 运行记录")]
+    worker["worker 进程<br/>后台<br/>──────────<br/>世界状态整理<br/>章节整理<br/>大纲修订"]
+    llm["模型服务商<br/>DeepSeek 等"]
+
+    client -- "提交行动" --> api
+    api -- "SSE：叙述 · 选项" --> client
+    api -- "读上下文 · 存回合 · 放任务" --> pg
+    pg -- "领任务" --> worker
+    worker -- "写世界状态 · 记忆 · 大纲" --> pg
+    api <-- "导演的模型" --> llm
+    worker <-- "后台模型" --> llm

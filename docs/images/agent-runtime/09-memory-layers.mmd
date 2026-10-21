@@ -1,0 +1,9 @@
+flowchart LR
+    old["很早的章<br/>（从第 0 回合起）"] -- "每并进一章，新增一版" --> syn["全书梗概<br/>最多约 1500 字"]
+    mid["最近几章<br/>还没并进梗概，最多 3 章"] -- "每章一段" --> ch["章节摘要"]
+    cur["当前这一章<br/>加上一章最后 2 回合"] -- "整段" --> raw["原文消息<br/>user / assistant 交替"]
+    play["玩家这一路的选择"] -- "每章改写一版" --> prof["玩家画像"]
+    syn --> recap["＜recap＞ 回顾<br/>放在 system 后半"]
+    ch --> recap
+    prof --> recap
+    world["世界状态<br/>每回合整理"] -- "挑出此刻相关的" --> ws["＜world-state＞ 状态块<br/>放在最后一条消息"]

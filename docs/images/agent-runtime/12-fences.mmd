@@ -1,0 +1,7 @@
+flowchart LR
+    pt["playthroughs 的一行<br/>head_turn_id · timeline_epoch<br/>state_seq · summarized_seq · outline_seq"]
+    a["导演提交一回合<br/>头部和租约是这一回合、时间线编号没变"] --> pt
+    b["世界状态 agent<br/>state_seq 从 N-1 改成 N、时间线编号没变"] --> pt
+    c["章节整理<br/>summarized_seq 从这一章开头前一回合改成这一章最后一回合"] --> pt
+    d["大纲修订<br/>outline_seq 从读到的值改成这次依据到的回合"] --> pt
+    e["回退<br/>时间线编号 +1，三个进度往回改"] --> pt
