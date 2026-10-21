@@ -92,6 +92,9 @@ make site
 浏览器里再接上交互，所以不开 JS 也能看到全部文字。资源用相对路径，整个目录放在任意路径下都能打开，比如 GitHub Pages 的 `/BetterTavern/`。
 看构建出的页面用 `cd apps/site && npm run preview`（http://localhost:4174）。现在还没有部署。
 
+标题的思源宋体（600 / 700 / 900）和等宽的 IBM Plex Mono 用 `@fontsource` 的包自己托管，不走 Google Fonts；样式表按 unicode-range 切片，
+浏览器只下载页面上用到的片，构建时再去掉一个字都用不上的片（`apps/site/scripts/fontFaces.ts`）。正文黑体用系统字体。
+
 ## 测试
 
 | 命令 | 内容 |
