@@ -160,9 +160,9 @@ for (const p of PAGES) {
       const { scroll, client, outside } = await page.evaluate(() => {
         const client = document.documentElement.clientWidth;
         // 页面外层把横向溢出裁掉了（斜切的色带要用），所以再看一遍有没有内容伸到窗口外面被裁掉；
-        // 命令框和架构图的步骤标签本来就能横向滚动，不算
+        // 命令框和架构图的步骤标签本来就能横向滚动；部署里没轮到的几组命令排在窗口右边、被窗口裁掉，都不算
         const outside = [...document.querySelectorAll(".lp *")]
-          .filter((el) => !el.closest(".code pre, .arc-steps"))
+          .filter((el) => !el.closest(".code pre, .arc-steps, .codes-track > .code:not(.on)"))
           .filter((el) => {
             const r = el.getBoundingClientRect();
             return r.width > 0 && (r.right > client + 0.5 || r.left < -0.5);

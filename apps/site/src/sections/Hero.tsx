@@ -13,17 +13,20 @@ export function Hero() {
     <section className="hero">
       <div className="wrap grid">
         <div className="copy">
-          {/* 悬停由外面这一层接：它不动，牌子在里面抬起来，
-              鼠标就不会因为牌子移开而反复进出 */}
-          <div className="plateHit in1">
-            <div className="plate">
-              {/* 招牌里的标志约 54px 宽；窄屏上变小，样式表再把线加粗一档 */}
-              <Logo size={54} className="mk" />
-              <h1 className="h-xl reg">BetterTavern</h1>
+          {/* 这一层和招牌一样宽，下面两段说明按招牌的宽度折行，左右和招牌对齐 */}
+          <div className="intro">
+            {/* 悬停由外面这一层接：它不动，牌子在里面抬起来，
+                鼠标就不会因为牌子移开而反复进出 */}
+            <div className="plateHit in1">
+              <div className="plate">
+                {/* 招牌里的标志约 54px 宽；窄屏上变小，样式表再把线加粗一档 */}
+                <Logo size={54} className="mk" />
+                <h1 className="h-xl reg">BetterTavern</h1>
+              </div>
             </div>
+            <p className="lead in2">{hero.lead}</p>
+            <p className="txt in3">{hero.status}</p>
           </div>
-          <p className="lead in2">{hero.lead}</p>
-          <p className="txt in3">{hero.status}</p>
           <div className="ctas in4">
             <a className="btn pri" href={REPO} {...EXTERNAL}>
               GitHub
@@ -32,7 +35,7 @@ export function Hero() {
               </span>
             </a>
             <a className="btn sec" href={androidApkHref(lang)} download="BetterTavern.apk">
-              <Icon name="download" />
+              <Icon name="android" />
               {hero.android}
             </a>
             <a className="btn sec" href="#deploy">

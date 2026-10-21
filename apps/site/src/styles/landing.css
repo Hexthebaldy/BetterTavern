@@ -200,8 +200,11 @@ body{margin:0}
 .hero{padding:clamp(32px,5vw,80px) 0 clamp(64px,8vw,112px)}
 .hero .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,500px);gap:clamp(40px,3.1vw,44px);align-items:center}
 .hero .copy{display:flex;flex-direction:column;align-items:flex-start;gap:28px}
-.hero .copy>.lead{max-width:31em}
-.hero .copy>.txt{max-width:34em}
+/* 招牌和下面两段说明包在 .intro 里：.intro 的宽度由招牌定（min-content，招牌不折行），说明按这个宽度折行，
+   左右和招牌对齐；中文、日文两端对齐，右边也齐（英文两端对齐会拉出大空隙，见 lang.css） */
+.hero .intro{display:flex;flex-direction:column;gap:28px;width:min-content;max-width:100%}
+.hero .intro .plateHit{align-self:flex-start}
+.hero .intro p{text-align:justify}
 .ctas{display:flex;flex-wrap:wrap;gap:16px}
 .meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13.5px;line-height:20px;color:var(--ink2);font-weight:500}
 .meta span{display:inline-flex;align-items:center;gap:8px}
@@ -410,9 +413,19 @@ body{margin:0}
 .deploy{border-radius:22px;background:#FFFFFF;color:var(--ink);border:var(--bw) solid #FFFFFF;box-shadow:var(--b10);padding:clamp(20px,2.6vw,32px);display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(20px,3vw,40px);align-items:start}
 @media (max-width:980px){.deploy{grid-template-columns:minmax(0,1fr)}}
 .deploy .left{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
-.tabs{display:inline-flex;gap:4px;padding:4px;border-radius:24px;background:#FFFFFF;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
-.tab{height:38px;padding:0 16px;border:0;border-radius:19px;background:transparent;color:var(--ink);font-family:var(--font-sans);font-size:14px;font-weight:500;cursor:pointer;transition:background-color .15s var(--ease),color .15s var(--ease)}
+.tabs{position:relative;display:inline-flex;gap:4px;padding:4px;border-radius:24px;background:#FFFFFF;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.tab{position:relative;z-index:1;height:38px;padding:0 16px;border:0;border-radius:19px;background:transparent;color:var(--ink);font-family:var(--font-sans);font-size:14px;font-weight:500;cursor:pointer;transition:background-color .15s var(--ease),color .25s var(--ease)}
 .tab.on{background:var(--ink);color:#FFFFFF;font-weight:700}
+/* 量到标签的位置以后（.slid），墨色底块单独画一块，换标签时滑过去 */
+.tab-mark{position:absolute;left:0;top:4px;bottom:4px;border-radius:19px;background:var(--ink);transition:transform .45s var(--ease),width .45s var(--ease)}
+.tabs.slid .tab.on{background:transparent}
+/* 命令的窗口：四组横排在轨道上，轨道滑到当前这组；窗口的高度跟着当前这组变。右下留出投影的位置 */
+.codes{width:calc(100% + 6px);margin-right:-6px;padding:0 6px 6px 0;overflow:hidden;transition:height .45s var(--ease)}
+.codes-track{display:flex;align-items:flex-start;gap:24px;transition:transform .45s var(--ease)}
+.codes-track>.code{flex:0 0 100%;min-width:0}
+/* 滑走的那组等动画播完再藏起来，读屏和查找也跳过它 */
+.codes-track>.code:not(.on){visibility:hidden;transition:visibility 0s linear .45s}
+@media (prefers-reduced-motion:reduce){.tab-mark,.codes,.codes-track{transition:none}.codes-track>.code:not(.on){transition:none}}
 /* 很窄的屏幕上四个标签挤一挤（英文的字长一些） */
 @media (max-width:400px){.tabs{max-width:100%}.tab{padding:0 11px}}
 @media (hover:hover){.tab:not(.on):hover{background:var(--bg3)}}

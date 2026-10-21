@@ -35,5 +35,5 @@
 .lp.ja .brand{font-family:"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif}
 /* 日文没有空格，标题按词组断行（Chrome 支持 auto-phrase；不支持的浏览器按普通规则断，不会整句不断而溢出） */
 .lp.ja .h-l,.lp.ja .h-m,.lp.ja .arc-cap .tx b{word-break:normal;word-break:auto-phrase}
-/* 英文：演示正文两端对齐会拉出大空隙，改成左对齐 */
-.lp.en .narr{text-align:left}
+/* 英文：两端对齐会拉出大空隙，演示正文和首屏的说明都左对齐 */
+.lp.en .narr,.lp.en .hero .intro p{text-align:left}

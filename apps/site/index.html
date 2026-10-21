@@ -16,9 +16,12 @@
     <link rel="icon" href="../web/public/favicon.svg" type="image/svg+xml" />
     <noscript>
       <style>
-        /* 不开 JS 时：常见问题全部展开；部署的四组命令全部显示，标签栏和复制按钮藏起来 */
+        /* 不开 JS 时：常见问题全部展开；部署的四组命令竖着全部显示，标签栏和复制按钮藏起来。
+           这段在样式表前面，和样式表冲突的几条要加 !important */
         .faq-a { grid-template-rows: 1fr; }
-        .code[hidden] { display: block; }
+        .codes { height: auto !important; overflow: visible !important; }
+        .codes-track { flex-direction: column; gap: 16px; transform: none !important; }
+        .codes-track > .code { flex: none !important; width: 100% !important; visibility: visible !important; }
         .code .nojs { display: inline; }
         .tabs, .code .cp { display: none; }
       </style>

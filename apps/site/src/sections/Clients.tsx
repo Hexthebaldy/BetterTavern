@@ -31,8 +31,8 @@ export function Clients() {
             <p className="txt">{clients.phone.text}</p>
             <div className="acts">
               <a className="alink" href={androidApkHref(lang)} download="BetterTavern.apk">
+                <Icon name="android" size="s" />
                 {clients.phone.download}
-                <Icon name="download" size="s" />
               </a>
               <a className="alink" href={DOCS.mobile} hrefLang="zh-CN" {...EXTERNAL}>
                 {clients.phone.link}

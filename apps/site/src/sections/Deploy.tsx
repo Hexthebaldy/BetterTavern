@@ -1,9 +1,11 @@
 /**
  * 06 部署：需要准备什么；Docker / 源码 / 网页 / 手机四组命令。
+ * 四组命令横排在一条轨道上，切换标签时轨道滑过去，窗口的高度跟着当前这组变；标签下面的墨色底块也滑过去。
+ * 左右键、Home、End 换标签（tabs.ts）。
  * 复制成功显示“已复制”；剪贴板不可用时自动选中命令，提示按 ⌘C 或 Ctrl+C（copy.ts）。窄屏上命令不折行，横向滚动。
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { Icon } from "../components/Icon.tsx";
 import { commandText, DEPLOY_TABS, lineText, type DeployTab } from "../data/deploy.ts";
@@ -11,12 +13,27 @@ import { DOCS, EXTERNAL } from "../data/links.ts";
 import { useCopy } from "../i18n/context.tsx";
 import { copyCommands, copyLabel, COPY_RESET_MS, isApplePlatform, type CopyResult } from "./copy.ts";
 import { DocNote } from "./DocNote.tsx";
+import { nextTabIndex } from "./tabs.ts";
+
+/** 窗口右下留出的位置，放命令框的蓝色投影（样式表里 .codes 的 padding） */
+const SHADOW_ROOM = 6;
 
 /**
- * 一组命令：终端样式的框，右上角“复制”。不是当前标签的带 hidden。
- * 不开 JS 时 index.html 里的样式把四组都显示出来，标签栏藏起来，每组的“终端”后面写上是哪一组（.nojs）
+ * 一组命令：终端样式的框，右上角“复制”。不是当前标签的不能操作（inert），滑走以后藏起来（样式表）。
+ * 不开 JS 时 index.html 里的样式把四组竖着都显示出来，标签栏藏起来，每组的“终端”后面写上是哪一组（.nojs）
  */
-function CommandBox({ tab, active }: { tab: DeployTab; active: boolean }) {
+function CommandBox({
+  tab,
+  active,
+  ready,
+  boxRef,
+}: {
+  tab: DeployTab;
+  active: boolean;
+  /** 页面接上交互以后才把没轮到的几组设成不能操作：不开 JS 时四组都要能选中、复制 */
+  ready: boolean;
+  boxRef: (el: HTMLDivElement | null) => void;
+}) {
   const { deploy } = useCopy();
   const pre = useRef<HTMLPreElement>(null);
   const timer = useRef(0);
@@ -53,12 +70,12 @@ function CommandBox({ tab, active }: { tab: DeployTab; active: boolean }) {
 
   return (
     <div
-      className="code"
+      ref={boxRef}
+      className={active ? "code on" : "code"}
       role="tabpanel"
       id={`deploy-${tab.id}`}
       aria-labelledby={`deploy-tab-${tab.id}`}
-      hidden={!active}
-      style={{ width: "100%" }}
+      inert={ready && !active}
     >
       <div className="bar">
         <span className="lab">
@@ -84,7 +101,37 @@ function CommandBox({ tab, active }: { tab: DeployTab; active: boolean }) {
 
 export function Deploy() {
   const { deploy } = useCopy();
-  const [tabId, setTabId] = useState<DeployTab["id"]>("docker");
+  const [index, setIndex] = useState(0);
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  const boxes = useRef<(HTMLDivElement | null)[]>([]);
+  // 量出来的当前标签的位置（墨色底块）和这组命令的高度（窗口）；量到之前不设，按没有 JS 的样子画
+  const [mark, setMark] = useState<{ left: number; width: number } | null>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => setReady(true), []);
+
+  useEffect(() => {
+    const measure = () => {
+      const tab = tabs.current[index];
+      const box = boxes.current[index];
+      if (tab) setMark({ left: tab.offsetLeft, width: tab.offsetWidth });
+      if (box) setHeight(box.offsetHeight);
+    };
+    measure();
+    // 字体加载完、窗口变宽变窄时，标签和命令框的尺寸会变
+    const observer = new ResizeObserver(measure);
+    for (const el of [...tabs.current, ...boxes.current]) if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [index]);
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const next = nextTabIndex(e.key, index, DEPLOY_TABS.length);
+    if (next === null) return;
+    e.preventDefault();
+    setIndex(next);
+    tabs.current[next]?.focus();
+  };
   return (
     <section className="band ink" id="deploy">
       <div className="wrap">
@@ -124,25 +171,53 @@ export function Deploy() {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12, minWidth: 0, width: "100%" }}>
-            <div className="tabs" role="tablist" aria-label={deploy.tabsAria}>
-              {DEPLOY_TABS.map((t) => (
+            <div
+              className={mark ? "tabs slid" : "tabs"}
+              role="tablist"
+              aria-label={deploy.tabsAria}
+              onKeyDown={onKeyDown}
+            >
+              {mark && (
+                <span
+                  className="tab-mark"
+                  aria-hidden="true"
+                  style={{ width: mark.width, transform: `translateX(${mark.left}px)` }}
+                />
+              )}
+              {DEPLOY_TABS.map((t, i) => (
                 <button
                   key={t.id}
+                  ref={(el) => {
+                    tabs.current[i] = el;
+                  }}
                   id={`deploy-tab-${t.id}`}
-                  className={t.id === tabId ? "tab on" : "tab"}
+                  className={i === index ? "tab on" : "tab"}
                   type="button"
                   role="tab"
-                  aria-selected={t.id === tabId}
+                  aria-selected={i === index}
                   aria-controls={`deploy-${t.id}`}
-                  onClick={() => setTabId(t.id)}
+                  tabIndex={i === index ? 0 : -1}
+                  onClick={() => setIndex(i)}
                 >
                   {deploy.tabs[t.id]}
                 </button>
               ))}
             </div>
-            {DEPLOY_TABS.map((t) => (
-              <CommandBox key={t.id} tab={t} active={t.id === tabId} />
-            ))}
+            <div className="codes" style={height === null ? undefined : { height: height + SHADOW_ROOM }}>
+              <div className="codes-track" style={{ transform: `translateX(calc(${-index} * (100% + 24px)))` }}>
+                {DEPLOY_TABS.map((t, i) => (
+                  <CommandBox
+                    key={t.id}
+                    tab={t}
+                    active={i === index}
+                    ready={ready}
+                    boxRef={(el) => {
+                      boxes.current[i] = el;
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
