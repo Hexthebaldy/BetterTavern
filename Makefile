@@ -6,7 +6,7 @@ VIS := apps/vis
 COMPOSE := docker compose -f deploy/docker-compose.dev.yml
 TEST_DB := postgresql://bettertavern:bettertavern@localhost:5432/bettertavern
 
-.PHONY: install dev worker migrate db-up db-down test test-integration lint fmt js-install js-test js-typecheck mobile-install web web-build web-e2e site site-build vis-install vis vis-test eval-director
+.PHONY: install dev worker migrate db-up db-down test test-integration lint fmt js-install js-test js-typecheck mobile-install web web-build web-e2e site site-build site-e2e vis-install vis vis-test eval-director
 
 install:
 	cd $(SERVER) && uv sync
@@ -71,6 +71,10 @@ site:
 # 落地页的静态构建（apps/site/dist）：整页预渲染成 HTML，资源用相对路径，放在子路径下也能打开
 site-build:
 	cd $(SITE) && npm run build
+
+# 落地页的冒烟测试：先构建，再用本机的 Chrome 打开构建出的页面点一遍
+site-e2e: site-build
+	cd $(SITE) && npm run e2e
 
 vis-install:
 	cd $(VIS) && npm install

@@ -188,6 +188,8 @@ body{margin:0}
 .drawer a:active{background:var(--bg3)}
 @keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.98)}}
 @media (max-width:900px){.links,.gh{display:none}.menuBtn{display:inline-flex;margin-left:auto}}
+/* 窄于 360 时导航放不下标志、字标、GitHub 和菜单，只留标志（设计稿只画到 390；首屏招牌上就是项目名） */
+@media (max-width:359px){.nav .brand span{display:none}}
 
 /* ---------- 首屏 ---------- */
 .hero{padding:clamp(32px,5vw,80px) 0 clamp(64px,8vw,112px)}

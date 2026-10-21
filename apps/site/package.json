@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && vite build && vite build --ssr src/entry-server.tsx --outDir dist/.ssr && node --experimental-strip-types scripts/prerender.ts",
     "preview": "vite preview",
     "test": "node --test --experimental-strip-types",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@bettertavern/design": "*",

@@ -102,8 +102,9 @@ make site
 | `make test` | 后端单测与端到端测试（不需要数据库） |
 | `make test-integration` | 需要数据库；会建临时 schema，测完删除（队列、账户、回合的并发与租约） |
 | `make lint` | ruff、pyright、import-linter；客户端代码里有没有写死的中文（`scripts/check-i18n.mjs`） |
-| `make js-test` | 客户端的纯逻辑（`packages/`、`apps/mobile`、`apps/web` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局、网页的存储和快捷键判断 |
+| `make js-test` | 客户端的纯逻辑（`packages/`、`apps/mobile`、`apps/web`、`apps/site` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局、网页的存储和快捷键判断、落地页的演示和关系图 |
 | `make js-typecheck` | 客户端和共用包的 TypeScript 类型检查 |
+| `make site-e2e` | 落地页的冒烟测试（Playwright，用本机的 Chrome）：先构建，再打开放在 `/BetterTavern/` 子路径下的页面点一遍，量 320 到 1440 的宽度，也看不开 JS 的样子 |
 | `make web-e2e` | 网页端的端到端测试（Playwright，用本机的 Chrome）：自己起后端、假模型服务和 Vite，从注册一路玩到删除账户；测试账号以 `e2e-` 开头，最后会删掉 |
 | `make vis-test` | 日志查看器的纯逻辑：中文目录、格式化、手机日志解析、每一步的显示 |
 
