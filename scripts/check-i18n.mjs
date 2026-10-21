@@ -1,6 +1,7 @@
 /**
  * 界面文字都要走 i18n（docs/i18n.md 第 5 节）：手机端、网页端、packages/core 的代码里不能出现含汉字或假名的
  * 字符串、模板字符串和 JSX 文字。注释不算；资源目录 packages/core/src/i18n/、测试文件和测试夹具不查。
+ * 落地页 apps/site 只有中文、不走 i18n，不在 DIRS 里（docs/i18n.md 第 1 节）。
  * 用法：node scripts/check-i18n.mjs（make lint 里会跑）。发现问题时列出位置，退出码 1。
  */
 

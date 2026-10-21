@@ -82,6 +82,22 @@ cd apps/server && uv run python -m tests.fakes.story_llm --port 8020
 
 后端的直接依赖在 `apps/server/pyproject.toml` 里精确锁定，与 `uv.lock` 一致；升级依赖时先改 pyproject，再执行 `uv lock` 并提交锁文件。
 
+## 落地页
+
+项目主页在 `apps/site`（React + Vite，和网页端在同一个 npm 工作区，`make js-install` 一起装依赖）。
+设计稿和交互说明见 [design/landing/README.md](design/landing/README.md)。页面只有静态内容，不需要后端：
+
+```bash
+make site
+```
+
+打开 http://localhost:5174 。`make site-build` 生成 `apps/site/dist`：构建时把整页预渲染成 HTML（`apps/site/scripts/prerender.ts`），
+浏览器里再接上交互，所以不开 JS 也能看到全部文字。资源用相对路径，整个目录放在任意路径下都能打开，比如 GitHub Pages 的 `/BetterTavern/`。
+看构建出的页面用 `cd apps/site && npm run preview`（http://localhost:4174）。现在还没有部署。
+
+标题的思源宋体（600 / 700 / 900）和等宽的 IBM Plex Mono 用 `@fontsource` 的包自己托管，不走 Google Fonts；样式表按 unicode-range 切片，
+浏览器只下载页面上用到的片，构建时再去掉一个字都用不上的片（`apps/site/scripts/fontFaces.ts`）。正文黑体用系统字体。
+
 ## 测试
 
 | 命令 | 内容 |
@@ -89,8 +105,9 @@ cd apps/server && uv run python -m tests.fakes.story_llm --port 8020
 | `make test` | 后端单测与端到端测试（不需要数据库） |
 | `make test-integration` | 需要数据库；会建临时 schema，测完删除（队列、账户、回合的并发与租约） |
 | `make lint` | ruff、pyright、import-linter；客户端代码里有没有写死的中文（`scripts/check-i18n.mjs`） |
-| `make js-test` | 客户端的纯逻辑（`packages/`、`apps/mobile`、`apps/web` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局、网页的存储和快捷键判断 |
+| `make js-test` | 客户端的纯逻辑（`packages/`、`apps/mobile`、`apps/web`、`apps/site` 的 `node --test`）：SSE 解析与重连、回合状态机、会话与令牌刷新、接口客户端、布局、网页的存储和快捷键判断、落地页的演示和关系图 |
 | `make js-typecheck` | 客户端和共用包的 TypeScript 类型检查 |
+| `make site-e2e` | 落地页的冒烟测试（Playwright，用本机的 Chrome）：先构建，再打开放在 `/BetterTavern/` 子路径下的页面点一遍，量 320 到 1440 的宽度，也看不开 JS 的样子 |
 | `make web-e2e` | 网页端的端到端测试（Playwright，用本机的 Chrome）：自己起后端、假模型服务和 Vite，从注册一路玩到删除账户；测试账号以 `e2e-` 开头，最后会删掉 |
 | `make vis-test` | 日志查看器的纯逻辑：中文目录、格式化、手机日志解析、每一步的显示 |
 
@@ -122,6 +139,7 @@ DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --mo
 | --- | --- |
 | `apps/server` | 后端：FastAPI、agent runtime、provider 层、队列、迁移、测试、评测 |
 | `apps/mobile` | 客户端：Expo + TypeScript |
+| `apps/site` | 项目主页（落地页）：React + Vite，构建时预渲染成静态 HTML |
 | `apps/vis` | 本机日志查看器的网页（接口在 `apps/server` 的 `bettertavern vis`） |
 | `deploy` | docker compose 与镜像 |
 | `docs` | 设计文档，数据模型和接口的参考文档，界面与标志的设计稿 |
