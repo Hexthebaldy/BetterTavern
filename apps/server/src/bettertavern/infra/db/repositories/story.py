@@ -40,7 +40,7 @@ class PlaythroughRow:
     head_turn_id: str | None
     timeline_epoch: int
     state_seq: int  # 世界状态已整理到第几回合，-1 表示还没整理过
-    rollback_floor_seq: int
+    summarized_seq: int  # 章节摘要已经覆盖到第几回合，-1 表示还没有
     rollbacks_used: int  # 已经回退了几次
     active_turn_id: str | None
     lease_expires_at: datetime | None
@@ -62,7 +62,7 @@ class PlaythroughRow:
             head_turn_id=opt_str(row["head_turn_id"]),
             timeline_epoch=int(row["timeline_epoch"]),
             state_seq=int(row["state_seq"]),
-            rollback_floor_seq=int(row["rollback_floor_seq"]),
+            summarized_seq=int(row["summarized_seq"]),
             rollbacks_used=int(row["rollbacks_used"]),
             active_turn_id=opt_str(row["active_turn_id"]),
             lease_expires_at=row["lease_expires_at"],
@@ -72,7 +72,7 @@ class PlaythroughRow:
 
 
 _PT_COLS = """id, user_id, scenario_id, title, status, language, settings, seed, seed_source,
-    head_turn_id, timeline_epoch, state_seq, rollback_floor_seq, rollbacks_used, active_turn_id,
+    head_turn_id, timeline_epoch, state_seq, summarized_seq, rollbacks_used, active_turn_id,
     lease_expires_at, created_at, updated_at"""
 
 

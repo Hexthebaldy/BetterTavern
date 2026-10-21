@@ -1,6 +1,7 @@
 """回退（真实 Postgres，模型用可编排的假厂商）。
 
-一致性：玩到第 N 回合再回退到第 K 回合，世界状态（实体、关系、事实、线索）、回合标签和整理进度，
+一致性：玩到第 N 回合再回退到第 K 回合，世界状态（实体、关系、事实、线索）、回合标签、
+章节摘要和全书梗概、整理进度，
 要和当初刚整理完第 K 回合时逐行相同。随机走很多步“往前玩几回合 / 回退到更早的某一回合”来检查。
 """
 
@@ -14,6 +15,8 @@ from typing import Any
 import pytest
 from sqlalchemy import text
 
+from bettertavern.domain.memory.chapters import ChapterRule
+from bettertavern.runtime.memory_runner import MemoryRunnerConfig
 from bettertavern.runtime.ports import AgentRunRecord, StateCommit
 from bettertavern.services.errors import AppError
 from bettertavern.services.state_store import PgStateStore
@@ -31,6 +34,8 @@ if not URL:
 async def game(tmp_path: Path) -> AsyncIterator[Game]:
     assert URL is not None
     async with new_game(URL, tmp_path, rollback_limit=100) as started:
+        # 每回合切一章：章节摘要和全书梗概的写入、并入、回退都走得到
+        started.memory.config = MemoryRunnerConfig(rule=ChapterRule(1, 1), timeout_s=5.0)
         yield started
 
 
@@ -91,6 +96,8 @@ def state_script(seq: int) -> list[tuple[str, dict[str, Any]]]:
 async def keep(game: Game, seq: int) -> None:
     game.adapter.completions.append(calls(*state_script(seq)))
     assert await game.state.process(game.playthrough_id) == 1
+    # 和 worker 一样，整理完一回合看要不要写章节（切章的线很低，几回合就切一章）
+    await game.memory.process(game.playthrough_id)
 
 
 async def snapshot(game: Game) -> dict[str, list[tuple[Any, ...]]]:
@@ -108,7 +115,10 @@ async def snapshot(game: Game) -> dict[str, list[tuple[Any, ...]]]:
                       FROM threads WHERE playthrough_id = :pt ORDER BY id""",
         "notes": """SELECT turn_id, seq, digest, entity_ids, scene_ended, skipped
                     FROM turn_notes WHERE playthrough_id = :pt ORDER BY seq""",
-        "progress": "SELECT state_seq FROM playthroughs WHERE id = :pt",
+        "summaries": """SELECT id, kind, first_seq, last_seq, written_seq, text
+                        FROM story_summaries
+                        WHERE playthrough_id = :pt ORDER BY kind, last_seq""",
+        "progress": "SELECT state_seq, summarized_seq FROM playthroughs WHERE id = :pt",
     }
     return {
         name: [tuple(r) for r in await rows(game.engine, sql, pt=game.playthrough_id)]
@@ -134,6 +144,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
     head = 0
     rollbacks = 0
     statuses: set[str] = set()  # 走过的线索状态：记下、解开、合并都要出现过
+    kinds: set[str] = set()  # 写过的摘要：章节摘要和全书梗概都要出现过
     for step in range(14):
         if head < 2 or step % 3 != 2:
             for _ in range(rng.randint(1, 3)):
@@ -142,6 +153,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
                 await keep(game, head)
                 snapshots[head] = await snapshot(game)
                 statuses.update(str(row[4]) for row in snapshots[head]["threads"])
+                kinds.update(str(row[1]) for row in snapshots[head]["summaries"])
             continue
         target = rng.randint(0, head - 1)
         detail = await game.services.playthroughs.rollback(
@@ -155,6 +167,7 @@ async def test_rollback_restores_the_world_exactly(game: Game) -> None:
         rollbacks += 1
     assert rollbacks >= 3
     assert statuses == {"open", "closed", "merged"}
+    assert kinds == {"chapter", "synopsis"}
     archived = await rows(game.engine, "SELECT count(*) FROM turns WHERE status = 'archived'")
     assert archived[0][0] > 0
 
@@ -170,7 +183,10 @@ async def test_rollback_while_the_world_is_behind(game: Game) -> None:
         game.user_id, game.playthrough_id, await turn_at(game, 3)
     )
     assert detail.playthrough.state_seq == 1
-    jobs = await rows(game.engine, "SELECT count(*) FROM jobs WHERE status = 'pending'")
+    jobs = await rows(
+        game.engine,
+        "SELECT count(*) FROM jobs WHERE status = 'pending' AND kind = 'state.turn'",
+    )
     assert jobs[0][0] == 1
     game.adapter.completions.extend([calls(*state_script(2)), calls(*state_script(3))])
     assert await game.state.process(game.playthrough_id) == 2

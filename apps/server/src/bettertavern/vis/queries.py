@@ -153,6 +153,20 @@ async def playthrough_detail(
         ),
         {"id": playthrough_id},
     )
+    # 章节整理写的记忆：章节摘要、全书梗概的各个版本、玩家画像的各个版本
+    summaries = await conn.execute(
+        text(
+            """
+            SELECT kind, first_seq, last_seq, written_seq, text, created_at FROM story_summaries
+            WHERE playthrough_id = CAST(:id AS uuid)
+            UNION ALL
+            SELECT 'profile', 0, based_on_seq, based_on_seq, text, created_at FROM player_profiles
+            WHERE playthrough_id = CAST(:id AS uuid)
+            ORDER BY written_seq, created_at
+            """
+        ),
+        {"id": playthrough_id},
+    )
     return {
         "playthrough": {
             "id": pt.id,
@@ -168,6 +182,18 @@ async def playthrough_detail(
             "updated_at": _ms(pt.updated_at),
         },
         "turns": [_turn(r, story=story) for r in turns],
+        "memory": [
+            {
+                "kind": r.kind,
+                "first_seq": r.first_seq,
+                "last_seq": r.last_seq,
+                "written_seq": r.written_seq,
+                "chars": len(r.text),
+                **({"text": r.text} if story else {}),
+                "created_at": _ms(r.created_at),
+            }
+            for r in summaries
+        ],
     }
 
 

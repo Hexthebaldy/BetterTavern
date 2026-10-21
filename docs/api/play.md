@@ -267,7 +267,6 @@
 | `head_seq` | integer / null | 头部回合的 `seq`。只有游玩列表和游玩详情会填，其他接口的响应里是 null |
 | `head_excerpt` | string | 头部回合叙述的前 120 个字符，供列表显示。只有游玩列表和游玩详情会填，其他接口的响应里是空串 |
 | `active_turn_id` | string / null | 正在生成的回合 |
-| `rollback_floor_seq` | integer | 回退的下限，一直是 0；agent runtime 阶段 4 删掉（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
 | `state_seq` | integer | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态由后台整理，可能比头部回合落后几回合 |
 | `rollbacks_left` | integer | 这个存档还能回退几次；为 0 时客户端不显示“回到这里” |
 | `seed_source` | string / null | 开局设定的来源：`world_builder` / `minimal`；世界建好之前为 null |

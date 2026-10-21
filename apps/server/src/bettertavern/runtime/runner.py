@@ -90,8 +90,6 @@ class RunnerConfig:
     limiter_timeout_s: float = 30.0
     # 导演写一段的总时长上限（从开流算起）；总字数上限按 max_tokens 换算，见 turn_stream.py
     director_timeout_s: float = 600.0
-    # 原文按这个数整块移出上下文（0 表示全部保留），移出的回合导演用召回工具查（assembler.py）
-    history_block: int = 0
 
 
 # 与清理任务写进库里的错误一致（infra 的 RUNNER_LOST_ERROR）
@@ -481,7 +479,6 @@ class TurnRunner:
             ctx,
             window,
             budget=budget,
-            history_block=self.config.history_block,
             recall=self._offers_recall(route),
         )
 

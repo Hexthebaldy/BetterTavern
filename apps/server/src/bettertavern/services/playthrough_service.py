@@ -14,6 +14,7 @@ from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.story.language import DEFAULT_LANGUAGE, parse_language
 from bettertavern.domain.world.names import clean_display_name
 from bettertavern.infra.db.repositories import library as library_repo
+from bettertavern.infra.db.repositories import memory as memory_repo
 from bettertavern.infra.db.repositories import rollback as rollback_repo
 from bettertavern.infra.db.repositories import state as state_repo
 from bettertavern.infra.db.repositories import story as repo
@@ -217,8 +218,9 @@ class PlaythroughService:
     async def rollback(self, user_id: str, playthrough_id: str, turn_id: str) -> PlaythroughDetail:
         """回退到 turn_id 那一回合（docs/agent-runtime.md 第 8 节），一个事务。
 
-        撤销之后各回合对世界状态的修改、删掉它们的回合标签、把它们（连同失败的尝试）归档、
-        头部指回这一回合、时间线编号加 1、回退次数加 1。有回合正在生成时不回退。
+        撤销之后各回合对世界状态的修改、删掉它们的回合标签、删掉覆盖范围超过这一回合的章节摘要和
+        全书梗概（玩家画像不动）、把之后的回合（连同失败的尝试）归档、头部指回这一回合、
+        时间线编号加 1、回退次数加 1。有回合正在生成时不回退。
         """
         if not is_uuid(playthrough_id) or not is_uuid(turn_id):
             raise NotFound("Playthrough not found")
@@ -253,6 +255,7 @@ class PlaythroughService:
             undo = await rollback_repo.patches_after(conn, pt.id, target.seq)
             await state_repo.apply_changes(conn, pt.id, rollback_repo.inverted(undo))
             patches, notes = await rollback_repo.delete_after(conn, pt.id, target.seq)
+            summaries = await memory_repo.delete_after(conn, pt.id, target.seq)
             archived = await rollback_repo.archive_after(conn, pt.id, target.seq, str(uuid.uuid4()))
             await rollback_repo.move_head(conn, pt.id, target.id, target.seq)
             # 世界状态还没整理到这一回合：接着整理（回退前开始的整理写入时会作废）
@@ -265,6 +268,7 @@ class PlaythroughService:
             undone_rows=len(undo),
             deleted_patches=patches,
             deleted_notes=notes,
+            deleted_summaries=summaries,
             archived_turns=archived,
             state_seq=min(pt.state_seq, target.seq),
         )

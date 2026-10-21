@@ -62,9 +62,6 @@ class Settings(BaseSettings):
     options_repair_timeout_s: float = Field(default=5.0, gt=0)
     # 导演写一段的总时长上限，超过就停下、这一轮按失败结束（防止模型一直写不停）
     director_timeout_s: float = Field(default=600.0, gt=0)
-    # 原文按这个回合数整块移出导演的上下文，移出的回合导演用召回工具查；0 表示全部保留。
-    # 场景摘要（agent runtime 阶段 4）做好之前默认全部保留，试召回时设成例如 10
-    director_history_block: int = Field(default=0, ge=0)
 
     # 收到 SIGTERM 后等进行中的回合与任务的上限；容器的停止宽限期要比它长
     shutdown_grace_s: float = Field(default=60.0, ge=0)
@@ -74,6 +71,12 @@ class Settings(BaseSettings):
     worker_concurrency: int = Field(default=4, ge=1)
     # 世界状态 agent 整理一回合最多多久（包括最多 20 轮工具），超时算这一回合整理失败
     state_turn_timeout_s: float = Field(default=180.0, gt=0)
+    # 切章（docs/agent-runtime.md 第 4 节“章节整理”）：这一章的原文超过 soft 个 token 以后，
+    # 在下一个场景结束处切；一直没有场景结束，到 hard 时硬切
+    chapter_soft_tokens: int = Field(default=8000, gt=0)
+    chapter_hard_tokens: int = Field(default=16000, gt=0)
+    # 章节整理一章最多多久，超时算失败（下一回合整理完会再试）
+    chapter_timeout_s: float = Field(default=180.0, gt=0)
     # 每个存档能回退几次（以后按用户区分，例如充值用户 3 次）
     rollback_limit: int = Field(default=1, ge=0)
     job_lock_timeout_s: float = Field(default=300.0, gt=0)

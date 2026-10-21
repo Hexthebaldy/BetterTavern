@@ -5,8 +5,6 @@ import pytest
 from bettertavern.domain.memory.thresholds import (
     DEFAULT_WORKING_WINDOW,
     WINDOW_CLAMPED,
-    Occupancy,
-    classify_occupancy,
     effective_window,
     emergency_budget,
     overflow_retry_budget,
@@ -49,19 +47,6 @@ def test_reserved_output_bigger_than_window_floors_at_zero() -> None:
 def test_invalid_inputs(model: int, cap: int | None, reserved: int) -> None:
     with pytest.raises(ValueError):
         effective_window(model, cap, reserved)
-
-
-@pytest.mark.parametrize(
-    ("tokens", "expected"),
-    [
-        (80_000, Occupancy.OK),
-        (80_001, Occupancy.COMPACT),
-        (95_000, Occupancy.COMPACT),
-        (95_001, Occupancy.EMERGENCY),
-    ],
-)
-def test_occupancy_lines(tokens: int, expected: Occupancy) -> None:
-    assert classify_occupancy(tokens, 100_000) is expected
 
 
 def test_truncation_targets() -> None:

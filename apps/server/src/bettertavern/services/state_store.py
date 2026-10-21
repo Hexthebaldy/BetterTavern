@@ -1,7 +1,8 @@
 """StateStore 的 Postgres 实现：世界状态 agent 通过它读要整理的回合、写整理结果。
 
 写入都在一个事务里，并且先对 playthroughs 做带条件的 UPDATE（整理进度 state_seq、时间线编号），
-成功后才写世界状态表、撤销记录和回合标签（docs/agent-runtime.md 第 8 节）。
+成功后才写世界状态表、撤销记录和回合标签（docs/agent-runtime.md 第 8 节）；同一个事务里往
+memory 队列放一个章节整理任务，由它看够不够切一章（services/memory_jobs.py）。
 """
 
 from __future__ import annotations
@@ -15,8 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
 from bettertavern.infra.db.repositories import state as state_repo
 from bettertavern.infra.db.repositories import story as story_repo
+from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.runtime.ports import AgentRunRecord, StateCommit, StateTurn
 
+from .memory_jobs import enqueue_memory
 from .run_records import insert_run
 
 log = structlog.get_logger(__name__)
@@ -29,8 +32,9 @@ class _Stale(Exception):
 
 
 class PgStateStore:
-    def __init__(self, engine: AsyncEngine) -> None:
+    def __init__(self, engine: AsyncEngine, queue: PgJobQueue | None = None) -> None:
         self._engine = engine
+        self._queue = queue or PgJobQueue(engine)
 
     async def next_turn(self, playthrough_id: str) -> StateTurn | None:
         async with self._engine.connect() as conn:
@@ -91,6 +95,7 @@ class PgStateStore:
                 )
                 await state_repo.mark_committed(conn, turn.turn_id)
                 await self._insert_run(conn, turn, result.run)
+                await enqueue_memory(conn, self._queue, turn.playthrough_id)
         except _Stale:
             await self._record(turn, dataclasses.replace(result.run, status="stale"))
             return False
@@ -121,6 +126,7 @@ class PgStateStore:
                 )
                 await state_repo.mark_committed(conn, turn.turn_id)
                 await self._insert_run(conn, turn, run)
+                await enqueue_memory(conn, self._queue, turn.playthrough_id)
         except _Stale:
             await self._record(turn, dataclasses.replace(run, status="stale"))
             return False

@@ -74,8 +74,10 @@ Key 随便填，模型选 `fake-model`（后端要设 `ALLOW_PRIVATE_ENDPOINTS=t
 cd apps/server && uv run python -m tests.fakes.story_llm --port 8020
 ```
 
-想看导演先查旧回合（底部状态栏的“正在回想前情…”）：后端设 `DIRECTOR_HISTORY_BLOCK=2`（原文每 2 回合整块移出上下文，默认 0 是全部保留），
-假模型服务加上 `--recall`，它在有召回工具时先查一次再写。导演的模型也要能调用工具（同样先“测试这个模型”）。
+章节整理在 worker 里跑（`make worker`）：这一章的原文超过 `CHAPTER_SOFT_TOKENS`（默认 8000）以后，在下一个场景结束处切一章；
+想在开发时很快看到章节摘要，后端和 worker 都设低一点，例如 `CHAPTER_SOFT_TOKENS=400`、`CHAPTER_HARD_TOKENS=800`，日志查看器里打开那局能看到写好的记忆。
+有了章节摘要以后，更早的回合不在导演的上下文里，导演可以先查旧回合（底部状态栏的“正在回想前情…”）：假模型服务加上 `--recall`，
+它在有召回工具时先查一次再写。导演的模型也要能调用工具（同样先“测试这个模型”）。
 
 排查问题时用日志查看器：`make vis-install` 装一次依赖，之后 `make vis`，打开 http://127.0.0.1:8100 。
 它把 `apps/server/.data/logs/` 下的日志和数据库里的回合画成时间线，用法见 [testing.md 第 1 节](testing.md)。

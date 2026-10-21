@@ -17,6 +17,7 @@ from evals.playtest_checks import Check, RecallProbe, evaluate_all, evaluate_pro
 from evals.playtest_report import (
     RunFacts,
     TurnFacts,
+    context_by_range,
     issues_by_turn,
     lag_by_turn,
     markdown,
@@ -249,3 +250,64 @@ def test_stale_threads_and_answers_are_counted() -> None:
     assert quality["threads"] == {"mystery:open": 1, "promise:open": 1, "mystery:merged": 1}
     assert quality["threads_stale"] == [{"since": 3, "text": "谁封的信"}]
     assert quality["threads_with_answer"] == 1
+
+
+def test_context_length_and_chapters_are_reported() -> None:
+    runs = [
+        RunFacts(
+            seq=10,
+            agent="director",
+            status="ok",
+            input_tokens=4000,
+            cached_tokens=3000,
+            result={"estimated_tokens": 4200},
+        ),
+        RunFacts(
+            seq=40,
+            agent="director",
+            status="ok",
+            input_tokens=6000,
+            cached_tokens=5000,
+            result={"estimated_tokens": 6100},
+        ),
+        RunFacts(
+            seq=60,
+            agent="director",
+            status="ok",
+            input_tokens=5000,
+            cached_tokens=4000,
+            result={"estimated_tokens": 5000},
+        ),
+        RunFacts(seq=33, agent="chapter_writer", status="ok", latency_ms=9000, input_tokens=9000),
+        RunFacts(seq=66, agent="chapter_writer", status="failed", error_class="timeout"),
+    ]
+    assert context_by_range(runs[:3]) == [
+        {
+            "from": 0,
+            "to": 49,
+            "estimated_avg": 5150,
+            "estimated_max": 6100,
+            "input_avg": 5000,
+            "cache_hit_ratio": 0.8,
+        },
+        {
+            "from": 50,
+            "to": 99,
+            "estimated_avg": 5000,
+            "estimated_max": 5000,
+            "input_avg": 5000,
+            "cache_hit_ratio": 0.8,
+        },
+    ]
+    summary = summarize(
+        [],
+        runs,
+        {-1: WorldRecords()},
+        skipped=[],
+        final_state_seq=-1,
+        summaries={"chapter": 2, "synopsis": 1},
+    )
+    memory = summary["memory"]
+    assert memory["runs"] == {"ok": 1, "failed": 1} and memory["errors"] == {"timeout": 1}
+    page = markdown(summary, title="章节", playthrough_id="pt")
+    assert "## 章节整理" in page and "第 50–99 回合：5000 / 5000，5000，0.8" in page

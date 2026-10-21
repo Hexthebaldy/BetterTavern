@@ -115,7 +115,6 @@ function detail(head: Turn | null, extra: Partial<PlaythroughDetail> = {}): Play
       head_seq: head?.seq ?? null,
       head_excerpt: "",
       active_turn_id: null,
-      rollback_floor_seq: 0,
       state_seq: -1,
       rollbacks_left: 1,
       seed_source: "model",

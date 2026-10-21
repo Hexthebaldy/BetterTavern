@@ -1,11 +1,13 @@
 """数据库测试用的一局游戏：真实 Postgres 上的服务、可编排的假模型、后台整理世界状态的 runner。
 
-导演用流式脚本（director()），世界状态 agent 用一次回复里的一串工具调用（calls()）。
+导演用流式脚本（director()），世界状态 agent 用一次回复里的一串工具调用（calls()）；
+章节整理由假模型按请求里的回合号回复（chapter_reply()），切章的线很低，几回合就切一章。
 """
 
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -15,12 +17,19 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from bettertavern.domain.memory.chapters import ChapterRule
 from bettertavern.infra.crypto.keyring import load_secrets, new_master_key_entry
-from bettertavern.providers import ChatResult, EndpointPolicy, ToolCall, Usage
+from bettertavern.providers import ChatRequest, ChatResult, EndpointPolicy, ToolCall, Usage
 from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
-from bettertavern.services.container import Services, build_services, build_state_runner
+from bettertavern.services.container import (
+    Services,
+    build_memory_runner,
+    build_services,
+    build_state_runner,
+)
 from bettertavern.services.playthrough_service import NewPlaythrough
 from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.turn_service import ActionInput
@@ -56,14 +65,39 @@ def calls(*items: tuple[str, dict[str, Any]]) -> ChatResult:
     )
 
 
-def commit(digest: str, *entities: str) -> tuple[str, dict[str, Any]]:
-    return ("commit", {"digest": digest, "entities": list(entities), "scene_ended": False})
+def commit(digest: str, *entities: str, scene_ended: bool = False) -> tuple[str, dict[str, Any]]:
+    return ("commit", {"digest": digest, "entities": list(entities), "scene_ended": scene_ended})
+
+
+# 一回合大约 50 token：过了软线以后在场景结束处切，一直没有场景结束时三回合左右到硬线
+CHAPTER_RULE = ChapterRule(soft_tokens=60, hard_tokens=150)
+_TURN = re.compile(r"【第 (\d+) 回合】")
+
+
+def chapter_reply(request: ChatRequest) -> ChatResult:
+    """章节整理的假回复：摘要写明这一章覆盖哪几回合，要并梗概时梗概也写明。"""
+    prompt = request.messages[-1].content
+    seqs = [int(s) for s in _TURN.findall(prompt)]
+    payload: dict[str, Any] = {
+        "chapter_summary": f"第{seqs[0]}到{seqs[-1]}回合的摘要",
+        "player_profile": f"截至第{seqs[-1]}回合的画像",
+    }
+    if "要并进去的一章" in prompt:
+        payload["synopsis"] = f"截至第{seqs[-1]}回合之前的梗概"
+    return ChatResult(
+        text=json.dumps(payload, ensure_ascii=False),
+        reasoning="",
+        tool_calls=(),
+        finish_reason="stop",
+        usage=Usage(prompt=100, completion=20),
+    )
 
 
 @dataclass
 class Game:
     services: Services
     state: StateRunner
+    memory: MemoryRunner
     adapter: ScriptedAdapter
     engine: AsyncEngine
     user_id: str
@@ -108,6 +142,13 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
             policy=EndpointPolicy(),
             config=StateRunnerConfig(turn_timeout_s=5.0),
         )
+        memory = build_memory_runner(
+            engine=engine,
+            secrets=secrets,
+            hub=hub,
+            policy=EndpointPolicy(),
+            config=MemoryRunnerConfig(rule=CHAPTER_RULE, timeout_s=5.0),
+        )
         user, _ = await services.auth.register("lin@example.com", "correct horse")
         await services.routes.create(
             user.id,
@@ -117,6 +158,7 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
         )
         scenario = await services.scenarios.import_file(user.id, json.dumps(CARD).encode())
         adapter = adapters["fake"]
+        adapter.responder = chapter_reply
         adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))
         adapter.streams.append(StreamScript(director(0)))
         pt, opening = await services.playthroughs.create(
@@ -124,7 +166,7 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
         )
         await finish(services, opening.id)
         try:
-            yield Game(services, state, adapter, engine, user.id, pt.id, opening.id)
+            yield Game(services, state, memory, adapter, engine, user.id, pt.id, opening.id)
         finally:
             await services.runners.shutdown(1.0)
             await hub.aclose()

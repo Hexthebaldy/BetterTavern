@@ -141,6 +141,19 @@ export type PlaythroughDetail = {
     updated_at: number;
   };
   turns: Turn[];
+  /** 章节整理写的记忆：章节摘要、全书梗概和玩家画像的各个版本（显示故事内容时才有原文） */
+  memory: MemoryItem[];
+};
+
+export type MemoryItem = {
+  kind: "chapter" | "synopsis" | "profile";
+  first_seq: number;
+  last_seq: number;
+  /** 写它时章节摘要覆盖到第几回合 */
+  written_seq: number;
+  chars: number;
+  text?: string;
+  created_at: number;
 };
 
 /** 一次运行里的一步：调一次模型或用一次工具。不显示故事时 result 里没有 text，只有 text_chars */

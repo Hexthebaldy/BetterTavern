@@ -149,7 +149,6 @@ class PlaythroughOut(Out):
     head_seq: int | None
     head_excerpt: str
     active_turn_id: str | None
-    rollback_floor_seq: int
     state_seq: int
     rollbacks_left: int
     seed_source: str | None

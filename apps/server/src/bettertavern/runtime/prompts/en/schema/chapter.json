@@ -1,0 +1,10 @@
+{
+  "description": "The memory written when a chapter ends",
+  "fields": {
+    "ChapterOutput.chapter_summary": "A summary of this chapter, one paragraph of at most 300 words, past tense",
+    "ChapterOutput.player_profile": "The new player profile, at most 500 words",
+    "ChapterFoldOutput.chapter_summary": "A summary of this chapter, one paragraph of at most 300 words, past tense",
+    "ChapterFoldOutput.player_profile": "The new player profile, at most 500 words",
+    "ChapterFoldOutput.synopsis": "The new synopsis of the whole story, at most 900 words, in three sections: main plot, causes and turns, information and secrets"
+  }
+}

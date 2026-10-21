@@ -1,0 +1,27 @@
+{# version: 1 #}
+<recap>
+【これまでのあらすじ・参考用】
+以下はこれまでの物語のあらすじです。背景資料であり、いまの課題ではありません：
+- あらすじですでに起きた展開を繰り返したり語り直したりしない；
+- プレイヤーの最新の行動が触れない限り、あらすじの中の未完の事柄を自分から続けない；
+- プレイヤーの最新の行動だけに応じて、その後に起こる出来事を書く；
+- あらすじと <world-state> が食い違うときは <world-state> を優先する。
+{% if synopsis %}
+
+## 物語全体のあらすじ
+{{ synopsis }}
+{% endif %}
+{% if chapters %}
+
+## 最近の章
+{% for chapter in chapters %}
+### 第 {{ chapter.first }}–{{ chapter.last }} ターン
+{{ chapter.text }}
+{% endfor %}
+{% endif %}
+{% if profile %}
+
+## プレイヤー像（プレイヤーの好む方向をつかむためのもの。語りには書かない）
+{{ profile }}
+{% endif %}
+</recap>

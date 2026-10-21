@@ -64,6 +64,25 @@ class HistoryTurn:
     director_notes: str = ""  # 导演当时写的隐藏备注
 
 
+@dataclass(frozen=True, slots=True)
+class ChapterSummary:
+    first_seq: int
+    last_seq: int
+    text: str
+
+
+@dataclass(frozen=True)
+class StoryMemory:
+    """整理出来的记忆（docs/agent-runtime.md 第 7 节）：全书梗概、还没并进梗概的最近几章的章节摘要
+    （按回合升序）、玩家画像，以及章节摘要已经覆盖到第几回合（-1 表示还没有）。"""
+
+    synopsis: str = ""
+    synopsis_last_seq: int = -1  # 全书梗概覆盖到第几回合
+    chapters: tuple[ChapterSummary, ...] = ()
+    profile: str = ""
+    summarized_seq: int = -1
+
+
 @dataclass(frozen=True)
 class TurnContext:
     header: TurnHeader
@@ -71,10 +90,12 @@ class TurnContext:
     protagonist_name: str
     preferences: Preferences
     seed: Seed | None
+    # 原文回合：章节摘要覆盖到的回合之后（再加上一章最后两回合），到上一回合为止
     history: tuple[HistoryTurn, ...]
     world: WorldSnapshot
     # 世界状态已整理到第几回合（-1 表示还没整理过）：状态块开头写“截至第几回合”
     state_seq: int = -1
+    memory: StoryMemory = field(default_factory=StoryMemory)
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,3 +275,55 @@ class RecallStore(Protocol):
         ...
 
     async def turn(self, playthrough_id: str, seq: int) -> PastTurn | None: ...
+
+
+# ---- 章节整理（后台） ---------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class ChapterTurn:
+    """章节整理要读的一回合。"""
+
+    turn_id: str
+    seq: int
+    action: PlayerAction
+    narrative: str
+    scene_ended: bool  # 世界状态 agent 判断这一回合之后场景结束了
+
+
+@dataclass(frozen=True)
+class MemoryWork:
+    """一局待整理的情况：章节摘要覆盖到的回合之后、已经整理进世界状态的回合，和现有的记忆。"""
+
+    playthrough_id: str
+    user_id: str
+    epoch: int
+    language: str
+    protagonist_name: str
+    turns: tuple[ChapterTurn, ...]
+    memory: StoryMemory
+
+
+@dataclass(frozen=True)
+class ChapterCommit:
+    first_seq: int
+    last_seq: int
+    chapter: str  # 这一章的摘要
+    profile: str  # 新一版玩家画像
+    run: AgentRunRecord
+    synopsis: str | None = None  # 并进了最早一章时的新一版全书梗概
+    synopsis_last_seq: int | None = None  # 新梗概覆盖到第几回合
+
+
+class MemoryStore(Protocol):
+    async def pending(self, playthrough_id: str) -> MemoryWork | None:
+        """这一局待整理的情况；局不存在或者还在开局时返回 None。"""
+        ...
+
+    async def commit(self, work: MemoryWork, result: ChapterCommit) -> bool:
+        """一个事务：章节摘要的覆盖进度前进到这一章末尾，写章节摘要、新梗概（有的话）、新一版玩家画像，
+        记下这次运行。覆盖进度或时间线编号对不上（期间回退过、已经写过）时什么都不写，
+        运行记为 stale，返回 False。"""
+        ...
+
+    async def fail(self, work: MemoryWork, run: AgentRunRecord) -> None: ...

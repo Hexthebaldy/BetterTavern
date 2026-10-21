@@ -10,6 +10,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from bettertavern.domain.memory.chapters import raw_start
 from bettertavern.domain.scenario.card import CharacterCard
 from bettertavern.domain.story.language import unnamed_protagonist
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
@@ -37,6 +38,7 @@ from bettertavern.runtime.ports import (
     WorldBuildInput,
 )
 
+from .memory_store import load_story_memory
 from .run_records import insert_run as insert_run_record
 from .state_jobs import enqueue_state
 
@@ -169,10 +171,15 @@ class PgTurnStore:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id)
             turn = await story_repo.get_turn(conn, header.turn_id)
             assert pt is not None and turn is not None
+            # 原文只取章节摘要覆盖到的回合之后（再加上一章最后两回合），更早的在回顾里
             history = await story_repo.list_chain(
-                conn, header.playthrough_id, up_to_seq=header.seq - 1
+                conn,
+                header.playthrough_id,
+                after_seq=raw_start(pt.summarized_seq) - 1,
+                up_to_seq=header.seq - 1,
             )
             world = await load_world(conn, header.playthrough_id)
+            memory = await load_story_memory(conn, header.playthrough_id, pt.summarized_seq)
         seed = Seed.model_validate(pt.seed) if pt.seed else None
         protagonist = (pt.settings.get("protagonist") or {}).get("name") or (
             seed.protagonist.name if seed else unnamed_protagonist(pt.language)
@@ -197,6 +204,7 @@ class PgTurnStore:
             ),
             world=world,
             state_seq=pt.state_seq,
+            memory=memory,
         )
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:

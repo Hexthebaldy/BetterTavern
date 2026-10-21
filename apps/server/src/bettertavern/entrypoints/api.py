@@ -80,7 +80,6 @@ def build_app_services(
             world_builder_timeout_s=settings.world_builder_timeout_s,
             options_repair_timeout_s=settings.options_repair_timeout_s,
             director_timeout_s=settings.director_timeout_s,
-            history_block=settings.director_history_block,
         ),
         instance_id=instance_id(),
         rollback_limit=settings.rollback_limit,

@@ -1,16 +1,15 @@
 """导演上下文的装配（纯函数：同样的输入产出逐字节相同的消息，前缀缓存与重放测试依赖这一点）。
 
-消息摆放（docs/backend.md 第 4 节）：
-1. system：规则 + 故事设定（取自开局 Seed，开局后基本不变，放最前面命中前缀缓存）；
-2. 近期原文：按顺序交替的 user / assistant，导演回合写成当时的叙述加给玩家的选项
-   （和导演的输出格式一样，模型看着历史也会照样写选项）；
+消息摆放（docs/agent-runtime.md 第 6 节），按“变得多慢”从前往后排，前缀缓存只认一字不差的开头：
+1. system：规则 + 故事设定（取自开局 Seed，开局后不变）；后面接 <recap> 回顾：全书梗概、
+   最近几章的章节摘要、玩家画像（每章结束时才变）；
+2. 原文：当前这一章的回合（再加上一章最后两回合），按顺序交替的 user / assistant，导演回合
+   写成当时的叙述加给玩家的选项（和导演的输出格式一样，模型看着历史也会照样写选项）。
+   哪些回合放进来由调用方定（TurnContext.history，见 domain/memory/chapters.py）；
 3. 最后一条 user：状态块在前、玩家行动在后（或开场简报、结局要求），离生成点最近。
 
-还没有场景摘要（agent runtime 阶段 4），近期原文默认是全部历史。history_block 大于 0 时，
-原文按这个数整块移出：保留最近的 N 到 2N−1 回合，起点每 N 回合才往后挪一次，中间前缀不变，
-前缀缓存照样命中；移出的回合由导演用召回工具查（第 4 节“导演”）。没整理进世界状态的回合
-不会被移出。超过有效窗口 95% 时只截断发送视图，从最旧的回合开始丢，至少保留最近 2 个回合，
-直到不超过 90%。
+章节摘要之前的回合不在上下文里，导演用召回工具查（第 7 节“召回”）。超过有效窗口 95% 时只截断
+发送视图，从最旧的回合开始丢，至少保留最近 2 个回合，直到不超过 90%：这是整理跟不上时的保护。
 """
 
 from __future__ import annotations
@@ -79,15 +78,6 @@ class AssembledContext:
         return digest.hexdigest()[:16]
 
 
-def history_start(ctx: TurnContext, block: int) -> int:
-    """原文从第几回合开始放：block 为 0 时全部放；否则起点按 block 整块往后挪，
-    并且不晚于“已整理到的回合 + 1”（没整理进世界状态的回合一定以原文出现）。"""
-    if block <= 0:
-        return 0
-    start = max(0, (ctx.header.seq // block - 1) * block)
-    return max(0, min(start, ctx.state_seq + 1))
-
-
 class ContextAssembler:
     """一种语言一个：runner 按这一局的 playthroughs.language 取对应语言的提示词来建"""
 
@@ -129,11 +119,24 @@ class ContextAssembler:
             length=prefs.length,
         )
 
-    def history_messages(self, ctx: TurnContext, start: int = 0) -> list[tuple[Message, Message]]:
+    def recap(self, ctx: TurnContext) -> RenderedPrompt | None:
+        """<recap> 回顾：全书梗概、最近几章的章节摘要、玩家画像；还没有任何记忆时为 None。"""
+        memory = ctx.memory
+        if not (memory.synopsis or memory.chapters or memory.profile):
+            return None
+        return self._prompts.render(
+            "director.recap",
+            synopsis=sanitize_for_fence(memory.synopsis),
+            chapters=[
+                {"first": c.first_seq, "last": c.last_seq, "text": sanitize_for_fence(c.text)}
+                for c in memory.chapters
+            ],
+            profile=sanitize_for_fence(memory.profile),
+        )
+
+    def history_messages(self, ctx: TurnContext) -> list[tuple[Message, Message]]:
         pairs: list[tuple[Message, Message]] = []
         for turn in ctx.history:
-            if turn.seq < start:
-                continue
             if turn.action.source == "opening":
                 user = self._prompts.render(
                     "director.opening",
@@ -199,16 +202,16 @@ class ContextAssembler:
         window: int,
         *,
         budget: int | None = None,
-        history_block: int = 0,
         recall: bool = False,
     ) -> AssembledContext:
         """budget 不为空时（厂商报超窗后的重试）直接截断到不超过 budget。
-        history_block 见模块说明；recall 为真表示这一回合会给导演召回工具。"""
+        recall 为真表示这一回合会给导演召回工具。"""
         system = self.system_prompt(ctx)
-        start = history_start(ctx, history_block)
-        seqs = [t.seq for t in ctx.history if t.seq >= start]
-        pairs = self.history_messages(ctx, start)
-        head = [Message(role="system", content=system.text)]
+        recap = self.recap(ctx)
+        seqs = [t.seq for t in ctx.history]
+        pairs = self.history_messages(ctx)
+        system_text = system.text if recap is None else f"{system.text}\n\n{recap.text}"
+        head = [Message(role="system", content=system_text)]
         finals: dict[int, RenderedPrompt] = {}
 
         def first_seq(kept: int) -> int:
@@ -249,6 +252,8 @@ class ContextAssembler:
             "director.system": system.version,
             last.name: last.version,
         }
+        if recap is not None:
+            versions[recap.name] = recap.version
         return AssembledContext(
             messages=messages,
             estimated_tokens=total,

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from bettertavern.domain.memory.chapters import ChapterRule
 from bettertavern.infra.crypto.keyring import load_secrets, new_master_key_entry
 from bettertavern.providers import EndpointPolicy, ProviderHub
 from evals.playtest import ModelChoice, ReplayConfig, run_replay
@@ -69,7 +70,7 @@ async def test_replay_runs_end_to_end_with_a_fake_model(
 async def test_director_recalls_through_the_real_stream_format(
     fake_llm: RunningFakeLLM, tmp_path: Path
 ) -> None:
-    """原文按 2 回合整块移出：后面几回合导演有召回工具，先查一次再写
+    """切章的线很低，几回合就写一章：之后导演有召回工具，先查一次再写
     （工具调用走真实的流式格式）。"""
     assert URL is not None
     story = StoryScript(piece_delay=0.0, recall=True)
@@ -89,7 +90,13 @@ async def test_director_recalls_through_the_real_stream_format(
         caps_override={"tools": True},
     )
     # 每回合之间停一下，让世界状态跟上：没整理的回合不会移出上下文
-    config = ReplayConfig(director=model, turns=5, think_s=0.5, settle_s=30.0, history_block=2)
+    config = ReplayConfig(
+        director=model,
+        turns=6,
+        think_s=0.5,
+        settle_s=30.0,
+        chapter_rule=ChapterRule(soft_tokens=60, hard_tokens=150),
+    )
     async with schema_engine(URL, pool_size=10) as engine:
         hub = ProviderHub(policy=policy)
         try:
@@ -103,5 +110,7 @@ async def test_director_recalls_through_the_real_stream_format(
     assert recall["used_turns"] == recall["offered_turns"] == story.recall_calls
     assert recall["tool_calls"] == {"recall": story.recall_calls}
     # 查过以后照样写完，每回合都有叙述和选项
-    assert result.summary["director"]["runs"] == 6
+    assert result.summary["director"]["runs"] == 7
+    # 章节整理也跑了：写了章节摘要，导演的上下文里有回顾
+    assert result.summary["memory"]["runs"].get("ok", 0) >= 1 and story.chapter_calls >= 1
     assert all(t.narrative for t in result.turns)

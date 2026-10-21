@@ -10,12 +10,14 @@ from bettertavern.infra.crypto.keyring import AppSecrets
 from bettertavern.infra.crypto.tokens import AccessTokenSigner
 from bettertavern.providers import EndpointPolicy, ProviderHub
 from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
 from bettertavern.runtime.prompts import PromptBook
 from bettertavern.runtime.runner import RunnerConfig, TurnRunner, TurnRunnerPool
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
 
 from .auth_service import AuthService
 from .maintenance import Maintenance
+from .memory_store import PgMemoryStore
 from .playthrough_service import PlaythroughService
 from .recall_store import PgRecallStore
 from .route_service import RouteService
@@ -111,6 +113,26 @@ def build_state_runner(
     routes = RouteService(engine, secrets.keyring, hub, policy)
     return StateRunner(
         store=PgStateStore(engine),
+        routes=routes,
+        hub=hub,
+        prompts=prompts or PromptBook(),
+        config=config,
+    )
+
+
+def build_memory_runner(
+    *,
+    engine: AsyncEngine,
+    secrets: AppSecrets,
+    hub: ProviderHub,
+    policy: EndpointPolicy,
+    config: MemoryRunnerConfig,
+    prompts: PromptBook | None = None,
+) -> MemoryRunner:
+    """worker 进程用：后台章节整理。"""
+    routes = RouteService(engine, secrets.keyring, hub, policy)
+    return MemoryRunner(
+        store=PgMemoryStore(engine),
         routes=routes,
         hub=hub,
         prompts=prompts or PromptBook(),

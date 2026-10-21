@@ -1,0 +1,10 @@
+{
+  "description": "一章结束时整理出的记忆",
+  "fields": {
+    "ChapterOutput.chapter_summary": "这一章的摘要，一段话，不超过 500 字，过去时",
+    "ChapterOutput.player_profile": "新一版玩家画像，不超过 800 字",
+    "ChapterFoldOutput.chapter_summary": "这一章的摘要，一段话，不超过 500 字，过去时",
+    "ChapterFoldOutput.player_profile": "新一版玩家画像，不超过 800 字",
+    "ChapterFoldOutput.synopsis": "新一版全书梗概，不超过 1500 字，分剧情主线、因果与转折、信息与秘密三节"
+  }
+}

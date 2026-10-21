@@ -4,7 +4,8 @@
 - 逐回合检查一致性规则（domain/world/invariants.py），只看这一回合新出现的问题；
 - 找出退场（死去、永久离开）之后又被写进叙述的人和物：可能是回忆，也可能是写错了，列出来给人看；
 - 统计导演和世界状态 agent 的用量、延迟，世界状态落后几回合，失败、跳过和被拒绝的修改；
-- 导演用召回工具的情况（哪些回合提供了工具、用了几轮、首字慢了多少）和召回题的结果。
+- 导演用召回工具的情况（哪些回合提供了工具、用了几轮、首字慢了多少）和召回题的结果；
+- 章节整理：写了几章、并进梗概几次，导演的上下文长度按回合段看稳不稳。
 """
 
 from __future__ import annotations
@@ -30,6 +31,9 @@ from .playtest_checks import CheckResult, ProbeResult
 
 STATE_AGENT = "state_keeper"
 DIRECTOR_AGENT = "director"
+CHAPTER_AGENT = "chapter_writer"
+# 导演上下文长度按多少回合一段来统计
+CONTEXT_BUCKET_TURNS = 50
 # 导演自己给出选项的回合至少占这么多，否则判为不合格（和 M0 合规率评测的标准一样）
 OWN_OPTIONS_TARGET = 0.95
 # 线索挂了这么多回合还没解开，算“挂太久”
@@ -216,6 +220,31 @@ def recall_use(
     }
 
 
+def context_by_range(runs: Sequence[RunFacts]) -> list[dict[str, Any]]:
+    """导演每回合发出去的上下文有多长（估算的 token 和服务商算的输入 token），按回合段统计。
+    章节整理跟得上时应该稳定，不随回合数一直涨。"""
+    buckets: dict[int, list[RunFacts]] = {}
+    for run in runs:
+        if run.seq is not None:
+            buckets.setdefault(run.seq // CONTEXT_BUCKET_TURNS, []).append(run)
+    out: list[dict[str, Any]] = []
+    for index, items in sorted(buckets.items()):
+        estimated = [int(r.result.get("estimated_tokens") or 0) for r in items]
+        prompt = [r.input_tokens for r in items if r.input_tokens]
+        cached = sum(r.cached_tokens for r in items)
+        out.append(
+            {
+                "from": index * CONTEXT_BUCKET_TURNS,
+                "to": (index + 1) * CONTEXT_BUCKET_TURNS - 1,
+                "estimated_avg": round(statistics.mean(estimated)) if estimated else None,
+                "estimated_max": max(estimated, default=None),
+                "input_avg": round(statistics.mean(prompt)) if prompt else None,
+                "cache_hit_ratio": round(cached / sum(prompt), 4) if prompt else None,
+            }
+        )
+    return out
+
+
 def thread_quality(final: WorldRecords, *, last_seq: int) -> dict[str, Any]:
     """线索：按种类和状态计数，挂了超过 STALE_THREAD_TURNS 回合还没解开的，写了答案的。"""
     open_threads = [t for t in final.threads if t.status == "open"]
@@ -260,9 +289,14 @@ def summarize(
     protagonist: str = "",
     probes: Sequence[ProbeResult] = (),
     tool_calls: Mapping[str, int] | None = None,
+    summaries: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
     director = [r for r in runs if r.agent == DIRECTOR_AGENT and r.status == "ok"]
     state = [r for r in runs if r.agent == STATE_AGENT]
+    chapter_runs = [r for r in runs if r.agent == CHAPTER_AGENT]
+    chapter_ms = [
+        float(r.latency_ms) for r in chapter_runs if r.status == "ok" and r.latency_ms is not None
+    ]
     state_ok = [r for r in state if r.status == "ok"]
     lags = list(lag_by_turn(turns).values())
     head = max((t.seq for t in turns), default=-1)
@@ -332,6 +366,14 @@ def summarize(
             "rejected": sum(rejected.values()),
             "top_rejected": rejected.most_common(10),
             **_tokens(state),
+        },
+        "memory": {
+            "runs": dict(Counter(r.status for r in chapter_runs)),
+            "errors": dict(Counter(r.error_class for r in chapter_runs if r.error_class)),
+            "summaries": dict(summaries or {}),
+            "latency_ms_p50": percentile(chapter_ms, 0.5),
+            "context": context_by_range(director),
+            **_tokens(chapter_runs),
         },
         "lag": {
             "max": max(lags, default=0),
@@ -406,6 +448,7 @@ def markdown(summary: Mapping[str, Any], *, title: str, playthrough_id: str) -> 
         f"输出 {d['output_tokens']}",
         "",
         *_recall_lines(summary["recall"]),
+        *_memory_lines(summary["memory"]),
         "## 世界状态 agent",
         f"- 运行：{s['runs']}；失败原因：{s['errors'] or '无'}；"
         f"跳过的回合：{s['skipped_turns'] or '无'}",
@@ -444,6 +487,24 @@ def markdown(summary: Mapping[str, Any], *, title: str, playthrough_id: str) -> 
         "",
     ]
     return "\n".join(lines)
+
+
+def _memory_lines(m: Mapping[str, Any]) -> list[str]:
+    lines = [
+        "## 章节整理",
+        f"- 运行：{m['runs'] or '无'}；失败原因：{m['errors'] or '无'}；"
+        f"写好的：{m['summaries'] or '无'}（chapter 是章节摘要，synopsis 是全书梗概的版本）",
+        f"- 每章耗时中位 {m['latency_ms_p50']} 毫秒；token：输入 {m['input_tokens']}"
+        f"（缓存命中 {m['cache_hit_ratio']}），输出 {m['output_tokens']}",
+        "- 导演的上下文长度（按回合段：估算 token 的平均 / 最大，服务商算的平均输入，缓存命中）：",
+    ]
+    for c in m["context"]:
+        lines.append(
+            f"  - 第 {c['from']}–{c['to']} 回合：{c['estimated_avg']} / {c['estimated_max']}，"
+            f"{c['input_avg']}，{c['cache_hit_ratio']}"
+        )
+    lines.append("")
+    return lines
 
 
 def _recall_lines(r: Mapping[str, Any]) -> list[str]:

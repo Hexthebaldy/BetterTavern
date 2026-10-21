@@ -11,7 +11,7 @@ from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.providers import CancelToken, Capabilities, ProviderHub, ToolCall
 from bettertavern.runtime.events.buffer import EventStream
-from bettertavern.runtime.ports import HistoryTurn, PastTurn
+from bettertavern.runtime.ports import ChapterSummary, HistoryTurn, PastTurn, StoryMemory
 from bettertavern.runtime.prompts import PromptBook
 from bettertavern.runtime.runner import RunnerConfig, TurnRunner
 from tests.fakes.runtime import (
@@ -30,7 +30,12 @@ GOOD = (
     "<narrative>\n老周想了想：那火漆上压着一只乌鸦。\n</narrative>\n"
     "<options>\n1. 追问乌鸦\n2. 告辞\n</options>"
 )
-BLOCK = RunnerConfig(delta_batch_s=0.0, lease_renew_s=10, history_block=10)
+CONFIG = RunnerConfig(delta_batch_s=0.0, lease_renew_s=10)
+# 第 0 到 11 回合已经写成章节摘要：原文从第 10 回合开始（多留上一章最后两回合）
+MEMORY = StoryMemory(
+    chapters=(ChapterSummary(0, 11, "林川在灰石镇打听火漆，老周说上面压着乌鸦。"),),
+    summarized_seq=11,
+)
 
 
 def history(count: int) -> list[HistoryTurn]:
@@ -63,15 +68,16 @@ async def play(
     seq: int = 25,
     caps: Capabilities | None = None,
     recall: FakeRecall | None = None,
-    config: RunnerConfig = BLOCK,
+    memory: StoryMemory = MEMORY,
 ) -> tuple[FakeStore, list[tuple[str, dict[str, object]]]]:
-    store = FakeStore(history=history(seq), state_seq=seq - 1)
+    start = 0 if memory.summarized_seq < 0 else memory.summarized_seq - 1
+    store = FakeStore(history=history(seq)[start:], state_seq=seq - 1, memory=memory)
     runner = TurnRunner(
         store=store,
         routes=FakeRoutes({RouteTask.DIRECTOR: make_route(caps=caps)}),
         hub=hub,
         prompts=PromptBook(),
-        config=config,
+        config=CONFIG,
         recall=recall if recall is not None else recall_store(),
     )
     stream = EventStream("turn-1")
@@ -121,12 +127,16 @@ async def test_final_message_tells_where_the_story_text_starts() -> None:
     # 第 10 回合之前的原文不在上下文里
     texts = [m.content for m in request.messages]
     assert not any("叙述9\n" in t for t in texts) and any("叙述10\n" in t for t in texts)
+    # 更早的回合在 system 末尾的回顾里
+    system = request.messages[0].content
+    assert system.index("<recap>") > system.index("## 输出格式")
+    assert "### 第 0–11 回合\n林川在灰石镇打听火漆" in system
 
 
 async def test_no_tools_while_the_whole_story_is_in_context() -> None:
     hub, adapters = scripted_hub("fake")
     adapters["fake"].streams.append(StreamScript([GOOD]))
-    store, events = await play(hub, seq=12)
+    store, events = await play(hub, seq=12, memory=StoryMemory())
     [request] = adapters["fake"].requests
     assert request.tools is None
     assert "director.recalling" not in [e for e, _ in events]
@@ -170,7 +180,7 @@ async def test_director_notes_are_saved_but_never_streamed() -> None:
     hub, adapters = scripted_hub("fake")
     notes = "<director-notes>\n伏笔：乌鸦是商会的暗记。\n</director-notes>"
     adapters["fake"].streams.append(StreamScript([GOOD + "\n" + notes]))
-    store, events = await play(hub, seq=3)
+    store, events = await play(hub, seq=3, memory=StoryMemory())
     deltas = "".join(str(d["text"]) for e, d in events if e == "narrative.delta")
     assert "伏笔" not in deltas
     completed = events[-1][1]["turn"]

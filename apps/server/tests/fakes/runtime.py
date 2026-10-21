@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from collections.abc import AsyncGenerator, Mapping
+from collections.abc import AsyncGenerator, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -44,6 +44,7 @@ from bettertavern.runtime.ports import (
     HistoryTurn,
     PastTurn,
     Preferences,
+    StoryMemory,
     TurnContext,
     TurnFailure,
     TurnHeader,
@@ -71,6 +72,8 @@ class ScriptedAdapter:
         self._profile = profile
         self.streams: deque[StreamScript] = deque()
         self.completions: deque[ChatResult | ProviderError] = deque()
+        # 排好的非流式回复用完以后由它回复（按请求的内容决定，比如章节整理）；不给时照常报错
+        self.responder: Callable[[ChatRequest], ChatResult] | None = None
         self.requests: list[ChatRequest] = []
         # list_models 返回的列表；list_error 不为空时改为抛出它
         self.models: list[ModelInfo] = [ModelInfo(id="fake-model", context_window=65536)]
@@ -135,6 +138,8 @@ class ScriptedAdapter:
         cancel: CancelToken | None = None,
     ) -> ChatResult:
         self.requests.append(req)
+        if not self.completions and self.responder is not None:
+            return self.responder(req)
         item = self.completions.popleft()
         if isinstance(item, ProviderError):
             raise item
@@ -222,6 +227,7 @@ class FakeStore:
     history: list[HistoryTurn] = field(default_factory=list)
     action: PlayerAction = field(default_factory=lambda: PlayerAction("text", "我推门"))
     state_seq: int = -1  # 世界状态已整理到第几回合
+    memory: StoryMemory = field(default_factory=StoryMemory)
     commit_ok: bool = True
     renew_ok: bool = True
     world_input: WorldBuildInput | None = None
@@ -243,6 +249,7 @@ class FakeStore:
             history=tuple(self.history),
             world=self.world,
             state_seq=self.state_seq,
+            memory=self.memory,
         )
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:

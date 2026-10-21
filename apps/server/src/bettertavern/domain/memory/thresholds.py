@@ -1,9 +1,8 @@
-"""有效窗口与占用率阈值。
+"""有效窗口与截断线。
 
 有效窗口 W = min(模型窗口 M, 工作窗口上限 C) − 预留输出 − 2% 余量（余量按 min(M, C) 计）。
-W 小于 16K 的路由不支持。占用率 = 下一轮上下文的 token 数 ÷ W：
-- 超过 80%：调用 Compactor 压缩（只做数值比较，不调用任何模型）；
-- 发给模型之前的实际装配结果超过 95%：只截断发送视图，到不超过 90% 为止，数据不删；
+W 小于 16K 的路由不支持。上下文平时由章节整理控制长度（chapters.py），下面两条是整理跟不上时的保护：
+- 发给模型之前的实际装配结果超过 W 的 95%：只截断发送视图，到不超过 90% 为止，数据不删；
 - 厂商报超窗（说明估算偏低）：截断到不超过 85% 后重试一次。
 
 保存路由和装配上下文共用这里的纯函数，避免两处算法不一致。
@@ -13,12 +12,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from enum import StrEnum
 
 MIN_EFFECTIVE_WINDOW = 16_000
 DEFAULT_WORKING_WINDOW = 128_000
 SAFETY_MARGIN = 0.02
-COMPACT_LINE = 0.80
 EMERGENCY_LINE = 0.95
 EMERGENCY_TARGET = 0.90
 OVERFLOW_RETRY_TARGET = 0.85
@@ -69,27 +66,6 @@ def effective_window(
         reserved_output=reserved_output,
         effective_window=max(window, 0),
     )
-
-
-class Occupancy(StrEnum):
-    OK = "ok"
-    COMPACT = "compact"  # 超过 80%：入队压缩
-    EMERGENCY = "emergency"  # 超过 95%：先紧急截断发送视图
-
-
-def occupancy_ratio(tokens: int, window: int) -> float:
-    if window <= 0:
-        raise ValueError("effective window must be positive")
-    return tokens / window
-
-
-def classify_occupancy(tokens: int, window: int) -> Occupancy:
-    ratio = occupancy_ratio(tokens, window)
-    if ratio > EMERGENCY_LINE:
-        return Occupancy.EMERGENCY
-    if ratio > COMPACT_LINE:
-        return Occupancy.COMPACT
-    return Occupancy.OK
 
 
 def emergency_budget(window: int) -> int:

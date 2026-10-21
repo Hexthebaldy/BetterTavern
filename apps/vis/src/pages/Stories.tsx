@@ -1,9 +1,12 @@
-/** 故事列表 → 某个故事的回合列表（每个回合一行：状态、首字、总耗时、模型、token、重试和断线次数） */
+/**
+ * 故事列表 → 某个故事的回合列表（每个回合一行：状态、首字、总耗时、模型、token、重试和断线次数），
+ * 下面列出章节整理写的记忆（章节摘要、全书梗概和玩家画像的各个版本）。
+ */
 
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { usePlaythrough, usePlaythroughs } from "../api.ts";
-import { ErrorBox, IdChip, Loading, Pill, statusTone } from "../components/common.tsx";
+import { type MemoryItem, usePlaythrough, usePlaythroughs } from "../api.ts";
+import { ErrorBox, IdChip, Loading, Pill, statusTone, usePref } from "../components/common.tsx";
 import { ACTION_SOURCES, errorCode, OPTION_SOURCES, TURN_STATUS } from "../lib/catalog.ts";
 import { ago, clock, duration, modelName, tokens } from "../lib/format.ts";
 
@@ -54,7 +57,9 @@ export function Stories() {
 
 export function StoryDetail() {
   const { id = "" } = useParams();
-  const { data, error, isLoading } = usePlaythrough(id, false);
+  // 和回合详情页共用“显示故事内容”的开关：打开时记忆显示原文
+  const [storyPref] = usePref("vis.story", "0");
+  const { data, error, isLoading } = usePlaythrough(id, storyPref === "1");
   const navigate = useNavigate();
   if (isLoading) return <Loading />;
   if (error || !data) {
@@ -143,6 +148,45 @@ export function StoryDetail() {
           ))}
         </tbody>
       </table>
+      <Memory items={data.memory} />
     </div>
+  );
+}
+
+const MEMORY_KINDS: Record<MemoryItem["kind"], string> = {
+  chapter: "章节摘要",
+  synopsis: "全书梗概",
+  profile: "玩家画像",
+};
+
+/** 章节整理写的记忆，按写的先后排。原文只在打开“显示故事内容”时有 */
+function Memory({ items }: { items: MemoryItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <>
+      <h2>记忆</h2>
+      <table className="list">
+        <thead>
+          <tr>
+            <th>种类</th>
+            <th>覆盖的回合</th>
+            <th>写于</th>
+            <th>内容</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((m, i) => (
+            <tr key={i}>
+              <td className="nowrap">{MEMORY_KINDS[m.kind] ?? m.kind}</td>
+              <td className="nowrap">
+                {m.kind === "profile" ? `到第 ${m.last_seq} 回合` : `第 ${m.first_seq}–${m.last_seq} 回合`}
+              </td>
+              <td className="nowrap mut">第 {m.written_seq} 回合</td>
+              <td>{m.text ? <div className="story">{m.text}</div> : <span className="mut">已隐藏：{m.chars} 字</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }

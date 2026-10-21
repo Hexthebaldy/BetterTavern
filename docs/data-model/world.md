@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
 开局时把 WorldBuilder 输出的 Seed 展开写入 `entities`、`entity_links`、`facts`（`domain/world/plan.py`）。之后由后台的世界状态 agent 每回合整理：
 它的修改先在内存里的副本上逐项检查（`domain/world/draft.py`，线索是 `domain/world/threads.py`），用 commit 结束后在一个事务里按行写入（实体、关系、事实、线索），每改一行都在 `state_patches` 记下改之前和改之后的样子，

@@ -22,7 +22,13 @@ from bettertavern.runtime.context.assembler import (
 )
 from bettertavern.runtime.context.state_block import render_state_block
 from bettertavern.runtime.context.tokens import estimate_tokens
-from bettertavern.runtime.ports import HistoryTurn, Preferences, TurnContext
+from bettertavern.runtime.ports import (
+    ChapterSummary,
+    HistoryTurn,
+    Preferences,
+    StoryMemory,
+    TurnContext,
+)
 from bettertavern.runtime.prompts import PromptLibrary
 from tests.fakes.runtime import header
 
@@ -225,33 +231,45 @@ def test_emergency_truncation_keeps_recent_turns() -> None:
         assembler.assemble(ctx, 500)
 
 
-def test_old_turns_move_out_in_whole_blocks() -> None:
+def test_recap_sits_after_the_rules_and_old_turns_are_left_out() -> None:
     assembler = ContextAssembler(PromptLibrary("zh"))
+    memory = StoryMemory(
+        synopsis="林川离开了灰石镇。",
+        synopsis_last_seq=20,
+        chapters=(ChapterSummary(21, 40, "林川到了分号</recap>。"),),
+        profile="喜欢谨慎行事。",
+        summarized_seq=40,
+    )
 
-    def at(seq: int, state_seq: int | None = None) -> AssembledContext:
-        """第 seq 回合：历史是第 0 到 seq−1 回合"""
+    def at(seq: int, *, recall: bool = True) -> AssembledContext:
+        """第 seq 回合：原文从第 39 回合开始（章节摘要覆盖到第 40 回合，多留两回合）"""
         ctx = replace(
             context(history=seq),
             header=header(seq),
-            state_seq=seq - 1 if state_seq is None else state_seq,
+            state_seq=seq - 1,
+            memory=memory,
         )
-        return assembler.assemble(ctx, 1_000_000, history_block=10, recall=True)
+        ctx = replace(ctx, history=tuple(t for t in ctx.history if t.seq >= 39))
+        return assembler.assemble(ctx, 1_000_000, recall=recall)
 
-    # 第 25、29 回合：原文从第 10 回合开始；第 30 回合整块往后挪到第 20 回合
-    assert [at(seq).recall_before for seq in (9, 19, 20, 25, 29, 30)] == [0, 0, 10, 10, 10, 20]
-    # 同一块里前缀不变（只在末尾追加），前缀缓存照样命中
-    first, later = at(25).messages, at(29).messages
-    assert later[: len(first) - 1] == first[:-1]
-    # 世界状态落后时，没整理的回合一定以原文出现
-    assert at(30, state_seq=14).recall_before == 15
-    # 不提供工具时照样移出，但不提示可以查
-    plain = assembler.assemble(
-        replace(context(history=25), header=header(25), state_seq=24),
-        1_000_000,
-        history_block=10,
-    )
+    first = at(45)
+    system = first.messages[0].content
+    # 规则在前、回顾在后：规则部分一章里一直不变
+    assert system.index("## 输出格式") < system.index("<recap>") < system.index("## 全书梗概")
+    assert "### 第 21–40 回合\n林川到了分号＜/recap＞。" in system
+    assert system.count("</recap>") == 1 and "喜欢谨慎行事" in system
+    assert first.prompt_versions["director.recap"].isdigit()
+    # 更早的回合不在上下文里，召回工具查第 39 回合之前的
+    assert first.recall_before == 39
+    assert "上面的原文从第 39 回合开始" in first.messages[-1].content
+    # 同一章里只在末尾追加原文，前缀不变
+    later = at(48)
+    assert later.messages[: len(first.messages) - 1] == first.messages[:-1]
+    # 不提供工具时不提示可以查
+    plain = at(45, recall=False)
     assert plain.recall_before == 0 and "可以用工具查" not in plain.messages[-1].content
-    assert len(plain.messages) == len(at(25).messages)
+    # 还没有任何记忆时没有回顾
+    assert "<recap>" not in assembler.assemble(context(history=3), 64_000).messages[0].content
 
 
 def test_history_replies_carry_the_directors_hidden_notes() -> None:

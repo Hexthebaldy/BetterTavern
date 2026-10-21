@@ -57,7 +57,6 @@ class PlaythroughView:
     head_seq: int | None
     head_excerpt: str
     active_turn_id: str | None
-    rollback_floor_seq: int
     state_seq: int
     rollbacks_left: int  # 还能回退几次
     seed_source: str | None
@@ -86,7 +85,6 @@ class PlaythroughView:
             head_seq=head_seq,
             head_excerpt=head_excerpt,
             active_turn_id=row.active_turn_id,
-            rollback_floor_seq=row.rollback_floor_seq,
             state_seq=row.state_seq,
             rollbacks_left=max(rollback_limit - row.rollbacks_used, 0),
             seed_source=row.seed_source,

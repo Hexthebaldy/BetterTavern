@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
 一局游玩的时间线：游玩本身、回合，以及提交行动用的幂等键。热路径的并发控制（租约、带围栏的提交、加锁顺序）也写在这里。
 对应的接口见 [api/play.md](../api/play.md)，回合的事件流见 [api/events.md](../api/events.md)。
@@ -28,8 +28,7 @@
 | `timeline_epoch` | integer | 否 | `0` | 时间线纪元，回退时加 1。回合记下发起时的值，提交时如果不一致，结果就作废；世界状态 agent 写入时也要求它没变 |
 | `state_seq` | integer | 否 | `-1` | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态 agent 写入时用带条件的 UPDATE 从 N-1 改成 N（见下文“带围栏的提交”）。迁移 `0011` 把已有的存档设成活跃链上最新的回合，不回头整理旧回合 |
 | `outline_version` | integer | 否 | `0` | 大纲的版本，一直是 0；agent runtime 阶段 5 删掉，当前大纲按依据的回合查（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
-| `summary_version` | integer | 否 | `0` | 摘要的版本，一直是 0；agent runtime 阶段 4 删掉（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
-| `rollback_floor_seq` | integer | 否 | `0` | 回退的下限，一直是 0；agent runtime 阶段 4 删掉，回退没有下限（[agent-runtime.md](../agent-runtime.md) 第 8 节） |
+| `summarized_seq` | integer | 否 | `-1` | 章节摘要已经覆盖到第几回合；-1 表示还没有（[memory.md](memory.md)）。章节整理写入时用带条件的 UPDATE 从“这一章第一回合减 1”改成这一章的最后一回合；导演上下文里的原文从它减 1 开始（多留上一章最后两回合）。CHECK 不小于 -1。迁移 `0016` 加的，同时删掉了一直是 0 的 `summary_version` 和 `rollback_floor_seq` |
 | `rollbacks_used` | integer | 否 | `0` | 已经回退了几次。每个存档能回退的次数有上限（服务端设置 `ROLLBACK_LIMIT`，默认 1），用完后回退接口返回 409 `ROLLBACK_LIMIT_REACHED` |
 | `active_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：持有租约、正在生成的回合；没有正在生成的回合时为空 |
 | `lease_expires_at` | timestamptz | 是 |  | 租约的到期时间：领取时设为当前时间加 120 秒，生成期间每 30 秒续期 |
@@ -38,7 +37,7 @@
 | `updated_at` | timestamptz | 否 | `now()` | 改名、领取租约、世界建好、推进头部、释放租约时写入（续期不写）；游玩列表按它倒序排列 |
 
 约束与索引：
-- `status`、`seed_source`、`language` 的 CHECK；`state_seq >= -1`；`rollbacks_used >= 0`。
+- `status`、`seed_source`、`language` 的 CHECK；`state_seq >= -1`；`summarized_seq >= -1`；`rollbacks_used >= 0`。
 - `playthroughs_user_idx (user_id, updated_at DESC)`。
 - `playthroughs_lease_idx (lease_expires_at) WHERE active_turn_id IS NOT NULL`：清理过期租约时用。
 
@@ -233,6 +232,7 @@ WHERE id = :id AND state_seq = :seq - 1 AND timeline_epoch = :epoch
 1. 锁住 `playthroughs` 行。有未过期的租约就返回 409 `TURN_IN_PROGRESS`；租约已过期就先把那一轮标为 `RUNNER_LOST`。
 2. 检查目标回合 K 在当前故事线上、不是头部、回退次数没用完。
 3. 读出 K 之后各回合的 `state_patches`，按回合倒序、按 `idx` 倒序，把每一行写回 `before`（`before` 为空就删掉这一行），然后删掉这些撤销记录和 K 之后的 `turn_notes`。线索也在撤销记录里：K 之后记下的删掉，K 之后解开的变回没解开。
+   在 K 之后写的章节摘要和全书梗概（`written_seq > K`）删掉，`summarized_seq` 改回剩下的最后一章；玩家画像不动（[memory.md](memory.md)）。
 4. K 之后的回合（包括失败的尝试）标为 `archived`，共用一个新的 `rollback_id`。
 5. `head_turn_id` 指回 K，`timeline_epoch` 加 1，`state_seq` 改成 `min(state_seq, K)`，`rollbacks_used` 加 1；`ended` 改回 `active`。
 6. `state_seq` 比 K 小时（世界状态还没整理到 K），放一个 `state.turn` 任务接着整理。

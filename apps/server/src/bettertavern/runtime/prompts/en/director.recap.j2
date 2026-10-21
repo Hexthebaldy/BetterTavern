@@ -1,0 +1,27 @@
+{# version: 1 #}
+<recap>
+[Story so far · for reference only]
+Below is a recap of the story so far. It is background material, not the current task:
+- Don't retell or re-narrate what already happened in the recap;
+- Don't pick up loose ends from the recap on your own unless the player's latest action touches them;
+- Respond only to the player's latest action and write what happens next;
+- When the recap conflicts with <world-state>, <world-state> wins.
+{% if synopsis %}
+
+## Synopsis of the whole story
+{{ synopsis }}
+{% endif %}
+{% if chapters %}
+
+## Recent chapters
+{% for chapter in chapters %}
+### Turns {{ chapter.first }}–{{ chapter.last }}
+{{ chapter.text }}
+{% endfor %}
+{% endif %}
+{% if profile %}
+
+## Player profile (to sense what the player enjoys; never write it into the narration)
+{{ profile }}
+{% endif %}
+</recap>

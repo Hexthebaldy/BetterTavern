@@ -9,7 +9,8 @@
 带 stream 的请求是导演（叙述 + 两个选项，逐段流式发出），
 提示词里有 <character-card> 的是 WorldBuilder，问“接下来可以采取的行动”的是选项修复，
 带 tools 的非流式请求是后台整理世界状态的 agent：每次直接调用 commit，只写一句摘要、不改世界状态。
-recall 打开时（--recall），导演收到召回工具会先查一次“火漆”，拿到结果再写。
+recall 打开时（--recall），导演收到召回工具会先查一次“火漆”，拿到结果再写；
+提示词里有 <chapter-turns> 的是章节整理，回一段固定的章节摘要和玩家画像（要并梗概时也回梗概）。
 自定义端点默认被当成不能调用工具：要让后台整理跑起来，先在设置里测试一下这个模型。
 """
 
@@ -121,6 +122,7 @@ class StoryScript:
     director_calls: int = 0
     recall_calls: int = 0
     state_calls: int = 0
+    chapter_calls: int = 0
 
     def reply(self, request: RecordedRequest) -> Reply:
         body = request.body if isinstance(request.body, dict) else {}
@@ -179,6 +181,15 @@ class StoryScript:
             }
             return JsonReply(completion("", tool_calls=[call], finish="tool_calls"))
         prompt = "\n".join(str(m.get("content", "")) for m in body.get("messages", []))
+        if "<chapter-turns>" in prompt:
+            self.chapter_calls += 1
+            payload = {
+                "chapter_summary": f"第 {self.chapter_calls} 章：我在渡口等船，见到了老船夫。",
+                "player_profile": "玩家喜欢慢慢打听，不急着行动。",
+            }
+            if "要并进去的一章" in prompt or "The chapter to merge" in prompt:
+                payload["synopsis"] = "## 剧情主线\n我来到渡口，打听对岸的灯。"
+            return JsonReply(completion(json.dumps(payload, ensure_ascii=False)))
         if "<character-card>" in prompt:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
         if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:

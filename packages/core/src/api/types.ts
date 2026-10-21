@@ -221,7 +221,6 @@ export type Playthrough = {
   head_seq: number | null;
   head_excerpt: string;
   active_turn_id: string | null;
-  rollback_floor_seq: number;
   /** 世界状态已整理到第几回合，-1 表示还是开局时的样子 */
   state_seq: number;
   /** 这个存档还能回退几次 */

@@ -1,0 +1,10 @@
+{
+  "description": "章が終わったときに整理する記憶",
+  "fields": {
+    "ChapterOutput.chapter_summary": "この章の要約。一段落で 500 字以内、過去形",
+    "ChapterOutput.player_profile": "新しい版のプレイヤー像。800 字以内",
+    "ChapterFoldOutput.chapter_summary": "この章の要約。一段落で 500 字以内、過去形",
+    "ChapterFoldOutput.player_profile": "新しい版のプレイヤー像。800 字以内",
+    "ChapterFoldOutput.synopsis": "新しい版の物語全体のあらすじ。1500 字以内、本筋・因果と転機・情報と秘密の三節"
+  }
+}

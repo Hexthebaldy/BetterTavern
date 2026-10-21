@@ -1,0 +1,421 @@
+# 阶段 4（分层记忆）的 300 回合剧本试玩用的剧本（合成数据，不含真实用户数据），用法见 evals/README.md。
+# 第 1 到 100 回合和 tavern_100 一样；第 101 到 200 回合林川在北境商会分号查账、在议事会上作证；
+# 第 201 到 300 回合带查账人回灰石镇查证。script、checks、recall 的写法同 tavern_100。
+# 后面的召回题都是主角自己回想很早以前的细节：第 250 回合想火漆的图案（第 1 回合说的）、第 265 回合想铁匣子底下的刻字
+# （第 115 回合）、第 270 回合想搬运工的刺青（第 10 回合）、第 285 回合写避风小岛的名字（第 212 回合）、
+# 第 290 回合写第一个驿站的名字（第 26 回合）。这时那些回合早已不在导演的上下文里，要靠章节摘要、世界状态或召回工具。
+id: tavern_300
+title: 雨夜酒馆（300 回合）
+language: zh
+protagonist:
+  name: 林川
+  summary: 二十出头的信使，替北境商会送一封没写收件人的信，身上只剩三枚银币。
+preferences:
+  length: short
+card:
+  name: 老周
+  description: '架空的边陲小镇“灰石镇”，蒸汽机械与少量魔法并存；雨季已经持续了三周，镇上的人对外乡人很警惕。
+
+    镇上唯一的酒馆由掌柜老周经营：五十多岁，话少，消息灵通，欠北境商会一笔钱。
+
+    酒馆的帮工阿苓十七岁，想离开灰石镇，偷偷收集各地的地图。
+
+    酒馆角落常坐着一个戴兜帽的人，左手缺了一根手指，似乎在等什么人。
+
+    镇子东边是码头和货栈，北境商会的船每隔几天靠岸一次；往北走两天是商会的分号。'
+  scenario: 雨夜，信使林川推开灰石镇唯一一家酒馆的门。
+  first_mes: 我推开灰石镇唯一一家酒馆的门，雨水顺着斗篷往下淌，屋里的人都抬起了头。
+script:
+- 我把信放在柜台上，问老周认不认识信封上的火漆——火漆上压着一只衔着钥匙的乌鸦。
+- '@option'
+- 我把三枚银币中的一枚推给老周，换一间过夜的房间。
+- '@option'
+- 我问阿苓镇上最近有没有来过别的外乡人。
+- '@option'
+- '@option'
+- 我跟着戴兜帽的人走出酒馆，冒雨走向码头。
+- '@option'
+- 我在码头的货栈里躲雨，留意谁在搬运货物，看见一个搬运工的胳膊上刺着一条青蛇。
+- '@option'
+- 我向看守货栈的老人打听北境商会的船什么时候到。
+- '@option'
+- '@option'
+- 我把信藏进货栈角落的一个空木箱里，只带着拆下来的火漆离开。
+- '@option'
+- 我回到酒馆，把在码头看到的事告诉老周。
+- '@option'
+- '@option'
+- 我请阿苓帮我画一张去北境商会分号的路线图。
+- 阿苓把画好的路线图塞给我，我收进怀里。
+- '@option'
+- 天亮了，我离开灰石镇，沿着阿苓画的路往北走。
+- '@option'
+- '@option'
+- 我在路边一家门口挂着“归雁”木牌的驿站停下，用一枚银币买了干粮。
+- '@option'
+- '@option'
+- 我回头确认有没有人跟着我。
+- '@option'
+- '@option'
+- 我在驿站认出了那个戴兜帽的人，当面问他为什么跟着我。
+- '@option'
+- '@option'
+- 我把阿苓画的地图摊开，问戴兜帽的人商会分号是不是在这里。
+- '@option'
+- '@option'
+- '@option'
+- 我决定连夜赶路，不在驿站过夜。
+- '@option'
+- '@option'
+- 我到了北境商会的分号，要求见管事的人。
+- '@option'
+- '@option'
+- 我告诉管事：信被我藏在灰石镇码头货栈的木箱里了。
+- '@option'
+- '@option'
+- '@option'
+- 我答应管事回灰石镇把信取回来，换一笔报酬。
+- '@option'
+- '@option'
+- 我向管事借了一匹马，往回赶。
+- '@option'
+- '@option'
+- 路上我听过路的商人说，灰石镇的码头昨夜起了大火。
+- '@option'
+- '@option'
+- 我回到灰石镇，直奔码头的货栈。
+- '@option'
+- '@option'
+- 我在烧焦的木箱里翻找那封信。
+- '@option'
+- '@option'
+- 我去酒馆找老周，发现酒馆关着门。
+- '@option'
+- '@option'
+- 阿苓告诉我，老周在大火那晚被人害死了。
+- '@option'
+- '@option'
+- 我去老周的坟前，把那枚火漆放在墓碑上。
+- '@option'
+- '@option'
+- 我问阿苓愿不愿意跟我一起离开灰石镇。
+- '@option'
+- '@option'
+- 我把阿苓画的地图还给她。
+- '@option'
+- '@option'
+- 我和阿苓坐上北境商会的船离开灰石镇。
+- '@option'
+- '@option'
+- 在船上，我问阿苓她收集的地图里有没有标着北境商会的仓库。
+- '@option'
+- 我问阿苓还记不记得，当初那枚火漆上压的是什么图案。
+- 我在船舱里撞见了那个戴兜帽的人。
+- '@option'
+- '@option'
+- 我当着阿苓的面问戴兜帽的人：码头那把火是不是他放的。
+- '@option'
+- 我想起码头货栈里那个胳膊上有刺青的搬运工，把那刺青的样子描述给戴兜帽的人听，问他认不认识这个人。
+- 船靠岸后，我把戴兜帽的人交给了北境商会的管事。
+- '@option'
+- '@option'
+- 我收下报酬，分了一半给阿苓。
+- '@option'
+- '@option'
+- 阿苓登上去南方的船，从此离开了，我们没再见面。
+- '@option'
+- 我在纸上写下这一路落脚过的地方，头一个就是北上路上那家驿站，我把它的名字写了下来。
+- 我在北境商会的分号住下，开始写这一路的经历。
+- '@option'
+- '@option'
+- '@option'
+- 我把写好的经历交给分号的管事，他读到火漆那一段时停了很久。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 管事派我去城北的旧码头仓库，取回一只上了三道锁的铁匣子。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我在旧码头仓库找到了铁匣子，匣子底下刻着一个“霜”字。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我把铁匣子交给管事，他当着我的面打开，里面是一本账册。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 管事让我把账册里所有带乌鸦记号的条目抄下来。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我发现账册里有一笔钱付给了灰石镇码头，经手人那一栏画着一条小蛇。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我把这一页账偷偷撕下来，藏进靴子里。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 夜里有人闯进我的房间翻东西，我从窗户跳出去追。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我在巷子里追上了那个人，认出他是当初在船上盯梢的人。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 盯梢的人被人从背后刺死，倒在我面前。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我把撕下的那页账交给管事，告诉他盯梢的人死了。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 管事说商会旧派的人下个月要在议事会上清算这笔账，让我去作证。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我答应管事在议事会上作证。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我去城里的铁匠铺，用身上剩下的钱买了一把短刀。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 议事会开始了，我站在大厅里，把一路上见到的事说了出来。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 商会旧派的头目当场否认，说我交上去的那页账是伪造的。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我当众说出灰石镇码头货栈里那伙搬运工的事。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 议事会决定派两名查账人去灰石镇查证，让我带路。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我和两名查账人一起坐船回灰石镇。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 船在半路遇上风暴，我们在一个叫“柳湾”的小岛上避风。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我在小岛的渔村里遇到一个说自己认识老周的老渔夫。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 老渔夫说大火那晚之前，老周托人给他带过一封信。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 老渔夫把那封信交给我，信上压着和当初一模一样的火漆。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我拆开信，信里写着商会旧派在灰石镇的接头人是看守货栈的老人。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 风暴过去，我们重新上船，回到了灰石镇。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我在码头的货栈找到看守老人，当面质问他。
+- '@option'
+- 我想起最初那枚火漆，在心里把上面的图案又描了一遍。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 看守老人说出了旧派头目在镇上的落脚处，然后跳进河里逃走了。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我带着查账人去酒馆打听阿苓的消息，酒馆已经换了新掌柜。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我想起在铁匣子底下看到过一个刻字，把那个字写在纸上给查账人看。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我想起当初在货栈见过的那个搬运工，回想他胳膊上刺的是什么。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 查账人在货栈的地窖里找到了更多带乌鸦记号的账册。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我们把所有账册装上船，准备回北境商会。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我在给查账人的报告里，写下了风暴那次避风的小岛的名字。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我在报告里写下北上路上第一个落脚的驿站的名字。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 船离开灰石镇，我站在船尾看着镇子越来越远。
+- '@option'
+- '@option'
+- '@option'
+- '@option'
+- 我把这一路的经历写完，最后一页写的是老周。
+checks:
+- after: 15
+  expect:
+  - not_holds:
+    - 林川
+    - 信
+  - holds:
+    - 林川
+    - 火漆
+- after: 21
+  expect:
+  - holds:
+    - 林川
+    - 图
+- after: 23
+  expect:
+  - not_at:
+    - 林川
+    - 酒馆
+- after: 42
+  expect:
+  - at:
+    - 林川
+    - 分号
+- after: 45
+  expect:
+  - fact:
+    - 信
+    - 箱
+- after: 70
+  expect:
+  - retired: 老周
+- after: 80
+  expect:
+  - together:
+    - 林川
+    - 阿苓
+- after: 91
+  expect:
+  - apart:
+    - 林川
+    - 兜帽
+- after: 98
+  expect:
+  - gone: 阿苓
+- after: 139
+  expect:
+  - holds:
+    - 林川
+    - 账
+- after: 156
+  expect:
+  - retired: 盯梢
+- after: 179
+  expect:
+  - holds:
+    - 林川
+    - 刀
+- after: 213
+  expect:
+  - at:
+    - 林川
+    - 柳湾
+- after: 243
+  expect:
+  - not_at:
+    - 林川
+    - 柳湾
+recall:
+- turn: 84
+  expect:
+  - 乌鸦
+- turn: 90
+  expect:
+  - 蛇
+- turn: 99
+  expect:
+  - 归雁
+- turn: 250
+  expect:
+  - 乌鸦
+- turn: 265
+  expect:
+  - 霜
+- turn: 270
+  expect:
+  - 蛇
+- turn: 285
+  expect:
+  - 柳湾
+- turn: 290
+  expect:
+  - 归雁

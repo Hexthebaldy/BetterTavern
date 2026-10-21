@@ -9,10 +9,10 @@
 剧本在 datasets/m2/tavern_100.yaml：大部分回合按种子随机点选项，中间穿插专门考世界状态整理的行动
 （交出和藏起物品、换地方、遇到新人物、有人死去、得知秘密），以及召回题（早先说出的细节，后面再问）。
 玩家每回合之间停 --think 秒（默认 5），模拟读叙述的时间；设成 0 就是一回合接一回合地点，
-用来看世界状态最多会落后多少。--history-block N 让原文按 N 回合整块移出导演的上下文
-（和服务端的 DIRECTOR_HISTORY_BLOCK 一样），移出的回合导演用召回工具查；默认 0，全部保留。
+用来看世界状态最多会落后多少。章节整理也在脚本里带的后台进程里跑，切章的线用
+--chapter-soft / --chapter-hard 调（默认和服务端一样，8000 / 16000 token）。
 
-跑完等世界状态追上（最多 --settle 秒），然后用撤销记录倒推出每一回合的世界、逐回合检查，
+跑完等世界状态和章节整理追上（最多 --settle 秒），然后用撤销记录倒推出每一回合的世界、逐回合检查，
 报告写到 reports/（JSON 和一页中文总结），见 playtest_report.py。
 
 用法（在 apps/server 下，数据库要先 make migrate）：
@@ -45,6 +45,11 @@ import yaml
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from bettertavern.domain.memory.chapters import (
+    CHAPTER_HARD_TOKENS,
+    CHAPTER_SOFT_TOKENS,
+    ChapterRule,
+)
 from bettertavern.domain.world.records import FactRecord, RowChange, ThreadRecord, WorldRecords
 from bettertavern.infra.crypto.keyring import AppSecrets
 from bettertavern.infra.db.repositories import state as state_repo
@@ -54,9 +59,16 @@ from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.infra.queue.worker import JobWorker
 from bettertavern.providers import EndpointPolicy, ProviderHub
 from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.runtime.memory_runner import MemoryRunnerConfig
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.runtime.state_runner import StateRunnerConfig
-from bettertavern.services.container import Services, build_services, build_state_runner
+from bettertavern.services.container import (
+    Services,
+    build_memory_runner,
+    build_services,
+    build_state_runner,
+)
+from bettertavern.services.memory_jobs import MEMORY_JOB, memory_handler
 from bettertavern.services.playthrough_service import NewPlaythrough
 from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.state_jobs import STATE_JOB, state_handler
@@ -126,7 +138,7 @@ class ReplayConfig:
     settle_s: float = 600.0
     max_attempts: int = 3  # 一回合失败后最多试几次
     scenario_path: Path = DEFAULT_SCENARIO
-    history_block: int = 0  # 原文按这个回合数整块移出导演的上下文，0 表示全部保留
+    chapter_rule: ChapterRule = field(default_factory=ChapterRule)  # 切章的线
 
 
 @dataclass
@@ -179,13 +191,14 @@ async def _state_seq(engine: AsyncEngine, playthrough_id: str) -> int:
 
 
 async def _pending_jobs(engine: AsyncEngine, playthrough_id: str) -> int:
+    """这一局还没做完的世界状态整理和章节整理任务。"""
     async with engine.connect() as conn:
         value = await conn.scalar(
             text(
-                """SELECT count(*) FROM jobs WHERE ordering_key = :key
+                """SELECT count(*) FROM jobs WHERE ordering_key IN (:state, :memory)
                    AND status IN ('pending', 'running')"""
             ),
-            {"key": f"{playthrough_id}:state"},
+            {"state": f"{playthrough_id}:state", "memory": f"{playthrough_id}:memory"},
         )
     return int(value or 0)
 
@@ -208,12 +221,19 @@ async def run_replay(
         buffers=EventBufferRegistry(),
         access_ttl_s=900,
         refresh_ttl_s=3600,
-        runner_config=RunnerConfig(history_block=config.history_block),
+        runner_config=RunnerConfig(),
         instance_id=f"playtest:{os.getpid()}",
         rollback_limit=0,
     )
     state = build_state_runner(
         engine=engine, secrets=secrets, hub=hub, policy=policy, config=StateRunnerConfig()
+    )
+    memory = build_memory_runner(
+        engine=engine,
+        secrets=secrets,
+        hub=hub,
+        policy=policy,
+        config=MemoryRunnerConfig(rule=config.chapter_rule),
     )
     # 和 worker 一样从队列领整理任务；开发环境的 worker 也开着时两边一起领，不会重复整理同一回合
     queue = PgJobQueue(engine)
@@ -221,10 +241,10 @@ async def run_replay(
     await listener.start()
     worker = JobWorker(
         queue,
-        {STATE_JOB: state_handler(state)},
+        {STATE_JOB: state_handler(state), MEMORY_JOB: memory_handler(memory)},
         worker_id=f"playtest:{os.getpid()}",
         wakeup=listener.event,
-        kinds=[STATE_JOB],
+        kinds=[STATE_JOB, MEMORY_JOB],
     )
     stop = asyncio.Event()
     worker_task = asyncio.create_task(worker.run(stop))
@@ -286,14 +306,13 @@ async def run_replay(
             say(f"第 {n} 回合 · {shown[:40]} · 世界状态落后 {max(behind, 0)} 回合")
             if config.think_s:
                 await asyncio.sleep(config.think_s)
-        say("剧本跑完，等世界状态追上……")
+        say("剧本跑完，等世界状态和章节整理追上……")
         loop = asyncio.get_running_loop()
         deadline = loop.time() + config.settle_s
         while loop.time() < deadline:
-            if await _state_seq(engine, pt.id) >= config.turns:
-                break
+            # 任务都做完了：剩下的是整理失败、等下一回合再试的，不会再变
             if await _pending_jobs(engine, pt.id) == 0:
-                break  # 没有任务了：剩下的是整理失败、等下一回合再试的，不会再变
+                break
             await asyncio.sleep(2)
     finally:
         stop.set()
@@ -379,6 +398,16 @@ async def analyse(
             )
         ).mappings()
         tool_calls = {str(r["tool"]): int(r["n"]) for r in tool_rows}
+        summary_rows = (
+            await conn.execute(
+                text(
+                    """SELECT kind, count(*) AS n FROM story_summaries
+                       WHERE playthrough_id = CAST(:pt AS uuid) GROUP BY kind ORDER BY kind"""
+                ),
+                {"pt": playthrough_id},
+            )
+        ).mappings()
+        summary_counts = {str(r["kind"]): int(r["n"]) for r in summary_rows}
         patches: dict[int, list[RowChange]] = {}
         for r in patch_rows:
             patches.setdefault(int(r["seq"]), []).append(
@@ -463,6 +492,7 @@ async def analyse(
             },
         ),
         tool_calls=tool_calls,
+        summaries=summary_counts,
     )
     summary["failed_turn_attempts"] = failed_attempts
     return ReplayResult(playthrough_id, summary, turns, runs, failed_attempts)
@@ -497,10 +527,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--settle", type=float, default=600.0, help="跑完后最多等世界状态追上几秒")
     parser.add_argument("--scenario", type=Path, default=DEFAULT_SCENARIO)
     parser.add_argument(
-        "--history-block",
+        "--chapter-soft",
         type=int,
-        default=0,
-        help="原文按这个回合数整块移出导演的上下文（测召回时用，例如 10）；0 表示全部保留",
+        default=CHAPTER_SOFT_TOKENS,
+        help="这一章的原文超过这么多 token 以后，在下一个场景结束处切一章",
+    )
+    parser.add_argument(
+        "--chapter-hard",
+        type=int,
+        default=CHAPTER_HARD_TOKENS,
+        help="一直没有场景结束时，到这么多 token 硬切",
     )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR)
     return parser.parse_args(argv)
@@ -524,7 +560,7 @@ async def _main(args: argparse.Namespace) -> None:
         seed=args.seed,
         settle_s=args.settle,
         scenario_path=args.scenario,
-        history_block=args.history_block,
+        chapter_rule=ChapterRule(args.chapter_soft, args.chapter_hard),
     )
     policy = endpoint_policy(settings)
     hub = provider_hub(settings, policy)
@@ -547,7 +583,7 @@ async def _main(args: argparse.Namespace) -> None:
         if config.state is None
         else {"provider": config.state.provider, "model": config.state.model},
         "playthrough_id": result.playthrough_id,
-        "history_block": config.history_block,
+        "chapter_rule": asdict(config.chapter_rule),
         "summary": result.summary,
         "turns": [asdict(t) | {"narrative": len(t.narrative)} for t in result.turns],
     }
