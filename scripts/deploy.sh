@@ -82,10 +82,10 @@ remote "test -f $REMOTE_DIR/.env" || {
 upload deploy/compose.prod.yml "$REMOTE_DIR/compose.yml"
 upload deploy/nginx.bettertavern.conf "$REMOTE_DIR/nginx.conf"
 upload deploy/cloudflare-ips.sh "$REMOTE_DIR/cloudflare-ips.sh"
-# nginx 配置有变化才装：先检查语法，不对就换回原来的（第一次装就撤掉，不留坏配置）
+# nginx 配置有变化、或者还没启用时才装：先检查语法，不对就换回原来的（第一次装就撤掉，不留坏配置）
 remote "set -e
   site=/etc/nginx/sites-available/bettertavern
-  if ! sudo cmp -s $REMOTE_DIR/nginx.conf \$site; then
+  if ! sudo cmp -s $REMOTE_DIR/nginx.conf \$site || [ ! -L /etc/nginx/sites-enabled/bettertavern ]; then
     had_old=0
     if [ -f \$site ]; then sudo cp \$site \$site.bak; had_old=1; fi
     sudo install -m 644 $REMOTE_DIR/nginx.conf \$site
