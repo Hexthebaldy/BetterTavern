@@ -28,7 +28,8 @@ test("Japanese interface: errors, story language, and the Japanese serif", async
   await page.goto("/register");
   await page.getByLabel("メールアドレス").fill(email);
   await page.getByLabel("パスワード", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "登録してログイン" }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "登録", exact: true }).click();
   await expect(page).toHaveURL(/\/playthroughs$/);
   await expect(page.getByRole("heading", { name: "セーブはまだありません" })).toBeVisible();
   await expect(page).toHaveTitle("セーブ · BetterTavern");

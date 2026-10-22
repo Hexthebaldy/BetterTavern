@@ -1,18 +1,21 @@
 /**
- * 注册（W02）：邮箱、密码（至少 8 位，下面一条长度进度条）、可选的昵称。成功后直接登录。
+ * 注册（W02）：邮箱、密码（至少 8 位，下面一条长度进度条）、可选的昵称，勾选“已满 18 岁并同意协议”。
+ * 服务器要求验证邮箱时去验证页（验证码已经发出），否则直接登录。
  * 文案、校验和错误提示同 App 的 app/(auth)/register.tsx；服务端指出是哪个字段时，错误显示在那个字段下面。
  */
 
 import { useState, type FormEvent } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
+import { registeredSession } from "@bettertavern/core/auth/session";
+import { currentLanguage } from "@bettertavern/core/i18n/index";
 
 import { Button, Field, IconButton, Notice, PasswordField } from "../../components/controls.tsx";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useApp } from "../../state/AppProvider.tsx";
-import { AuthLayout, NarrowIntro } from "./AuthLayout.tsx";
+import { AgreeRow, AuthLayout, NarrowIntro } from "./AuthLayout.tsx";
 import styles from "./auth.module.css";
 
 const MIN_PASSWORD = 8;
@@ -42,13 +45,14 @@ export function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
   const { t } = useTranslation();
   useDocumentTitle(t("auth.register"));
 
-  const ready = !!email.trim() && password.length >= MIN_PASSWORD;
+  const ready = !!email.trim() && password.length >= MIN_PASSWORD && agreed;
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -57,7 +61,15 @@ export function RegisterPage() {
     setError(null);
     setFieldError(null);
     try {
-      await signIn(await api.auth.register({ email: email.trim(), password, display_name: name.trim() }));
+      const response = await api.auth.register({
+        email: email.trim(),
+        password,
+        display_name: name.trim(),
+        locale: currentLanguage(),
+      });
+      const auth = registeredSession(response);
+      if (auth) await signIn(auth);
+      else navigate("/verify", { state: { email: response.user.email } });
     } catch (e) {
       setBusy(false);
       const field = e instanceof ApiError ? e.field("field") : undefined;
@@ -116,9 +128,19 @@ export function RegisterPage() {
           onChange={(e) => setName(e.target.value)}
           error={errorFor("display_name")}
         />
+        <AgreeRow checked={agreed} onToggle={() => setAgreed((v) => !v)}>
+          <Trans
+            i18nKey="auth.agree"
+            components={{
+              terms: <a href="/terms" target="_blank" rel="noopener" />,
+              privacy: <a href="/privacy" target="_blank" rel="noopener" />,
+              rules: <a href="/rules" target="_blank" rel="noopener" />,
+            }}
+          />
+        </AgreeRow>
         <Button
           type="submit"
-          label={t("auth.registerAndLogin")}
+          label={t("auth.register")}
           size="lg"
           between
           trailingIcon="arrowRight"

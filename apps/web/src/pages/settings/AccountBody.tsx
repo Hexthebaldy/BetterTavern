@@ -1,10 +1,12 @@
 /**
  * 账户（W15，同 App 的 AccountBody）：头像、昵称、注册日期，邮箱和昵称，退出登录；
+ * 修改密码折叠着，展开后填当前密码和新密码（改完其他设备退出，这台设备换上新令牌）；
  * 删除账户放在最底下，展开后先列出会被删掉的数量，输入密码，再弹确认框。内容居中，宽 520。
  */
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { formatDate } from "@bettertavern/core/utils/format";
@@ -17,6 +19,72 @@ import { useApp } from "../../state/AppProvider.tsx";
 import styles from "./settings.module.css";
 
 type Counts = { stories: number; scenarios: number; models: number };
+
+const MIN_PASSWORD = 8;
+
+function ChangePassword() {
+  const { api, signIn } = useApp();
+  const overlay = useOverlay();
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
+
+  const submit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
+    if (!current || next.length < MIN_PASSWORD || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await signIn(await api.auth.changePassword({ current_password: current, new_password: next }));
+      setCurrent("");
+      setNext("");
+      setOpen(false);
+      overlay.toast(t("account.passwordChanged"), { icon: "check" });
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.fold}>
+      <button type="button" className={styles.foldHead} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Icon name="key" size={20} />
+        <span className={styles.flex}>{t("account.changePassword")}</span>
+        <Icon name={open ? "chevronUp" : "chevronDown"} size={18} />
+      </button>
+      {open ? (
+        <form className={styles.foldForm} onSubmit={(e) => void submit(e)} noValidate>
+          {error ? <Notice message={error} /> : null}
+          <PasswordField
+            label={t("account.currentPassword")}
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+          />
+          <PasswordField
+            label={t("account.newPassword")}
+            autoComplete="new-password"
+            placeholder={t("auth.passwordMin", { min: MIN_PASSWORD })}
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+          />
+          <Button
+            type="submit"
+            label={t("account.changePassword")}
+            size="lg"
+            busy={busy}
+            disabled={!current || next.length < MIN_PASSWORD}
+          />
+        </form>
+      ) : null}
+    </div>
+  );
+}
 
 export function AccountBody() {
   const { api, user, signOut } = useApp();
@@ -93,6 +161,7 @@ export function AccountBody() {
           </span>
         </div>
       </div>
+      <ChangePassword />
       <Button
         label={t("account.signOut")}
         variant="secondary"
@@ -104,6 +173,11 @@ export function AccountBody() {
           void signOut();
         }}
       />
+      <nav className={styles.legalLinks} aria-label={t("legal.nav")}>
+        <Link to="/terms">{t("legal.terms")}</Link>
+        <Link to="/privacy">{t("legal.privacy")}</Link>
+        <Link to="/rules">{t("legal.rules")}</Link>
+      </nav>
       <div className={styles.danger}>
         <button type="button" className={styles.dangerHead} aria-expanded={expanded} onClick={toggle}>
           <Icon name="alert" size={20} />

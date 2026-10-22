@@ -1222,6 +1222,51 @@
   font-size: 15px;
   overflow-wrap: anywhere;
 }
+/* 账户页底部的协议链接 */
+.legalLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.legalLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--mut);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* 修改密码：和“删除账户”一样折叠，灰底 */
+.fold {
+  padding: 8px 14px 14px;
+  border-radius: var(--r-group);
+  background: var(--bg2);
+}
+.foldHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+}
+.foldForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.foldForm input {
+  background: var(--card);
+}
 .danger {
   margin-top: 20px;
   padding: 8px 14px 14px;

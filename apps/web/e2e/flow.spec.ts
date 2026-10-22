@@ -17,12 +17,23 @@ async function noHorizontalScroll(page: Page): Promise<void> {
 }
 
 test("从注册到玩下去、写结局，最后删除账户", async ({ page }) => {
+  // ---- 协议页面不用登录就能打开，三篇之间可以切换 ----
+  await page.goto("/terms");
+  await expect(page.getByRole("heading", { name: "用户协议", level: 1 })).toBeVisible();
+  await page.getByRole("navigation", { name: "协议与规则" }).getByRole("link", { name: "内容规则" }).click();
+  await expect(page.getByRole("heading", { name: "内容规则", level: 1 })).toBeVisible();
+  await expect(page.getByRole("link", { name: "support@bettertavern.com" })).toHaveAttribute(
+    "href",
+    "mailto:support@bettertavern.com",
+  );
+
   // ---- 注册，刷新后仍然登录着 ----
   await page.goto("/register");
   await expect(page.getByLabel("邮箱")).toBeFocused();
   await page.getByLabel("邮箱").fill(email);
   await page.getByLabel("密码", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "注册并登录" }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "注册", exact: true }).click();
   await expect(page).toHaveURL(/\/playthroughs$/);
   await expect(page.getByRole("heading", { name: "还没有存档" })).toBeVisible();
   expect(await page.evaluate(() => document.cookie)).toBe("");

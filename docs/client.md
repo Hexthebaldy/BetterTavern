@@ -72,7 +72,7 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 
 | 路由 | 页面 | 要点 |
 | --- | --- | --- |
-| `(auth)/login`、`register` | 登录与注册 |  |
+| `(auth)/login`、`register`、`verify`、`forgot` | 登录与注册、验证邮箱、找回密码 |  |
 | `(tabs)/library` | 剧本 | 剧本仓库和角色卡仓库两个标签，进入详情；加号从角色卡新建剧本 |
 | `(tabs)/workbench` | 工作台 | 一句话让 agent 写、导入角色卡、手动新建；没保存的草稿 |
 | `workbench/[id]` | 草稿 | Agent / 手动随时切换；对话（问卷、方案、改动对比）或表单；预览、封面、保存进角色卡仓库（见 [workbench.md](workbench.md)） |
@@ -100,7 +100,7 @@ apps/mobile/
 ├── app.config.ts  eas.json  package.json  tsconfig.json  babel.config.js  metro.config.js
 ├── app/                                # Expo Router：文件即路由
 │   ├── _layout.tsx  index.tsx
-│   ├── (auth)/  login.tsx  register.tsx
+│   ├── (auth)/  login.tsx  register.tsx  verify.tsx  forgot.tsx
 │   ├── (tabs)/  _layout.tsx  library.tsx  workbench.tsx  playthroughs.tsx  settings.tsx
 │   ├── workbench/[id].tsx  card/[id].tsx
 │   ├── scenario/  [id]/index.tsx  form.tsx
@@ -154,7 +154,8 @@ apps/mobile/
 
 | 路由 | 页面 |
 | --- | --- |
-| `(auth)/login`、`(auth)/register` | 登录、注册；底部的服务器行打开服务器面板（最近用过的地址单选、输入新地址、测试连接），连不上时自动打开 |
+| `(auth)/login`、`(auth)/register` | 登录、注册；底部的服务器行打开服务器面板（最近用过的地址单选、输入新地址、测试连接），连不上时自动打开。注册要勾选“已满 18 岁并同意协议”（协议在网页端，用当前服务器的地址打开） |
+| `(auth)/verify`、`(auth)/forgot` | 验证邮箱（服务器要求验证时，注册后、没验证就登录时来这里）、找回密码（先发验证码，再填验证码和新密码）；“重新发送”有 60 秒倒计时。规则见 [api/auth.md 的“邮箱验证”](api/auth.md#邮箱验证) |
 | `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 存档列表（界面上叫“存档”；每行方形封面 72，标题后面跟状态胶囊，右上角是更新时间，下面两行摘要；左滑或长按：重命名、删除）、剧本（剧本仓库和角色卡仓库两个标签，网格 / 列表；剧本长按或左滑：重命名、删除；角色卡长按：在工作台里改、新建剧本、删除；顶上提示一次“新建和导入挪到了工作台”）、设置首页（导演模型卡片） |
 | `(tabs)/workbench` | 工作台首页：一句话开始（示例）、导入角色卡（一次一张，导入过的问打开已有的还是另外导入）、手动新建；没保存的草稿（写明在等什么，长按删除）、最近保存的角色卡 |
 | `workbench/[id]` | 草稿：顶上名字和保存状态、预览、更多（保存并开始新故事、删除草稿）；“Agent / 手动”切换和保存。Agent 模式是对话：问卷、方案、改动对比（全部采用 / 逐条看 / 都不要）、图片、进度清单和停止、接着写完；手动模式是表单（分节标签、自动保存、备选开场白、世界书）。预览是整屏面板：卡片（正在写的字段实时出字）、资料、图片；手动模式里是检查和开场的样子。封面面板：上传、生成、选图 |
@@ -292,7 +293,7 @@ apps/mobile/
 | --- | --- | --- |
 | 构建 | Vite + TypeScript（strict） | 开发和预览服务器把 `/v1`、`/health`、`/ready` 转给后端（默认 `http://localhost:8000`，`BT_API_URL` 可以改） |
 | 界面 | React 19，浏览器的 DOM 和 CSS | 不用 react-native-web：链接、表单自动填充、`:focus-visible`、悬停、右键菜单、拖放、选中复制都是浏览器原生的 |
-| 路由 | react-router 7 | 地址和 App 的 expo-router 一一对应：`/login`、`/register`、`/playthroughs`、`/library`、`/scenario/:id`、`/scenario/:id/edit`、`/play/:id`、`/settings`、`/settings/models`、`/settings/model/:id`、`/settings/account`、`/dev/probe` |
+| 路由 | react-router 7 | 地址和 App 的 expo-router 一一对应：`/login`、`/register`、`/verify`、`/forgot`、`/terms`、`/privacy`、`/rules`、`/playthroughs`、`/library`、`/scenario/:id`、`/scenario/:id/edit`、`/play/:id`、`/settings`、`/settings/models`、`/settings/model/:id`、`/settings/account`、`/dev/probe` |
 | 服务端数据 | TanStack Query | 没有下拉刷新：回到标签页、窗口回到前台时自动刷新 |
 | 样式 | CSS Modules + CSS 变量 | 变量名同 `docs/design/ui/web/tokens.css`；色板由 `ThemeProvider` 从 `@bettertavern/design` 写到 `<html>` 上 |
 | 共用 | `@bettertavern/core`、`@bettertavern/design` | 接口客户端、SSE、会话、回合状态机、色板、布局函数、图标和封面的数据，和 App 是同一份代码（见第 3 节的“目录”） |
@@ -312,7 +313,9 @@ apps/mobile/
 
 | 地址 | 页面 |
 | --- | --- |
-| `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交；宽屏左边是插画区 |
+| `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交；宽屏左边是插画区。注册要勾选“已满 18 岁并同意协议” |
+| `/verify`、`/forgot` | 验证邮箱、找回密码，同 App 的 `(auth)/verify`、`(auth)/forgot`；验证码框用 `autocomplete="one-time-code"` |
+| `/terms`、`/privacy`、`/rules` | 用户协议、隐私政策、内容规则：登录前后都能打开（App 在浏览器里打开这三个地址）。正文是 `pages/legal/content/<语言>/*.md`，按界面语言按需加载，用页面里的极简 Markdown 渲染（标题、段落、列表、粗体、链接）；三种语言一一对应，改一份就改另外两份 |
 | `/playthroughs` | 存档（W03）：三列网格，最近一个存档放大成主卡（两列两行）；600–899 两列，手机一列。卡片布局同 App，“…”在右下角 |
 | `/library` | 剧本（W04）：剧本仓库和角色卡仓库两个标签（`?tab=cards`），网格按内容宽度 ÷ 240 取整（2–5 列）或限宽 640 的列表；剧本仓库的加号新建剧本，角色卡仓库的去工作台 |
 | `/workbench` | 工作台首页：一句话开始、导入（按钮和拖放，一次一张）、手动新建；草稿、最近保存的角色卡 |

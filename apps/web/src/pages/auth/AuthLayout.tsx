@@ -5,9 +5,10 @@
  * 网页和接口同源，没有 App 底部的“服务器”入口。
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Icon } from "../../components/Icon.tsx";
 import { Logo } from "../../components/Logo.tsx";
 import styles from "./auth.module.css";
 
@@ -79,3 +80,36 @@ export function NarrowIntro({ lead }: { lead?: boolean }) {
     </div>
   );
 }
+
+/** 勾选框加一段带链接的文字（“已满 18 岁并同意…”）：勾选框是原生的 checkbox，文字里的链接可以单独点 */
+export function AgreeRow({
+  checked,
+  onToggle,
+  children,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <label className={styles.agree}>
+      <input type="checkbox" className={styles.agreeInput} checked={checked} onChange={onToggle} />
+      <span className={styles.agreeBox} aria-hidden="true">
+        {checked ? <Icon name="check" size={14} strokeWidth={2.6} /> : null}
+      </span>
+      <span className={styles.agreeText}>{children}</span>
+    </label>
+  );
+}
+
+/** 重新发送验证码的倒计时：start() 以后 seconds 从 60 往下数，到 0 才能再发 */
+export function useCooldown(initial = 0): { seconds: number; start: () => void } {
+  const [seconds, setSeconds] = useState(initial);
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const timer = window.setTimeout(() => setSeconds((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [seconds]);
+  return { seconds, start: () => setSeconds(60) };
+}
+

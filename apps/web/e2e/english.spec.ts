@@ -28,7 +28,8 @@ test("English interface: errors, language switch, and the story's prompt languag
   await page.goto("/register");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign up and sign in" }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Sign up", exact: true }).click();
   await expect(page).toHaveURL(/\/playthroughs$/);
   await expect(page.getByRole("heading", { name: "No saves yet" })).toBeVisible();
   await expect(page).toHaveTitle("Saves · BetterTavern");

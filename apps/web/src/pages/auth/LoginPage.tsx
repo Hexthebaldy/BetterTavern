@@ -1,11 +1,12 @@
 /**
  * 登录（W01）。真正的 <form>，浏览器和密码管理器能自动填充；打开时焦点在邮箱，在密码框按 Enter 就提交。
+ * 邮箱还没验证（EMAIL_NOT_VERIFIED，服务端已经重发了验证码）时去验证页。
  * 文案和错误提示同 App 的 app/(auth)/login.tsx。
  */
 
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 
@@ -17,6 +18,7 @@ import styles from "./auth.module.css";
 
 export function LoginPage() {
   const { api, signIn } = useApp();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,6 +37,11 @@ export function LoginPage() {
       await signIn(await api.auth.login({ email: email.trim(), password }));
     } catch (e) {
       setBusy(false);
+      if (e instanceof ApiError && e.code === "EMAIL_NOT_VERIFIED") {
+        const registered = e.field("email");
+        navigate("/verify", { state: { email: typeof registered === "string" ? registered : email.trim() } });
+        return;
+      }
       setError(e instanceof ApiError && e.isNetwork ? t("auth.cantConnect") : describeError(e));
     }
   };
@@ -65,6 +72,9 @@ export function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+        <Link to="/forgot" state={{ email: email.trim() }} className={`${styles.linkButton} ${styles.forgot}`}>
+          {t("auth.forgotPassword")}
+        </Link>
         <Button
           type="submit"
           label={t("auth.login")}
