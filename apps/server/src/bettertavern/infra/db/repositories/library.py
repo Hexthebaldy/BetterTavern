@@ -68,6 +68,14 @@ async def insert_blob(
     return str(row["id"])
 
 
+async def user_blob_bytes(conn: AsyncConnection, user_id: str) -> int:
+    """这个用户存的图一共多少字节（封面、导入的卡图、工作台的图）。"""
+    row = await fetch_one(
+        conn, "SELECT COALESCE(SUM(size), 0) AS total FROM blobs WHERE user_id = :u", {"u": user_id}
+    )
+    return int(row["total"]) if row is not None else 0
+
+
 async def get_blob(conn: AsyncConnection, user_id: str, blob_id: str) -> BlobRow | None:
     row = await fetch_one(
         conn,

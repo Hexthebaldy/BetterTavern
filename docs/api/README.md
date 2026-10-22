@@ -83,13 +83,20 @@
 
 ### 限流
 
-按 60 秒的滑动窗口计数，计数在每个 api 进程里各自进行。超过上限返回 429 `RATE_LIMITED`，带 `Retry-After` 响应头和 `retry_after` 字段（秒）。
+按滑动窗口计数（没有特别说明的是 60 秒），计数在每个 api 进程里各自进行。超过上限返回 429 `RATE_LIMITED`，带 `Retry-After` 响应头和 `retry_after` 字段（秒）。
 
 | 计数对象 | 默认上限（每分钟） | 适用的接口 |
 | --- | --- | --- |
-| 客户端 IP | 5（`RATE_LIMIT_AUTH_PER_MIN`），注册和登录分开计数 | `POST /v1/auth/register`、`POST /v1/auth/login` |
+| 客户端 IP | 5（`RATE_LIMIT_AUTH_PER_MIN`），注册、登录、填验证码各自计数（验证邮箱和找回密码共用一个） | `POST /v1/auth/register`、`POST /v1/auth/login`、`POST /v1/auth/verify-email`、`POST /v1/auth/reset-password` |
+| 客户端 IP | 每小时 20 封 | `POST /v1/auth/send-code` |
+| 邮箱 | 每分钟 1 封、每小时 5 封（注册、登录时顺带发的验证码也算） | `POST /v1/auth/send-code` |
+| 用户 | 5（`RATE_LIMIT_AUTH_PER_MIN`） | `POST /v1/me/password` |
 | 用户 | 30（`RATE_LIMIT_TURNS_PER_MIN`），两个接口共用一个计数 | `POST /v1/playthroughs`、`POST /v1/playthroughs/{playthrough_id}/turns` |
-| 用户 | 5（`RATE_LIMIT_PROBE_PER_MIN`），两个接口各自计数 | `POST /v1/model-routes/{route_id}/probe`、`POST /v1/providers/{provider}/models` |
+| 用户 | 5（`RATE_LIMIT_PROBE_PER_MIN`），三个接口各自计数 | `POST /v1/model-routes/{route_id}/probe`、`POST /v1/providers/{provider}/models`、`POST /v1/tool-routes/{route_id}/test` |
+| 用户 | 20（`RATE_LIMIT_WORKBENCH_PER_MIN`），六个接口共用一个计数 | `POST /v1/workbench/drafts`、`POST /v1/workbench/drafts/import`、`POST /v1/workbench/drafts/{draft_id}/assets`、`POST /v1/workbench/drafts/{draft_id}/covers`、`POST /v1/workbench/drafts/{draft_id}/messages`、`POST /v1/workbench/drafts/{draft_id}/continue` |
+
+另外每个用户有用量上限（不是按时间，是同时存在的数量）：同时在写的 agent 最多 2 个（`MAX_RUNNING_AGENTS`），
+没保存的草稿最多 50 份（`MAX_OPEN_DRAFTS`），存的图一共最多 200 MB（`MAX_IMAGE_BYTES_PER_USER`），超过时返回 409，见下面的错误码。
 
 客户端 IP 取的是连接的对端地址；对端在 `FORWARDED_ALLOW_IPS`（默认 `127.0.0.1,::1`，可以写网段）里时，改用它带来的 `X-Forwarded-For`
 里最后一个不受信任的地址，也就是代理看到的真实 IP。服务部署在反向代理后面时，要把代理的地址加进这个变量，否则所有玩家会共用代理的 IP 计数。
@@ -127,10 +134,14 @@
 | --- | --- | --- | --- |
 | `BAD_REQUEST` | 400 | 请求体无法解析，例如损坏的 multipart（JSON 格式错误返回的是 422 `VALIDATION_ERROR`） |  |
 | `UNAUTHENTICATED` | 401 | 缺少访问令牌、格式不对或已过期 |  |
-| `INVALID_CREDENTIALS` | 401 / 403 | 登录时邮箱或密码不对（401）；删除账户时密码不对（403） |  |
+| `CODE_INVALID` | 400 | 邮箱验证码不对 | `attempts_left`（还能试几次） |
+| `CODE_EXPIRED` | 400 | 邮箱验证码过期、错太多次作废、用过，或者没有待用的验证码 |  |
+| `INVALID_CREDENTIALS` | 401 / 403 | 登录时邮箱或密码不对（401）；删除账户、修改密码时密码不对（403） |  |
 | `REFRESH_INVALID` | 401 | 刷新令牌无效、已吊销或已过期 |  |
 | `REFRESH_REUSED` | 401 | 用过的刷新令牌超过 30 秒后又出现，整个家族已被吊销 |  |
 | `CROSS_SITE` | 403 | 网页的 Cookie 登录请求来自别的网站（`Sec-Fetch-Site` 不是同源，`Origin` 也不在 `CORS_ORIGINS` 里） |  |
+| `EMAIL_NOT_VERIFIED` | 403 | 登录时密码对了，但邮箱还没验证；服务端同时又发了一封验证码 | `email` |
+| `REGISTRATION_CLOSED` | 403 | 服务端暂停了注册 |  |
 | `NOT_FOUND` | 404 | 资源不存在，或者不属于你；路径不存在也是这个码 |  |
 | `METHOD_NOT_ALLOWED` | 405 | 路径存在，但不支持这个方法 |  |
 | `EMAIL_TAKEN` | 409 | 邮箱已经注册过 |  |
@@ -149,6 +160,9 @@
 | `SCENARIO_CHANGED` | 409 | 改剧本时带的版本号对不上：在别处改过了 | `version`（当前的版本号） |
 | `IMAGE_LICENSE` | 409 | 版权不明的图要确认“仅限个人使用”才能当封面 | `license` |
 | `DRAFT_BUSY` | 409 | 工作台的 agent 还在跑，不能再开一轮 |  |
+| `TOO_MANY_RUNS` | 409 | 同时在写的 agent 已经到上限（别的草稿还在写） | `limit` |
+| `TOO_MANY_DRAFTS` | 409 | 没保存的草稿已经到上限 | `limit` |
+| `STORAGE_FULL` | 409 | 存的图已经到上限 | `limit_mb` |
 | `TOOL_ROUTE_MISSING` | 409 | 封面面板直接出图时，还没配文生图 |  |
 | `TOOL_ROUTE_INVALID` | 502 | 文生图服务出错（Key 不对、额度用完、内容策略、网络） | `reason`（`auth` / `quota` / `blocked` / `http` / `network` / `bad_response`） |
 | `NOT_AWAITING` | 409 | 草稿不在等问卷的回答或方案的回复 |  |
@@ -169,6 +183,7 @@
 | `INTERNAL_ERROR` | 500 | 服务端出错，`retryable` 为真 |  |
 | `PROVIDER_ERROR` | 502 | 获取模型列表时服务商出错 | `error_class` |
 | `UNAVAILABLE` | 503 | 服务正在重启，`retryable` 为真 | 响应头 `Retry-After` |
+| `MAIL_UNAVAILABLE` | 503 | 服务端没配发信服务，或者这次邮件没发出去（`retryable` 为真时稍后再试） |  |
 
 ### 回合失败码
 

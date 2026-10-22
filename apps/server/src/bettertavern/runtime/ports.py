@@ -556,6 +556,10 @@ class StoredPage:
     fetcher: str
 
 
+class StorageFull(Exception):
+    """这个用户存的图已经到上限，WebStore.add_image 存不下了。"""
+
+
 @dataclass(frozen=True)
 class NewImage:
     data: bytes
@@ -600,7 +604,7 @@ class WebStore(Protocol):
         prompt: str | None = None,
         meta: Mapping[str, Any] | None = None,
     ) -> WorkbenchAsset:
-        """存一张图（blobs）并记进草稿的图片（workbench_assets）。"""
+        """存一张图（blobs）并记进草稿的图片（workbench_assets）。存满了抛 StorageFull。"""
         ...
 
     async def image_bytes(self, user_id: str, blob_id: str) -> tuple[bytes, str] | None:

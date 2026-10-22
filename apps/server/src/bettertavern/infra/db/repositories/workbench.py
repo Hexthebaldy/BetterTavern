@@ -178,6 +178,18 @@ async def delete_old_events(conn: AsyncConnection, *, older_than_s: int) -> int:
 # ---- 一轮 agent ----------------------------------------------------------------------------
 
 
+async def count_running(conn: AsyncConnection, user_id: str) -> int:
+    """这个用户正在跑的 agent 有几个（心跳过期的不算）。"""
+    row = await fetch_one(
+        conn,
+        """SELECT count(*) AS n FROM workbench_drafts
+           WHERE user_id = :u AND agent_status = 'running'
+             AND run_heartbeat_at >= now() - make_interval(secs => :stale)""",
+        {"u": user_id, "stale": STALE_RUN_S},
+    )
+    return int(row["n"]) if row is not None else 0
+
+
 async def start_run(
     conn: AsyncConnection,
     user_id: str,

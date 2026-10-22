@@ -36,6 +36,7 @@
     "limit_searches": "这一轮搜索已经超过 {max} 次。用已有的资料继续。",
     "limit_pages": "这一轮读网页已经超过 {max} 页。用已有的资料继续。",
     "limit_images": "确认的方案里只允许生成 {max} 张图，已经用完了。要多出得先问用户。",
+    "storage_full": "用户存的图已经到上限，存不下新图了。不要再找图或出图，告诉用户可以删掉一些草稿或角色卡腾出空间。",
     "no_search": "没有配置联网搜索。",
     "fetch_failed": "读不了这个网页：{detail}",
     "search_failed": "搜索失败：{detail}",

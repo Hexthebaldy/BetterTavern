@@ -36,6 +36,7 @@
     "limit_searches": "This round has done more than {max} searches. Continue with what you have.",
     "limit_pages": "This round has read more than {max} pages. Continue with what you have.",
     "limit_images": "The approved plan only allows {max} generated images and they're used up. Ask the user before making more.",
+    "storage_full": "The user's image storage is full, so no more images can be saved. Stop searching for or generating images and tell the user they can delete some drafts or cards to free up space.",
     "no_search": "Web search isn't set up.",
     "fetch_failed": "Couldn't read this page: {detail}",
     "search_failed": "The search failed: {detail}",

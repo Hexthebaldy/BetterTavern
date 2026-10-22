@@ -9,7 +9,7 @@ import structlog
 from fastapi import APIRouter, File, Form, Header, Request, Response, UploadFile, status
 from starlette.responses import StreamingResponse
 
-from bettertavern.api.deps import ServicesDep, UserId
+from bettertavern.api.deps import LimitersDep, ServicesDep, UserId, check_rate
 from bettertavern.api.lifecycle import Shutdown
 from bettertavern.api.schemas.library import CardOut, CharacterCardIn, CharacterCardOut, ScenarioOut
 from bettertavern.api.schemas.workbench import (
@@ -90,6 +90,11 @@ def card_edit(card: CharacterCardIn) -> CardEdit:
     )
 
 
+def _limit(limiters: LimitersDep, user_id: str) -> None:
+    """会花钱（agent、出图）或者占地方（导入、上传）的操作合在一起限流。"""
+    check_rate(limiters.workbench, f"workbench:{user_id}")
+
+
 async def _read_upload(file: UploadFile, limit: int) -> bytes:
     data = await file.read(limit + 1)
     await file.close()
@@ -101,7 +106,10 @@ async def _read_upload(file: UploadFile, limit: int) -> bytes:
 
 
 @router.post("/drafts", status_code=status.HTTP_201_CREATED)
-async def create_draft(body: DraftCreateIn, user_id: UserId, services: ServicesDep) -> DraftOut:
+async def create_draft(
+    body: DraftCreateIn, user_id: UserId, services: ServicesDep, limiters: LimitersDep
+) -> DraftOut:
+    _limit(limiters, user_id)
     if body.origin == "edit_card":
         if not body.card_id:
             raise Invalid("card_id is required to open a card", field="card_id")
@@ -121,10 +129,12 @@ async def import_draft(
     response: Response,
     user_id: UserId,
     services: ServicesDep,
+    limiters: LimitersDep,
     file: UploadFile = File(...),  # noqa: B008
     language: str = Form(DEFAULT_LANGUAGE),
     allow_duplicate: bool = Form(False),
 ) -> DraftImportOut:
+    _limit(limiters, user_id)
     data = await _read_upload(file, MAX_UPLOAD_BYTES)
     result = await services.drafts.import_file(
         user_id, data, language=parse_language(language), allow_duplicate=allow_duplicate
@@ -174,16 +184,23 @@ async def upload_draft_asset(
     draft_id: str,
     user_id: UserId,
     services: ServicesDep,
+    limiters: LimitersDep,
     file: UploadFile = File(...),  # noqa: B008
 ) -> AssetOut:
+    _limit(limiters, user_id)
     data = await _read_upload(file, MAX_IMAGE_BYTES)
     return AssetOut.model_validate(await services.drafts.upload_asset(user_id, draft_id, data))
 
 
 @router.post("/drafts/{draft_id}/covers", status_code=status.HTTP_201_CREATED)
 async def generate_draft_covers(
-    draft_id: str, body: CoverGenerateIn, user_id: UserId, services: ServicesDep
+    draft_id: str,
+    body: CoverGenerateIn,
+    user_id: UserId,
+    services: ServicesDep,
+    limiters: LimitersDep,
 ) -> list[AssetOut]:
+    _limit(limiters, user_id)
     assets = await services.covers.generate(
         user_id,
         draft_id,
@@ -236,8 +253,9 @@ async def list_draft_messages(
 
 @router.post("/drafts/{draft_id}/messages", status_code=status.HTTP_201_CREATED)
 async def post_draft_message(
-    draft_id: str, body: MessageIn, user_id: UserId, services: ServicesDep
+    draft_id: str, body: MessageIn, user_id: UserId, services: ServicesDep, limiters: LimitersDep
 ) -> MessageOut:
+    _limit(limiters, user_id)
     if body.kind == "text":
         payload: dict[str, object] = {"text": body.text or ""}
     elif body.kind == "answers":
@@ -270,7 +288,10 @@ async def stop_draft_agent(draft_id: str, user_id: UserId, services: ServicesDep
 
 
 @router.post("/drafts/{draft_id}/continue")
-async def continue_draft_agent(draft_id: str, user_id: UserId, services: ServicesDep) -> DraftOut:
+async def continue_draft_agent(
+    draft_id: str, user_id: UserId, services: ServicesDep, limiters: LimitersDep
+) -> DraftOut:
+    _limit(limiters, user_id)
     return draft_out(await services.workbench.continue_(user_id, draft_id))
 
 

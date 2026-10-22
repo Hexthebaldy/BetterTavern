@@ -1,0 +1,10 @@
+{
+  "verify": {
+    "subject": "Your BetterTavern code: {code}",
+    "body": "Hi!\n\nYour BetterTavern sign-up code is {code}. It expires in {minutes} minutes.\n\nIf you didn't sign up, you can ignore this email.\n\n— BetterTavern"
+  },
+  "reset": {
+    "subject": "Your BetterTavern password reset code: {code}",
+    "body": "Hi!\n\nYou asked to reset your BetterTavern password. Your code is {code}. It expires in {minutes} minutes.\n\nIf this wasn't you, ignore this email and your password won't change.\n\n— BetterTavern"
+  }
+}

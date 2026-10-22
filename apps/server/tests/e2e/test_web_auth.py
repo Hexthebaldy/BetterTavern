@@ -2,6 +2,7 @@
 
 带 `X-Auth-Mode: cookie` 时刷新令牌只在 HttpOnly Cookie 里，刷新、退出凭 Cookie；
 跨站请求被拒；不带这个请求头时和手机端一样。
+要求验证邮箱时：注册不登录，填对验证码才登录；改密码换 Cookie。
 
     BT_TEST_DATABASE_URL=postgresql://bettertavern:bettertavern@localhost:5432/bettertavern \\
         uv run pytest tests/e2e/test_web_auth.py
@@ -19,6 +20,7 @@ from pydantic import SecretStr
 
 from bettertavern.entrypoints.api import build_app_services, create_app
 from bettertavern.infra.crypto.keyring import new_master_key_entry
+from bettertavern.infra.mail.memory import MemorySender
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.settings import Settings
 from tests.fakes.asgi_server import AsgiServer
@@ -36,8 +38,9 @@ SAME_ORIGIN = {"X-Auth-Mode": "cookie", "Sec-Fetch-Site": "same-origin"}
 ACCOUNT = {"email": "lin@example.com", "password": "correct horse 1"}
 
 
-@pytest.fixture
-async def base_url(tmp_path: Path) -> AsyncIterator[str]:
+async def _serve(
+    tmp_path: Path, *, verification: bool, mail: MemorySender | None = None
+) -> AsyncIterator[str]:
     assert URL is not None
     async with temp_schema(URL) as schema:
         settings = Settings(
@@ -50,15 +53,33 @@ async def base_url(tmp_path: Path) -> AsyncIterator[str]:
             rate_limit_auth_per_min=1000,
             cors_origins=WEB_ORIGIN,
             shutdown_grace_s=2.0,
+            email_verification=verification,
         )
         services = build_app_services(
-            settings, EventBufferRegistry(), engine=engine_for(URL, schema)
+            settings, EventBufferRegistry(), engine=engine_for(URL, schema), mailer=mail
         )
         server = AsgiServer(create_app(settings, services=services), lifespan="on").start()
         try:
             yield server.base_url
         finally:
             server.stop()
+
+
+@pytest.fixture
+async def base_url(tmp_path: Path) -> AsyncIterator[str]:
+    async for url in _serve(tmp_path, verification=False):
+        yield url
+
+
+@pytest.fixture
+def outbox() -> MemorySender:
+    return MemorySender()
+
+
+@pytest.fixture
+async def verifying_url(tmp_path: Path, outbox: MemorySender) -> AsyncIterator[str]:
+    async for url in _serve(tmp_path, verification=True, mail=outbox):
+        yield url
 
 
 def refresh_cookie(response: httpx.Response) -> Morsel[str]:
@@ -186,3 +207,68 @@ async def test_body_mode_is_unchanged(base_url: str) -> None:
         r = await client.post("/v1/auth/logout", json={"refresh_token": r.json()["refresh_token"]})
         assert r.status_code == 204
         assert not r.headers.get_list("set-cookie")
+
+
+async def test_email_verification_over_http(verifying_url: str, outbox: MemorySender) -> None:
+    async with httpx.AsyncClient(base_url=verifying_url, timeout=30) as client:
+        r = await client.post(
+            "/v1/auth/register", json={**ACCOUNT, "locale": "ja"}, headers=SAME_ORIGIN
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        # 还没登录：没有令牌，也没有 Cookie；验证码按注册时的语言发出去
+        assert body["verification_required"] is True and body["access_token"] is None
+        assert body["user"]["email_verified"] is False
+        assert not r.headers.get_list("set-cookie")
+        mail = outbox.last_to(ACCOUNT["email"])
+        assert mail is not None and mail.dev_code is not None and "確認コード" in mail.subject
+        code = mail.dev_code
+
+        r = await client.post("/v1/auth/login", json=ACCOUNT, headers=SAME_ORIGIN)
+        assert r.status_code == 403 and r.json()["code"] == "EMAIL_NOT_VERIFIED"
+        assert r.json()["email"] == ACCOUNT["email"]
+        assert not r.headers.get_list("set-cookie")
+
+        # 没注册过的邮箱也是 204（不透露）；刚发过的邮箱一分钟内不能再发
+        r = await client.post(
+            "/v1/auth/send-code", json={"email": "nobody@example.com", "purpose": "reset"}
+        )
+        assert r.status_code == 204
+        r = await client.post(
+            "/v1/auth/send-code", json={"email": ACCOUNT["email"], "purpose": "verify"}
+        )
+        assert r.status_code == 429 and r.headers["retry-after"]
+
+        wrong = f"{(int(code) + 1) % 1_000_000:06d}"
+        r = await client.post(
+            "/v1/auth/verify-email", json={"email": ACCOUNT["email"], "code": wrong}
+        )
+        assert r.status_code == 400 and r.json()["code"] == "CODE_INVALID"
+        assert r.json()["attempts_left"] == 4
+        r = await client.post(
+            "/v1/auth/verify-email",
+            json={"email": ACCOUNT["email"], "code": code},
+            headers=SAME_ORIGIN,
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["user"]["email_verified"] is True and r.json()["refresh_token"] is None
+        first = refresh_cookie(r).value
+        access = r.json()["access_token"]
+
+        # 改密码：这台设备换一个 Cookie，旧的作废
+        r = await client.post(
+            "/v1/me/password",
+            json={"current_password": ACCOUNT["password"], "new_password": "new horse battery"},
+            headers={**SAME_ORIGIN, "Authorization": f"Bearer {access}"},
+        )
+        assert r.status_code == 200, r.text
+        second = refresh_cookie(r).value
+        assert second != first
+        r = await client.post(
+            "/v1/auth/refresh", headers={**SAME_ORIGIN, "Cookie": f"bt_refresh={first}"}
+        )
+        assert r.status_code == 401
+        r = await client.post(
+            "/v1/auth/refresh", headers={**SAME_ORIGIN, "Cookie": f"bt_refresh={second}"}
+        )
+        assert r.status_code == 200

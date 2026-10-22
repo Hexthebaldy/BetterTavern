@@ -1,5 +1,5 @@
-"""维护任务：清理过期租约（生成进程没了的回合标为失败）、过期的幂等键与刷新令牌、
-一天以前的工作台推送事件、七天以前读过的网页。
+"""维护任务：清理过期租约（生成进程没了的回合标为失败）、过期的幂等键、刷新令牌与邮箱验证码、
+一天以前的工作台推送事件、七天以前读过的网页；要求验证邮箱时，删掉注册一天还没验证的账号。
 
 api 进程定期调用；多个实例同时跑也没关系（SKIP LOCKED，删除语句幂等）。
 """
@@ -18,13 +18,17 @@ from bettertavern.infra.db.repositories import workbench as workbench_repo
 WORKBENCH_EVENTS_TTL_S = 86_400
 # 读过的网页留 7 天（24 小时内再读同一个地址直接用缓存）
 WEB_PAGES_TTL_S = 7 * 86_400
+# 注册以后一直没验证邮箱的账号留一天（不让别人长期占着一个邮箱）
+UNVERIFIED_USERS_TTL_S = 86_400
 
 log = structlog.get_logger(__name__)
 
 
 class Maintenance:
-    def __init__(self, engine: AsyncEngine) -> None:
+    def __init__(self, engine: AsyncEngine, *, purge_unverified: bool = False) -> None:
         self._engine = engine
+        # 关掉邮箱验证以后没验证的账号也能登录，这时不能删
+        self._purge_unverified = purge_unverified
         self._runs = 0
 
     async def sweep_leases(self) -> list[str]:
@@ -43,6 +47,14 @@ class Maintenance:
             await accounts_repo.purge_expired_refresh_tokens(conn)
             await workbench_repo.delete_old_events(conn, older_than_s=WORKBENCH_EVENTS_TTL_S)
             await web_repo.delete_old_pages(conn, older_than_s=WEB_PAGES_TTL_S)
+            await accounts_repo.purge_expired_codes(conn)
+            removed = 0
+            if self._purge_unverified:
+                removed = await accounts_repo.purge_unverified_users(
+                    conn, older_than_s=UNVERIFIED_USERS_TTL_S
+                )
+        if removed:
+            log.info("auth.unverified_purged", count=removed)
 
     async def tick(self) -> None:
         """每次都清租约；每 40 次（约 10 分钟）清一次过期数据。"""

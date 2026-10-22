@@ -24,6 +24,7 @@ from bettertavern.providers.web import WebError, download_image
 
 from .draft_service import AssetView, asset_view
 from .errors import AppError, Invalid, NotFound
+from .quotas import Quotas, lock_user, storage_full, storage_left
 from .tool_route_service import ToolRouteService
 
 log = structlog.get_logger(__name__)
@@ -42,11 +43,16 @@ class CoverRequest:
 
 class CoverService:
     def __init__(
-        self, engine: AsyncEngine, tools: ToolRouteService, client: httpx.AsyncClient
+        self,
+        engine: AsyncEngine,
+        tools: ToolRouteService,
+        client: httpx.AsyncClient,
+        quotas: Quotas | None = None,
     ) -> None:
         self._engine = engine
         self._tools = tools
         self._client = client
+        self._quotas = quotas or Quotas()
 
     async def generate(self, user_id: str, draft_id: str, req: CoverRequest) -> list[AssetView]:
         if not is_uuid(draft_id):
@@ -54,6 +60,9 @@ class CoverService:
         async with self._engine.connect() as conn:
             if await drafts_repo.get_draft(conn, user_id, draft_id) is None:
                 raise NotFound("Draft not found")
+            # 先看还有没有地方存，满了就不必去花出图的钱
+            if await storage_left(conn, user_id, self._quotas) <= 0:
+                raise storage_full(self._quotas)
         config = await self._tools.default_image(user_id)
         if config is None or config.provider not in IMAGE_PROTOCOLS:
             raise AppError(
@@ -106,6 +115,12 @@ class CoverService:
             except (WebError, CleanError, httpx.HTTPError):
                 continue
             async with self._engine.begin() as conn:
+                await lock_user(conn, user_id)
+                if await storage_left(conn, user_id, self._quotas) < len(image.data):
+                    # 存满了：已经存下的几张照常返回
+                    if assets:
+                        break
+                    raise storage_full(self._quotas)
                 blob_id = await library_repo.insert_blob(
                     conn,
                     user_id=user_id,

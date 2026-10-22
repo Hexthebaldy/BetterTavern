@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from bettertavern.infra.db.repositories import drafts as drafts_repo
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import web as repo
-from bettertavern.runtime.ports import NewImage, StoredPage, WorkbenchAsset
+from bettertavern.runtime.ports import NewImage, StorageFull, StoredPage, WorkbenchAsset
+
+from .quotas import Quotas, lock_user, storage_left
 
 
 def _page(row: repo.PageRow) -> StoredPage:
@@ -26,8 +28,9 @@ def _page(row: repo.PageRow) -> StoredPage:
 
 
 class PgWebStore:
-    def __init__(self, engine: AsyncEngine) -> None:
+    def __init__(self, engine: AsyncEngine, quotas: Quotas | None = None) -> None:
         self._engine = engine
+        self._quotas = quotas or Quotas()
 
     async def cached_page(
         self, user_id: str, url_hash: str, *, max_age_s: int
@@ -87,6 +90,9 @@ class PgWebStore:
         meta: Mapping[str, Any] | None = None,
     ) -> WorkbenchAsset:
         async with self._engine.begin() as conn:
+            await lock_user(conn, user_id)
+            if await storage_left(conn, user_id, self._quotas) < len(image.data):
+                raise StorageFull
             blob_id = await library_repo.insert_blob(
                 conn,
                 user_id=user_id,

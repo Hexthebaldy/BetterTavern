@@ -1,0 +1,10 @@
+{
+  "verify": {
+    "subject": "BetterTavern の確認コード：{code}",
+    "body": "こんにちは。\n\nBetterTavern の登録用確認コードは {code} です。{minutes} 分間有効です。\n\nお心当たりがない場合は、このメールを無視してください。\n\n— BetterTavern"
+  },
+  "reset": {
+    "subject": "BetterTavern のパスワード再設定コード：{code}",
+    "body": "こんにちは。\n\nBetterTavern のパスワード再設定のご依頼を受け付けました。確認コードは {code} です。{minutes} 分間有効です。\n\nお心当たりがない場合は、このメールを無視してください。パスワードは変更されません。\n\n— BetterTavern"
+  }
+}

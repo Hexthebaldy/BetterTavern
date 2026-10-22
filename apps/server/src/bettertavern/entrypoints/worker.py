@@ -10,6 +10,7 @@ services/outline_jobs.py）、workbench.run（工作台 agent 跑一轮，servic
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import signal
 import socket
@@ -39,7 +40,14 @@ from bettertavern.services.state_jobs import STATE_JOB, state_handler
 from bettertavern.services.workbench_jobs import WORKBENCH_JOB, workbench_handler
 from bettertavern.settings import Settings
 
-from .bootstrap import app_secrets, endpoint_policy, provider_hub
+from .bootstrap import (
+    alert_mailer,
+    app_secrets,
+    endpoint_policy,
+    mail_sender,
+    provider_hub,
+    quotas,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -91,7 +99,12 @@ async def run_worker(settings: Settings) -> None:
     )
     web_client = build_http_client(policy, proxy=settings.outbound_proxy)
     workbench = build_workbench_runner(
-        engine=engine, secrets=app_secrets(settings), hub=hub, policy=policy, http=web_client
+        engine=engine,
+        secrets=app_secrets(settings),
+        hub=hub,
+        policy=policy,
+        http=web_client,
+        quotas=quotas(settings),
     )
     queue = PgJobQueue(engine, lock_timeout=settings.job_lock_timeout_s)
     listener = PgNotifyListener(engine, queue.channel)
@@ -111,10 +124,24 @@ async def run_worker(settings: Settings) -> None:
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop.set)
+    mailer = mail_sender(settings) if settings.alert_email else None
+    alerts = alert_mailer(settings, mailer, "worker")
+    alert_task: asyncio.Task[None] | None = None
+    if alerts is not None:
+        alerts.install()
+        alert_task = asyncio.create_task(alerts.run())
     log.info("worker.started", worker_id=worker_id, kinds=list(registered))
     try:
         await worker.run(stop)
     finally:
+        if alerts is not None and alert_task is not None:
+            alert_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await alert_task
+            await alerts.flush()
+            alerts.uninstall()
+        if mailer is not None:
+            await mailer.aclose()
         await listener.stop()
         await web_client.aclose()
         await hub.aclose()

@@ -614,7 +614,7 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 
 ## 9 API 与流式协议
 
-接口全部在 `/v1` 下，JSON over HTTPS；除注册和登录外都带 `Authorization: Bearer <access token>`。流式事件用 SSE，生成与连接解耦：先 POST 创建回合，再订阅这个回合的事件流，所以手机切后台或断网不会丢掉一次已经花钱的生成。契约以 OpenAPI 为准，由 pydantic 模型生成；SSE 事件不在 OpenAPI 里，另有 `events.schema.json`。
+接口全部在 `/v1` 下，JSON over HTTPS；除注册、登录、验证码、找回密码外都带 `Authorization: Bearer <access token>`。流式事件用 SSE，生成与连接解耦：先 POST 创建回合，再订阅这个回合的事件流，所以手机切后台或断网不会丢掉一次已经花钱的生成。契约以 OpenAPI 为准，由 pydantic 模型生成；SSE 事件不在 OpenAPI 里，另有 `events.schema.json`。
 
 > 本节是完整的接口设计，包括还没实现的部分。已经实现的接口（请求、响应、状态码、错误码、SSE 事件）以 [api/](api/README.md) 为准。
 
@@ -623,7 +623,8 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 | 分组 | 方法与路径 | 说明 |
 | --- | --- | --- |
 | 认证 | `POST /auth/register`、`/auth/login`、`/auth/refresh`、`/auth/logout` | 刷新令牌每次轮换，复用旧令牌视为被盗并吊销整族；网页带 `X-Auth-Mode: cookie`，刷新令牌只放在 HttpOnly Cookie 里 |
-| 账户 | `GET /me/export`、`DELETE /me` | 导出全部数据（JSON）；异步硬删除账户与全部数据 |
+| 认证 | `POST /auth/send-code`、`/auth/verify-email`、`/auth/reset-password` | 邮箱验证码：注册验证邮箱、找回密码（经 Resend 发信，`infra/mail/`） |
+| 账户 | `GET /me/export`、`DELETE /me`、`POST /me/password` | 导出全部数据（JSON）；异步硬删除账户与全部数据；修改密码 |
 | 模型 | `GET/POST /model-routes`、`GET/PATCH/DELETE /model-routes/{id}` | 玩家配好的模型（Key、端点、模型名、窗口、写法设置），其中一个是导演。创建时做 SSRF 校验，响应里只回密钥后四位；保存时检查窗口设置能否被模型满足（第 4 节） |
 | 模型 | `POST /providers/{provider}/models`、`GET /model-routes/{id}/models`、`POST /model-routes/{id}/probe` | 用还没保存的 Key 或已存的 Key 列出厂商的模型（带上下文长度）；能力探测（第 8 节） |
 | 剧本库 | `GET /scenarios`、`POST /scenarios`、`GET/PATCH/DELETE /scenarios/{id}` | 剧本从角色卡仓库选卡新建（可以几张，群像剧本）；导入和编辑角色卡在工作台（[workbench.md](workbench.md)） |
@@ -746,7 +747,7 @@ apps/server/
 │   │
 │   ├── api/                            # HTTP 层：只做解析、鉴权、序列化
 │   │   ├── deps.py  errors.py  request_context.py  sse.py  lifecycle.py
-│   │   ├── ratelimit.py  body_limit.py  auth_cookie.py  probe_app.py
+│   │   ├── body_limit.py  auth_cookie.py  probe_app.py
 │   │   ├── schemas/  auth.py  routes.py  story.py  common.py
 │   │   └── v1/  auth.py  routes.py  scenarios.py  playthroughs.py  health.py
 │   │
@@ -757,6 +758,7 @@ apps/server/
 │   │   ├── turn_service.py             # 提交行动：幂等、租约，启动 TurnRunner
 │   │   ├── turn_store.py  state_store.py  memory_store.py  outline_store.py  recall_store.py
 │   │   ├── state_jobs.py  memory_jobs.py  outline_jobs.py   # 放后台任务（和业务写入在同一个事务里）
+│   │   ├── quotas.py                   # 每个用户的用量上限：同时在写的 agent、没保存的草稿、存的图
 │   │   └── container.py  maintenance.py  probe_service.py  run_records.py  views.py  errors.py
 │   │
 │   ├── runtime/                        # agent runtime；唯一可以调用 providers 的层，不直接访问数据库
@@ -799,7 +801,9 @@ apps/server/
 │       │                               # rollback、recall、memory、outline、runs
 │       ├── queue/  base.py  sql.py  pg_queue.py  notify.py  worker.py   # worker 主循环含锁超时回收
 │       ├── crypto/  envelope.py  keyring.py  passwords.py  tokens.py
-│       └── observability/  logging.py  redact.py  context.py
+│       ├── mail/  resend.py  memory.py  render.py  templates/   # 发信：验证码邮件、报错提醒
+│       ├── ratelimit.py                # 进程内的滑动窗口限流
+│       └── observability/  logging.py  redact.py  context.py  alerts.py   # alerts：报错合成邮件定期发
 │
 ├── tests/
 │   ├── unit/            # 纯逻辑：domain、runtime、providers、api、evals、vis
@@ -926,7 +930,9 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | `OPTION_NOT_FOUND` | 422 | `option_id` 不在父回合的选项里 |
 | `TURN_NOT_LOCAL` | 409 | 要取消的回合不在当前实例上；租约到期后会自动结束 |
 | `EMAIL_TAKEN` | 409 | 邮箱已注册 |
-| `INVALID_CREDENTIALS` | 401 / 403 | 登录时邮箱或密码不对（401）；删除账户时密码不对（403） |
+| `INVALID_CREDENTIALS` | 401 / 403 | 登录时邮箱或密码不对（401）；删除账户、修改密码时密码不对（403） |
+| `EMAIL_NOT_VERIFIED`、`REGISTRATION_CLOSED`、`CODE_INVALID`、`CODE_EXPIRED`、`MAIL_UNAVAILABLE` | 400 / 403 / 503 | 邮箱验证码、找回密码、暂停注册，见 [api/auth.md](api/auth.md) |
+| `TOO_MANY_RUNS`、`TOO_MANY_DRAFTS`、`STORAGE_FULL` | 409 | 每个用户的用量上限，见 [api/workbench.md](api/workbench.md) |
 | `REFRESH_INVALID`、`REFRESH_REUSED` | 401 | 刷新令牌无效或过期；用过的令牌超过 30 秒宽限期后又出现，整族吊销 |
 | `CROSS_SITE` | 403 | 网页的 Cookie 登录请求来自别的网站 |
 | `CREDENTIAL_UNREADABLE` | 409 | 模型的 Key 无法解密（主密钥换了却没保留旧的），需要重新填写 |

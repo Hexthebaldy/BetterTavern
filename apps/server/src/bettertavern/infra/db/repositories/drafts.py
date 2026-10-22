@@ -178,6 +178,16 @@ async def list_unsaved_drafts(conn: AsyncConnection, user_id: str) -> list[Draft
     return [DraftRow.from_row(r) for r in rows]
 
 
+async def count_unsaved_drafts(conn: AsyncConnection, user_id: str) -> int:
+    row = await fetch_one(
+        conn,
+        """SELECT count(*) AS n FROM workbench_drafts
+           WHERE user_id = :u AND (saved_version IS NULL OR saved_version <> version)""",
+        {"u": user_id},
+    )
+    return int(row["n"]) if row is not None else 0
+
+
 async def update_content(
     conn: AsyncConnection,
     user_id: str,

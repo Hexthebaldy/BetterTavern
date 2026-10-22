@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Response, status
 
-from bettertavern.api.deps import ServicesDep, UserId
+from bettertavern.api.deps import LimitersDep, ServicesDep, UserId, check_rate
 from bettertavern.api.schemas.tools import (
     ToolProviderOut,
     ToolRouteIn,
@@ -73,5 +73,8 @@ async def delete_tool_route(route_id: str, user_id: UserId, services: ServicesDe
 
 
 @router.post("/tool-routes/{route_id}/test")
-async def test_tool_route(route_id: str, user_id: UserId, services: ServicesDep) -> ToolRouteOut:
+async def test_tool_route(
+    route_id: str, user_id: UserId, services: ServicesDep, limiters: LimitersDep
+) -> ToolRouteOut:
+    check_rate(limiters.probe, f"tool:{user_id}")
     return ToolRouteOut.model_validate(await services.tool_routes.test(user_id, route_id))

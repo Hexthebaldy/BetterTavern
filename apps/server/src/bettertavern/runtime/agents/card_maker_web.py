@@ -47,7 +47,14 @@ from bettertavern.providers.web import (
     secret_in_url,
 )
 from bettertavern.runtime.agent import Tool
-from bettertavern.runtime.ports import NewImage, ResolvedTools, ToolConfig, WebStore, WorkbenchRun
+from bettertavern.runtime.ports import (
+    NewImage,
+    ResolvedTools,
+    StorageFull,
+    ToolConfig,
+    WebStore,
+    WorkbenchRun,
+)
 
 from .card_maker_tools import MAX_PAGES, MAX_SEARCHES, CardMakerContext, to_json
 
@@ -371,18 +378,21 @@ async def save_image(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
         raise ctx.fail("fetch_failed", detail=exc.message) from exc
     except (httpx.HTTPError, CleanError) as exc:
         raise ctx.fail("fetch_failed", detail=str(exc) or type(exc).__name__) from exc
-    asset = await web.store.add_image(
-        web.run.user_id,
-        web.run.draft_id,
-        image,
-        source="search",
-        license=str(license_),
-        source_url=url,
-        meta={
-            "page_url": str(args.get("page_url") or "")[:2000],
-            "title": str(args.get("title") or "")[:200],
-        },
-    )
+    try:
+        asset = await web.store.add_image(
+            web.run.user_id,
+            web.run.draft_id,
+            image,
+            source="search",
+            license=str(license_),
+            source_url=url,
+            meta={
+                "page_url": str(args.get("page_url") or "")[:2000],
+                "title": str(args.get("title") or "")[:200],
+            },
+        )
+    except StorageFull as exc:
+        raise ctx.fail("storage_full") from exc
     ctx.assets[asset.id] = asset
     return ctx.messages["image_saved"].format(
         id=asset.id, license=asset.license, size=f"{asset.width}x{asset.height}"
@@ -445,21 +455,26 @@ async def generate_image(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
             image = await asyncio.to_thread(_new_image, data)
         except (WebError, CleanError, httpx.HTTPError):
             continue
-        asset = await web.store.add_image(
-            web.run.user_id,
-            web.run.draft_id,
-            image,
-            source="generated",
-            license="own",
-            prompt=prompt,
-            meta={
-                "tool_route_id": config.route_id,
-                "protocol": config.provider,
-                "model": config.model,
-                "aspect": aspect,
-                "style": style,
-            },
-        )
+        try:
+            asset = await web.store.add_image(
+                web.run.user_id,
+                web.run.draft_id,
+                image,
+                source="generated",
+                license="own",
+                prompt=prompt,
+                meta={
+                    "tool_route_id": config.route_id,
+                    "protocol": config.provider,
+                    "model": config.model,
+                    "aspect": aspect,
+                    "style": style,
+                },
+            )
+        except StorageFull as exc:
+            if ids:
+                break  # 已经存下的几张照常给用户挑
+            raise ctx.fail("storage_full") from exc
         ctx.assets[asset.id] = asset
         ids.append(asset.id)
     if not ids:

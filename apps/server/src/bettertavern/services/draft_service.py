@@ -34,6 +34,7 @@ from bettertavern.infra.db.sqlutil import is_uuid
 
 from .card_service import CardSummary, strip_nul, summary_of
 from .errors import AppError, Conflict, Invalid, NotFound
+from .quotas import Quotas, check_open_drafts, check_storage, lock_user
 from .scenario_service import ScenarioService, ScenarioView
 
 log = structlog.get_logger(__name__)
@@ -202,9 +203,12 @@ def issues_extra(issues: list[Issue]) -> list[dict[str, Any]]:
 
 
 class DraftService:
-    def __init__(self, engine: AsyncEngine, scenarios: ScenarioService) -> None:
+    def __init__(
+        self, engine: AsyncEngine, scenarios: ScenarioService, quotas: Quotas | None = None
+    ) -> None:
         self._engine = engine
         self._scenarios = scenarios
+        self._quotas = quotas or Quotas()
 
     # ---- 读 ----
 
@@ -234,6 +238,8 @@ class DraftService:
 
     async def create_manual(self, user_id: str, *, language: str) -> DraftView:
         async with self._engine.begin() as conn:
+            await lock_user(conn, user_id)
+            await check_open_drafts(conn, user_id, self._quotas)
             row = await repo.insert_draft(
                 conn,
                 user_id=user_id,
@@ -351,10 +357,14 @@ class DraftService:
             except ImageError:
                 image = None  # 卡片数据没问题、图坏了：照样导入，只是没有封面
         async with self._engine.begin() as conn:
+            await lock_user(conn, user_id)
             existing = await cards_repo.find_card_by_sha(conn, user_id, imported.sha256)
             if existing is not None and not allow_duplicate:
                 log.info("draft.imported", duplicate=True, card_id=existing.id)
                 return ImportResult(draft=None, existing_card=summary_of(existing))
+            await check_open_drafts(conn, user_id, self._quotas)
+            if image is not None:
+                await check_storage(conn, user_id, self._quotas, len(image.data))
             row = await repo.insert_draft(
                 conn,
                 user_id=user_id,
@@ -453,7 +463,9 @@ class DraftService:
         except ImageError as exc:
             raise Invalid(str(exc), code="IMAGE_INVALID", field="file") from exc
         async with self._engine.begin() as conn:
+            await lock_user(conn, user_id)
             await self._row(conn, user_id, draft_id)
+            await check_storage(conn, user_id, self._quotas, len(image.data))
             blob_id = await library_repo.insert_blob(
                 conn,
                 user_id=user_id,

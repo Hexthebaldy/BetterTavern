@@ -47,6 +47,7 @@
 ```mermaid
 erDiagram
     users ||--o{ refresh_tokens : "user_id"
+    users ||--o{ email_codes : "user_id"
     users ||--o{ model_routes : "user_id"
     users ||--o{ blobs : "user_id"
     users ||--o{ cards : "user_id"
@@ -121,7 +122,7 @@ erDiagram
 
 | 操作 | 连带删除或修改 |
 | --- | --- |
-| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`）、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys` |
+| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`email_codes`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`）、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys` |
 | 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes`、`story_summaries`、`player_profiles`、`outline_revisions` 和 `agent_runs`（连同 `agent_steps`）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 级联删除 `scenario_cards`，卡不动；`playthroughs.scenario_id` 置空 |
 | 删除角色卡 | `scenario_cards` 里有这张卡就拒绝（409 `CARD_IN_USE`，外键也是 RESTRICT）。级联删除 `card_revisions`；指向它的草稿 `card_id` 置空。它和它的版本用过的封面没有别处在用时一起删掉 |
@@ -137,6 +138,8 @@ erDiagram
 | 过期的租约 | 每 15 秒 | 回合标为 `failed`（`RUNNER_LOST`），见 [story.md 的“并发控制”](story.md#并发控制) |
 | `idempotency_keys` | 大约每 10 分钟 | 删除 24 小时之前的 |
 | `refresh_tokens` | 大约每 10 分钟 | 删除过期超过 7 天的 |
+| `email_codes` | 大约每 10 分钟 | 删除过期的 |
+| 没验证邮箱的 `users` | 大约每 10 分钟 | 要求验证邮箱时，删除注册一天以后还没验证的账号（连同它的全部数据，同“删除账户”）；不要求时不删 |
 | `workbench_events` | 大约每 10 分钟 | 删除一天以前的 |
 | `web_pages` | 大约每 10 分钟 | 删除 7 天以前读的 |
 | `agent_runs`、已完成的 `jobs` | 不清理 | M1 没有清理；设计是 `agent_runs.result` 保留 30 天（[backend.md 第 11 节](../backend.md)） |

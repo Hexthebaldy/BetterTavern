@@ -20,7 +20,6 @@ from bettertavern.api.deps import Limiters
 from bettertavern.api.errors import install_error_handlers
 from bettertavern.api.lifecycle import Shutdown
 from bettertavern.api.probe_app import create_probe_app
-from bettertavern.api.ratelimit import RateLimiter
 from bettertavern.api.request_context import RequestContext
 from bettertavern.api.v1.auth import router as auth_router
 from bettertavern.api.v1.cards import router as cards_router
@@ -39,6 +38,8 @@ from bettertavern.api.v1.workbench import router as workbench_router
 from bettertavern.importers.character_card import MAX_UPLOAD_BYTES
 from bettertavern.importers.images import MAX_IMAGE_BYTES
 from bettertavern.infra.db.engine import create_engine
+from bettertavern.infra.mail import MailSender
+from bettertavern.infra.ratelimit import RateLimiter
 from bettertavern.providers import ProviderHub
 from bettertavern.providers.transport import build_http_client
 from bettertavern.runtime.events.buffer import EventBufferRegistry
@@ -47,7 +48,15 @@ from bettertavern.services.container import Services, build_services
 from bettertavern.services.probe_service import ProbeService
 from bettertavern.settings import Settings
 
-from .bootstrap import app_secrets, endpoint_policy, provider_hub
+from .bootstrap import (
+    account_policy,
+    alert_mailer,
+    app_secrets,
+    endpoint_policy,
+    mail_sender,
+    provider_hub,
+    quotas,
+)
 from .logging_setup import setup_logging
 
 log = structlog.get_logger(__name__)
@@ -72,7 +81,9 @@ def build_app_services(
     *,
     engine: AsyncEngine | None = None,
     hub: ProviderHub | None = None,
+    mailer: MailSender | None = None,
 ) -> Services:
+    """mailer：测试里换成 MemorySender；不给时按配置（entrypoints/bootstrap.py 的 mail_sender）。"""
     secrets = app_secrets(settings)
     policy = endpoint_policy(settings)
     hub = hub or provider_hub(settings, policy)
@@ -94,6 +105,9 @@ def build_app_services(
         instance_id=instance_id(),
         rollback_limit=settings.rollback_limit,
         http=build_http_client(policy, proxy=settings.outbound_proxy),
+        account_policy=account_policy(settings),
+        mailer=mailer if mailer is not None else mail_sender(settings),
+        quotas=quotas(settings),
     )
 
 
@@ -120,6 +134,10 @@ def create_app(
             asyncio.create_task(_every(60.0, _sweep(buffers), "sweep_event_buffers")),
             asyncio.create_task(_every(15.0, services.maintenance.tick, "sweep_leases")),
         ]
+        alerts = alert_mailer(settings, services.mailer, "api")
+        if alerts is not None:
+            alerts.install()
+            background.append(asyncio.create_task(alerts.run()))
         log.info("app.started", version=__version__, env=settings.env, instance=instance_id())
         try:
             yield
@@ -131,6 +149,10 @@ def create_app(
             for task in background:
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
+            if alerts is not None:
+                # 停机前把攒下的报错发出去
+                await alerts.flush()
+                alerts.uninstall()
             await services.aclose(grace=settings.shutdown_grace_s)
             await probe.aclose()
             await services.engine.dispose()
@@ -150,6 +172,9 @@ def create_app(
         auth=RateLimiter(settings.rate_limit_auth_per_min),
         turns=RateLimiter(settings.rate_limit_turns_per_min),
         probe=RateLimiter(settings.rate_limit_probe_per_min),
+        workbench=RateLimiter(settings.rate_limit_workbench_per_min),
+        # 发验证码按 IP：一小时 20 封（同一个邮箱的次数在 AuthService 里另算）
+        mail=RateLimiter(20, 3600.0),
     )
     install_error_handlers(app)
     # 角色卡上传另算：16 MB 的文件加上 multipart 的边界和头

@@ -35,6 +35,7 @@ from bettertavern.runtime.events.buffer import StreamEvent
 
 from .draft_service import DraftView, draft_view, empty_card
 from .errors import AppError, Conflict, Invalid, NotFound
+from .quotas import Quotas, check_open_drafts, check_running_agents, lock_user
 from .workbench_events import WorkbenchEventHub
 from .workbench_jobs import enqueue_workbench
 from .workbench_store import message_payload
@@ -71,8 +72,14 @@ def _busy() -> Conflict:
 
 
 class WorkbenchService:
-    def __init__(self, engine: AsyncEngine, hub: WorkbenchEventHub | None = None) -> None:
+    def __init__(
+        self,
+        engine: AsyncEngine,
+        hub: WorkbenchEventHub | None = None,
+        quotas: Quotas | None = None,
+    ) -> None:
         self._engine = engine
+        self._quotas = quotas or Quotas()
         self._queue = PgJobQueue(engine)
         self._hub = hub or WorkbenchEventHub(engine)
 
@@ -99,6 +106,8 @@ class WorkbenchService:
         stage: str | None = None,
         plan_approved_seq: int | None = None,
     ) -> str:
+        """调用方在事务开头已经 lock_user。"""
+        await check_running_agents(conn, user_id, self._quotas)
         run_id = str(uuid.uuid4())
         if not await repo.start_run(
             conn, user_id, draft_id, run_id, stage=stage, plan_approved_seq=plan_approved_seq
@@ -126,6 +135,8 @@ class WorkbenchService:
         """从聊天框开始：新建草稿，记下用户的第一句话，开第一轮。"""
         text = _clean_text(text)
         async with self._engine.begin() as conn:
+            await lock_user(conn, user_id)
+            await check_open_drafts(conn, user_id, self._quotas)
             row = await drafts_repo.insert_draft(
                 conn,
                 user_id=user_id,
@@ -147,6 +158,7 @@ class WorkbenchService:
     ) -> MessageView:
         """用户说一句话、交问卷、回复方案；都会开新一轮。"""
         async with self._engine.begin() as conn:
+            await lock_user(conn, user_id)
             draft = await self._draft(conn, user_id, draft_id, lock=True)
             if draft.agent_status == "running":
                 raise _busy()
@@ -194,6 +206,7 @@ class WorkbenchService:
     async def continue_(self, user_id: str, draft_id: str) -> DraftView:
         """让 agent 接着做（从手动切回来，或者上一轮被停下、出错以后）。"""
         async with self._engine.begin() as conn:
+            await lock_user(conn, user_id)
             draft = await self._draft(conn, user_id, draft_id, lock=True)
             if draft.agent_status == "running":
                 raise _busy()

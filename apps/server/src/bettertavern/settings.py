@@ -89,6 +89,25 @@ class Settings(BaseSettings):
     rate_limit_turns_per_min: int = Field(default=30, ge=1)
     rate_limit_probe_per_min: int = Field(default=5, ge=1)
 
+    # 工作台（按用户）：开始、发消息、接着写、导入、上传、生成封面、测试外部服务合在一起，每分钟次数
+    rate_limit_workbench_per_min: int = Field(default=20, ge=1)
+    # 每个用户同时在写的 agent 最多几个、没保存的草稿最多几份、图片一共多大
+    max_running_agents: int = Field(default=2, ge=1)
+    max_open_drafts: int = Field(default=50, ge=1)
+    max_image_bytes_per_user: int = Field(default=200 * 1024 * 1024, ge=1024 * 1024)
+
+    # 账号
+    # 能不能注册新账号（出问题时先关掉）
+    registration_open: bool = True
+    # 注册后要不要先验证邮箱。不设置时：配了发信服务（RESEND_API_KEY）就要，否则不要
+    email_verification: bool | None = None
+    # 发信：Resend 的 API key 和发件人（域名要先在 Resend 里验证）
+    resend_api_key: SecretStr | None = None
+    mail_from: str = "BetterTavern <noreply@localhost>"
+    # 服务报错时发邮件提醒到这个地址（同一段时间里的报错合成一封，只写事件名和次数）。不设置就不发
+    alert_email: str | None = None
+    alert_interval_s: float = Field(default=900.0, ge=60)
+
     # 允许的跨域来源，逗号分隔。网页和接口同源部署时不需要；网页放在别的域名下时把网页的地址加进来，
     # 网页端的 Cookie 登录也只接受同源和这里列出的来源
     cors_origins: str = ""
@@ -114,6 +133,12 @@ class Settings(BaseSettings):
         if self.auth_cookie_secure is None:
             return self.env != "dev"
         return self.auth_cookie_secure
+
+    @property
+    def email_verification_required(self) -> bool:
+        if self.email_verification is None:
+            return self.resend_api_key is not None
+        return self.email_verification
 
     @property
     def cors_origin_list(self) -> list[str]:

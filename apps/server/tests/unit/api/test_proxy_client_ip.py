@@ -15,8 +15,8 @@ from fastapi import FastAPI, Request
 
 from bettertavern.api.deps import check_rate, client_ip
 from bettertavern.api.errors import install_error_handlers
-from bettertavern.api.ratelimit import RateLimiter
 from bettertavern.entrypoints.server import proxy_options
+from bettertavern.infra.ratelimit import RateLimiter
 from bettertavern.settings import Settings
 
 pytestmark = pytest.mark.anyio

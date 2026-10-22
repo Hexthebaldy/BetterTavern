@@ -96,13 +96,14 @@
 
 测试一下：搜索搜一个词，读网页读一个页面，文生图出一张小图（要花一点钱）。最多 60 秒。结果记进 `probe`，`status` 变成 `ok` 或 `invalid`。没有请求体。
 
-- 鉴权：需要
+- 鉴权：需要；按用户限流（和测试模型连接一样，每分钟 5 次）。
 - 成功：`200`，返回 [`ToolRouteOut`](#toolrouteout)。服务商出错不算接口出错：看 `status` 和 `probe`。
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 不存在 |
 | 409 | `CREDENTIAL_UNREADABLE` | Key 无法解密（服务器的主密钥换过），要重新填 Key |
+| 429 | `RATE_LIMITED` | 每分钟测试超过 5 次 |
 
 ## 响应对象
 

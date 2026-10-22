@@ -10,6 +10,8 @@
 - 草稿**不在角色卡仓库里**：点“保存”（[`POST /v1/workbench/drafts/{draft_id}/save`](#post-v1workbenchdraftsdraft_idsave)）才正式进库。改仓库里已有的卡也是先开一份草稿。
 - 草稿带版本号 `version`：手动自动保存、agent 每写一处、换封面都加 1。自动保存要带上读到的版本号，对不上返回 409 `DRAFT_CHANGED`，重新读取再改。
   这样手动和 agent 同时改时不会互相覆盖。
+- 每个用户有用量上限（服务端的配置，见 [README.md 的“限流”](README.md#限流)）：同时在写的 agent 最多 2 个（`TOO_MANY_RUNS`），
+  没保存的草稿最多 50 份（`TOO_MANY_DRAFTS`），存的图（封面、导入的卡图、草稿里的图）一共最多 200 MB（`STORAGE_FULL`）。
 
 ## 接口
 
@@ -28,7 +30,10 @@
 | HTTP | code | 情形 |
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | `edit_card` 时卡不存在 |
+| 409 | `TOO_MANY_DRAFTS` | `manual`、`agent` 时没保存的草稿已经到上限，带 `limit` |
+| 409 | `TOO_MANY_RUNS` | `agent` 时同时在写的 agent 已经到上限，带 `limit` |
 | 422 | `VALIDATION_ERROR` | `edit_card` 没带 `card_id`（`field: "card_id"`）；`agent` 没带 `text`（`field: "text"`） |
+| 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 
 #### `DraftCreateIn`
 
@@ -60,9 +65,12 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 | HTTP | code | 情形 |
 | --- | --- | --- |
 | 400 | `BAD_REQUEST` | multipart 格式损坏，无法解析 |
+| 409 | `TOO_MANY_DRAFTS` | 没保存的草稿已经到上限，带 `limit` |
+| 409 | `STORAGE_FULL` | PNG 卡的图片存不下了，带 `limit_mb` |
 | 413 | `PAYLOAD_TOO_LARGE` | 文件超过 16 MB |
 | 422 | `CARD_INVALID` | 不是角色卡、JSON 损坏、嵌套太深等，原因写在 `title` 里 |
 | 422 | `VALIDATION_ERROR` | 请求里没有 `file` 字段 |
+| 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 
 ### `GET /v1/workbench/drafts`
 
@@ -169,9 +177,11 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 | HTTP | code | 情形 |
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 草稿不存在 |
+| 409 | `STORAGE_FULL` | 存的图已经到上限，带 `limit_mb` |
 | 413 | `PAYLOAD_TOO_LARGE` | 文件超过 16 MB |
 | 422 | `IMAGE_INVALID` | 不是 PNG、JPEG、WebP，解码失败或像素太多（`field: "file"`） |
 | 422 | `VALIDATION_ERROR` | 请求里没有 `file` 字段 |
+| 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 
 ### `POST /v1/workbench/drafts/{draft_id}/covers`
 
@@ -187,6 +197,8 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 | 404 | `NOT_FOUND` | 草稿不存在 |
 | 409 | `TOOL_ROUTE_MISSING` | 还没配文生图 |
 | 409 | `CREDENTIAL_UNREADABLE` | 文生图的 Key 无法解密 |
+| 409 | `STORAGE_FULL` | 存的图已经到上限（出图之前就检查，不花钱），带 `limit_mb`。出到一半存满时返回已经存下的几张 |
+| 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 | 502 | `TOOL_ROUTE_INVALID` | 文生图服务出错，带 `reason` |
 
 #### `CoverGenerateIn`
@@ -288,7 +300,9 @@ agent 模式的对话记录，按序号排；以及此刻最新的推送事件�
 | 404 | `NOT_FOUND` | 草稿不存在 |
 | 409 | `DRAFT_BUSY` | agent 还在跑（先停止，或者等它做完） |
 | 409 | `NOT_AWAITING` | 草稿不在等问卷的回答（`answers`）或方案的回复（`plan_reply`） |
+| 409 | `TOO_MANY_RUNS` | 同时在写的 agent 已经到上限（别的草稿还在写），带 `limit` |
 | 422 | `VALIDATION_ERROR` | 说的话为空或超过 8000 字（`field: "text"`）；回答里有不认识的题或类型不对（`field: "answers"`）；退回方案没写原因（`field: "text"`） |
+| 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 
 #### `MessageIn`
 
@@ -350,6 +364,8 @@ agent 模式的对话记录，按序号排；以及此刻最新的推送事件�
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 草稿不存在 |
 | 409 | `DRAFT_BUSY` | agent 还在跑 |
+| 409 | `TOO_MANY_RUNS` | 同时在写的 agent 已经到上限，带 `limit` |
+| 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 
 ### `GET /v1/workbench/drafts/{draft_id}/events`
 
