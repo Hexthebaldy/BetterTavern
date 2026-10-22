@@ -1,8 +1,8 @@
-/** 首屏：招牌、一句话介绍、现状；右边是演示 */
+/** 首屏：招牌、一句话介绍、现状，打开网页版的主按钮；右边是演示 */
 
 import { Icon } from "../components/Icon.tsx";
 import { Logo } from "../components/Logo.tsx";
-import { androidApkHref, EXTERNAL, REPO } from "../data/links.ts";
+import { androidApkHref, EXTERNAL, REPO, WEB_APP } from "../data/links.ts";
 import { Demo } from "../demo/Demo.tsx";
 import { useCopy, useLang } from "../i18n/context.tsx";
 
@@ -28,8 +28,9 @@ export function Hero() {
             <p className="txt in3">{hero.status}</p>
           </div>
           <div className="ctas in4">
-            <a className="btn pri" href={REPO} {...EXTERNAL}>
-              GitHub
+            {/* 官方部署的网页版：打开就能注册使用 */}
+            <a className="btn pri" href={WEB_APP} {...EXTERNAL}>
+              {hero.web}
               <span className="arr">
                 <Icon name="arrowOut" />
               </span>
@@ -38,8 +39,9 @@ export function Hero() {
               <Icon name="android" />
               {hero.android}
             </a>
-            <a className="btn sec" href="#deploy">
-              {hero.deploy}
+            <a className="btn sec" href={REPO} {...EXTERNAL}>
+              GitHub
+              <Icon name="arrowOut" />
             </a>
           </div>
           <div className="meta in4">

@@ -16,6 +16,9 @@ export const DOCS = {
   nginx: file("deploy/nginx.example.conf"),
 };
 
+/** 官方部署的网页版：打开就能注册使用（Android 安装包也默认连它） */
+export const WEB_APP = "https://bettertavern.com";
+
 /** Android 安装包在站点里的位置 */
 export const ANDROID_APK_PATH = "downloads/BetterTavern.apk";
 

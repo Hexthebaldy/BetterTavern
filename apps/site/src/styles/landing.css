@@ -193,7 +193,9 @@ body{margin:0}
 @media (max-width:960px){.links,.gh,.lsw{display:none}.menuBtn{display:inline-flex;margin-left:auto}}
 @media (max-width:1079px){.lp.en .links,.lp.en .gh,.lp.en .lsw{display:none}.lp.en .menuBtn{display:inline-flex;margin-left:auto}}
 @media (max-width:1199px){.lp.ja .links,.lp.ja .gh,.lp.ja .lsw{display:none}.lp.ja .menuBtn{display:inline-flex;margin-left:auto}}
-/* 窄于 360 时导航放不下标志、字标、GitHub 和菜单，只留标志（设计稿只画到 390；首屏招牌上就是项目名） */
+/* 窄于 400 时去掉“网页版”按钮里的箭头圆圈（英文的 Web app 比原来的 GitHub 长，360 宽时会挤出屏幕） */
+@media (max-width:399px){.nav .btn.pri.sm .arr{display:none}}
+/* 窄于 360 时导航放不下标志、字标、网页版按钮和菜单，只留标志（设计稿只画到 390；首屏招牌上就是项目名） */
 @media (max-width:359px){.nav .brand span{display:none}}
 
 /* ---------- 首屏 ---------- */

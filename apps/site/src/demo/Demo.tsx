@@ -10,6 +10,7 @@
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { Icon, type IconName } from "../components/Icon.tsx";
+import { EXTERNAL, WEB_APP } from "../data/links.ts";
 import { useCopy } from "../i18n/context.tsx";
 import { fill } from "../i18n/format.ts";
 import {
@@ -289,8 +290,9 @@ export function Demo() {
               <button className="btn pri sm" type="button" onClick={doRestart}>
                 {d.restart}
               </button>
-              <a className="btn line sm" href="#deploy">
-                {hero.deploy}
+              {/* 读完演示，去网页版真的玩一次 */}
+              <a className="btn line sm" href={WEB_APP} {...EXTERNAL}>
+                {hero.web}
               </a>
             </div>
           </div>

@@ -1,7 +1,7 @@
 /** 页脚：链接、超大字标、许可证 */
 
 import { Logo } from "../components/Logo.tsx";
-import { androidApkHref, DOCS, EXTERNAL, ISSUES, REPO } from "../data/links.ts";
+import { androidApkHref, DOCS, EXTERNAL, ISSUES, REPO, WEB_APP } from "../data/links.ts";
 import { useCopy, useLang } from "../i18n/context.tsx";
 import { DocNote } from "./DocNote.tsx";
 
@@ -29,6 +29,7 @@ export function Footer() {
     {
       title: f.clients,
       links: [
+        { label: f.webApp, href: WEB_APP },
         { label: f.android, href: androidApkHref(lang), download: true },
         { label: f.mobile, href: DOCS.mobile, doc: true },
         { label: f.web, href: DOCS.client, doc: true },

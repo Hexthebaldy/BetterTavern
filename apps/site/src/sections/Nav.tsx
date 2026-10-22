@@ -1,5 +1,6 @@
 /**
- * 导航：标志、各节的锚点、文档、语言和 GitHub；窄于 900 时（英文、日文的字长一些，宽一点就收）收进菜单。
+ * 导航：标志、各节的锚点、文档、语言和“网页版”主按钮；窄于 900 时（英文、日文的字长一些，宽一点就收）
+ * 锚点、文档、语言收进菜单（菜单里另有 GitHub），“网页版”一直留在右上角。
  * 一直有一道粗黑底线，往下滚以后线下再多一道蓝；当前所在的节垫一块斜切的蓝（scroll.ts）。
  */
 
@@ -7,7 +8,7 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "../components/Icon.tsx";
 import { Logo } from "../components/Logo.tsx";
-import { DOCS, EXTERNAL, REPO } from "../data/links.ts";
+import { DOCS, EXTERNAL, REPO, WEB_APP } from "../data/links.ts";
 import { useCopy } from "../i18n/context.tsx";
 import { DocNote } from "./DocNote.tsx";
 import { LangMenu, LangRow } from "./LangSwitch.tsx";
@@ -78,8 +79,9 @@ export function Nav() {
             {nav.docs}
           </a>
           <LangMenu />
-          <a className="btn pri sm" href={REPO} {...EXTERNAL}>
-            GitHub
+          {/* 右上角的主按钮原来是 GitHub，现在换成网页版；GitHub 在首屏、页脚和窄屏的菜单里 */}
+          <a className="btn pri sm" href={WEB_APP} {...EXTERNAL}>
+            {nav.webApp}
             <span className="arr">
               <Icon name="arrowOut" size="s" />
             </span>
@@ -108,6 +110,10 @@ export function Nav() {
               {nav.docs}
               <DocNote />
             </span>
+            <Icon name="arrowOut" size="s" />
+          </a>
+          <a href={REPO} {...EXTERNAL} onClick={closeMenu}>
+            GitHub
             <Icon name="arrowOut" size="s" />
           </a>
           <LangRow />

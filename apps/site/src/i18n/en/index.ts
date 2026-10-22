@@ -25,13 +25,14 @@ export const en: Copy = {
     menuOpen: "Open menu",
     menuClose: "Close menu",
     language: "Language",
+    webApp: "Web app",
   },
   docsLangNote: "(in Chinese)",
   hero: {
     lead: "Interactive fiction played with SillyTavern character cards. The AI writes a passage in the first person and ends it with two choices; to do something else, write your own line.",
-    status: "For now you run the server yourself. On Android you can install the APK directly; the iPhone app isn't on the App Store yet, so you open it with Expo Go; the web version runs locally.",
+    status: "Open the web app and sign up to start. On Android, install the APK; it connects to the same service. The iPhone app isn't on the App Store yet, so use the web app in Safari for now. If you'd rather keep your data yourself, you can also host it.",
+    web: "Open the web app",
     android: "Download for Android",
-    deploy: "How to deploy",
     platforms: "iOS · Android · Tablet · Web",
     demoCap: "Pick a choice to read on. You can also rename the protagonist, switch to dark mode or open the world state. In real use, every passage is written by the model you set up.",
   },
@@ -248,11 +249,11 @@ export const en: Copy = {
       title: "Where your data lives",
       flow: [
         { b: "Clients", s: "Phone, tablet, web" },
-        { b: "Your server", s: "Stories, world state, encrypted keys" },
+        { b: "Server", s: "Stories, world state, encrypted keys" },
         { b: "Model provider", s: "Only gets the context needed for this passage" },
       ],
       list: [
-        "Stories, world settings and model keys are all stored on the server you run. Keys are encrypted, and the app only shows their last four characters.",
+        "Stories, world settings and model keys are stored on the server: the official one when you use the web app and the apps, your own when you host it. Keys are encrypted, and the app only shows their last four characters.",
         "The server sends the needed context to the model provider you chose only while it's writing the story.",
         "The server's logs record neither story text nor keys.",
       ],
@@ -264,7 +265,7 @@ export const en: Copy = {
     phone: {
       title: "Phone",
       sub: "iOS and Android",
-      text: "React Native (Expo), one codebase for both platforms. On Android, download and install the APK; the iPhone app isn't on the App Store yet, so for now you open it with Expo Go.",
+      text: "React Native (Expo), one codebase for both platforms. On Android, download and install the APK; it connects to the official service, and you can switch to your own server at the bottom of the sign-in page. The iPhone app isn't on the App Store yet: use the web app in Safari, or open the app with Expo Go against a server you host.",
       link: "Mobile client guide",
       download: "Download APK",
     },
@@ -276,13 +277,14 @@ export const en: Copy = {
     web: {
       title: "Web",
       sub: "Desktop browsers",
-      text: "Has a sidebar and keyboard shortcuts; drop a character card file onto the window to import it. Start it locally with `make web`.",
+      text: "Has a sidebar and keyboard shortcuts; drop a character card file onto the window to import it. Open bettertavern.com to use it; if you host it yourself, start it locally with `make web`.",
       link: "Web client guide",
+      open: "Open the web app",
     },
   },
   deploy: {
     title: "Deploy",
-    lead: "There's no public service yet. Run the server on your own computer or a cloud host and connect the clients to it.",
+    lead: "If you don't want to host it, just use the web app. To keep your data yourself, run the server on your own computer or a cloud host and connect the clients to it.",
     needTitle: "What you need",
     needs: [
       { k: "Server: ", v: "Docker; or Python 3.12+ with uv, and PostgreSQL 16" },
@@ -317,15 +319,15 @@ export const en: Copy = {
     items: [
       {
         q: "Does it cost anything?",
-        a: "No. BetterTavern is open source. Stories are written with your own model key, and the model provider bills you for what you use.",
+        a: "No. The web app, the apps and the code are free; BetterTavern is open source. Stories are written with your own model key, and the model provider bills you for what you use.",
       },
       {
         q: "Do I have to run a server myself?",
-        a: "Yes, there's no public service for now. Stories, the world state and keys are stored on the server you run; an always-on computer or a small cloud host is enough.",
+        a: "No. Open bettertavern.com and sign up; stories, the world state and encrypted keys are stored on the official server (in Singapore). If you'd rather keep your data yourself, you can run your own server; an always-on computer or a small cloud host is enough.",
       },
       {
         q: "Where do I download the mobile app?",
-        a: "Android: tap “Download for Android” at the top of this page to get the APK. When installing, your phone asks you to let the browser or file manager install apps; allow it. It isn't on Google Play yet. iPhone: not on the App Store yet; for now open it with Expo Go: start the client on your computer (see “Mobile” under Deploy above) and scan the QR code in the terminal with your phone. The phone and computer need to be on the same network, or connected with a tool like Tailscale. After installing, enter your server address at the bottom of the sign-in page.",
+        a: "Android: tap “Download for Android” at the top of this page to get the APK. When installing, your phone asks you to let the browser or file manager install apps; allow it. It isn't on Google Play yet. The app connects to the official service, so sign in with your web app account; if you host it yourself, enter your server address at the bottom of the sign-in page. iPhone: not on the App Store yet; use the web app in Safari for now. If you host it yourself, you can also open the app with Expo Go: start the client on your computer (see “Mobile” under Deploy above) and scan the QR code in the terminal with your phone. The phone and computer need to be on the same network, or connected with a tool like Tailscale.",
       },
       {
         q: "Which character cards work?",
@@ -333,7 +335,7 @@ export const en: Copy = {
       },
       {
         q: "Can I use a model running on my own computer?",
-        a: "Yes. When adding a model, choose “Custom compatible endpoint” and enter the URL of an OpenAI-compatible API. If the endpoint is on the same machine or local network, set `ALLOW_PRIVATE_ENDPOINTS=true` on the server.",
+        a: "Yes, if you host it yourself. When adding a model, choose “Custom compatible endpoint” and enter the URL of an OpenAI-compatible API; if the endpoint is on the same machine or local network, set `ALLOW_PRIVATE_ENDPOINTS=true` on the server. The official web app can't reach addresses on your computer; it only accepts https addresses reachable on the internet.",
       },
       {
         q: "Will long stories contradict themselves?",
@@ -345,12 +347,12 @@ export const en: Copy = {
       },
       {
         q: "Will my stories be used to train models?",
-        a: "BetterTavern doesn't collect story content. While writing, the needed context is sent to the model provider you chose, and how they handle it is up to their terms. If that concerns you, use a model running on your own computer.",
+        a: "BetterTavern doesn't use your stories to train models or for anything else (see the web app's privacy policy). While writing, the needed context is sent to the model provider you chose, and how they handle it is up to their terms. If that concerns you, host it yourself and use a model running on your own computer.",
       },
     ],
   },
   footer: {
-    about: ["Interactive fiction played with SillyTavern character cards.", "Open source; you deploy it yourself."],
+    about: ["Interactive fiction played with SillyTavern character cards.", "Open source; use the web app or host it yourself."],
     project: "Project",
     issues: "Report an issue",
     deploy: "Deploy",
@@ -359,6 +361,7 @@ export const en: Copy = {
     overview: "Technical design",
     uiDesign: "UI design",
     clients: "Clients",
+    webApp: "Web app",
     mobile: "Mobile client guide",
     web: "Web client guide",
     android: "Android APK",

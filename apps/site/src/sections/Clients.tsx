@@ -1,7 +1,7 @@
 /** 05 客户端：手机、平板、网页 */
 
 import { Icon } from "../components/Icon.tsx";
-import { androidApkHref, DOCS, EXTERNAL } from "../data/links.ts";
+import { androidApkHref, DOCS, EXTERNAL, WEB_APP } from "../data/links.ts";
 import { useCopy, useLang } from "../i18n/context.tsx";
 import { Rich } from "../i18n/rich.tsx";
 import { DocNote } from "./DocNote.tsx";
@@ -63,6 +63,10 @@ export function Clients() {
               <Rich text={clients.web.text} />
             </p>
             <div className="acts">
+              <a className="alink" href={WEB_APP} {...EXTERNAL}>
+                {clients.web.open}
+                <Icon name="arrowOut" size="s" />
+              </a>
               <a className="alink" href={DOCS.client} hrefLang="zh-CN" {...EXTERNAL}>
                 {clients.web.link}
                 <DocNote />

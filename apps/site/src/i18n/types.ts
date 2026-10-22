@@ -50,6 +50,8 @@ export type Copy = {
     menuOpen: string;
     menuClose: string;
     language: string;
+    /** 右上角的主按钮：打开官方的网页版 */
+    webApp: string;
   };
   /** 文档只有中文：英文和日文页上，指向文档的链接后面加这句说明；中文页是空的 */
   docsLangNote: string;
@@ -57,9 +59,10 @@ export type Copy = {
   hero: {
     lead: string;
     status: string;
+    /** 首屏的主按钮：打开官方的网页版 */
+    web: string;
     /** 首屏的“下载 Android 版”按钮 */
     android: string;
-    deploy: string;
     platforms: string;
     demoCap: string;
   };
@@ -125,7 +128,7 @@ export type Copy = {
     lead: string;
     phone: { title: string; sub: string; text: string; link: string; download: string };
     tablet: { title: string; sub: string; text: string };
-    web: { title: string; sub: string; text: string; link: string };
+    web: { title: string; sub: string; text: string; link: string; open: string };
   };
   deploy: {
     title: string;
@@ -160,6 +163,7 @@ export type Copy = {
     overview: string;
     uiDesign: string;
     clients: string;
+    webApp: string;
     mobile: string;
     web: string;
     android: string;

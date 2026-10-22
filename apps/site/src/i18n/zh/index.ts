@@ -26,13 +26,14 @@ export const zh: Copy = {
     menuOpen: "打开菜单",
     menuClose: "收起菜单",
     language: "语言",
+    webApp: "网页版",
   },
   docsLangNote: "",
   hero: {
     lead: "用 SillyTavern 角色卡玩的互动小说。AI 用第一人称写一段故事，结尾给两个选项；想做选项之外的事，可以自己写一句。",
-    status: "目前需要自己运行服务器。Android 可以直接下载安装包；iPhone 版还没有上架 App Store，用 Expo Go 打开；网页版在本地启动。",
+    status: "打开网页版注册就能用。Android 可以下载安装包，默认连同一个服务；iPhone 版还没有上架 App Store，先用 Safari 打开网页版。想把数据放在自己手里，也可以自己部署。",
+    web: "打开网页版",
     android: "下载 Android 版",
-    deploy: "部署说明",
     platforms: "iOS · Android · 平板 · 网页",
     demoCap: "点选项往下读，也可以改主角的名字、切换夜间模式、打开世界状态。实际使用时，每一段由你配置的模型生成。",
   },
@@ -237,11 +238,11 @@ export const zh: Copy = {
       title: "数据存在哪里",
       flow: [
         { b: "客户端", s: "手机、平板、网页" },
-        { b: "你的服务器", s: "故事、世界状态、加密的 Key" },
+        { b: "服务器", s: "故事、世界状态、加密的 Key" },
         { b: "模型服务商", s: "只收到写这一段需要的前情" },
       ],
       list: [
-        "故事、世界设定、模型 Key 都保存在你自己运行的服务器上。Key 加密保存，App 里只显示后四位。",
+        "故事、世界设定、模型 Key 都保存在服务器上：用网页版和 App 时是官方的服务器，自己部署时是你自己的。Key 加密保存，App 里只显示后四位。",
         "只有在写故事的时候，服务器才把需要的前情发给你选的模型服务。",
         "服务器的运行日志不记录故事内容，也不记录 Key。",
       ],
@@ -253,7 +254,7 @@ export const zh: Copy = {
     phone: {
       title: "手机",
       sub: "iOS 和 Android",
-      text: "React Native（Expo），两个平台用同一套代码。Android 可以下载安装包直接安装；iPhone 版还没有上架 App Store，目前用 Expo Go 打开。",
+      text: "React Native（Expo），两个平台用同一套代码。Android 下载安装包直接安装，默认连官方的服务，登录页底部可以换成自己的服务器；iPhone 版还没有上架 App Store，可以先用 Safari 打开网页版，或者用 Expo Go 连自己部署的服务器。",
       link: "手机端说明",
       download: "下载 APK",
     },
@@ -265,13 +266,14 @@ export const zh: Copy = {
     web: {
       title: "网页",
       sub: "电脑浏览器",
-      text: "有侧栏和键盘快捷键，角色卡文件可以直接拖进窗口导入。本地用 `make web` 启动。",
+      text: "有侧栏和键盘快捷键，角色卡文件可以直接拖进窗口导入。打开 bettertavern.com 就能用；自己部署时用 `make web` 在本地启动。",
       link: "网页端说明",
+      open: "打开网页版",
     },
   },
   deploy: {
     title: "部署",
-    lead: "目前没有公共服务，需要在自己的电脑或云主机上运行服务器，客户端连接到它。",
+    lead: "不想自己部署，直接用网页版就行。想把数据放在自己手里，就在自己的电脑或云主机上运行服务器，客户端连接到它。",
     needTitle: "需要准备",
     needs: [
       { k: "服务器：", v: "Docker；或者 Python 3.12+ 和 uv、PostgreSQL 16" },
@@ -306,15 +308,15 @@ export const zh: Copy = {
     items: [
       {
         q: "收费吗？",
-        a: "不收费，BetterTavern 是开源项目。写故事用的是你自己的模型 Key，费用由模型服务商按用量收取。",
+        a: "不收费。网页版、App 和代码都免费，BetterTavern 是开源项目。写故事用的是你自己的模型 Key，费用由模型服务商按用量收取。",
       },
       {
         q: "一定要自己运行服务器吗？",
-        a: "是的，目前没有公共服务。故事、世界状态和 Key 都存在你自己运行的服务器上，一台常开的电脑或一台小云主机就够。",
+        a: "不用。打开 bettertavern.com 注册就能用，故事、世界状态和加密的 Key 存在官方的服务器上（新加坡）。想把数据放在自己手里，也可以自己运行服务器，一台常开的电脑或一台小云主机就够。",
       },
       {
         q: "手机 App 在哪里下载？",
-        a: "Android：点本页最上面的“下载 Android 版”下载安装包（APK），安装时手机提示要允许浏览器或文件管理器安装应用，允许就行；还没有上架 Google Play。iPhone：还没有上架 App Store，现在用 Expo Go 打开：在电脑上启动客户端（见上面部署里的“手机”），用手机扫终端里的二维码，手机和电脑要在同一个网络里，或者用 Tailscale 这类组网工具连起来。装好以后，在登录页底部填上你的服务器地址。",
+        a: "Android：点本页最上面的“下载 Android 版”下载安装包（APK），安装时手机提示要允许浏览器或文件管理器安装应用，允许就行；还没有上架 Google Play。App 默认连官方的服务，用网页版的账号直接登录；自己部署的话，在登录页底部换成你的服务器地址。iPhone：还没有上架 App Store，可以先用 Safari 打开网页版；自己部署的话，也可以用 Expo Go 打开：在电脑上启动客户端（见上面部署里的“手机”），用手机扫终端里的二维码，手机和电脑要在同一个网络里，或者用 Tailscale 这类组网工具连起来。",
       },
       {
         q: "支持哪些角色卡？",
@@ -322,7 +324,7 @@ export const zh: Copy = {
       },
       {
         q: "能用自己电脑上跑的模型吗？",
-        a: "可以。添加模型时选“自定义兼容端点”，填上兼容 OpenAI 接口的地址。端点在本机或内网时，服务器要设置 `ALLOW_PRIVATE_ENDPOINTS=true`。",
+        a: "自己部署时可以。添加模型时选“自定义兼容端点”，填上兼容 OpenAI 接口的地址；端点在本机或内网时，服务器要设置 `ALLOW_PRIVATE_ENDPOINTS=true`。官方的网页版连不到你电脑上的地址，只能用公网上能访问的 https 地址。",
       },
       {
         q: "长篇故事会不会前后矛盾？",
@@ -334,12 +336,12 @@ export const zh: Copy = {
       },
       {
         q: "故事会被拿去训练模型吗？",
-        a: "BetterTavern 不收集故事内容。写故事时，需要的前情会发给你选的模型服务商，他们怎么处理数据以各家的条款为准；介意的话，可以用自己电脑上跑的模型。",
+        a: "BetterTavern 不会用你的故事训练模型，也不拿去做别的用途（见网页版的隐私政策）。写故事时，需要的前情会发给你选的模型服务商，他们怎么处理数据以各家的条款为准；介意的话，可以自己部署，用自己电脑上跑的模型。",
       },
     ],
   },
   footer: {
-    about: ["用 SillyTavern 角色卡玩的互动小说。", "开源，需要自己部署。"],
+    about: ["用 SillyTavern 角色卡玩的互动小说。", "开源，可以直接用网页版，也可以自己部署。"],
     project: "项目",
     issues: "反馈问题",
     deploy: "部署",
@@ -348,6 +350,7 @@ export const zh: Copy = {
     overview: "技术方案",
     uiDesign: "界面设计",
     clients: "客户端",
+    webApp: "网页版",
     mobile: "手机端说明",
     web: "网页端说明",
     android: "Android 安装包",
