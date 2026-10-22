@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 这个目录说明服务端**已经实现**的全部接口，内容以代码为准。完整的接口设计（包括还没做的会话通道、导出，以及决定不做的重新生成）见 [backend.md 第 9 节](../backend.md)，
 实现与设计的差异见 [backend.md 第 12 节](../backend.md)。非生产环境下，服务端在 `/docs` 提供交互式文档，OpenAPI 在 `/openapi.json`。
@@ -13,7 +13,9 @@
 | --- | --- | --- |
 | [auth.md](auth.md) | 认证与账户 | `/v1/auth/*`、`/v1/me` |
 | [models.md](models.md) | 服务商与模型路由（玩家配好的模型，含 Key 和端点） | `/v1/providers*`、`/v1/model-routes*` |
-| [library.md](library.md) | 剧本库 | `/v1/scenarios*`、`/v1/blobs/*` |
+| [tools.md](tools.md) | 外部服务：搜索、读网页、文生图的配置 | `/v1/tool-providers`、`/v1/tool-routes*` |
+| [library.md](library.md) | 角色卡仓库与剧本仓库 | `/v1/cards*`、`/v1/scenarios*`、`/v1/blobs/*` |
+| [workbench.md](workbench.md) | 工作台：草稿、图片、保存到角色卡仓库 | `/v1/workbench/*` |
 | [play.md](play.md) | 游玩与回合 | `/v1/playthroughs*`、`/v1/turns/*` |
 | [events.md](events.md) | 回合事件流（SSE）的格式 | `/v1/turns/{turn_id}/events` 推送的内容（接口本身在 play.md） |
 | [ops.md](ops.md) | 运维与开发 | `/health`、`/ready`、`/v1/probe/*` |
@@ -45,7 +47,7 @@
 | --- | --- | --- |
 | `Authorization` | 需要鉴权的接口 | `Bearer <access_token>` |
 | `Idempotency-Key` | `POST /v1/playthroughs/{playthrough_id}/turns` | 1 到 128 个字符，见 [play.md](play.md) 里这个接口的说明 |
-| `Last-Event-ID` | 回合事件流、探针事件流 | 断线续传，见 [events.md](events.md) |
+| `Last-Event-ID` | 回合事件流、探针事件流、工作台的推送事件 | 断线续传，见 [events.md](events.md)、[workbench.md](workbench.md#推送事件) |
 | `If-None-Match` | `GET /v1/blobs/{blob_id}` | 带上次拿到的 `ETag`，没有变化时返回 304 |
 | `User-Agent` | 注册、登录、刷新 | 记在刷新令牌上，排错用 |
 | `X-Auth-Mode` | 注册、登录、刷新、退出 | 只能是 `cookie`：网页用，刷新令牌放在 Cookie 里，见 [auth.md](auth.md#两种登录方式) |
@@ -95,7 +97,7 @@
 
 ### 请求体大小
 
-请求体默认最大 1 MB，导入角色卡的接口最大 16 MB 加 256 KB（multipart 的边界和头部）。超过限制返回 413 `PAYLOAD_TOO_LARGE`。
+请求体默认最大 1 MB；导入角色卡、上传图片的接口最大 16 MB 加 256 KB（multipart 的边界和头部）；草稿的自动保存最大 4 MB。超过限制返回 413 `PAYLOAD_TOO_LARGE`。
 检查在最外层的中间件里进行：有 `Content-Length` 的请求直接拒绝，分块上传边收边计数。
 
 ### 优雅退出
@@ -109,7 +111,8 @@
 2. `GET /v1/providers` 列出服务商，`POST /v1/providers/{provider}/models` 用刚填的 API Key 获取模型列表。（[models.md](models.md)）
 3. `POST /v1/model-routes` 把 Key、端点、模型名一次保存，带 `"director": true` 设为导演。没有导演就不能开局。
 4. 可以用 `POST /v1/model-routes/{route_id}/probe` 测一下这个模型；以后换导演用 `PATCH /v1/model-routes/{route_id}` 传 `"director": true`。
-5. `POST /v1/scenarios/import` 上传角色卡（PNG 或 JSON）。（[library.md](library.md)）
+5. `POST /v1/workbench/drafts/import` 上传角色卡（PNG 或 JSON），解析成草稿；`POST /v1/workbench/drafts/{draft_id}/save` 保存进角色卡仓库，
+   带 `new_scenario: true` 顺便建一个剧本。（[workbench.md](workbench.md)）也可以从仓库选卡，用 `POST /v1/scenarios` 建剧本。（[library.md](library.md)）
 6. `POST /v1/playthroughs` 开局，返回 202、游玩和开场回合。（[play.md](play.md)）
 7. `GET /v1/turns/{turn_id}/events` 订阅开场回合的事件流：先是搭建世界的事件，然后是叙述增量、选项，最后是 `turn.completed`。（[events.md](events.md)）
 8. 玩家选了一个选项（或自由输入）后，`POST /v1/playthroughs/{playthrough_id}/turns` 提交行动，带 `Idempotency-Key`，`parent_turn_id` 填当前的头部回合，返回 201；然后像第 7 步一样订阅事件流。
@@ -140,13 +143,24 @@
 | `NOT_ON_TIMELINE` | 409 | 回退的目标回合不在当前故事线上 |  |
 | `ALREADY_AT_TURN` | 409 | 回退的目标回合就是最新一回合 |  |
 | `ROLLBACK_LIMIT_REACHED` | 409 | 这个存档的回退次数用完了 | `limit` |
-| `CARD_CHANGED` | 409 | 保存角色卡时版本号对不上：在别处改过了 | `version`（当前的版本号） |
+| `CARD_CHANGED` | 409 | 草稿保存回仓库时，卡在别处改过了（可以带 `on_conflict` 覆盖或另存） | `version`（卡当前的版本号） |
+| `CARD_IN_USE` | 409 | 要删的角色卡有剧本在用 | `scenarios`（`[{id, name}]`） |
+| `DRAFT_CHANGED` | 409 | 自动保存草稿时版本号对不上：agent 或别的设备改过了，重新读取 | `version`（草稿当前的版本号） |
+| `SCENARIO_CHANGED` | 409 | 改剧本时带的版本号对不上：在别处改过了 | `version`（当前的版本号） |
+| `IMAGE_LICENSE` | 409 | 版权不明的图要确认“仅限个人使用”才能当封面 | `license` |
+| `DRAFT_BUSY` | 409 | 工作台的 agent 还在跑，不能再开一轮 |  |
+| `TOOL_ROUTE_MISSING` | 409 | 封面面板直接出图时，还没配文生图 |  |
+| `TOOL_ROUTE_INVALID` | 502 | 文生图服务出错（Key 不对、额度用完、内容策略、网络） | `reason`（`auth` / `quota` / `blocked` / `http` / `network` / `bad_response`） |
+| `NOT_AWAITING` | 409 | 草稿不在等问卷的回答或方案的回复 |  |
+| `CHANGE_DECIDED` | 409 | 这条改动对比的每一处都已经决定过了 |  |
 | `TURN_NOT_LOCAL` | 409 | 要停止的回合不在当前实例上 |  |
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体或文件超过限制 |  |
 | `VALIDATION_ERROR` | 422 | 参数不符合要求 | `errors`（模型校验）或 `field`（业务校验）；行动本身的校验错误两个都不带；探针接口用 `detail` |
 | `ENDPOINT_NOT_ALLOWED` | 422 | 接口地址没有通过 SSRF 校验 | `reason` |
 | `WINDOW_TOO_SMALL` | 422 | 模型的有效窗口小于 16000 | `model_window`、`cap`、`max_tokens`、`effective_window` |
 | `CARD_INVALID` | 422 | 角色卡无法解析 |  |
+| `CARD_CHECK_FAILED` | 422 | 草稿保存进仓库前没通过检查 | `issues`（问题清单，见 [workbench.md](workbench.md#issueout)）、`field` |
+| `IMAGE_INVALID` | 422 | 上传的不是 PNG、JPEG、WebP，或者解码失败、像素太多 | `field` |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | 同一个 `Idempotency-Key` 对应了不同的请求内容 |  |
 | `OPENING_EXISTS` | 422 | `parent_turn_id` 是当前头部（已经有开场）时又请求生成开场 |  |
 | `OPTION_NOT_FOUND` | 422 | `option_id` 不在父回合的选项里 |  |
@@ -177,6 +191,18 @@
 | `RUNNER_LOST` | 是 | 生成进程意外中止（租约过期后被清理），或者提交时发现租约已经被收回 |
 | `INTERNAL_ERROR` | 是 | 服务端出错 |
 | `TURN_ARCHIVED` | 否 | 这一轮已经被回退（M2 起，只出现在快照模式里） |
+
+### 工作台一轮失败的原因
+
+工作台的 agent 一轮没做完时，对话里记一条 `kind` 为 `error` 的消息，`content.code` 是下面之一（客户端按它翻译），`content.reason` 是服务商错误的类别（不是服务商错误时为 null）。
+用户可以接着说话或点“接着写完”开下一轮。
+
+| code | 含义 |
+| --- | --- |
+| `ROUTE_MISSING` | 没有可用的模型（没设工作台模型，也没有导演） |
+| `TOOLS_UNSUPPORTED` | 工作台用的模型不能调用工具，要换一个 |
+| `RUN_TIMEOUT` | 这一轮超过 15 分钟，主动停下 |
+| `PROVIDER_ERROR`、`CREDENTIAL_INVALID`、`MODEL_NOT_FOUND`、`CONTENT_BLOCKED`、`ENDPOINT_NOT_ALLOWED`、`CONTEXT_TOO_LARGE` | 服务商出错，含义同上面的回合失败码 |
 
 ## 维护
 

@@ -25,6 +25,7 @@ from bettertavern.services.playthrough_service import NewPlaythrough
 from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.turn_service import ActionInput
 from tests.fakes.runtime import ScriptedAdapter, StreamScript, result, scripted_hub
+from tests.support.library import import_scenario
 from tests.support.pg import database_url, schema_engine
 
 pytestmark = [pytest.mark.integration, pytest.mark.anyio]
@@ -96,7 +97,7 @@ async def world(tmp_path: Path) -> AsyncIterator[World]:
                 provider="fake", model="fake-model", api_key="sk-test-123456", director=True
             ),
         )
-        scenario = await services.scenarios.import_file(user.id, json.dumps(CARD).encode())
+        scenario = await import_scenario(services, user.id, json.dumps(CARD).encode())
         adapter = adapters["fake"]
         adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))
         adapter.streams.append(StreamScript(director(0)))

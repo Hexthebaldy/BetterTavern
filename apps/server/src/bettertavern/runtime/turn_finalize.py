@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
 import structlog
@@ -21,7 +21,7 @@ from .agents.options_repair import repair_options
 from .context.assembler import AssembledContext
 from .ports import AgentRunRecord, RouteResolver, TurnFailure, TurnHeader, TurnOutcome
 from .prompts import PromptLibrary
-from .protocol.director_parser import MISSING_OPTIONS, ParseStage
+from .protocol.director_parser import MISSING_OPTIONS, DirectorParse, ParseStage
 from .protocol.repair import NarrativeMissing, finalize_director_output
 from .routing import ResolvedRoute
 from .turn_stream import Generation
@@ -59,20 +59,17 @@ def failed_director_run(
     )
 
 
-async def finalize_turn(
+def _repairer(
     header: TurnHeader,
-    generation: Generation,
-    state_seq: int,
+    route: ResolvedRoute,
     *,
     routes: RouteResolver,
     hub: ProviderHub,
     prompts: PromptLibrary,
     clock: Callable[[], float],
-    repair_timeout_s: float,
-) -> TurnOutcome:
-    """普通回合收尾：选项不足时补（修复阶梯，protocol/repair.py），记下导演这次运行。"""
-    route = generation.route
-    repair_runs: list[AgentRunRecord] = []
+    repair_runs: list[AgentRunRecord],
+) -> Callable[[str, Any], Awaitable[list[str]]]:
+    """补选项的函数：每补一次记一行 agent_runs（放进 repair_runs）。"""
 
     async def repair(narrative: str, existing: Any) -> list[str]:
         # 修复用 repair 路由（没配置就沿用导演路由），只在确实缺选项时才解析
@@ -144,6 +141,27 @@ async def finalize_turn(
         )
         return options
 
+    return repair
+
+
+async def finalize_turn(
+    header: TurnHeader,
+    generation: Generation,
+    state_seq: int,
+    *,
+    routes: RouteResolver,
+    hub: ProviderHub,
+    prompts: PromptLibrary,
+    clock: Callable[[], float],
+    repair_timeout_s: float,
+) -> TurnOutcome:
+    """普通回合收尾：选项不足时补（修复阶梯，protocol/repair.py），记下导演这次运行。"""
+    route = generation.route
+    repair_runs: list[AgentRunRecord] = []
+    repair = _repairer(
+        header, route, routes=routes, hub=hub, prompts=prompts, clock=clock, repair_runs=repair_runs
+    )
+
     try:
         outcome = await finalize_director_output(
             generation.parse,
@@ -178,6 +196,38 @@ async def finalize_turn(
         state_seq=state_seq,
         runs=[run, *repair_runs],
         director_notes=outcome.director_notes,
+    )
+
+
+async def finalize_greeting(
+    header: TurnHeader,
+    narrative: str,
+    route: ResolvedRoute,
+    state_seq: int,
+    *,
+    routes: RouteResolver,
+    hub: ProviderHub,
+    prompts: PromptLibrary,
+    clock: Callable[[], float],
+    repair_timeout_s: float,
+) -> TurnOutcome:
+    """用卡片的开场白开场：叙述就是开场白，不调导演，只补两个选项（补不齐时玩家自己写）。"""
+    repair_runs: list[AgentRunRecord] = []
+    repair = _repairer(
+        header, route, routes=routes, hub=hub, prompts=prompts, clock=clock, repair_runs=repair_runs
+    )
+    parse = DirectorParse(
+        narrative=narrative, options=(), stage=ParseStage.OK, repairs=(), notes=("greeting",)
+    )
+    outcome = await finalize_director_output(parse, repair=repair, timeout=repair_timeout_s)
+    log.info("director.parse", stage="greeting", options=len(outcome.options))
+    return TurnOutcome(
+        narrative=outcome.narrative,
+        options=make_options(outcome.options),
+        options_source=_STAGE_TO_SOURCE[outcome.stage].value,
+        usage=None,
+        state_seq=state_seq,
+        runs=repair_runs,
     )
 
 

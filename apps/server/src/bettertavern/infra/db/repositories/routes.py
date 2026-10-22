@@ -1,6 +1,7 @@
 """model_routes：一行是一个配好的模型（Key、端点、模型名、窗口、写法设置）。
 
-密钥列只存密文，解密在服务层、请求前进行。每个用户最多一行 is_director、一行 is_background
+密钥列只存密文，解密在服务层、请求前进行。
+每个用户最多一行 is_director、一行 is_background、一行 is_workbench
 （部分唯一索引保证）。
 """
 
@@ -47,6 +48,7 @@ class RouteRow:
     is_background: bool
     created_at: datetime
     updated_at: datetime
+    is_workbench: bool = False  # 工作台用的模型（每个用户最多一行）
 
     @classmethod
     def from_row(cls, row: Row) -> RouteRow:
@@ -74,12 +76,14 @@ class RouteRow:
             is_background=row["is_background"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            is_workbench=bool(row.get("is_workbench", False)),
         )
 
 
 _COLS = """id, user_id, label, provider, base_url, api_key_enc, key_id, key_last4,
     extra_headers_enc, extra_body, model, listed_window, manual_window, learned_window, params,
-    caps_override, probe, status, last_ok_at, is_director, is_background, created_at, updated_at"""
+    caps_override, probe, status, last_ok_at, is_director, is_background, created_at, updated_at,
+    is_workbench"""
 
 
 def _params(route: RouteRow) -> dict[str, Any]:
@@ -216,6 +220,32 @@ async def set_background(conn: AsyncConnection, user_id: str, route_id: str | No
         await execute(
             conn,
             "UPDATE model_routes SET is_background = true, updated_at = now() "
+            "WHERE id = :id AND user_id = :u",
+            {"id": route_id, "u": user_id},
+        )
+
+
+async def get_workbench(conn: AsyncConnection, user_id: str) -> RouteRow | None:
+    row = await fetch_one(
+        conn,
+        f"SELECT {_COLS} FROM model_routes WHERE user_id = :u AND is_workbench",
+        {"u": user_id},
+    )
+    return None if row is None else RouteRow.from_row(row)
+
+
+async def set_workbench(conn: AsyncConnection, user_id: str, route_id: str | None) -> None:
+    """把 route_id 设为工作台用的模型（None 表示取消，工作台改用导演）。"""
+    await execute(
+        conn,
+        "UPDATE model_routes SET is_workbench = false, updated_at = now() "
+        "WHERE user_id = :u AND is_workbench",
+        {"u": user_id},
+    )
+    if route_id is not None:
+        await execute(
+            conn,
+            "UPDATE model_routes SET is_workbench = true, updated_at = now() "
             "WHERE id = :id AND user_id = :u",
             {"id": route_id, "u": user_id},
         )

@@ -23,14 +23,24 @@ from bettertavern.api.probe_app import create_probe_app
 from bettertavern.api.ratelimit import RateLimiter
 from bettertavern.api.request_context import RequestContext
 from bettertavern.api.v1.auth import router as auth_router
+from bettertavern.api.v1.cards import router as cards_router
 from bettertavern.api.v1.health import router as health_router
 from bettertavern.api.v1.playthroughs import router as playthroughs_router
 from bettertavern.api.v1.routes import router as routes_router
-from bettertavern.api.v1.scenarios import CARD_PATH_PATTERN, MAX_CARD_BODY_BYTES
 from bettertavern.api.v1.scenarios import router as scenarios_router
+from bettertavern.api.v1.tools import router as tools_router
+from bettertavern.api.v1.workbench import (
+    ASSET_PATH_PATTERN,
+    CARD_PATH_PATTERN,
+    IMPORT_PATH,
+    MAX_CARD_BODY_BYTES,
+)
+from bettertavern.api.v1.workbench import router as workbench_router
 from bettertavern.importers.character_card import MAX_UPLOAD_BYTES
+from bettertavern.importers.images import MAX_IMAGE_BYTES
 from bettertavern.infra.db.engine import create_engine
 from bettertavern.providers import ProviderHub
+from bettertavern.providers.transport import build_http_client
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.services.container import Services, build_services
@@ -83,6 +93,7 @@ def build_app_services(
         ),
         instance_id=instance_id(),
         rollback_limit=settings.rollback_limit,
+        http=build_http_client(policy, proxy=settings.outbound_proxy),
     )
 
 
@@ -144,8 +155,11 @@ def create_app(
     # 角色卡上传另算：16 MB 的文件加上 multipart 的边界和头
     app.add_middleware(
         BodySizeLimit,
-        limits={"/v1/scenarios/import": MAX_UPLOAD_BYTES + 256 * 1024},
-        patterns=[(CARD_PATH_PATTERN, MAX_CARD_BODY_BYTES)],
+        limits={IMPORT_PATH: MAX_UPLOAD_BYTES + 256 * 1024},
+        patterns=[
+            (CARD_PATH_PATTERN, MAX_CARD_BODY_BYTES),
+            (ASSET_PATH_PATTERN, MAX_IMAGE_BYTES + 256 * 1024),
+        ],
     )
     if settings.cors_origin_list:
         app.add_middleware(
@@ -160,7 +174,10 @@ def create_app(
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(routes_router)
+    app.include_router(cards_router)
     app.include_router(scenarios_router)
+    app.include_router(workbench_router)
+    app.include_router(tools_router)
     app.include_router(playthroughs_router)
     if settings.probe_endpoints_enabled:
         app.mount("/v1/probe", create_probe_app(probe, shutdown=shutdown.event))

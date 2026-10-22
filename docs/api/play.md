@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 开局、游玩列表与详情、世界状态的只读视图、历史回合、提交行动（包括写结局）、停止生成，以及订阅回合的事件流。
 事件流的格式见 [events.md](events.md)；相关的表见 [数据模型：游玩与回合](../data-model/story.md)、[世界状态](../data-model/world.md)。
@@ -19,12 +19,19 @@
 - 鉴权：需要；按用户限流，和提交行动共用一个计数。
 - 请求体：[`PlaythroughIn`](#playthroughin)
 - 成功：`202`，返回 [`PlaythroughCreatedOut`](#playthroughcreatedout)。
+- 剧本的设置（[`ScenarioSetupModel`](library.md#scenariosetupmodel)）补上没填的字段：没传 `protagonist` 时用设置里的默认主角，
+  没传 `preferences` 时用设置里的偏好；设置里选了开场白时，记进这一局（`playthroughs.settings.opening`）。
+- 剧本实时引用角色卡：搭建世界时读剧本里几张卡此刻的正式版本，之后卡再改也不影响这一局。
+  群像剧本的几张卡一起交给 WorldBuilder：每张卡的角色都建成人物，几张卡的世界书合在一起（名字重复的条目按卡的顺序取第一张的）。
+- 剧本设置里选了开场白（`setup.opening`）时，开场回合不调导演：叙述就是那条开场白（`{{user}}` 换成主角名、`{{char}}` 换成那张卡的角色名，
+  `*动作*` 换成括号），事件流里是一条 `narrative.delta` 加 `narrative.done`，然后照常补两个选项（`options_source` 为 `repaired`，补不齐时是 `missing`）。
+  没选时由导演写开场，和以前一样。
 - 搭建世界：如果有可用的路由（`world_builder`，没有就用导演的）和角色卡，就调用模型生成开局设定，超时 30 秒。
   模型失败或超时时，改用卡片原文生成最小设定（`world.ready` 的 `source` 为 `minimal`），开场不会因此失败。
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
-| 422 | `VALIDATION_ERROR` | 主角名整理后为空（`field: "protagonist_name"`） |
+| 422 | `VALIDATION_ERROR` | 主角名整理后为空，剧本设置里也没有默认主角（`field: "protagonist_name"`）；剧本里没有卡（`field: "scenario_id"`） |
 | 404 | `NOT_FOUND` | 剧本不存在 |
 | 409 | `ROUTE_MISSING` | 还没有设置导演模型 |
 | 409 | `CREDENTIAL_UNREADABLE` | 导演模型的 Key 无法解密 |
@@ -36,9 +43,9 @@
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `scenario_id` | string | 是 | 用哪个剧本开局 |
-| `protagonist` | [`ProtagonistIn`](#protagonistin) | 是 | 玩家扮演的主角 |
+| `protagonist` | [`ProtagonistIn`](#protagonistin) / null | 否 | 玩家扮演的主角；不传时用剧本设置里的默认主角 |
 | `title` | string / null | 否 | 标题，最多 80 个字符；不填时用剧本名 |
-| `preferences` | [`PreferencesIn`](#preferencesin) | 否 | 叙述偏好，不传就全部用默认值 |
+| `preferences` | [`PreferencesIn`](#preferencesin) / null | 否 | 叙述偏好；不传时用剧本设置里的偏好 |
 | `language` | string | 否 | 这一局给 agent 的提示词用哪种语言：`zh`（默认）/ `en` / `ja`。客户端传当前的界面语言；之后不能改，也不影响故事正文用什么语言（见 [i18n.md](../i18n.md) 第 4 节） |
 
 #### `ProtagonistIn`

@@ -304,6 +304,8 @@ class RouteService:
                 await repo.set_director(conn, user_id, row.id)
             if data.background:
                 await repo.set_background(conn, user_id, row.id)
+            if data.workbench:
+                await repo.set_workbench(conn, user_id, row.id)
         log.info(
             "route.created",
             route_id=row.id,
@@ -314,6 +316,7 @@ class RouteService:
             window_source=self._codec.model_window(row)[1],
             director=data.director,
             background=data.background,
+            workbench=data.workbench,
         )
         return await self.get(user_id, row.id)
 
@@ -424,6 +427,12 @@ class RouteService:
                 elif row.is_background:
                     await repo.set_background(conn, user_id, None)
                 changed.append("background")
+            if patch.workbench is not None:
+                if patch.workbench:
+                    await repo.set_workbench(conn, user_id, row.id)
+                elif row.is_workbench:
+                    await repo.set_workbench(conn, user_id, None)
+                changed.append("workbench")
         log.info(
             "route.updated",
             route_id=row.id,
@@ -488,12 +497,14 @@ class RouteService:
         self, user_id: str, task: RouteTask, playthrough_id: str | None = None
     ) -> ResolvedRoute | None:
         """task 用的模型：后台的 task（世界状态、大纲修订、章节整理）用“用于后台”的那一行，
-        没设时和其他 task 一样用导演这一行。
+        工作台用“用于工作台”的那一行；没设时和其他 task 一样用导演这一行。
         playthrough_id 留给以后的单局覆盖。"""
         async with self._engine.connect() as conn:
             row = None
             if task in BACKGROUND_TASKS:
                 row = await repo.get_background(conn, user_id)
+            elif task == RouteTask.WORKBENCH:
+                row = await repo.get_workbench(conn, user_id)
             if row is None:
                 row = await repo.get_director(conn, user_id)
         if row is None:

@@ -33,23 +33,29 @@ class AgentRunInsert:
     latency_ms: int | None = None
     error_class: str | None = None
     result: dict[str, Any] = field(default_factory=dict)
+    draft_id: str | None = None  # 工作台 agent 的运行记在哪份草稿上
+    id: str | None = None  # 不给时由数据库生成
 
 
 async def insert_agent_run(conn: AsyncConnection, run: AgentRunInsert) -> str:
     row = await fetch_one(
         conn,
         """
-        INSERT INTO agent_runs (user_id, playthrough_id, turn_id, agent, task, provider, model,
-                                prompt_hash, input_tokens, cached_tokens, output_tokens,
-                                reasoning_tokens, ttft_ms, latency_ms, status, error_class, result)
-        VALUES (:user_id, :playthrough_id, :turn_id, :agent, :task, :provider, :model,
-                :prompt_hash, :input_tokens, :cached_tokens, :output_tokens, :reasoning_tokens,
-                :ttft_ms, :latency_ms, :status, :error_class, CAST(:result AS jsonb))
+        INSERT INTO agent_runs (id, user_id, playthrough_id, draft_id, turn_id, agent, task,
+                                provider, model, prompt_hash, input_tokens, cached_tokens,
+                                output_tokens, reasoning_tokens, ttft_ms, latency_ms, status,
+                                error_class, result)
+        VALUES (COALESCE(CAST(:id AS uuid), gen_random_uuid()), :user_id, :playthrough_id,
+                :draft_id, :turn_id, :agent, :task, :provider, :model, :prompt_hash,
+                :input_tokens, :cached_tokens, :output_tokens, :reasoning_tokens, :ttft_ms,
+                :latency_ms, :status, :error_class, CAST(:result AS jsonb))
         RETURNING id
         """,
         {
+            "id": run.id,
             "user_id": run.user_id,
             "playthrough_id": run.playthrough_id,
+            "draft_id": run.draft_id,
             "turn_id": run.turn_id,
             "agent": run.agent,
             "task": run.task,

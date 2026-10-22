@@ -6,6 +6,9 @@
 - 普通 agent：最后一次请求不再提供工具，模型只能给出最终输出。
 - 有收尾工具的 agent（世界状态 agent 的 commit）：收尾工具调用成功就结束；最后一次请求只提供
   收尾工具；模型没调用任何工具就停下时，提醒它用收尾工具结束，再请求一次。
+- 对话 agent（工作台的 card_maker）：end_tools 里的工具调用成功就结束这一轮（等用户回答）；
+  available 给出这一轮能用的工具（按阶段由代码决定）；每次调模型之前问一下 should_stop
+  （用户点了停止），要停就不再调模型，返回上一次的输出。
 
 “调一次模型”由调用方传进来（`ModelCall`）：导演是一边收一边推给玩家的流式调用，开局构建和补选项是
 结构化输出。它们各自把模型调用记进 `StepLog`（只有它们知道细节：第几次尝试、用了哪种输出方式），
@@ -15,7 +18,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Collection, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -42,6 +45,10 @@ class ModelReply[T]:
     reasoning: str = ""
 
 
+class AgentStopped(Exception):
+    """还没调模型就被要求停下（用户点了停止）。"""
+
+
 ModelCall = Callable[[Sequence[Message], Sequence[ToolSpec] | None], Awaitable[ModelReply[Any]]]
 
 
@@ -55,19 +62,27 @@ async def run_agent[T](
     registry: ToolRegistry | None = None,
     ctx: Any = None,
     clock: Callable[[], float] = time.monotonic,
+    available: Collection[str] | None = None,
+    should_stop: Callable[[], Awaitable[bool]] | None = None,
 ) -> T:
+    """返回最后一次模型调用的输出；should_stop 在第一次调用之前就要停时抛 AgentStopped。"""
     history = list(messages)
     finish = spec.finish_tool
+    ends = set(spec.end_tools)
     reply: ModelReply[T] | None = None
     for round_no in range(spec.max_tool_rounds + 1):
+        if should_stop is not None and await should_stop():
+            if reply is None:
+                raise AgentStopped
+            return reply.value
         last = round_no == spec.max_tool_rounds
         tools: list[ToolSpec] | None = None
         if registry is not None and spec.tools:
             if not last:
-                tools = registry.specs(spec, prompts)
+                tools = registry.specs(spec, prompts, only=available)
             elif finish is not None:
                 tools = registry.specs(spec, prompts, only=(finish,))
-        reply = await call(history, tools)
+        reply = await call(history, tools or None)
         if not reply.tool_calls:
             if finish is None or last or tools is None:
                 return reply.value
@@ -119,7 +134,7 @@ async def run_agent[T](
                 duration_ms=latency_ms,
             )
             history.append(Message(role="tool", content=outcome.text, tool_call_id=tool_call.id))
-            if tool_call.name == finish and outcome.error is None:
+            if outcome.error is None and (tool_call.name == finish or tool_call.name in ends):
                 finished = True
         if finished:
             return reply.value

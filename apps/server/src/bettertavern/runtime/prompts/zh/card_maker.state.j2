@@ -1,0 +1,38 @@
+{# version: 1 #}
+<workbench-state>
+这一轮：{{ {"planning": "沟通（还不能写卡）", "build": "动手写卡", "revise": "给出改动（不能直接写）"}[mode] }}{% if trigger == "continue" %}；用户让你接着写完{% elif trigger == "answers" %}；用户交了问卷{% elif trigger == "plan_reply" %}；用户回复了方案{% endif %}
+
+{% if plan %}
+确认的方案（chosen_name 是用户选定的名字）：
+{{ plan }}
+
+{% endif %}
+草稿概况：
+{{ digest }}
+{% if user_edits %}
+
+用户手动改过的地方（不要覆盖）：{{ user_edits | join("、") }}
+{% endif %}
+{% if notes %}
+
+资料笔记：
+{% for note in notes %}
+- [{{ note.id }}] {{ note.text }}{% if note.url %}（出处：{{ note.url }}）{% endif %}
+
+{% endfor %}
+{% endif %}
+{% if assets %}
+
+草稿里的图片：
+{% for asset in assets %}
+- {{ asset.id }}：{{ asset.source }}，版权 {{ asset.license }}，{{ asset.size }}
+{% endfor %}
+{% endif %}
+{% if todos %}
+
+进度清单：
+{% for todo in todos %}
+- {{ todo }}
+{% endfor %}
+{% endif %}
+</workbench-state>

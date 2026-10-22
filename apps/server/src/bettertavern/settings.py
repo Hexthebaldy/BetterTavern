@@ -48,6 +48,9 @@ class Settings(BaseSettings):
 
     # 只允许 https 和公网地址；自己部署、想接本机 Ollama 时可以打开。多人共用的公开服务不要开
     allow_private_endpoints: bool = False
+    # 当作外网放行的“假 IP 段”，逗号分开，例如 198.18.0.0/15（Clash fake-ip）。
+    # 用这类代理时不必为了联网打开 ALLOW_PRIVATE_ENDPOINTS
+    fake_ip_ranges: str = ""
     # 出站代理（可选）。经代理时做不到 IP 钉住，见 providers/transport.py
     outbound_proxy: str | None = None
 

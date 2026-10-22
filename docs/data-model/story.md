@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
 一局游玩的时间线：游玩本身、回合，以及提交行动用的幂等键。热路径的并发控制（租约、带围栏的提交、加锁顺序）也写在这里。
 对应的接口见 [api/play.md](../api/play.md)，回合的事件流见 [api/events.md](../api/events.md)。
@@ -93,12 +93,13 @@
 
 ### `playthroughs.settings`
 
-开局时由 `POST /v1/playthroughs` 写入：
+开局时由 `POST /v1/playthroughs` 写入，没填的主角和偏好用剧本的设置（[`scenarios.setup`](library.md#scenariossetup)）补上：
 
 ```jsonc
 {
   "protagonist": { "name": "林川", "summary": "一名信使" },  // name：NFKC、合并空白，最多 40 字；summary 最多 400 字
-  "preferences": { "length": "medium", "style": "", "boundaries": "" }  // length：short / medium / long；style 最多 200 字；boundaries 最多 300 字
+  "preferences": { "length": "medium", "style": "", "boundaries": "" },  // length：short / medium / long；style 最多 200 字；boundaries 最多 300 字
+  "opening": { "card_id": "…", "greeting": 0 }  // 剧本设置里选了开场白时才有：用哪张卡的哪条开场白开场
 }
 ```
 

@@ -1,0 +1,38 @@
+{# version: 1 #}
+<workbench-state>
+This round: {{ {"planning": "talk it through (you can't write to the card yet)", "build": "write the card", "revise": "propose changes (no direct writes)"}[mode] }}{% if trigger == "continue" %}; the user asked you to finish it{% elif trigger == "answers" %}; the user answered the questionnaire{% elif trigger == "plan_reply" %}; the user replied to the plan{% endif %}
+
+{% if plan %}
+Approved plan (chosen_name is the name the user picked):
+{{ plan }}
+
+{% endif %}
+Draft overview:
+{{ digest }}
+{% if user_edits %}
+
+Edited by the user (don't overwrite): {{ user_edits | join(", ") }}
+{% endif %}
+{% if notes %}
+
+Research notes:
+{% for note in notes %}
+- [{{ note.id }}] {{ note.text }}{% if note.url %} (source: {{ note.url }}){% endif %}
+
+{% endfor %}
+{% endif %}
+{% if assets %}
+
+Images in the draft:
+{% for asset in assets %}
+- {{ asset.id }}: {{ asset.source }}, license {{ asset.license }}, {{ asset.size }}
+{% endfor %}
+{% endif %}
+{% if todos %}
+
+To-do list:
+{% for todo in todos %}
+- {{ todo }}
+{% endfor %}
+{% endif %}
+</workbench-state>

@@ -626,8 +626,10 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 | 账户 | `GET /me/export`、`DELETE /me` | 导出全部数据（JSON）；异步硬删除账户与全部数据 |
 | 模型 | `GET/POST /model-routes`、`GET/PATCH/DELETE /model-routes/{id}` | 玩家配好的模型（Key、端点、模型名、窗口、写法设置），其中一个是导演。创建时做 SSRF 校验，响应里只回密钥后四位；保存时检查窗口设置能否被模型满足（第 4 节） |
 | 模型 | `POST /providers/{provider}/models`、`GET /model-routes/{id}/models`、`POST /model-routes/{id}/probe` | 用还没保存的 Key 或已存的 Key 列出厂商的模型（带上下文长度）；能力探测（第 8 节） |
-| 剧本库 | `POST /scenarios/import` | multipart 上传角色卡（PNG 或 JSON），服务端解析并返回预览 |
-| 剧本库 | `GET /scenarios`、`GET/PATCH/DELETE /scenarios/{id}` |  |
+| 剧本库 | `GET /scenarios`、`POST /scenarios`、`GET/PATCH/DELETE /scenarios/{id}` | 剧本从角色卡仓库选卡新建（可以几张，群像剧本）；导入和编辑角色卡在工作台（[workbench.md](workbench.md)） |
+| 角色卡 | `GET /cards`、`GET/DELETE /cards/{id}`、版本历史、导出 | 角色卡仓库 |
+| 工作台 | `/workbench/drafts*` | 草稿（导入、手动、agent 对话）、保存进角色卡仓库 |
+| 外部服务 | `/tool-providers`、`/tool-routes*` | 工作台联网和出图的服务 |
 | 游玩 | `POST /playthroughs` | 选剧本、主角、设置；202，后台跑 WorldBuilder 与开场 |
 | 游玩 | `GET /playthroughs`、`GET/PATCH/DELETE /playthroughs/{id}` |  |
 | 回合 | `GET /playthroughs/{id}/turns?after_seq=&limit=` | 历史分页，默认不含已归档回合 |
@@ -895,7 +897,7 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | 租约清理在 worker 里 | api 进程每 15 秒执行一次（`services/maintenance.py`），顺带清理过期的幂等键和刷新令牌 | 回合本来就在 api 进程里跑，清理放在一起最简单 |
 | 删除账户是异步硬删除，另有导出 | `DELETE /v1/me` 需要密码，同步删除；导出还没做 | M4 |
 
-请求体大小在最外层的中间件里限制（`api/body_limit.py`）：一般接口 1 MB，角色卡上传 16 MB。FastAPI 在进入接口函数之前就会读完请求体，所以不能只在接口里检查。
+请求体大小在最外层的中间件里限制（`api/body_limit.py`）：一般接口 1 MB，角色卡导入和图片上传 16 MB，草稿的自动保存 4 MB。FastAPI 在进入接口函数之前就会读完请求体，所以不能只在接口里检查。
 
 ### 接口的增减
 
@@ -905,8 +907,8 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | `GET /v1/providers` | 可选的服务商：DeepSeek、OpenAI、Grok（xAI）、Gemini、Hugging Face、自定义 OpenAI 兼容端点（`requires_base_url`） |
 | `/v1/model-routes*` | 设计里密钥（`/credentials`）和按 task 的路由（`PUT /model-routes`）分开；实现里合成一行一个模型，Key 和模型一次配好，所有 task 用导演那一行。响应带窗口校验结果 `window`：`model_window`、`source`（窗口从哪来）、`working_cap`、`max_tokens`、`effective_window`、`warnings`（`WINDOW_CLAMPED`） |
 | `POST /v1/providers/{provider}/models` | 用还没保存的 Key 拉模型列表，添加模型的表单在保存前用 |
-| `GET /v1/blobs/{id}` | 头像 |
-| `GET` / `PUT /v1/scenarios/{id}/card`、`POST /v1/scenarios/{id}/card/reset` | 导入后编辑角色卡、恢复导入时的内容（见下文“新增：导入后编辑角色卡”） |
+| `GET /v1/blobs/{id}` | 图片（角色卡和草稿的封面、草稿里的图） |
+| `/v1/cards*`、`/v1/workbench/*`、`/v1/tool-routes*` | 角色卡仓库、工作台、外部服务（迁移 0018–0020）：原来的 `/v1/scenarios/import` 和 `/v1/scenarios/{id}/card*` 去掉了，导入和编辑都在工作台，见 [workbench.md](workbench.md) 和 [api/workbench.md](api/workbench.md) |
 | `POST /v1/playthroughs/{id}/rollback` | 回退到这一局里更早的一回合，见 [api/play.md](api/play.md) |
 | 不做 | `/options/regenerate`、`/regenerate`（见第 7 节） |
 | 还没有 | `GET /me/export`、单局路由覆盖、`/summary`、`/outline`（大纲只给导演看）、会话通道、`/metrics` |
@@ -918,7 +920,8 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 | `ROUTE_MISSING` | 409 | 还没有配置导演模型（创建游玩、提交行动时检查；生成时如果路由被删掉，也会以这个码结束回合） |
 | `OPENING_PENDING` | 409 | 开场还没有完成就提交了行动 |
 | `STORY_ENDED` | 409 | 这局已经写完结局，不能再提交行动 |
-| `CARD_CHANGED` | 409 | 保存角色卡时版本号对不上，在别处改过了 |
+| `CARD_CHANGED` | 409 | 草稿保存回仓库时，卡在别处改过了 |
+| `CARD_IN_USE`、`DRAFT_CHANGED`、`DRAFT_BUSY`、`SCENARIO_CHANGED`、`IMAGE_LICENSE`、`NOT_AWAITING`、`CHANGE_DECIDED`、`CARD_CHECK_FAILED`、`IMAGE_INVALID`、`TOOL_ROUTE_MISSING`、`TOOL_ROUTE_INVALID` | 409 / 422 / 502 | 角色卡仓库、工作台、外部服务的错误码，见 [api/README.md](api/README.md) |
 | `OPENING_EXISTS` | 422 | 已经有开场了，又请求生成开场 |
 | `OPTION_NOT_FOUND` | 422 | `option_id` 不在父回合的选项里 |
 | `TURN_NOT_LOCAL` | 409 | 要取消的回合不在当前实例上；租约到期后会自动结束 |
@@ -942,16 +945,17 @@ M1（热路径）已经实现：账户与令牌、模型路由（Key 加模型�
 - 提交时推进头部的那条带围栏的 UPDATE 同时把 `playthroughs.status` 改成 `ended`（[data-model/story.md](data-model/story.md)），写一条 `playthrough.ended` 日志（只记字数）。
 - `ended` 之后不能再提交任何行动（409 `STORY_ENDED`）。回退到结局之前的某一回合会把状态改回 `active`，可以接着玩（[data-model/story.md](data-model/story.md)）。
 
-### 新增：导入后编辑角色卡
+### 新增：角色卡仓库、剧本仓库和工作台
 
-导入的角色卡可以编辑：角色名、描述、性格、情境、开场白、对话示例、标签，以及卡片自带的世界书条目（和以后单独的世界书模块无关）。
-接口见 [api/library.md](api/library.md)，表结构见 [data-model/library.md](data-model/library.md)。
+原来“一个剧本就是一张卡”（导入后在剧本里编辑卡片）改成了两个仓库加工作台（迁移 0018–0020）：
+角色卡只从工作台的草稿保存进角色卡仓库，剧本从仓库选一张或几张卡新建、实时引用卡。导入、手动编写、agent 帮着写都在工作台。
+设计见 [workbench.md](workbench.md)，接口见 [api/library.md](api/library.md)、[api/workbench.md](api/workbench.md)、[api/tools.md](api/tools.md)，
+表见 [data-model/library.md](data-model/library.md)、[data-model/workbench.md](data-model/workbench.md)、[data-model/tools.md](data-model/tools.md)。
 
-- 编辑规则在 `domain/scenario/edit.py`，上限和导入共用 `domain/scenario/card.py` 的常量。导入时超长截断，编辑时超长拒绝并指出字段。
-- 剧本有版本号 `version`，改名、编辑、恢复都加 1；保存时带回读取时的版本号，用带条件的 UPDATE 防止两台设备互相覆盖（409 `CARD_CHANGED`）。
-- 恢复导入时的内容不额外存东西：`scenarios.raw` 本来就保存着原始 JSON，重新跑一遍导入时的整理（`normalize_card`）。
-- 卡片只在开局搭建世界时读一次，所以编辑只影响之后开始的故事。
-- 日志 `scenario.card_updated` 只记改了哪些字段、条目数和总字数，`scenario.card_reset` 只记版本号，不记卡片内容。
+- 编辑规则在 `domain/scenario/edit.py`（草稿是宽松模式，保存时是正式模式），保存前的检查在 `domain/scenario/check.py`，和客户端 `cardEdit.ts` 同一套。
+- 草稿和卡都带版本号，写入是带条件的 UPDATE：自动保存 409 `DRAFT_CHANGED`，保存回仓库 409 `CARD_CHANGED`（可以覆盖或另存）。
+- 工作台的 agent（`card_maker`）在 worker 里跑（任务 `workbench.run`），事件经 `workbench_events` 表和 `NOTIFY bt_workbench` 推给 api 的 SSE。
+- 日志只记字段名、条目数、字数和编号，不记卡片内容、对话和网页内容。
 
 `turn.failed` 里新增的 code：`RUNNER_LOST`（租约过期被清理，或者提交时发现租约已被收回；可以重试）、`CANCELLED`（玩家停止或服务重启）、
 `NARRATIVE_MISSING`（模型没有写出叙述）、`INTERNAL_ERROR`。

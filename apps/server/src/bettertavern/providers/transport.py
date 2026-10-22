@@ -39,6 +39,14 @@ DEFAULT_LIMITS = httpx.Limits(
 class EndpointPolicy:
     # 自己部署的人想接本机的 Ollama 可以打开；多人共用的公开服务永远不要开
     allow_private: bool = False
+    # 当作外网放行的“假 IP 段”：本机开 Clash fake-ip 这类代理时，域名会解析到 198.18.0.0/15
+    # 这样的保留地址，写在这里就不必为了联网把整个内网都打开（FAKE_IP_RANGES）
+    fake_ip_ranges: tuple[str, ...] = ()
+
+    def allows(self, ip: IPAddress) -> bool:
+        if self.allow_private or ip_is_public(ip):
+            return True
+        return any(ip in ipaddress.ip_network(net, strict=False) for net in self.fake_ip_ranges)
 
 
 def ip_is_public(ip: IPAddress) -> bool:
@@ -85,7 +93,7 @@ def check_url(url: str, policy: EndpointPolicy) -> httpx.URL:
             literal = ipaddress.ip_address(parsed.host)
         except ValueError:
             literal = None
-        if literal is not None and not ip_is_public(literal):
+        if literal is not None and not policy.allows(literal):
             raise EndpointNotAllowed(f"Private or reserved addresses aren't allowed: {literal}")
         if parsed.host.lower() in (
             "localhost",
@@ -120,7 +128,7 @@ async def resolve_and_check(
     if not ips:
         raise HostResolutionError(f"Host {host} has no addresses")
     if not policy.allow_private:
-        blocked = [str(ip) for ip in ips if not ip_is_public(ip)]
+        blocked = [str(ip) for ip in ips if not policy.allows(ip)]
         if blocked:
             raise EndpointNotAllowed(
                 f"Host {host} resolves to private or reserved addresses: {', '.join(blocked)}"

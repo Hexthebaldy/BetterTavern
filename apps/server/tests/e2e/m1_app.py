@@ -1,6 +1,6 @@
 """端到端测试共用的部分：测试用角色卡、假模型的剧情、起一个完整 api、读事件流、建账号加模型。
 
-test_m1_flow.py 和 test_scenario_edit.py 共用；各自在自己的 fixture 里调用 serve()。
+test_m1_flow.py、test_workbench_manual.py 等共用；各自在自己的 fixture 里调用 serve()。
 """
 
 from __future__ import annotations
@@ -227,3 +227,18 @@ async def setup_account(client: httpx.AsyncClient, fake: RunningFakeLLM) -> dict
     assert route["window"]["model_window"] == 32768
     assert route["window"]["effective_window"] >= 16_000
     return {"token": token, "route_id": route["id"]}
+
+
+async def import_scenario(
+    client: httpx.AsyncClient, auth: dict[str, str], card: dict[str, object] = CARD
+) -> dict[str, object]:
+    """导入一张卡（变成草稿）→ 保存进角色卡仓库，顺便建一个剧本；返回保存接口的响应。"""
+    files = {"file": ("card.json", json.dumps(card, ensure_ascii=False).encode(), "text/json")}
+    r = await client.post("/v1/workbench/drafts/import", headers=auth, files=files)
+    assert r.status_code == 201, r.text
+    draft_id = r.json()["draft"]["draft"]["id"]
+    r = await client.post(
+        f"/v1/workbench/drafts/{draft_id}/save", headers=auth, json={"new_scenario": True}
+    )
+    assert r.status_code == 200, r.text
+    return r.json()

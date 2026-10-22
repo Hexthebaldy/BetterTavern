@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 玩家配好的模型（模型路由）：一个模型包括服务商、API Key、端点、模型名、上下文窗口和写法设置，其中一个是导演。
 这里还有服务商列表、模型列表和“测试这个模型”。相关的表见 [数据模型：模型路由](../data-model/models.md)。
@@ -63,6 +63,7 @@
 - 成功：`201`，返回 [`RouteOut`](#routeout)。拉到了列表时 `status` 为 `ok`，否则为 `unverified`。
 - `director` 为真时同时设为导演，原来的导演不再是导演。
 - `background` 为真时同时设为后台整理用的模型（世界状态 agent 用它），原来的后台模型不再是。
+- `workbench` 为真时同时设为工作台用的模型，原来的工作台模型不再是。
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
@@ -89,6 +90,7 @@
 | `caps_override` | object | 否 | 手动覆盖模型能力，允许的键见 [数据模型：`model_routes.caps_override`](../data-model/models.md#model_routescaps_override)；默认 `{}` |
 | `director` | boolean | 否 | 是否同时设为导演，默认 `false` |
 | `background` | boolean | 否 | 是否同时设为后台整理用的模型，默认 `false` |
+| `workbench` | boolean | 否 | 是否同时设为工作台用的模型，默认 `false` |
 
 #### `RouteParamsIn`
 
@@ -146,6 +148,7 @@
 | `caps_override` | object / null | 否 | 整体替换能力覆盖 |
 | `director` | boolean / null | 否 | 为真时设为导演（原来的导演不再是导演）；为假时如果它是导演就取消，之后没有导演 |
 | `background` | boolean / null | 否 | 为真时设为后台整理用的模型（原来的不再是）；为假时如果它是就取消，之后后台整理用导演的模型 |
+| `workbench` | boolean / null | 否 | 为真时设为工作台用的模型（原来的不再是）；为假时如果它是就取消，之后工作台用导演的模型 |
 
 ### `DELETE /v1/model-routes/{route_id}`
 
@@ -227,6 +230,7 @@
 | `last_probe` | [`ProbeOut`](#probeout) / null | 最近一次测试的结果；没测过，或者之后改了 Key、端点、模型名时为 null |
 | `is_director` | boolean | 是不是导演 |
 | `is_background` | boolean | 是不是后台整理用的模型。每个用户最多一个；没有时后台整理用导演的模型 |
+| `is_workbench` | boolean | 是不是工作台用的模型。每个用户最多一个；没有时工作台用导演的模型。必须能调用工具 |
 | `supports_tools` | boolean | 能不能调用工具。不能的模型不能用于后台整理（世界状态 agent 靠工具改世界状态），设置页据此提示。取自能力表，测试过这个模型（`tool_call` 一项）或者在 `caps_override` 里写了 `tools` 时以它们为准 |
 | `shares_key_with` | array of string | 和它用同一个 Key 的其他模型的 ID（换 Key 时可以一起换） |
 | `window` | [`WindowOut`](#windowout) | 按当前设置算出的窗口 |

@@ -18,7 +18,15 @@ from typing import Any
 import httpx
 import pytest
 
-from tests.e2e.m1_app import CARD, Running, narrative_of, read_events, serve, setup_account
+from tests.e2e.m1_app import (
+    CARD,
+    Running,
+    import_scenario,
+    narrative_of,
+    read_events,
+    serve,
+    setup_account,
+)
 from tests.fakes.llm_server import RunningFakeLLM
 from tests.support.pg import database_url
 
@@ -41,17 +49,20 @@ async def test_full_m1_flow(running: Running) -> None:
         token = account["token"]
         auth = {"Authorization": f"Bearer {token}"}
 
-        # 导入角色卡（JSON V2）；同一个文件再导入一次返回已有的剧本
-        files = {"file": ("card.json", json.dumps(CARD).encode(), "application/json")}
-        r = await client.post("/v1/scenarios/import", headers=auth, files=files)
-        assert r.status_code == 201, r.text
-        scenario = r.json()
-        assert scenario["name"] == "阿苓" and scenario["book_entries"] == 1
+        # 导入角色卡（JSON V2）成草稿，保存进角色卡仓库并建剧本；
+        # 同一个文件再导入一次，先问是不是打开已有的卡
+        saved = await import_scenario(client, auth)
+        card, scenario = saved["card"], saved["scenario"]
+        assert isinstance(card, dict) and isinstance(scenario, dict)
+        assert card["name"] == "阿苓" and card["book_entries"] == 1 and card["source"] == "card_v2"
         # 预览是给人看的：宏换成名字，*动作* 换成括号
         assert scenario["description_preview"].startswith("阿苓 是灰石镇酒馆的帮工")
-        assert scenario["first_mes_preview"] == "（阿苓抬起头）外乡人？先把斗篷上的水拧干。"
-        r = await client.post("/v1/scenarios/import", headers=auth, files=files)
-        assert r.status_code == 200 and r.json()["duplicate"] is True
+        assert [c["card_id"] for c in scenario["cards"]] == [card["id"]]
+        data = json.dumps(CARD, ensure_ascii=False).encode()
+        files = {"file": ("card.json", data, "application/json")}
+        r = await client.post("/v1/workbench/drafts/import", headers=auth, files=files)
+        assert r.status_code == 200 and r.json()["draft"] is None
+        assert r.json()["existing_card"]["id"] == card["id"]
 
         # 开局：202，订阅开场回合的事件流
         r = await client.post(
@@ -176,8 +187,8 @@ async def test_ending_closes_the_story(running: Running) -> None:
         account = await setup_account(client, running.fake)
         token = account["token"]
         auth = {"Authorization": f"Bearer {token}"}
-        files = {"file": ("card.json", json.dumps(CARD).encode(), "application/json")}
-        scenario = (await client.post("/v1/scenarios/import", headers=auth, files=files)).json()
+        scenario = (await import_scenario(client, auth))["scenario"]
+        assert isinstance(scenario, dict)
         # 提示词的语言只认 zh、en、ja
         r = await client.post(
             "/v1/playthroughs",

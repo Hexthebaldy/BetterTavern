@@ -50,6 +50,7 @@ class RouteInput:
     caps_override: Mapping[str, Any] | None = None
     director: bool = False
     background: bool = False
+    workbench: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +72,7 @@ class RoutePatch:
     caps_override: Mapping[str, Any] | None = None
     director: bool | None = None
     background: bool | None = None
+    workbench: bool | None = None
 
 
 def aad(route_id: str, field: str) -> str:

@@ -24,6 +24,10 @@ dependencies = [
   "python-multipart==0.0.32",
   # 结构化日志（JSON 输出、上下文绑定、脱敏处理器）
   "structlog==26.1.0",
+  # 封面图片：解码校验、去掉 EXIF、转格式、导出 PNG 角色卡时裁剪
+  "pillow==13.0.0",
+  # 读网页：本地把 HTML 转成正文（工作台的 web_fetch）
+  "trafilatura==2.3.1",
 ]
 
 [project.scripts]

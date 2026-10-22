@@ -98,6 +98,8 @@ class TurnContext:
     state_seq: int = -1
     memory: StoryMemory = field(default_factory=StoryMemory)
     outline: OutlineSlice | None = None  # 大纲里导演要看的那一部分；还没有大纲时为空
+    # 剧本设置里选了用卡片的开场白开场时，开场回合的叙述就是它（宏已经换好）；否则为空，由导演写
+    opening_greeting: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,10 +154,15 @@ class TurnFailure:
 
 @dataclass(frozen=True)
 class WorldBuildInput:
-    card: CharacterCard | None
+    card: CharacterCard | None  # 主角色卡（剧本里的第一张）
     protagonist_name: str
     protagonist_summary: str
     preferences: Preferences
+    # 剧本里的全部卡，按顺序（群像剧本有几张；第一张就是 card）
+    cards: tuple[CharacterCard, ...] = ()
+    # 选定的开场白原文（宏没替换）和它属于哪张卡；没选时为空，用主角色卡的 first_mes 作参考
+    opening: str = ""
+    opening_char: str = ""
 
 
 class TurnStore(Protocol):
@@ -379,3 +386,223 @@ class OutlineStore(Protocol):
         ...
 
     async def fail(self, work: OutlineWork, run: AgentRunRecord) -> None: ...
+
+
+# ---- 工作台的 agent（worker） --------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class WorkbenchMessage:
+    seq: int
+    role: Literal["user", "assistant"]
+    kind: str  # text / research / questions / answers / plan / plan_reply / changes / ...
+    content: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class WorkbenchAsset:
+    id: str
+    blob_id: str
+    source: str
+    license: str
+    source_url: str | None = None
+    prompt: str | None = None
+    width: int | None = None
+    height: int | None = None
+    meta: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class WorkbenchNote:
+    id: str
+    text: str
+    source: Mapping[str, Any]
+    used_in: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class WorkbenchRun:
+    """一轮 agent 开始时草稿的样子（docs/workbench.md 第 4.4 节的上下文都从这里来）。"""
+
+    run_id: str
+    draft_id: str
+    user_id: str
+    trigger: Literal["text", "answers", "plan_reply", "continue"]
+    origin: str
+    stage: str
+    language: str
+    name: str  # 显示名
+    card: CharacterCard
+    version: int  # 草稿的版本号，写卡时带着它
+    cover_asset_id: str | None
+    plan_approved_seq: int | None
+    todos: tuple[Mapping[str, Any], ...]
+    baseline: Mapping[str, Any] | None  # 上一轮结束时卡片的样子
+    messages: tuple[WorkbenchMessage, ...]
+    assets: tuple[WorkbenchAsset, ...] = ()
+    notes: tuple[WorkbenchNote, ...] = ()
+
+
+@dataclass(frozen=True)
+class DraftSnapshot:
+    version: int
+    name: str
+    card: CharacterCard
+
+
+@dataclass(frozen=True)
+class WorkbenchFinish:
+    stage: str
+    agent_status: Literal["idle", "awaiting_user"]
+    awaiting: Mapping[str, Any] | None
+    run: AgentRunRecord
+
+
+class WorkbenchStore(Protocol):
+    """worker 里的一轮 agent 读写草稿。每个写入都带 run_id：不是这一轮在跑（被别的接管了）就不写，
+    返回 False / None。"""
+
+    async def load_run(self, draft_id: str, run_id: str) -> WorkbenchRun | None: ...
+
+    async def should_stop(self, draft_id: str, run_id: str) -> bool:
+        """用户点了停止、切到手动接管，或者这一轮已经不是正在跑的那一轮；顺带报一次平安（心跳）。"""
+        ...
+
+    async def emit(
+        self, draft_id: str, run_id: str, events: Sequence[tuple[str, Mapping[str, Any]]]
+    ) -> None:
+        """写一批推送事件（delta、field_delta、tool、todos……），并通知 api 进程。"""
+        ...
+
+    async def read_draft(self, draft_id: str) -> DraftSnapshot | None: ...
+
+    async def write_card(
+        self,
+        draft_id: str,
+        run_id: str,
+        *,
+        expected_version: int,
+        name: str,
+        card: CharacterCard,
+        fields: Sequence[str],
+    ) -> int | None:
+        """写卡（版本围栏）：成功返回新的版本号，并推一条 draft 事件；版本号对不上返回 None。"""
+        ...
+
+    async def append_message(
+        self,
+        draft_id: str,
+        run_id: str,
+        *,
+        kind: str,
+        content: Mapping[str, Any],
+    ) -> int:
+        """agent 说的一条话（或问卷、方案、改动、进度），返回序号，并推一条 message 事件。"""
+        ...
+
+    async def set_todos(
+        self, draft_id: str, run_id: str, todos: Sequence[Mapping[str, Any]]
+    ) -> None: ...
+
+    async def set_stage(self, draft_id: str, run_id: str, stage: str) -> None: ...
+
+    async def set_cover(self, draft_id: str, run_id: str, asset_id: str | None) -> int | None:
+        """换封面，返回草稿新的版本号；不是这一轮在跑时返回 None。"""
+        ...
+
+    async def finish(self, draft_id: str, run_id: str, result: WorkbenchFinish) -> None:
+        """一个事务：草稿回到 idle 或 awaiting_user，记下这一轮结束时卡片的样子（下一轮比对用户
+        手动改了什么），清掉停止标记，记下这次运行。"""
+        ...
+
+
+# ---- 工作台的联网和出图 ------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ToolConfig:
+    """一个配置好的外部服务（tool_routes 的一行，Key 已解密，只活在一次运行里）。"""
+
+    route_id: str
+    kind: Literal["search", "fetch", "image"]
+    provider: str  # 搜索、读网页是服务商名；文生图是接口协议
+    label: str
+    api_key: str = field(repr=False, default="")
+    base_url: str = ""
+    model: str = ""
+    params: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ResolvedTools:
+    search: ToolConfig | None = None
+    fetch: ToolConfig | None = None
+    image: ToolConfig | None = None
+
+
+class ToolResolver(Protocol):
+    async def resolve_tools(self, user_id: str) -> ResolvedTools:
+        """这个用户每一种默认的外部服务；Key 解密不了的当作没配。"""
+        ...
+
+
+@dataclass(frozen=True)
+class StoredPage:
+    id: str
+    url: str
+    final_url: str | None
+    title: str
+    content: str
+    fetcher: str
+
+
+@dataclass(frozen=True)
+class NewImage:
+    data: bytes
+    mime: str
+    width: int
+    height: int
+    sha256: str
+
+
+class WebStore(Protocol):
+    async def cached_page(
+        self, user_id: str, url_hash: str, *, max_age_s: int
+    ) -> StoredPage | None: ...
+
+    async def save_page(
+        self,
+        user_id: str,
+        *,
+        url: str,
+        url_hash: str,
+        final_url: str | None,
+        title: str,
+        content: str,
+        fetcher: str,
+    ) -> str: ...
+
+    async def page(self, user_id: str, page_id: str) -> StoredPage | None: ...
+
+    async def add_note(
+        self, draft_id: str, *, text: str, source: Mapping[str, Any], used_in: Sequence[str]
+    ) -> str: ...
+
+    async def add_image(
+        self,
+        user_id: str,
+        draft_id: str,
+        image: NewImage,
+        *,
+        source: str,
+        license: str,
+        source_url: str | None = None,
+        prompt: str | None = None,
+        meta: Mapping[str, Any] | None = None,
+    ) -> WorkbenchAsset:
+        """存一张图（blobs）并记进草稿的图片（workbench_assets）。"""
+        ...
+
+    async def image_bytes(self, user_id: str, blob_id: str) -> tuple[bytes, str] | None:
+        """一张图的内容和类型（给出图当参考图用）。"""
+        ...

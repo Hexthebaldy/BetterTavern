@@ -1,7 +1,11 @@
-"""剧本库：scenarios 与 blobs（角色卡头像等二进制；v1 存在库里，便于备份和单机部署）。"""
+"""剧本仓库：scenarios、scenario_cards，以及 blobs（封面等图片；存在库里，便于备份和单机部署）。
+
+角色卡本身在 cards.py。剧本只记用了哪几张卡（scenario_cards），开新故事时读这几张卡当时的正式版本。
+"""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -11,12 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from bettertavern.infra.db.sqlutil import (
     Row,
     as_json,
+    as_uuid_list,
     dumps,
     execute,
     fetch_all,
     fetch_one,
     opt_str,
 )
+
+# ---- blobs ----
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,19 +33,36 @@ class BlobRow:
     size: int
     sha256: str
     data: bytes
+    width: int | None = None
+    height: int | None = None
 
 
 async def insert_blob(
-    conn: AsyncConnection, *, user_id: str, sha256: str, mime: str, data: bytes
+    conn: AsyncConnection,
+    *,
+    user_id: str,
+    sha256: str,
+    mime: str,
+    data: bytes,
+    width: int | None = None,
+    height: int | None = None,
 ) -> str:
     row = await fetch_one(
         conn,
         """
-        INSERT INTO blobs (user_id, sha256, mime, size, data)
-        VALUES (:u, :sha, :mime, :size, :data)
+        INSERT INTO blobs (user_id, sha256, mime, size, data, width, height)
+        VALUES (:u, :sha, :mime, :size, :data, :w, :h)
         RETURNING id
         """,
-        {"u": user_id, "sha": sha256, "mime": mime, "size": len(data), "data": data},
+        {
+            "u": user_id,
+            "sha": sha256,
+            "mime": mime,
+            "size": len(data),
+            "data": data,
+            "w": width,
+            "h": height,
+        },
     )
     assert row is not None
     return str(row["id"])
@@ -47,7 +71,8 @@ async def insert_blob(
 async def get_blob(conn: AsyncConnection, user_id: str, blob_id: str) -> BlobRow | None:
     row = await fetch_one(
         conn,
-        "SELECT id, mime, size, sha256, data FROM blobs WHERE id = :id AND user_id = :u",
+        """SELECT id, mime, size, sha256, data, width, height FROM blobs
+           WHERE id = :id AND user_id = :u""",
         {"id": blob_id, "u": user_id},
     )
     if row is None:
@@ -58,13 +83,40 @@ async def get_blob(conn: AsyncConnection, user_id: str, blob_id: str) -> BlobRow
         size=int(row["size"]),
         sha256=row["sha256"],
         data=bytes(row["data"]),
+        width=row["width"],
+        height=row["height"],
     )
 
 
-async def delete_blob(conn: AsyncConnection, user_id: str, blob_id: str) -> None:
-    await execute(
-        conn, "DELETE FROM blobs WHERE id = :id AND user_id = :u", {"id": blob_id, "u": user_id}
+async def delete_orphan_blobs(conn: AsyncConnection, user_id: str, blob_ids: Sequence[str]) -> int:
+    """删掉这几张图里已经没人用的：不是哪张卡或哪个版本的封面，也不在哪份草稿的图片里。"""
+    ids = sorted({b for b in blob_ids if b})
+    if not ids:
+        return 0
+    return await execute(
+        conn,
+        """
+        DELETE FROM blobs AS b
+        WHERE b.user_id = :u AND b.id = ANY(CAST(:ids AS uuid[]))
+          AND NOT EXISTS (SELECT 1 FROM cards WHERE cover_blob_id = b.id)
+          AND NOT EXISTS (SELECT 1 FROM card_revisions WHERE cover_blob_id = b.id)
+          AND NOT EXISTS (SELECT 1 FROM workbench_assets WHERE blob_id = b.id)
+        """,
+        {"u": user_id, "ids": as_uuid_list(ids)},
     )
+
+
+# ---- scenarios ----
+
+
+@dataclass(frozen=True, slots=True)
+class ScenarioCardRef:
+    """剧本里的一张卡（列表和详情用，不带卡片全文）。"""
+
+    card_id: str
+    position: int
+    name: str
+    cover_blob_id: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,34 +124,47 @@ class ScenarioRow:
     id: str
     user_id: str
     name: str
-    source_kind: str
-    source_sha256: str | None
-    card: dict[str, Any]
-    avatar_blob_id: str | None
+    setup: dict[str, Any]
     version: int
-    edited_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    cards: tuple[ScenarioCardRef, ...] = ()
 
     @classmethod
     def from_row(cls, row: Row) -> ScenarioRow:
+        refs = as_json(row.get("cards"), []) or []
         return cls(
             id=str(row["id"]),
             user_id=str(row["user_id"]),
             name=row["name"],
-            source_kind=row["source_kind"],
-            source_sha256=row["source_sha256"],
-            card=as_json(row["card"], {}),
-            avatar_blob_id=opt_str(row["avatar_blob_id"]),
+            setup=as_json(row["setup"], {}) or {},
             version=row["version"],
-            edited_at=row["edited_at"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            cards=tuple(
+                ScenarioCardRef(
+                    card_id=str(r["card_id"]),
+                    position=int(r["position"]),
+                    name=str(r["name"]),
+                    cover_blob_id=opt_str(r.get("cover_blob_id")),
+                )
+                for r in sorted(refs, key=lambda r: int(r["position"]))
+            ),
         )
 
 
-_SCENARIO_COLS = """id, user_id, name, source_kind, source_sha256, card, avatar_blob_id,
-    version, edited_at, created_at, updated_at"""
+# 每个剧本带上它的几张卡（按位置排），一次查出来
+_SCENARIO_SELECT = """
+SELECT s.id, s.user_id, s.name, s.setup, s.version, s.created_at, s.updated_at,
+       COALESCE((
+           SELECT json_agg(json_build_object(
+                      'card_id', c.id, 'position', sc.position, 'name', c.name,
+                      'cover_blob_id', c.cover_blob_id) ORDER BY sc.position)
+           FROM scenario_cards AS sc JOIN cards AS c ON c.id = sc.card_id
+           WHERE sc.scenario_id = s.id
+       ), '[]') AS cards
+FROM scenarios AS s
+"""
 
 
 async def insert_scenario(
@@ -107,139 +172,92 @@ async def insert_scenario(
     *,
     user_id: str,
     name: str,
-    source_kind: str,
-    source_sha256: str | None,
-    raw: Any,
-    card: dict[str, Any],
-    avatar_blob_id: str | None,
+    setup: dict[str, Any],
+    card_ids: Sequence[str],
 ) -> ScenarioRow:
     row = await fetch_one(
         conn,
-        f"""
-        INSERT INTO scenarios (user_id, name, source_kind, source_sha256, raw, card, avatar_blob_id)
-        VALUES (:u, :name, :kind, :sha, CAST(:raw AS jsonb), CAST(:card AS jsonb), :avatar)
-        RETURNING {_SCENARIO_COLS}
-        """,
-        {
-            "u": user_id,
-            "name": name,
-            "kind": source_kind,
-            "sha": source_sha256,
-            "raw": dumps(raw),
-            "card": dumps(card),
-            "avatar": avatar_blob_id,
-        },
+        """INSERT INTO scenarios (user_id, name, setup)
+           VALUES (:u, :name, CAST(:setup AS jsonb)) RETURNING id""",
+        {"u": user_id, "name": name, "setup": dumps(setup)},
     )
     assert row is not None
-    return ScenarioRow.from_row(row)
+    scenario_id = str(row["id"])
+    await _insert_cards(conn, scenario_id, card_ids)
+    created = await get_scenario(conn, user_id, scenario_id)
+    assert created is not None
+    return created
 
 
-async def find_scenario_by_sha(
-    conn: AsyncConnection, user_id: str, sha256: str
-) -> ScenarioRow | None:
-    row = await fetch_one(
-        conn,
-        f"""SELECT {_SCENARIO_COLS} FROM scenarios
-            WHERE user_id = :u AND source_sha256 = :sha ORDER BY created_at LIMIT 1""",
-        {"u": user_id, "sha": sha256},
-    )
-    return None if row is None else ScenarioRow.from_row(row)
+async def _insert_cards(conn: AsyncConnection, scenario_id: str, card_ids: Sequence[str]) -> None:
+    for position, card_id in enumerate(card_ids):
+        await execute(
+            conn,
+            """INSERT INTO scenario_cards (scenario_id, card_id, position)
+               VALUES (:s, :c, :p)""",
+            {"s": scenario_id, "c": card_id, "p": position},
+        )
 
 
 async def list_scenarios(conn: AsyncConnection, user_id: str) -> list[ScenarioRow]:
     rows = await fetch_all(
         conn,
-        f"SELECT {_SCENARIO_COLS} FROM scenarios WHERE user_id = :u ORDER BY created_at DESC",
+        f"{_SCENARIO_SELECT} WHERE s.user_id = :u ORDER BY s.updated_at DESC, s.id",
         {"u": user_id},
     )
     return [ScenarioRow.from_row(r) for r in rows]
 
 
-async def get_scenario(conn: AsyncConnection, user_id: str, scenario_id: str) -> ScenarioRow | None:
-    row = await fetch_one(
-        conn,
-        f"SELECT {_SCENARIO_COLS} FROM scenarios WHERE id = :id AND user_id = :u",
-        {"id": scenario_id, "u": user_id},
-    )
-    return None if row is None else ScenarioRow.from_row(row)
-
-
-async def rename_scenario(
-    conn: AsyncConnection, user_id: str, scenario_id: str, name: str
+async def get_scenario(
+    conn: AsyncConnection, user_id: str, scenario_id: str, *, lock: bool = False
 ) -> ScenarioRow | None:
     row = await fetch_one(
         conn,
-        f"""UPDATE scenarios SET name = :name, version = version + 1, updated_at = now()
-            WHERE id = :id AND user_id = :u RETURNING {_SCENARIO_COLS}""",
-        {"id": scenario_id, "u": user_id, "name": name},
+        f"{_SCENARIO_SELECT} WHERE s.id = :id AND s.user_id = :u"
+        + (" FOR UPDATE OF s" if lock else ""),
+        {"id": scenario_id, "u": user_id},
     )
     return None if row is None else ScenarioRow.from_row(row)
 
 
-async def get_scenario_raw(conn: AsyncConnection, user_id: str, scenario_id: str) -> Any | None:
-    """导入时的原始 JSON（恢复卡片用）；剧本不存在时为 None。"""
-    row = await fetch_one(
-        conn,
-        "SELECT raw FROM scenarios WHERE id = :id AND user_id = :u",
-        {"id": scenario_id, "u": user_id},
-    )
-    return None if row is None else as_json(row["raw"])
-
-
-async def update_scenario_card(
+async def update_scenario(
     conn: AsyncConnection,
     user_id: str,
     scenario_id: str,
     *,
     name: str,
-    card: dict[str, Any],
-    card_changed: bool,
-    expected_version: int,
+    setup: dict[str, Any],
+    card_ids: Sequence[str] | None,
+    expected_version: int | None,
 ) -> ScenarioRow | None:
-    """保存编辑后的卡片和显示名，版本号加 1；卡片内容有改动才更新编辑时间（只改显示名不算）。
-    版本号对不上（别处改过）或剧本不存在时返回 None。"""
+    """改名字、设置，可选换卡；版本号加 1。expected_version 对不上或剧本不存在时返回 None。"""
     row = await fetch_one(
         conn,
-        f"""UPDATE scenarios
-            SET name = :name, card = CAST(:card AS jsonb), version = version + 1,
-                edited_at = CASE WHEN :changed THEN now() ELSE edited_at END, updated_at = now()
-            WHERE id = :id AND user_id = :u AND version = :v
-            RETURNING {_SCENARIO_COLS}""",
+        """UPDATE scenarios
+           SET name = :name, setup = CAST(:setup AS jsonb), version = version + 1,
+               updated_at = now()
+           WHERE id = :id AND user_id = :u AND (CAST(:v AS integer) IS NULL OR version = :v)
+           RETURNING id""",
         {
             "id": scenario_id,
             "u": user_id,
             "name": name,
-            "card": dumps(card),
-            "changed": card_changed,
+            "setup": dumps(setup),
             "v": expected_version,
         },
     )
-    return None if row is None else ScenarioRow.from_row(row)
-
-
-async def reset_scenario_card(
-    conn: AsyncConnection, user_id: str, scenario_id: str, card: dict[str, Any]
-) -> ScenarioRow | None:
-    """卡片恢复成导入时的内容：显示名不变，版本号加 1，清掉编辑时间。"""
-    row = await fetch_one(
-        conn,
-        f"""UPDATE scenarios
-            SET card = CAST(:card AS jsonb), version = version + 1, edited_at = NULL,
-                updated_at = now()
-            WHERE id = :id AND user_id = :u
-            RETURNING {_SCENARIO_COLS}""",
-        {"id": scenario_id, "u": user_id, "card": dumps(card)},
-    )
-    return None if row is None else ScenarioRow.from_row(row)
-
-
-async def delete_scenario(conn: AsyncConnection, user_id: str, scenario_id: str) -> str | None:
-    """删除剧本，返回它的头像 blob id（由调用方在同一事务里删除）。不存在时返回空串以外的 None。"""
-    row = await fetch_one(
-        conn,
-        "DELETE FROM scenarios WHERE id = :id AND user_id = :u RETURNING avatar_blob_id",
-        {"id": scenario_id, "u": user_id},
-    )
     if row is None:
         return None
-    return opt_str(row["avatar_blob_id"]) or ""
+    if card_ids is not None:
+        await execute(conn, "DELETE FROM scenario_cards WHERE scenario_id = :s", {"s": scenario_id})
+        await _insert_cards(conn, scenario_id, card_ids)
+    return await get_scenario(conn, user_id, scenario_id)
+
+
+async def delete_scenario(conn: AsyncConnection, user_id: str, scenario_id: str) -> bool:
+    count = await execute(
+        conn,
+        "DELETE FROM scenarios WHERE id = :id AND user_id = :u",
+        {"id": scenario_id, "u": user_id},
+    )
+    return count > 0

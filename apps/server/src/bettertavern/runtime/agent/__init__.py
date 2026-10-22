@@ -3,7 +3,7 @@
 设计见 docs/agent-runtime.md 第 5 节。
 """
 
-from .loop import ModelCall, ModelReply, run_agent
+from .loop import AgentStopped, ModelCall, ModelReply, run_agent
 from .spec import AgentSpec, OutputKind
 from .steps import AgentStep, StepLog, clip_text
 from .tools import Tool, ToolError, ToolOutcome, ToolRegistry, parse_arguments
@@ -11,6 +11,7 @@ from .tools import Tool, ToolError, ToolOutcome, ToolRegistry, parse_arguments
 __all__ = [
     "AgentSpec",
     "AgentStep",
+    "AgentStopped",
     "ModelCall",
     "ModelReply",
     "OutputKind",

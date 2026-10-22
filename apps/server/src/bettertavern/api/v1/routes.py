@@ -66,6 +66,7 @@ async def create_route(body: RouteIn, user_id: UserId, services: ServicesDep) ->
             caps_override=body.caps_override,
             director=body.director,
             background=body.background,
+            workbench=body.workbench,
         ),
     )
     return RouteOut.model_validate(view)
@@ -99,6 +100,7 @@ async def update_route(
             caps_override=body.caps_override,
             director=body.director,
             background=body.background,
+            workbench=body.workbench,
         ),
     )
     return RouteOut.model_validate(view)

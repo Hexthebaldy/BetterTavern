@@ -19,6 +19,9 @@ class OutputKind(StrEnum):
     STRUCTURED = "structured"
     # 用工具做事，最后调用收尾工具结束（世界状态 agent 的 commit）
     FINISH_TOOL = "finish_tool"
+    # 和用户对话：说的话一边生成一边推出去，可以连续调很多次工具；
+    # 调用 end_tools 里的工具（发问卷、出方案、给出改动）就结束这一轮，等用户（工作台的 card_maker）
+    CHAT = "chat"
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +33,8 @@ class AgentSpec:
     max_tool_rounds: int = 0  # 最多带工具请求几次；再下一次请求不提供工具，只能给出最终输出
     # 收尾工具：调用成功就结束；最后一次请求只提供它（OutputKind.FINISH_TOOL 必须有）
     finish_tool: str | None = None
+    # 调用成功就结束这一轮的工具（OutputKind.CHAT 用）；和收尾工具不同，不强制模型最后调用
+    end_tools: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.max_tool_rounds < 0:
@@ -40,3 +45,5 @@ class AgentSpec:
             raise ValueError("finish_tool goes with OutputKind.FINISH_TOOL")
         if self.finish_tool is not None and self.finish_tool not in self.tools:
             raise ValueError("finish_tool must be one of the agent's tools")
+        if any(name not in self.tools for name in self.end_tools):
+            raise ValueError("end_tools must be among the agent's tools")

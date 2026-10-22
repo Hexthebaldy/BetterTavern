@@ -2,9 +2,9 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
-这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0017`）。
+这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0020`）。
 设计意图和还没建的表见 [backend.md 第 2 节](../backend.md)。
 
 表按领域分文件。每个领域文件写这个领域的表（列、类型、约束、索引）、JSON 列的结构和状态变化；本页写各领域共用的约定、
@@ -14,7 +14,9 @@
 | --- | --- | --- |
 | [accounts.md](accounts.md) | 账户与令牌 | `users`、`refresh_tokens` |
 | [models.md](models.md) | 模型路由（玩家配好的模型，含 Key 和端点） | `model_routes` |
-| [library.md](library.md) | 剧本库 | `blobs`、`scenarios` |
+| [tools.md](tools.md) | 外部服务（搜索、读网页、文生图）和读过的网页 | `tool_routes`、`web_pages` |
+| [library.md](library.md) | 角色卡仓库与剧本仓库 | `blobs`、`cards`、`card_revisions`、`scenarios`、`scenario_cards` |
+| [workbench.md](workbench.md) | 工作台 | `workbench_drafts`、`workbench_messages`、`workbench_events`、`workbench_assets`、`workbench_notes` |
 | [story.md](story.md) | 游玩与回合，以及热路径的并发控制 | `playthroughs`、`turns`、`idempotency_keys` |
 | [world.md](world.md) | 世界状态 | `entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes` |
 | [memory.md](memory.md) | 记忆（章节摘要、全书梗概、玩家画像）和大纲 | `story_summaries`、`player_profiles`、`outline_revisions` |
@@ -47,11 +49,29 @@ erDiagram
     users ||--o{ refresh_tokens : "user_id"
     users ||--o{ model_routes : "user_id"
     users ||--o{ blobs : "user_id"
+    users ||--o{ cards : "user_id"
     users ||--o{ scenarios : "user_id"
+    users ||--o{ workbench_drafts : "user_id"
+    users ||--o{ workbench_assets : "user_id"
+    users ||--o{ tool_routes : "user_id"
+    users ||--o{ web_pages : "user_id"
     users ||--o{ playthroughs : "user_id"
     users ||--o{ agent_runs : "user_id"
     users ||--o{ idempotency_keys : "user_id"
-    blobs |o--o{ scenarios : "avatar_blob_id"
+    blobs |o--o{ cards : "cover_blob_id"
+    blobs |o--o{ card_revisions : "cover_blob_id"
+    blobs ||--o{ workbench_assets : "blob_id"
+    cards ||--o{ card_revisions : "card_id"
+    cards ||--o{ scenario_cards : "card_id (RESTRICT)"
+    scenarios ||--o{ scenario_cards : "scenario_id"
+    cards |o--o{ workbench_drafts : "card_id"
+    workbench_drafts ||--o{ workbench_assets : "draft_id"
+    workbench_drafts ||--o{ workbench_messages : "draft_id"
+    workbench_drafts ||--o{ workbench_events : "draft_id"
+    workbench_drafts ||--o{ workbench_notes : "draft_id"
+    workbench_drafts |o--o{ agent_runs : "draft_id"
+    workbench_assets |o--o{ workbench_drafts : "cover_asset_id"
+    workbench_drafts |o--o{ card_revisions : "draft_id"
     scenarios |o--o{ playthroughs : "scenario_id"
     playthroughs ||--o{ turns : "playthrough_id"
     playthroughs ||--o{ entities : "playthrough_id"
@@ -94,14 +114,19 @@ erDiagram
 | `facts.entity_ids`、`facts.known_by` | `entities.id` | uuid 数组，数组元素不能加外键 |
 | `agent_runs.turn_id` | `turns.id` | 这次调用所属的回合 |
 | `idempotency_keys.turn_id` | `turns.id` | 这个幂等键创建的回合 |
+| `workbench_drafts.run_id` | `agent_runs.id` | 正在跑的那一轮工作台 agent（一轮结束后才写进 `agent_runs`） |
+| `workbench_messages.run_id`、`workbench_events.run_id` | `agent_runs.id` | 哪一轮发的 |
 
 ## 删除与清理
 
 | 操作 | 连带删除或修改 |
 | --- | --- |
-| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`scenarios`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys` |
+| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`）、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys` |
 | 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes`、`story_summaries`、`player_profiles`、`outline_revisions` 和 `agent_runs`（连同 `agent_steps`）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
-| 删除剧本 | 在同一个事务里删除它的头像（`blobs`）；`playthroughs.scenario_id` 置空 |
+| 删除剧本 | 级联删除 `scenario_cards`，卡不动；`playthroughs.scenario_id` 置空 |
+| 删除角色卡 | `scenario_cards` 里有这张卡就拒绝（409 `CARD_IN_USE`，外键也是 RESTRICT）。级联删除 `card_revisions`；指向它的草稿 `card_id` 置空。它和它的版本用过的封面没有别处在用时一起删掉 |
+| 删除草稿 | 正在跑的 agent 先置停止；级联删除 `workbench_assets`、`workbench_messages`、`workbench_events`、`workbench_notes` 和记在它上面的 `agent_runs`（连同 `agent_steps`）；`card_revisions.draft_id` 置空。草稿里的图没有别处在用（不是哪张卡或哪个版本的封面）时一起删掉 |
+| 版本超过 30 份 | 删掉最早的 `card_revisions`，它们用过的封面没有别处在用时一起删掉 |
 | 删除模型路由 | 删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING`；删掉的是后台模型时，后台整理改用导演的模型 |
 | 删除实体（M2） | 级联删除相关的 `entity_links`；`facts.entity_ids` 里的 ID 不会自动清理 |
 
@@ -112,6 +137,8 @@ erDiagram
 | 过期的租约 | 每 15 秒 | 回合标为 `failed`（`RUNNER_LOST`），见 [story.md 的“并发控制”](story.md#并发控制) |
 | `idempotency_keys` | 大约每 10 分钟 | 删除 24 小时之前的 |
 | `refresh_tokens` | 大约每 10 分钟 | 删除过期超过 7 天的 |
+| `workbench_events` | 大约每 10 分钟 | 删除一天以前的 |
+| `web_pages` | 大约每 10 分钟 | 删除 7 天以前读的 |
 | `agent_runs`、已完成的 `jobs` | 不清理 | M1 没有清理；设计是 `agent_runs.result` 保留 30 天（[backend.md 第 11 节](../backend.md)） |
 
 ## 修改表结构

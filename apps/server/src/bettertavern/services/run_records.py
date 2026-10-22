@@ -1,6 +1,7 @@
 """把一次 agent 运行（AgentRunRecord）写进 agent_runs，连同它的每一步（agent_steps）。
 
-前台的回合（turn_store.py）和后台的世界状态整理（state_store.py）都用它。
+前台的回合（turn_store.py）、后台的世界状态整理（state_store.py）
+和工作台的 agent（workbench_store.py）都用它。
 """
 
 from __future__ import annotations
@@ -13,7 +14,13 @@ from bettertavern.runtime.ports import AgentRunRecord
 
 
 def run_insert(
-    run: AgentRunRecord, *, user_id: str, playthrough_id: str, turn_id: str | None
+    run: AgentRunRecord,
+    *,
+    user_id: str,
+    playthrough_id: str | None,
+    turn_id: str | None,
+    draft_id: str | None = None,
+    run_id: str | None = None,
 ) -> runs_repo.AgentRunInsert:
     usage = run.usage
     return runs_repo.AgentRunInsert(
@@ -34,6 +41,8 @@ def run_insert(
         latency_ms=run.latency_ms,
         error_class=run.error_class,
         result=dict(run.result),
+        draft_id=draft_id,
+        id=run_id,
     )
 
 
@@ -56,12 +65,22 @@ async def insert_run(
     run: AgentRunRecord,
     *,
     user_id: str,
-    playthrough_id: str,
+    playthrough_id: str | None,
     turn_id: str | None,
+    draft_id: str | None = None,
+    run_id: str | None = None,
 ) -> str:
-    """写一行 agent_runs，连同它的每一步。返回这次运行的 id。"""
+    """写一行 agent_runs，连同它的每一步。返回这次运行的 id（给了 run_id 就用它）。"""
     run_id = await runs_repo.insert_agent_run(
-        conn, run_insert(run, user_id=user_id, playthrough_id=playthrough_id, turn_id=turn_id)
+        conn,
+        run_insert(
+            run,
+            user_id=user_id,
+            playthrough_id=playthrough_id,
+            turn_id=turn_id,
+            draft_id=draft_id,
+            run_id=run_id,
+        ),
     )
     await runs_repo.insert_agent_steps(conn, run_id, [step_insert(s) for s in run.steps])
     return run_id

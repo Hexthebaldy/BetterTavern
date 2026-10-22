@@ -31,6 +31,7 @@ from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.settings import Settings
 from bettertavern.vis.app import create_vis_app
 from bettertavern.vis.logstore import LogStore
+from tests.e2e.m1_app import import_scenario
 from tests.fakes.asgi_server import AsgiServer
 from tests.fakes.llm_server import (
     DONE,
@@ -183,8 +184,8 @@ async def play_two_turns(base_url: str, fake_llm: RunningFakeLLM) -> Played:
                 "director": True,
             },
         )
-        files = {"file": ("card.json", json.dumps(CARD, ensure_ascii=False).encode(), "text/json")}
-        scenario = (await client.post("/v1/scenarios/import", headers=auth, files=files)).json()
+        scenario = (await import_scenario(client, auth, CARD))["scenario"]
+        assert isinstance(scenario, dict)
         r = await client.post(
             "/v1/playthroughs",
             headers=auth,

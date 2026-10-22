@@ -64,6 +64,7 @@ from .turn_finalize import (
     TurnFailed,
     failed_director_run,
     finalize_ending,
+    finalize_greeting,
     finalize_turn,
 )
 from .turn_stream import (
@@ -298,6 +299,22 @@ class TurnRunner:
                     retryable=False,
                 )
             )
+        if ctx.action.source == "opening" and ctx.opening_greeting:
+            # 剧本设置里选了卡片的开场白：开场就用它，不让导演重写，只补选项
+            await self._publish(stream, "narrative.delta", {"text": ctx.opening_greeting})
+            await self._publish(stream, "narrative.done", {"chars": len(ctx.opening_greeting)})
+            log.info("turn.greeting_opening", chars=len(ctx.opening_greeting))
+            return await finalize_greeting(
+                header,
+                ctx.opening_greeting,
+                route,
+                ctx.state_seq,
+                routes=self._routes,
+                hub=self._hub,
+                prompts=self._prompts_for(header),
+                clock=self._clock,
+                repair_timeout_s=self.config.options_repair_timeout_s,
+            )
         generation = await self._generate(header, ctx, route, stream, cancel)
         if ctx.action.source == "ending":
             return finalize_ending(generation, ctx.state_seq)
@@ -366,6 +383,7 @@ class TurnRunner:
                     inp.card,
                     protagonist_name=inp.protagonist_name,
                     protagonist_summary=inp.protagonist_summary,
+                    others=inp.cards[1:],
                 )
             else:
                 seed = Seed(

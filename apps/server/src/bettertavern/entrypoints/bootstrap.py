@@ -27,7 +27,8 @@ def app_secrets(settings: Settings) -> AppSecrets:
 
 
 def endpoint_policy(settings: Settings) -> EndpointPolicy:
-    return EndpointPolicy(allow_private=settings.allow_private_endpoints)
+    ranges = tuple(r.strip() for r in settings.fake_ip_ranges.split(",") if r.strip())
+    return EndpointPolicy(allow_private=settings.allow_private_endpoints, fake_ip_ranges=ranges)
 
 
 def provider_hub(settings: Settings, policy: EndpointPolicy) -> ProviderHub:

@@ -1,11 +1,16 @@
-"""导入后编辑角色卡：能改哪些字段、各自的上限和校验（上限和导入共用 card.py 里的常量）。
+"""编辑角色卡：能改哪些字段、各自的上限和校验（上限和导入共用 card.py 里的常量）。
 
 导入时超长的部分会被截断（不能因为一个字段太长就整张卡导入失败）；编辑时超长就拒绝并指出是哪个字段，
 用户自己写的内容不能被悄悄截掉。改过的字段从 truncated（导入时被截断的记录）里去掉。
 
-能改的是 AI 会读的部分：角色名、五个文本字段、标签，以及卡片自带的世界书条目。
-系统提示、作者备注、备选开场白这些 AI 用不到的字段不开放，原样保留。
+能改的是：角色名、七个文本字段（含系统提示和作者备注）、备选开场白、标签，以及卡片自带的世界书条目。
+其余字段（作者、版本号、后置指令等）原样保留。
 世界书条目按列表顺序重新编号（order），开局搭建世界时常驻条目优先、其次按这个顺序取。
+
+两种模式：
+- 草稿（lenient=True）：工作台自动保存时用。允许名字为空、条目内容为空、
+  备选开场白有空的一条（正在写）；  长度上限照样检查，免得草稿无限长。
+- 正式（lenient=False）：保存到角色卡仓库时用。名字和条目内容不能为空，空的备选开场白去掉。
 """
 
 from __future__ import annotations
@@ -14,8 +19,17 @@ from dataclasses import dataclass
 
 from .card import MAX_BOOK_ENTRIES, MAX_FIELD_CHARS, MAX_TOTAL_CHARS, CharacterCard, LoreEntry
 
-EDITABLE_TEXT_FIELDS = ("description", "personality", "scenario", "first_mes", "mes_example")
+EDITABLE_TEXT_FIELDS = (
+    "description",
+    "personality",
+    "scenario",
+    "first_mes",
+    "mes_example",
+    "system_prompt",
+    "creator_notes",
+)
 MAX_NAME_CHARS = 80
+MAX_GREETINGS = 32
 MAX_TAGS = 32
 MAX_TAG_CHARS = 40
 MAX_ENTRY_NAME_CHARS = 120
@@ -49,8 +63,31 @@ class CardEdit:
     scenario: str = ""
     first_mes: str = ""
     mes_example: str = ""
+    system_prompt: str = ""
+    creator_notes: str = ""
+    alternate_greetings: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     book: tuple[LoreEntryEdit, ...] = ()
+
+    @classmethod
+    def of(cls, card: CharacterCard) -> CardEdit:
+        """把卡片原样转成一次编辑（草稿保存到仓库时，用正式模式再过一遍）。"""
+        return cls(
+            name=card.name,
+            **{f: getattr(card, f) for f in EDITABLE_TEXT_FIELDS},
+            alternate_greetings=tuple(card.alternate_greetings),
+            tags=tuple(card.tags),
+            book=tuple(
+                LoreEntryEdit(
+                    name=e.name,
+                    keys=tuple(e.keys),
+                    content=e.content,
+                    enabled=e.enabled,
+                    constant=e.constant,
+                )
+                for e in book_in_order(card.book)
+            ),
+        )
 
 
 def _clean(text: str) -> str:
@@ -75,7 +112,25 @@ def _strings(
     return tuple(result)
 
 
-def _entry(index: int, edit: LoreEntryEdit) -> LoreEntry:
+def _greetings(values: tuple[str, ...], *, lenient: bool) -> tuple[str, ...]:
+    """备选开场白：正式模式去掉空的；草稿里空的一条留着（用户刚加、还没写）。"""
+    result: list[str] = []
+    for index, value in enumerate(values):
+        text = _clean(value)
+        if not text and not lenient:
+            continue
+        if len(text) > MAX_FIELD_CHARS:
+            raise EditError(
+                f"alternate_greetings.{index}",
+                f"At most {MAX_FIELD_CHARS} characters (now {len(text)})",
+            )
+        result.append(text)
+    if len(result) > MAX_GREETINGS:
+        raise EditError("alternate_greetings", f"At most {MAX_GREETINGS} alternate greetings")
+    return tuple(result)
+
+
+def _entry(index: int, edit: LoreEntryEdit, *, lenient: bool) -> LoreEntry:
     where = f"book.{index}"
     name = _clean(edit.name)
     if len(name) > MAX_ENTRY_NAME_CHARS:
@@ -83,7 +138,7 @@ def _entry(index: int, edit: LoreEntryEdit) -> LoreEntry:
             f"{where}.name", f"The entry name can be at most {MAX_ENTRY_NAME_CHARS} characters"
         )
     content = _clean(edit.content)
-    if not content:
+    if not content and not lenient:
         raise EditError(f"{where}.content", "The entry content can't be empty")
     if len(content) > MAX_FIELD_CHARS:
         raise EditError(
@@ -102,10 +157,11 @@ def _entry(index: int, edit: LoreEntryEdit) -> LoreEntry:
     )
 
 
-def apply_edit(card: CharacterCard, edit: CardEdit) -> CharacterCard:
-    """把编辑应用到卡片上，返回新卡片；不合格时抛 EditError。没开放的字段原样保留。"""
+def apply_edit(card: CharacterCard, edit: CardEdit, *, lenient: bool = False) -> CharacterCard:
+    """把编辑应用到卡片上，返回新卡片；不合格时抛 EditError。没开放的字段原样保留。
+    lenient 为真是草稿模式（见模块说明）。"""
     name = _clean(edit.name)
-    if not name:
+    if not name and not lenient:
         raise EditError("name", "The character name can't be empty")
     if len(name) > MAX_NAME_CHARS:
         raise EditError("name", f"The character name can be at most {MAX_NAME_CHARS} characters")
@@ -115,11 +171,20 @@ def apply_edit(card: CharacterCard, edit: CardEdit) -> CharacterCard:
         if len(text) > MAX_FIELD_CHARS:
             raise EditError(field, f"At most {MAX_FIELD_CHARS} characters (now {len(text)})")
         texts[field] = text
+    greetings = _greetings(edit.alternate_greetings, lenient=lenient)
     tags = _strings(edit.tags, field="tags", limit=MAX_TAGS, each=MAX_TAG_CHARS, what="tags")
     if len(edit.book) > MAX_BOOK_ENTRIES:
         raise EditError("book", f"The lorebook can have at most {MAX_BOOK_ENTRIES} entries")
-    book = tuple(_entry(i, entry) for i, entry in enumerate(edit.book))
-    updated = card.model_copy(update={"name": name, "tags": tags, "book": book, **texts})
+    book = tuple(_entry(i, entry, lenient=lenient) for i, entry in enumerate(edit.book))
+    updated = card.model_copy(
+        update={
+            "name": name,
+            "tags": tags,
+            "book": book,
+            "alternate_greetings": greetings,
+            **texts,
+        }
+    )
     if updated.total_chars() > MAX_TOTAL_CHARS:
         raise EditError(
             "card",
@@ -146,7 +211,7 @@ def changed_fields(before: CharacterCard, after: CharacterCard) -> list[str]:
 
     changed = [
         f
-        for f in ("name", *EDITABLE_TEXT_FIELDS, "tags")
+        for f in ("name", *EDITABLE_TEXT_FIELDS, "alternate_greetings", "tags")
         if getattr(before, f) != getattr(after, f)
     ]
     if entries(before) != entries(after):

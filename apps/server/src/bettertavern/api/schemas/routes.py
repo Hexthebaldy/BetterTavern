@@ -52,6 +52,7 @@ class RouteIn(BaseModel):
     caps_override: dict[str, Any] = Field(default_factory=dict)
     director: bool = False
     background: bool = False
+    workbench: bool = False
 
 
 class RoutePatchIn(BaseModel):
@@ -69,6 +70,7 @@ class RoutePatchIn(BaseModel):
     caps_override: dict[str, Any] | None = None
     director: bool | None = None
     background: bool | None = None
+    workbench: bool | None = None
 
 
 class ProbeCheckOut(BaseModel):
@@ -113,6 +115,7 @@ class RouteOut(Out):
     last_probe: ProbeOut | None
     is_director: bool
     is_background: bool
+    is_workbench: bool
     supports_tools: bool
     shares_key_with: list[str]
     window: WindowOut

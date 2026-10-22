@@ -11,6 +11,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.scenario.setup import ScenarioSetup
 from bettertavern.domain.story.language import DEFAULT_LANGUAGE, parse_language
 from bettertavern.domain.world.names import clean_display_name
 from bettertavern.infra.db.repositories import library as library_repo
@@ -37,8 +38,10 @@ log = structlog.get_logger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class NewPlaythrough:
+    """主角名和偏好可以不填，用剧本的设置补上。"""
+
     scenario_id: str
-    protagonist_name: str
+    protagonist_name: str = ""
     protagonist_summary: str = ""
     title: str | None = None
     preferences: dict[str, Any] | None = None
@@ -115,9 +118,7 @@ class PlaythroughService:
         )
 
     async def create(self, user_id: str, data: NewPlaythrough) -> tuple[PlaythroughView, TurnView]:
-        name = clean_display_name(data.protagonist_name)
-        if not name:
-            raise Invalid("Enter a name for the protagonist", field="protagonist_name")
+        """没填的主角和偏好用剧本的设置（scenarios.setup）补上；开场白的选择也取自设置，记进这一局。"""
         if not is_uuid(data.scenario_id):
             raise NotFound("Scenario not found")
         if await self._routes.resolve(user_id, RouteTask.DIRECTOR) is None:
@@ -126,19 +127,39 @@ class PlaythroughService:
                 code="ROUTE_MISSING",
                 status=409,
             )
-        prefs = Preferences.from_json(data.preferences)
-        settings = {
-            "protagonist": {"name": name, "summary": data.protagonist_summary.strip()[:400]},
-            "preferences": {
-                "length": prefs.length,
-                "style": prefs.style,
-                "boundaries": prefs.boundaries,
-            },
-        }
         async with self._engine.begin() as conn:
             scenario = await library_repo.get_scenario(conn, user_id, data.scenario_id)
             if scenario is None:
                 raise NotFound("Scenario not found")
+            if not scenario.cards:  # 迁移前的旧数据才可能出现
+                raise Invalid("This scenario has no character card", field="scenario_id")
+            setup = ScenarioSetup.from_json(scenario.setup)
+            name = clean_display_name(data.protagonist_name) or setup.protagonist_name
+            if not name:
+                raise Invalid("Enter a name for the protagonist", field="protagonist_name")
+            summary = data.protagonist_summary.strip()[:400] or (
+                setup.protagonist_summary if not data.protagonist_name.strip() else ""
+            )
+            prefs = (
+                Preferences.from_json(data.preferences)
+                if data.preferences is not None
+                else Preferences(
+                    length=setup.length, style=setup.style, boundaries=setup.boundaries
+                )
+            )
+            settings: dict[str, Any] = {
+                "protagonist": {"name": name, "summary": summary},
+                "preferences": {
+                    "length": prefs.length,
+                    "style": prefs.style,
+                    "boundaries": prefs.boundaries,
+                },
+            }
+            if setup.opening is not None:
+                settings["opening"] = {
+                    "card_id": setup.opening.card_id,
+                    "greeting": setup.opening.greeting,
+                }
             title = (data.title or "").strip()[:80] or scenario.name
             pt = await repo.insert_playthrough(
                 conn,

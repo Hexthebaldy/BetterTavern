@@ -16,6 +16,7 @@ x-server: &server
     AUTH_SECRET: ${AUTH_SECRET:-}
     ENABLE_PROBE_ENDPOINTS: ${ENABLE_PROBE_ENDPOINTS:-false}
     ALLOW_PRIVATE_ENDPOINTS: ${ALLOW_PRIVATE_ENDPOINTS:-false}
+    FAKE_IP_RANGES: ${FAKE_IP_RANGES:-}
     # 宿主机上的反向代理连进容器时，来源地址是 Docker 的网关（内网段），不是 127.0.0.1。
     # 信任这些网段带来的 X-Forwarded-For，限流才能按每个用户的真实 IP 计数。
     # 安全的前提是 api 只发布在 127.0.0.1 上（见下面的 ports）：公网来的连接到不了这里，伪造不了

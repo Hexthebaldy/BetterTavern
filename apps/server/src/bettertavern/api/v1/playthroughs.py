@@ -59,10 +59,10 @@ async def create_playthrough(
         user_id,
         NewPlaythrough(
             scenario_id=body.scenario_id,
-            protagonist_name=body.protagonist.name,
-            protagonist_summary=body.protagonist.summary,
+            protagonist_name=body.protagonist.name if body.protagonist else "",
+            protagonist_summary=body.protagonist.summary if body.protagonist else "",
             title=body.title,
-            preferences=body.preferences.model_dump(),
+            preferences=body.preferences.model_dump() if body.preferences else None,
             language=body.language,
         ),
     )

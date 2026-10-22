@@ -37,6 +37,7 @@ from bettertavern.services.playthrough_service import NewPlaythrough
 from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.turn_service import ActionInput
 from tests.fakes.runtime import ScriptedAdapter, StreamScript, result, scripted_hub
+from tests.support.library import import_scenario
 from tests.support.pg import schema_engine
 
 SEED = {
@@ -221,7 +222,7 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
                 provider="fake", model="fake-model", api_key="sk-test-123456", director=True
             ),
         )
-        scenario = await services.scenarios.import_file(user.id, json.dumps(CARD).encode())
+        scenario = await import_scenario(services, user.id, json.dumps(CARD).encode())
         adapter = adapters["fake"]
         adapter.responder = background_reply
         adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))

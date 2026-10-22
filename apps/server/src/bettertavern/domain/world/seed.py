@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -177,12 +177,18 @@ def _dedupe[T: BaseModel](items: list[T], key: Callable[[T], str]) -> list[T]:
     return result
 
 
-def normalize_seed(seed: Seed, *, protagonist_name: str, card_name: str) -> Seed:
+def normalize_seed(
+    seed: Seed,
+    *,
+    protagonist_name: str,
+    card_name: str,
+    other_names: Sequence[str] = (),
+) -> Seed:
     """校正模型产出的 Seed：
 
     - 主角名以玩家输入为准，NPC 里与主角同名的去掉；
     - 同类实体按名字去重，名字为空的丢弃；
-    - 角色卡的主角色必须在 NPC 里（模型漏了就补上）；
+    - 角色卡的主角色必须在 NPC 里（模型漏了就补上）；群像剧本里其他几张卡的角色（other_names）也是；
     - 引用（在场人物、持有者、所在地点、成员、事实涉及的实体）只保留能解析到的名字。
     """
     protagonist_name = clean_display_name(protagonist_name)
@@ -196,6 +202,10 @@ def normalize_seed(seed: Seed, *, protagonist_name: str, card_name: str) -> Seed
     card_norm = normalize_name(card_name) if card_name else ""
     if card_norm and card_norm != hero and card_norm not in {norm(c) for c in characters}:
         characters.insert(0, CharacterSeed(name=card_name))
+    for other in other_names:
+        other_norm = normalize_name(other) if other else ""
+        if other_norm and other_norm != hero and other_norm not in {norm(c) for c in characters}:
+            characters.append(CharacterSeed(name=other))
     locations = _dedupe(seed.locations, norm)
     items = _dedupe(seed.items, norm)
     orgs = _dedupe(seed.organizations, norm)
@@ -271,28 +281,38 @@ def _first_paragraphs(text: str, limit: int) -> str:
 
 
 def minimal_seed(
-    card: CharacterCard, *, protagonist_name: str, protagonist_summary: str = ""
+    card: CharacterCard,
+    *,
+    protagonist_name: str,
+    protagonist_summary: str = "",
+    others: Sequence[CharacterCard] = (),
 ) -> Seed:
-    """WorldBuilder 失败或超时时的最小 Seed：只用角色卡原文，不调用模型。"""
+    """WorldBuilder 失败或超时时的最小 Seed：只用角色卡原文，不调用模型。
+    群像剧本的其他几张卡（others）各建一个人物。"""
     name = clean_display_name(protagonist_name)
 
-    def text(value: str, limit: int) -> str:
-        return _first_paragraphs(apply_macros(value, user=name, char=card.name), limit)
+    def text(c: CharacterCard, value: str, limit: int) -> str:
+        return _first_paragraphs(apply_macros(value, user=name, char=c.name), limit)
 
-    character = CharacterSeed(
-        name=card.name,
-        summary=text("\n".join(p for p in (card.description, card.personality) if p), 500),
-        speech_style=text(card.mes_example, 240),
-    )
-    world = WorldSeed(title=card.name, setting=text(card.scenario or card.description, 800))
+    characters = [
+        CharacterSeed(
+            name=c.name,
+            summary=text(c, "\n".join(p for p in (c.description, c.personality) if p), 500),
+            speech_style=text(c, c.mes_example, 240),
+        )
+        for c in (card, *others)
+    ]
+    world = WorldSeed(title=card.name, setting=text(card, card.scenario or card.description, 800))
     opening = OpeningBrief(
         present=[card.name] if normalize_name(card.name) != normalize_name(name) else [],
-        situation=text(card.first_mes or card.scenario, 500),
+        situation=text(card, card.first_mes or card.scenario, 500),
     )
     seed = Seed(
         world=world,
         protagonist=ProtagonistSeed(name=name, summary=protagonist_summary[:400]),
-        characters=[character],
+        characters=characters,
         opening=opening,
     )
-    return normalize_seed(seed, protagonist_name=name, card_name=card.name)
+    return normalize_seed(
+        seed, protagonist_name=name, card_name=card.name, other_names=[c.name for c in others]
+    )

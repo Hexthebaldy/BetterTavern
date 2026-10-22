@@ -12,86 +12,6 @@ from bettertavern.domain.story.language import DEFAULT_LANGUAGE, PromptLanguage
 from .common import Out
 
 
-class ScenarioOut(Out):
-    id: str
-    name: str
-    source_kind: str
-    avatar_blob_id: str | None
-    description_preview: str
-    first_mes_preview: str
-    creator: str
-    tags: list[str]
-    book_entries: int
-    alternate_greetings: int
-    truncated_fields: list[str]
-    version: int
-    edited_at: datetime | None
-    created_at: datetime
-    updated_at: datetime
-    duplicate: bool = False
-
-
-class ScenarioPatchIn(BaseModel):
-    name: str = Field(min_length=1, max_length=80)
-
-
-# 编辑角色卡：长度上限由 domain/scenario/edit.py 检查（超长时返回带 field 的 422），这里不重复限制；
-# 请求体整体不超过 4 MB（见 api/v1/scenarios.py 的 MAX_CARD_BODY_BYTES）
-
-
-class LoreEntryIn(BaseModel):
-    name: str = ""
-    keys: list[str] = Field(default_factory=list)
-    content: str = ""
-    enabled: bool = True
-    constant: bool = False
-
-
-class CharacterCardIn(BaseModel):
-    name: str
-    description: str = ""
-    personality: str = ""
-    scenario: str = ""
-    first_mes: str = ""
-    mes_example: str = ""
-    tags: list[str] = Field(default_factory=list)
-    book: list[LoreEntryIn] = Field(default_factory=list)
-
-
-class ScenarioCardIn(BaseModel):
-    version: int = Field(ge=1)
-    display_name: str
-    card: CharacterCardIn
-
-
-class LoreEntryOut(Out):
-    name: str
-    keys: list[str]
-    content: str
-    enabled: bool
-    constant: bool
-
-
-class CharacterCardOut(Out):
-    name: str
-    description: str
-    personality: str
-    scenario: str
-    first_mes: str
-    mes_example: str
-    tags: list[str]
-    book: list[LoreEntryOut]
-
-
-class ScenarioCardOut(Out):
-    scenario_id: str
-    version: int
-    edited_at: datetime | None
-    display_name: str
-    card: CharacterCardOut
-    truncated_fields: list[str]
-
-
 class ProtagonistIn(BaseModel):
     name: str = Field(min_length=1, max_length=40)
     summary: str = Field(default="", max_length=400)
@@ -105,9 +25,10 @@ class PreferencesIn(BaseModel):
 
 class PlaythroughIn(BaseModel):
     scenario_id: str
-    protagonist: ProtagonistIn
+    # 不传时用剧本设置（scenarios.setup）里的默认主角和偏好
+    protagonist: ProtagonistIn | None = None
     title: str | None = Field(default=None, max_length=80)
-    preferences: PreferencesIn = Field(default_factory=PreferencesIn)
+    preferences: PreferencesIn | None = None
     # 这一局给 agent 的提示词用哪种语言：客户端传当前的界面语言；之后不变
     language: PromptLanguage = DEFAULT_LANGUAGE
 

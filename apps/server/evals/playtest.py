@@ -275,7 +275,13 @@ async def run_replay(
         await _route(services, user.id, config.director, director=True)
         if config.state is not None:
             await _route(services, user.id, config.state, director=False)
-        imported = await services.scenarios.import_file(user.id, card_bytes(scenario))
+        draft = await services.drafts.import_file(
+            user.id, card_bytes(scenario), language=scenario.language, allow_duplicate=True
+        )
+        assert draft.draft is not None
+        saved = await services.drafts.save(user.id, draft.draft.summary.id, new_scenario=True)
+        assert saved.scenario is not None
+        imported = saved.scenario
         pt, opening = await services.playthroughs.create(
             user.id,
             NewPlaythrough(

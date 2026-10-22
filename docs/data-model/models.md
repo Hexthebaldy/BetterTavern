@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [剧本库](library.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
 玩家配好的模型：一行就是一个能用来写故事的模型，包括服务商、API Key、端点、模型名、上下文窗口和写法设置。其中一行是导演。
 对应的接口见 [api/models.md](../api/models.md)。
@@ -37,6 +37,7 @@
 | `last_ok_at` | timestamptz | 是 |  | 最近一次确认 Key 可用的时间（获取模型列表或测试成功） |
 | `is_director` | boolean | 否 | `false` | 是不是导演。每个用户最多一行为真 |
 | `is_background` | boolean | 否 | `false` | 是不是后台整理用的模型（世界状态 agent 用它）。每个用户最多一行为真；没有时后台整理用导演那一行 |
+| `is_workbench` | boolean | 否 | `false` | 是不是工作台用的模型（工作台的 agent `card_maker` 用它）。每个用户最多一行为真；没有时工作台用导演那一行 |
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `updated_at` | timestamptz | 否 | `now()` |  |
 
@@ -45,9 +46,11 @@
 - `model_routes_user_idx (user_id, created_at)`：列表按添加时间升序排列。
 - `model_routes_director_uq (user_id) WHERE is_director`：每个用户最多一个导演。换导演时先把旧的置为假，再把新的置为真（唯一索引逐行检查，不能在一条语句里互换）。
 - `model_routes_background_uq (user_id) WHERE is_background`：每个用户最多一个后台模型，换的做法和导演一样。
+- `model_routes_workbench_uq (user_id) WHERE is_workbench`：每个用户最多一个工作台模型，换的做法同上。
 
 谁用哪一行（`services/route_service.py`）：导演、开局搭建世界（`world_builder`）、补选项（`repair`）都用 `is_director` 为真的那一行；
 世界状态 agent（`state_keeper`）用 `is_background` 为真的那一行，没有时也用导演那一行。能力表说这个模型不能调用工具（`tools` 为假）时，世界状态整理直接失败，原因记为 `tools_unsupported`。
+工作台的 agent（`card_maker`）用 `is_workbench` 为真的那一行，没有时用导演那一行；同样必须能调用工具，否则这一轮直接失败（对话里记一条 `TOOLS_UNSUPPORTED`）。
 没有导演时，开局和提交行动返回 409 `ROUTE_MISSING`。
 
 加密方式（`infra/crypto/envelope.py`）：

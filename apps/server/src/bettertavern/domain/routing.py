@@ -1,7 +1,7 @@
 """模型路由：每个 agent 槽位（task）用哪个凭据的哪个模型，以及采样参数与工作窗口上限。
 
-解析顺序：后台的 task（世界状态 agent、章节整理）用玩家设为“用于后台”的模型，其余用导演的模型；
-没设后台模型时也用导演的模型。
+解析顺序：后台的 task（世界状态 agent、章节整理）用玩家设为“用于后台”的模型，
+工作台的 agent 用设为“用于工作台”的模型，其余用导演的模型；没设这两种时也用导演的模型。
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ class RouteTask(StrEnum):
     GATE = "gate"
     WORLD_BUILDER = "world_builder"
     REPAIR = "repair"
+    WORKBENCH = "workbench"
 
 
 # 在后台跑、不挡玩家的 task：用“用于后台”的模型（docs/agent-runtime.md 第 4 节）
@@ -35,6 +36,8 @@ DEFAULT_MAX_TOKENS: dict[RouteTask, int] = {
     RouteTask.GATE: 512,
     RouteTask.WORLD_BUILDER: 8192,
     RouteTask.REPAIR: 256,
+    # 工作台的 agent 用工具参数写整段的开场白、世界书，给足
+    RouteTask.WORKBENCH: 8192,
 }
 
 DEFAULT_TEMPERATURE: dict[RouteTask, float] = {
@@ -42,6 +45,7 @@ DEFAULT_TEMPERATURE: dict[RouteTask, float] = {
     RouteTask.STATE_KEEPER: 0.3,
     RouteTask.WORLD_BUILDER: 0.7,
     RouteTask.REPAIR: 0.7,
+    RouteTask.WORKBENCH: 0.8,
 }
 
 

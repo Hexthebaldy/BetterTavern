@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from bettertavern.domain.memory.chapters import raw_start
 from bettertavern.domain.memory.outline import outline_from_json, slice_of
-from bettertavern.domain.scenario.card import CharacterCard
+from bettertavern.domain.scenario.card import CharacterCard, greeting_narrative
+from bettertavern.domain.scenario.setup import ScenarioSetup, greetings_of
 from bettertavern.domain.story.language import unnamed_protagonist
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
 from bettertavern.domain.world.plan import plan_world
@@ -24,6 +25,7 @@ from bettertavern.domain.world.views import (
     ThreadView,
     WorldSnapshot,
 )
+from bettertavern.infra.db.repositories import cards as cards_repo
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import outline as outline_repo
 from bettertavern.infra.db.repositories import story as story_repo
@@ -183,14 +185,21 @@ class PgTurnStore:
             world = await load_world(conn, header.playthrough_id)
             memory = await load_story_memory(conn, header.playthrough_id, pt.summarized_seq)
             current = await outline_repo.current_outline(conn, header.playthrough_id)
+            action = PlayerAction.from_json(turn.user_action)
+            greeting, char = "", ""
+            if action.source == "opening" and pt.settings.get("opening"):
+                cards = await _scenario_cards(conn, pt.user_id, pt.scenario_id)
+                greeting, char = _chosen_greeting(pt.settings.get("opening"), cards)
         outline = outline_from_json(current.content) if current else None
         seed = Seed.model_validate(pt.seed) if pt.seed else None
         protagonist = (pt.settings.get("protagonist") or {}).get("name") or (
             seed.protagonist.name if seed else unnamed_protagonist(pt.language)
         )
+        if greeting:
+            greeting = greeting_narrative(greeting, user=str(protagonist), char=char)
         return TurnContext(
             header=header,
-            action=PlayerAction.from_json(turn.user_action),
+            action=action,
             protagonist_name=str(protagonist),
             preferences=Preferences.from_json(pt.settings.get("preferences")),
             seed=seed,
@@ -210,6 +219,7 @@ class PgTurnStore:
             state_seq=pt.state_seq,
             memory=memory,
             outline=slice_of(outline) if outline is not None else None,
+            opening_greeting=greeting,
         )
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:
@@ -284,17 +294,17 @@ class PgTurnStore:
         async with self._engine.connect() as conn:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id)
             assert pt is not None
-            card: CharacterCard | None = None
-            if pt.scenario_id is not None:
-                scenario = await library_repo.get_scenario(conn, pt.user_id, pt.scenario_id)
-                if scenario is not None:
-                    card = CharacterCard.model_validate(scenario.card)
+            cards = await _scenario_cards(conn, pt.user_id, pt.scenario_id)
         protagonist = pt.settings.get("protagonist") or {}
+        opening, opening_char = _chosen_greeting(pt.settings.get("opening"), cards)
         return WorldBuildInput(
-            card=card,
+            card=cards[0][1] if cards else None,
             protagonist_name=str(protagonist.get("name") or unnamed_protagonist(pt.language)),
             protagonist_summary=str(protagonist.get("summary") or ""),
             preferences=Preferences.from_json(pt.settings.get("preferences")),
+            cards=tuple(card for _, card in cards),
+            opening=opening,
+            opening_char=opening_char,
         )
 
     async def save_world(
@@ -315,3 +325,29 @@ class PgTurnStore:
             if run is not None:
                 await insert_run(conn, header, run)
         return count
+
+
+async def _scenario_cards(
+    conn: AsyncConnection, user_id: str, scenario_id: str | None
+) -> list[tuple[str, CharacterCard]]:
+    """剧本里的几张卡（按顺序），读此刻的正式版本（剧本实时引用角色卡）。"""
+    if scenario_id is None:
+        return []
+    scenario = await library_repo.get_scenario(conn, user_id, scenario_id)
+    if scenario is None or not scenario.cards:
+        return []
+    rows = await cards_repo.get_cards(conn, user_id, [c.card_id for c in scenario.cards])
+    return [(row.id, CharacterCard.model_validate(row.card)) for row in rows]
+
+
+def _chosen_greeting(value: Any, cards: list[tuple[str, CharacterCard]]) -> tuple[str, str]:
+    """开局时记下的开场白选择 → (开场白原文, 角色名)；选的卡或那一条已经不在了就是空的。"""
+    opening = ScenarioSetup.from_json({"opening": value}).opening if value else None
+    if opening is None:
+        return "", ""
+    for card_id, card in cards:
+        if card_id == opening.card_id:
+            greetings = greetings_of(card)
+            if opening.greeting < len(greetings) and greetings[opening.greeting].strip():
+                return greetings[opening.greeting], card.name
+    return "", ""

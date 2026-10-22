@@ -1,0 +1,38 @@
+{# version: 1 #}
+<workbench-state>
+このラウンド：{{ {"planning": "相談（まだカードには書けません）", "build": "カードを書く", "revise": "変更を提案する（直接は書けません）"}[mode] }}{% if trigger == "continue" %}／ユーザーが続きを書き上げるよう頼みました{% elif trigger == "answers" %}／ユーザーがアンケートに答えました{% elif trigger == "plan_reply" %}／ユーザーが案に返事をしました{% endif %}
+
+{% if plan %}
+承認された案（chosen_name はユーザーが選んだ名前）：
+{{ plan }}
+
+{% endif %}
+下書きの概要：
+{{ digest }}
+{% if user_edits %}
+
+ユーザーが手で編集した箇所（上書きしない）：{{ user_edits | join("、") }}
+{% endif %}
+{% if notes %}
+
+資料メモ：
+{% for note in notes %}
+- [{{ note.id }}] {{ note.text }}{% if note.url %}（出典：{{ note.url }}）{% endif %}
+
+{% endfor %}
+{% endif %}
+{% if assets %}
+
+下書きの画像：
+{% for asset in assets %}
+- {{ asset.id }}：{{ asset.source }}、ライセンス {{ asset.license }}、{{ asset.size }}
+{% endfor %}
+{% endif %}
+{% if todos %}
+
+進捗リスト：
+{% for todo in todos %}
+- {{ todo }}
+{% endfor %}
+{% endif %}
+</workbench-state>
