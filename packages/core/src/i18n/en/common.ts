@@ -129,6 +129,14 @@ export const common: Messages<typeof source> = {
       INTERNAL_ERROR: "The server ran into a problem. Please try again.",
       PROVIDER_ERROR: "The model provider ran into a problem. Please try again later.",
       UNAVAILABLE: "The server is restarting. Please try again shortly.",
+      EMAIL_NOT_VERIFIED: "Your email isn't verified yet. We've sent you a new code",
+      REGISTRATION_CLOSED: "Sign-ups are closed for now",
+      CODE_INVALID: "That code isn't right. {{attempts_left}} tries left",
+      CODE_EXPIRED: "That code has expired or no longer works. Please resend",
+      MAIL_UNAVAILABLE: "We can't send email right now. Please try again later",
+      TOO_MANY_RUNS: "Too many drafts are being written at once (up to {{limit}}). Wait for one to finish",
+      TOO_MANY_DRAFTS: "Too many unsaved drafts (up to {{limit}}). Save or delete some first",
+      STORAGE_FULL: "Your image storage is full ({{limit_mb}} MB). Delete some drafts or cards and try again",
     },
     field: {
       email: "That email address isn't valid.",
@@ -153,6 +161,8 @@ export const common: Messages<typeof source> = {
       answers: "The answers don't match. Please refresh and try again",
       file: "The file isn't a usable image",
       prompt: "Please describe the image",
+      code: "The code is 6 digits",
+      new_password: "The new password needs at least 8 characters",
     },
     turn: {
       UNKNOWN: "Generation failed",

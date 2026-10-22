@@ -321,6 +321,16 @@ export function describeError(error: unknown): string {
   return i18n.t("errors.generic");
 }
 
+/** 错误说明里要用到的附加字段（还能试几次、上限是多少） */
+function problemParams(error: ApiError): Record<string, number> {
+  const params: Record<string, number> = {};
+  for (const key of ["attempts_left", "limit", "limit_mb", "retry_after"]) {
+    const value = error.field(key);
+    if (typeof value === "number") params[key] = value;
+  }
+  return params;
+}
+
 function apiErrorText(error: ApiError): string {
   if (error.code === "NETWORK") return i18n.t("errors.network");
   if (error.code === "TIMEOUT") return i18n.t("errors.timeout");
@@ -333,7 +343,7 @@ function apiErrorText(error: ApiError): string {
     if (byField) return byField;
     if (english) return error.message;
   }
-  const byCode = error.problem ? lookup(`errors.api.${error.code}`) : null;
+  const byCode = error.problem ? lookup(`errors.api.${error.code}`, problemParams(error)) : null;
   if (byCode) return byCode;
   if (english) return error.message;
   return lookup(`errors.status.${error.status}`) ?? i18n.t("errors.httpStatus", { status: error.status });

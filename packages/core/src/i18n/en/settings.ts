@@ -63,6 +63,10 @@ export const settings: Messages<typeof source> = {
     scenarios: "Scenarios",
     models: "Models",
     confirmPassword: "Enter your password to confirm",
+    changePassword: "Change password",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    passwordChanged: "Password changed. You've been signed out on your other devices.",
   },
   tools: {
     title: "External services",

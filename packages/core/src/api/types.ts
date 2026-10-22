@@ -20,6 +20,8 @@ export type User = {
   display_name: string;
   locale: string;
   created_at: string;
+  /** 邮箱验证过没有；不要求验证邮箱的服务器上注册即为 true */
+  email_verified: boolean;
 };
 
 export type AuthResponse = {
@@ -31,6 +33,19 @@ export type AuthResponse = {
   refresh_token: string | null;
   refresh_expires_at: string;
 };
+
+/** 注册的响应：verification_required 时还没登录（令牌都是 null），验证码已经发到邮箱 */
+export type RegisterResponse = {
+  user: User;
+  verification_required: boolean;
+  access_token: string | null;
+  token_type: string;
+  expires_in: number | null;
+  refresh_token: string | null;
+  refresh_expires_at: string | null;
+};
+
+export type CodePurpose = "verify" | "reset";
 
 export type Provider = {
   id: string;

@@ -3,9 +3,22 @@ import { describe, it } from "node:test";
 
 import { ApiError } from "../api/client.ts";
 import type { AuthResponse } from "../api/types.ts";
-import { parseStoredSession, SessionManager, type SessionStorage, type StoredSession } from "./session.ts";
+import {
+  parseStoredSession,
+  registeredSession,
+  SessionManager,
+  type SessionStorage,
+  type StoredSession,
+} from "./session.ts";
 
-const USER = { id: "u1", email: "lin@example.com", display_name: "林川", locale: "zh-CN", created_at: "" };
+const USER = {
+  id: "u1",
+  email: "lin@example.com",
+  display_name: "林川",
+  locale: "zh-CN",
+  created_at: "",
+  email_verified: true,
+};
 
 function auth(n: number, expiresIn = 900): AuthResponse {
   return {
@@ -159,3 +172,25 @@ describe("SessionManager", () => {
     assert.deepEqual(parseStoredSession(JSON.stringify(ok)), ok);
   });
 });
+
+describe("registeredSession", () => {
+  it("不要求验证邮箱：注册的响应直接当登录用", () => {
+    const signedIn = registeredSession({ ...auth(1), verification_required: false });
+    assert.equal(signedIn?.access_token, "access-1");
+    assert.equal(signedIn?.refresh_token, "refresh-1");
+  });
+
+  it("要先验证邮箱：没有令牌，不能登录", () => {
+    const pending = registeredSession({
+      user: { ...USER, email_verified: false },
+      verification_required: true,
+      access_token: null,
+      token_type: "Bearer",
+      expires_in: null,
+      refresh_token: null,
+      refresh_expires_at: null,
+    });
+    assert.equal(pending, null);
+  });
+});
+

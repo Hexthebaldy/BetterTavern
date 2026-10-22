@@ -285,6 +285,13 @@ describe("错误说明按错误码翻译", () => {
     assert.equal(describeError(serverError(418, "TEAPOT", "I'm a teapot")), "服务器返回了错误（HTTP 418）");
   });
 
+  it("错误说明里带上服务端给的数字：还能试几次、上限多少", () => {
+    const wrong = serverError(400, "CODE_INVALID", "That code isn't right", { attempts_left: 3 });
+    assert.equal(describeError(wrong), "验证码不对，还能再试 3 次");
+    const full = serverError(409, "STORAGE_FULL", "Storage full", { limit_mb: 200 });
+    assert.equal(describeError(full), "图片的存储空间满了（200 MB），删掉一些草稿或角色卡再试");
+  });
+
   it("英文界面：没有对应翻译时用服务端的英文说明", () => {
     applyLanguage("en");
     try {

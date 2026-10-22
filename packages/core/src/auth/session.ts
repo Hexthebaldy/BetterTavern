@@ -9,7 +9,7 @@
  */
 
 import { ApiError } from "../api/client.ts";
-import type { AuthResponse, User } from "../api/types.ts";
+import type { AuthResponse, RegisterResponse, User } from "../api/types.ts";
 
 export type StoredSession = {
   user: User;
@@ -35,6 +35,26 @@ export type SessionDeps = {
   /** 离过期还有多久就提前刷新 */
   earlyRefreshMs?: number;
 };
+
+/** 注册的响应能不能直接登录：要先验证邮箱时返回 null（客户端去验证页） */
+export function registeredSession(response: RegisterResponse): AuthResponse | null {
+  if (
+    response.verification_required ||
+    response.access_token === null ||
+    response.expires_in === null ||
+    response.refresh_expires_at === null
+  ) {
+    return null;
+  }
+  return {
+    user: response.user,
+    access_token: response.access_token,
+    token_type: response.token_type,
+    expires_in: response.expires_in,
+    refresh_token: response.refresh_token,
+    refresh_expires_at: response.refresh_expires_at,
+  };
+}
 
 export function sessionFromAuth(auth: AuthResponse, now: number): StoredSession {
   return {

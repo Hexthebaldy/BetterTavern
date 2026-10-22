@@ -61,6 +61,10 @@ export const settings = {
     scenarios: "剧本",
     models: "模型",
     confirmPassword: "输入密码确认",
+    changePassword: "修改密码",
+    currentPassword: "当前密码",
+    newPassword: "新密码",
+    passwordChanged: "密码已修改，其他设备上的登录都已退出。",
   },
   tools: {
     title: "外部服务",

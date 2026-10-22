@@ -127,6 +127,14 @@ export const common = {
       INTERNAL_ERROR: "服务端出错了，请重试",
       PROVIDER_ERROR: "模型服务商出错了，请稍后重试",
       UNAVAILABLE: "服务正在重启，请稍后重试",
+      EMAIL_NOT_VERIFIED: "邮箱还没有验证，验证码已经重新发到你的邮箱",
+      REGISTRATION_CLOSED: "暂时不开放注册",
+      CODE_INVALID: "验证码不对，还能再试 {{attempts_left}} 次",
+      CODE_EXPIRED: "验证码已经过期或作废了，请重新发送",
+      MAIL_UNAVAILABLE: "邮件暂时发不出去，请稍后再试",
+      TOO_MANY_RUNS: "同时在写的草稿太多了（最多 {{limit}} 个），等一个写完再开始",
+      TOO_MANY_DRAFTS: "没保存的草稿太多了（最多 {{limit}} 份），先保存或删掉一些",
+      STORAGE_FULL: "图片的存储空间满了（{{limit_mb}} MB），删掉一些草稿或角色卡再试",
     },
     /** 业务校验（VALIDATION_ERROR 带 field）按字段的说明 */
     field: {
@@ -152,6 +160,8 @@ export const common = {
       answers: "回答不对，请刷新后再试",
       file: "文件不是能用的图片",
       prompt: "请写画面描述",
+      code: "验证码是 6 位数字",
+      new_password: "新密码至少 8 位",
     },
     /** 回合失败码（docs/api/README.md 的“回合失败码”） */
     turn: {

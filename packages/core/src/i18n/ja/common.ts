@@ -125,6 +125,14 @@ export const common: MessagesOtherOnly<typeof source> = {
       INTERNAL_ERROR: "サーバーでエラーが発生しました。もう一度お試しください",
       PROVIDER_ERROR: "モデルのプロバイダーでエラーが発生しました。しばらくしてからお試しください",
       UNAVAILABLE: "サーバーを再起動しています。しばらくしてからお試しください",
+      EMAIL_NOT_VERIFIED: "メールアドレスがまだ確認されていません。確認コードを再送しました",
+      REGISTRATION_CLOSED: "現在、新規登録を受け付けていません",
+      CODE_INVALID: "確認コードが違います。あと {{attempts_left}} 回試せます",
+      CODE_EXPIRED: "確認コードの有効期限が切れたか、無効になりました。再送信してください",
+      MAIL_UNAVAILABLE: "現在メールを送信できません。しばらくしてからお試しください",
+      TOO_MANY_RUNS: "同時に作成中の下書きが多すぎます（最大 {{limit}} 件）。1 件終わるまでお待ちください",
+      TOO_MANY_DRAFTS: "未保存の下書きが多すぎます（最大 {{limit}} 件）。保存するか削除してください",
+      STORAGE_FULL: "画像の保存容量がいっぱいです（{{limit_mb}} MB）。下書きやカードを削除してからお試しください",
     },
     field: {
       email: "メールアドレスの形式が正しくありません",
@@ -149,6 +157,8 @@ export const common: MessagesOtherOnly<typeof source> = {
       answers: "回答が合いません。再読み込みしてもう一度お試しください",
       file: "使える画像ではありません",
       prompt: "絵の説明を書いてください",
+      code: "確認コードは 6 桁の数字です",
+      new_password: "新しいパスワードは 8 文字以上にしてください",
     },
     turn: {
       UNKNOWN: "生成に失敗しました",

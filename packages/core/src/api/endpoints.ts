@@ -5,6 +5,7 @@
 import type { ApiClient } from "./client.ts";
 import type {
   AuthResponse,
+  CodePurpose,
   ModelInfo,
   ModelRoute,
   NewAction,
@@ -14,6 +15,7 @@ import type {
   Preferences,
   ProbeReport,
   Provider,
+  RegisterResponse,
   RouteParams,
   Asset,
   CardDetail,
@@ -113,8 +115,19 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
   const authHeaders: Record<string, string> = mode === "cookie" ? { "X-Auth-Mode": "cookie" } : {};
   return {
     auth: {
-      register: (body: { email: string; password: string; display_name?: string }) =>
-        client.post<AuthResponse>("/v1/auth/register", body, { auth: false, headers: authHeaders }),
+      /** 要验证邮箱时不登录（verification_required），用 registeredSession 判断 */
+      register: (body: { email: string; password: string; display_name?: string; locale?: string }) =>
+        client.post<RegisterResponse>("/v1/auth/register", body, { auth: false, headers: authHeaders }),
+      /** 重发注册验证码（verify）、找回密码（reset）。邮箱没注册过时也成功（不透露） */
+      sendCode: (body: { email: string; purpose: CodePurpose; locale?: string }) =>
+        client.post<void>("/v1/auth/send-code", body, { auth: false }),
+      verifyEmail: (body: { email: string; code: string }) =>
+        client.post<AuthResponse>("/v1/auth/verify-email", body, { auth: false, headers: authHeaders }),
+      resetPassword: (body: { email: string; code: string; new_password: string }) =>
+        client.post<AuthResponse>("/v1/auth/reset-password", body, { auth: false, headers: authHeaders }),
+      /** 改密码：其他设备退出，这台设备拿到新令牌（调用方要 signIn 换上） */
+      changePassword: (body: { current_password: string; new_password: string }) =>
+        client.post<AuthResponse>("/v1/me/password", body, { headers: authHeaders }),
       login: (body: { email: string; password: string }) =>
         client.post<AuthResponse>("/v1/auth/login", body, { auth: false, headers: authHeaders }),
       /** 网页（Cookie 模式）传 null */

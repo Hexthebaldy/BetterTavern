@@ -62,6 +62,10 @@ export const settings: MessagesOtherOnly<typeof source> = {
     scenarios: "シナリオ",
     models: "モデル",
     confirmPassword: "確認のためパスワードを入力",
+    changePassword: "パスワードを変更",
+    currentPassword: "現在のパスワード",
+    newPassword: "新しいパスワード",
+    passwordChanged: "パスワードを変更しました。ほかの端末ではログアウトしました。",
   },
   tools: {
     title: "外部サービス",
