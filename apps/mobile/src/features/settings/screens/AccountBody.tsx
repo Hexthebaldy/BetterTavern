@@ -1,11 +1,20 @@
 /**
- * 账户：邮箱、昵称、注册日期，退出登录；删除账户放在最底下，展开后先列出会被删掉的东西，再输入密码确认。
+ * 账户：邮箱、昵称、注册日期，修改密码（折叠着），退出登录；删除账户放在最底下，展开后先列出会被删掉的东西，再输入密码确认。
  * 路由页面是 app/settings/account.tsx；宽屏设置两栏时嵌在右栏里（见 ../nav.tsx）。
  */
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { formatDate } from "@bettertavern/core/utils/format";
@@ -20,11 +29,116 @@ import {
   useOverlay,
   type IconName,
 } from "../../../components/ui.tsx";
+import { legalUrl } from "../../auth/parts.tsx";
 import { SettingsBack } from "../nav.tsx";
 import { useApp } from "../../../state/AppProvider.tsx";
 import { font, onColor, radius, space, usePalette } from "../../../theme/index.ts";
 
 type Counts = { stories: number; scenarios: number; models: number };
+
+const MIN_PASSWORD = 8;
+
+/** 修改密码：改完其他设备退出，这台设备换上新令牌（同网页端的 ChangePassword） */
+function ChangePassword() {
+  const { api, signIn } = useApp();
+  const palette = usePalette();
+  const overlay = useOverlay();
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (): Promise<void> => {
+    if (!current || next.length < MIN_PASSWORD || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await signIn(await api.auth.changePassword({ current_password: current, new_password: next }));
+      setCurrent("");
+      setNext("");
+      setOpen(false);
+      overlay.toast(t("account.passwordChanged"), { icon: "check" });
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={[styles.fold, { backgroundColor: palette.bg2 }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(!open)}
+        style={styles.dangerHead}
+      >
+        <Icon name="key" size={20} color={palette.ink} />
+        <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: palette.ink }}>
+          {t("account.changePassword")}
+        </Text>
+        <Icon name={open ? "chevronUp" : "chevronDown"} size={18} color={palette.ink} />
+      </Pressable>
+      {open ? (
+        <View style={{ gap: space.m }}>
+          {error ? <Notice message={error} /> : null}
+          <Field
+            label={t("account.currentPassword")}
+            onGrey
+            value={current}
+            onChangeText={setCurrent}
+            secureTextEntry
+            autoComplete="current-password"
+            textContentType="password"
+          />
+          <Field
+            label={t("account.newPassword")}
+            onGrey
+            placeholder={t("auth.passwordMin", { min: MIN_PASSWORD })}
+            value={next}
+            onChangeText={setNext}
+            secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
+            onSubmitEditing={() => void submit()}
+          />
+          <Button
+            label={t("account.changePassword")}
+            onPress={() => void submit()}
+            busy={busy}
+            disabled={!current || next.length < MIN_PASSWORD}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** 账户页底部的协议链接（在浏览器里打开网页端的页面） */
+function LegalLinks() {
+  const { serverUrl } = useApp();
+  const palette = usePalette();
+  const { t } = useTranslation();
+  return (
+    <View style={styles.legal} accessibilityLabel={t("legal.nav")}>
+      {(["terms", "privacy", "rules"] as const).map((page) => (
+        <Pressable
+          key={page}
+          accessibilityRole="link"
+          onPress={() => void Linking.openURL(legalUrl(serverUrl, page))}
+          hitSlop={6}
+          style={styles.legalLink}
+        >
+          <Text style={{ fontSize: 13, color: palette.mut, textDecorationLine: "underline" }}>
+            {t(`legal.${page}`)}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
 
 export function AccountBody() {
   const { api, user, signOut } = useApp();
@@ -121,6 +235,7 @@ export function AccountBody() {
             </Text>
           </View>
         </Group>
+        <ChangePassword />
         <Button
           label={t("account.signOut")}
           variant="secondary"
@@ -128,6 +243,7 @@ export function AccountBody() {
           onPress={() => void signOut()}
         />
 
+        <LegalLinks />
         <View style={[styles.danger, { backgroundColor: palette.errBg }]}>
           <Pressable
             accessibilityRole="button"
@@ -187,6 +303,14 @@ const styles = StyleSheet.create({
   name: { fontSize: 26, lineHeight: 32, fontWeight: "700" },
   kv: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 56, paddingHorizontal: 14 },
   key: { width: 44, fontSize: 13 },
+  legal: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", columnGap: space.l, marginTop: space.s },
+  legalLink: { minHeight: 32, justifyContent: "center" },
+  fold: {
+    paddingTop: space.s,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    borderRadius: radius.group,
+  },
   danger: {
     marginTop: 20,
     paddingTop: space.s,

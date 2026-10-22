@@ -1,5 +1,6 @@
 /**
- * 注册：邮箱、密码（至少 8 位，下面一条长度进度条）、可选的昵称。
+ * 注册：邮箱、密码（至少 8 位，下面一条长度进度条）、可选的昵称，勾选“已满 18 岁并同意协议”。
+ * 服务器要求验证邮箱时去验证页（验证码已经发出），否则直接登录。
  * 平板版式和登录一样（components/AuthLayout.tsx）：宽屏左边插画区，中屏表单宽 440 居中。
  */
 
@@ -9,10 +10,13 @@ import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
+import { registeredSession } from "@bettertavern/core/auth/session";
+import { currentLanguage } from "@bettertavern/core/i18n/index";
 
 import { AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
 import { ServerRow, ServerSheet } from "../../src/components/ServerSetting.tsx";
 import { BackBar, Button, Field, IconButton, Notice } from "../../src/components/ui.tsx";
+import { AgreeRow } from "../../src/features/auth/parts.tsx";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
@@ -55,6 +59,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [reveal, setReveal] = useState(false);
   const [name, setName] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
@@ -63,7 +68,7 @@ export default function RegisterScreen() {
   const column = useAuthColumn();
   const formWidth = useAuthFormWidth();
 
-  const ready = !!email.trim() && password.length >= MIN_PASSWORD;
+  const ready = !!email.trim() && password.length >= MIN_PASSWORD && agreed;
 
   const submit = async (): Promise<void> => {
     if (!ready) return;
@@ -76,9 +81,19 @@ export default function RegisterScreen() {
     setError(null);
     setFieldError(null);
     try {
-      const auth = await api.auth.register({ email: email.trim(), password, display_name: name.trim() });
+      const response = await api.auth.register({
+        email: email.trim(),
+        password,
+        display_name: name.trim(),
+        locale: currentLanguage(),
+      });
       serverUsed(serverUrl);
-      await signIn(auth);
+      const auth = registeredSession(response);
+      if (auth) await signIn(auth);
+      else {
+        setBusy(false);
+        router.push({ pathname: "/verify", params: { email: response.user.email } });
+      }
     } catch (e) {
       setBusy(false);
       const field = e instanceof ApiError ? e.field("field") : undefined;
@@ -147,8 +162,9 @@ export default function RegisterScreen() {
             maxLength={NAME_MAX}
             onSubmitEditing={() => void submit()}
           />
+          <AgreeRow checked={agreed} onToggle={() => setAgreed((v) => !v)} serverUrl={serverUrl} />
           <Button
-            label={t("auth.registerAndLogin")}
+            label={t("auth.register")}
             trailingIcon="arrowRight"
             between
             onPress={() => void submit()}

@@ -1,5 +1,6 @@
 /**
  * 登录。服务器地址在页面底部更改；连不上服务器时自动打开服务器面板。
+ * 邮箱还没验证（EMAIL_NOT_VERIFIED，服务端已经重发了验证码）时去验证页。
  * 平板（components/AuthLayout.tsx）：宽屏左边是插画区、表单在右半边居中；中屏表单宽 440 居中。
  */
 
@@ -52,7 +53,13 @@ export default function LoginScreen() {
       await signIn(auth);
     } catch (e) {
       setBusy(false);
-      if (e instanceof ApiError && e.isNetwork) {
+      if (e instanceof ApiError && e.code === "EMAIL_NOT_VERIFIED") {
+        const registered = e.field("email");
+        router.push({
+          pathname: "/verify",
+          params: { email: typeof registered === "string" ? registered : email.trim() },
+        });
+      } else if (e instanceof ApiError && e.isNetwork) {
         serverFailed(serverUrl);
         setError(t("auth.cantConnect"));
         setServerOpen(true);
@@ -116,6 +123,18 @@ export default function LoginScreen() {
             autoComplete="current-password"
             textContentType="password"
             onSubmitEditing={() => void submit()}
+            below={
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => router.push({ pathname: "/forgot", params: { email: email.trim() } })}
+                hitSlop={8}
+                style={styles.forgot}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
+                  {t("auth.forgotPassword")}
+                </Text>
+              </Pressable>
+            }
             trailing={
               <IconButton
                 icon={reveal ? "eyeOff" : "eye"}
@@ -176,4 +195,5 @@ const styles = StyleSheet.create({
   form: { gap: space.l },
   switch: { flexDirection: "row", justifyContent: "center", alignItems: "center" },
   switchAction: { height: 44, justifyContent: "center", paddingHorizontal: 6 },
+  forgot: { alignSelf: "flex-end", height: 36, justifyContent: "center", paddingHorizontal: 6 },
 });

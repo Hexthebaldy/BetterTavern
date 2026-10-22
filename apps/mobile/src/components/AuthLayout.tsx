@@ -79,7 +79,7 @@ function Art() {
  * 宽屏时把表单放在右半边、左边画插画区；其他宽度直接返回表单。
  * form 是表单那一栏（自己负责滚动），footer 是贴底的服务器入口。
  */
-export function AuthSplit({ form, footer }: { form: ReactNode; footer: ReactNode }) {
+export function AuthSplit({ form, footer }: { form: ReactNode; footer?: ReactNode }) {
   const palette = usePalette();
   const { expanded, width, height } = useLayout();
   const { t } = useTranslation();
