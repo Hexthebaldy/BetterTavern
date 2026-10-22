@@ -44,6 +44,7 @@ function ModelRow({ route }: { route: ModelRoute }) {
         </span>
       </span>
       {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
+      {route.is_workbench ? <Pill label={t("models.workbenchPill")} /> : null}
       {route.is_director ? (
         <Pill label={t("models.directorPill")} tone="acc" />
       ) : (

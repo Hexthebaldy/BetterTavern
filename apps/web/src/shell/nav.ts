@@ -1,18 +1,19 @@
-/** 一级导航的三项。剧本详情算在“剧本”下，设置的子页和连接测试算在“设置”下 */
+/** 一级导航的四项。剧本详情、角色卡详情算在“剧本”下，草稿算在“工作台”下，设置的子页和连接测试算在“设置”下 */
 
 import type { IconName } from "@bettertavern/design/icons";
 
 /** name 是 i18n 资源里 nav.<name> 的名字 */
 export type NavItem = {
   to: string;
-  name: "saves" | "library" | "settings";
+  name: "saves" | "library" | "workbench" | "settings";
   icon: IconName;
   prefixes: string[];
 };
 
 export const NAV_ITEMS: NavItem[] = [
   { to: "/playthroughs", name: "saves", icon: "story", prefixes: ["/playthroughs"] },
-  { to: "/library", name: "library", icon: "library", prefixes: ["/library", "/scenario"] },
+  { to: "/library", name: "library", icon: "library", prefixes: ["/library", "/scenario", "/card"] },
+  { to: "/workbench", name: "workbench", icon: "workbench", prefixes: ["/workbench"] },
   { to: "/settings", name: "settings", icon: "settings", prefixes: ["/settings", "/dev"] },
 ];
 

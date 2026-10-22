@@ -157,8 +157,9 @@ function Row({
 export function selectedItem(
   pathname: string,
   director: ModelRoute | null,
-): "director" | "models" | "account" | "probe" | null {
+): "director" | "models" | "tools" | "account" | "probe" | null {
   if (pathname.startsWith("/settings/account")) return "account";
+  if (pathname.startsWith("/settings/tools")) return "tools";
   if (pathname.startsWith("/dev/probe")) return "probe";
   if (pathname.startsWith("/settings/models")) return "models";
   if (pathname.startsWith("/settings/model/")) {
@@ -231,6 +232,13 @@ export function SettingsList({ wide }: { wide: boolean }) {
               )
             ) : null
           }
+        />
+        <Row
+          to="/settings/tools"
+          icon="search"
+          title={t("settings.tools")}
+          subtitle={t("settings.toolsSub")}
+          selected={current === "tools"}
         />
       </div>
       <div className={styles.groupLabel}>{t("settings.groupOther")}</div>

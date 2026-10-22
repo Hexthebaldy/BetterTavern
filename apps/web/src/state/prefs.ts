@@ -1,6 +1,7 @@
 /**
  * 存在浏览器里的界面偏好（localStorage 的 bt.prefs，键名和 App 相同）：阅读设置、剧本库视图、外观、界面语言、
- * 阅读页世界停靠开着还是收着，以及网页端才有的侧栏收起、单键快捷键开关。读到的内容不对就用默认值。
+ * 阅读页世界停靠开着还是收着、剧本页上“挪到了工作台”的提示关掉没有，以及网页端才有的侧栏收起、单键快捷键开关。
+ * 读到的内容不对就用默认值。
  */
 
 import { parseLanguageSetting, type LanguageSetting } from "@bettertavern/core/i18n/index";
@@ -25,6 +26,8 @@ export type WebPrefs = {
   sidebarCollapsed: boolean;
   /** 单键快捷键（A–D、/、W、[、?）；用读屏或语音输入的人可以关掉 */
   singleKeys: boolean;
+  /** 剧本页顶上“新建和导入挪到了工作台”的提示已经关掉 */
+  movedHintDismissed: boolean;
 };
 
 export const DEFAULT_PREFS: WebPrefs = {
@@ -35,6 +38,7 @@ export const DEFAULT_PREFS: WebPrefs = {
   worldDocked: false,
   sidebarCollapsed: false,
   singleKeys: true,
+  movedHintDismissed: false,
 };
 
 export function parsePrefs(raw: unknown): WebPrefs {
@@ -48,6 +52,7 @@ export function parsePrefs(raw: unknown): WebPrefs {
     worldDocked: r.worldDocked === true,
     sidebarCollapsed: r.sidebarCollapsed === true,
     singleKeys: r.singleKeys !== false,
+    movedHintDismissed: r.movedHintDismissed === true,
   };
 }
 

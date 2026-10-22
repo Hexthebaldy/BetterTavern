@@ -1,4 +1,4 @@
-/* 剧本库（W04）：数值同 App 的 LibraryParts（卡片内边距 8、圆角 26，封面 96:76、圆角 18） */
+/* “剧本”页（W04）的两个仓库：数值同 App 的 LibraryParts（卡片内边距 8、圆角 26，封面 96:76、圆角 18） */
 
 .banner {
   margin-bottom: 16px;
@@ -175,36 +175,6 @@
     opacity: 1;
   }
 }
-.importCover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 18px;
-  background: var(--on-fill);
-}
-.importRow {
-  align-items: center;
-}
-.spinner {
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation-duration: 3s;
-  }
-}
-.muted {
-  color: var(--mut);
-}
-.mono {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-}
 
 /* ---- 空状态 ---- */
 .emptyWrap {
@@ -213,27 +183,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-.kinds {
-  display: flex;
-  gap: 8px;
-}
-.kind {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 20px;
-  border-radius: 26px;
-  background: var(--fill);
-}
-.kindName {
-  font-weight: 700;
-}
-.kindText {
-  font-size: 12.5px;
-  line-height: 18px;
-  color: var(--mut);
 }
 .emptyBody {
   display: flex;
@@ -247,26 +196,6 @@
   font-size: 22px;
   line-height: 30px;
   font-weight: 700;
-}
-.specs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.spec {
-  display: inline-flex;
-  align-items: center;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 15px;
-  background: var(--ink);
-  color: var(--bg);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-.specFirst {
-  background: var(--card);
-  color: var(--ink);
 }
 .note {
   display: flex;
@@ -290,9 +219,46 @@
   color: var(--ink2);
   flex: none;
 }
-.limits {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
+
+/* ---- 两个仓库的切换、卡片上的小字 ---- */
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 20px;
+  border-radius: 22px;
+  background: var(--inset);
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
   color: var(--mut);
-  text-align: center;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.tabOn {
+  background: var(--raised);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+}
+.tabCount {
+  font-size: 12px;
+  color: var(--mut);
+  font-variant-numeric: tabular-nums;
+}
+.meta {
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

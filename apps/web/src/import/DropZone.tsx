@@ -1,4 +1,4 @@
-/** 拖着文件进窗口时盖在内容区上的接收区（W04）：浅蓝底、2px 蓝色内描边、圆角 32 */
+/** 拖着文件进窗口时盖在内容区上的接收区（W01）：浅蓝底、2px 蓝色内描边、圆角 32 */
 
 import { useTranslation } from "react-i18next";
 
@@ -10,14 +10,10 @@ export function DropZone() {
   return (
     <div className={styles.dropZone} aria-hidden="true">
       <span className={styles.dropIcon}>
-        <Icon name="share" size={32} />
+        <Icon name="import" size={32} />
       </span>
-      <span className={styles.dropTitle}>{t("import.dropTitle")}</span>
-      <span className={styles.dropText}>
-        {t("import.dropFormats")}
-        <br />
-        {t("import.dropSupports")}
-      </span>
+      <span className={styles.dropTitle}>{t("workbench.import.dropTitle")}</span>
+      <span className={styles.dropText}>{t("workbench.import.dropFormats")}</span>
     </div>
   );
 }

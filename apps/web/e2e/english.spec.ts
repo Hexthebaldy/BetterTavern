@@ -60,11 +60,13 @@ test("English interface: errors, language switch, and the story's prompt languag
   await expect(page).toHaveURL(/\/settings\/model\//);
 
   // ---- 导入角色卡，开局：请求里带上界面语言 ----
-  await page.goto("/library");
+  await page.goto("/workbench");
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import character card" }).first().click();
+  await page.getByRole("button", { name: "Import a character card" }).first().click();
   await (await chooser).setFiles(CARD);
-  await expect(page.getByRole("button", { name: "Edit character card", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/workbench\/d\//);
+  await page.getByRole("button", { name: "Save and start a story" }).click();
+  await expect(page).toHaveURL(/\/scenario\/[^/]+$/);
   await page.getByPlaceholder("Name", { exact: true }).fill("Rowan");
   const started = page.waitForRequest(
     (request) => request.method() === "POST" && new URL(request.url()).pathname === "/v1/playthroughs",

@@ -21,6 +21,7 @@ type PrefsValue = WebPrefs & {
   setWorldDocked: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   setSingleKeys: (enabled: boolean) => void;
+  dismissMovedHint: () => void;
 };
 
 const PrefsContext = createContext<PrefsValue | null>(null);
@@ -52,6 +53,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       setWorldDocked: (worldDocked) => set({ worldDocked }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       setSingleKeys: (singleKeys) => set({ singleKeys }),
+      dismissMovedHint: () => set({ movedHintDismissed: true }),
     };
   }, [prefs]);
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>;

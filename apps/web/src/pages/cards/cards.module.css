@@ -1,0 +1,145 @@
+/* 角色卡详情（同 App 的 app/card/[id].tsx）：单栏，最宽 640，居中 */
+
+.page {
+  max-width: calc(var(--readable) + 24px);
+  margin: 0 auto;
+  padding: 12px 12px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cover {
+  position: relative;
+}
+.coverBar {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+}
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 4px;
+}
+.caption {
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--mut);
+}
+.hero {
+  font-size: 34px;
+  line-height: 40px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px;
+}
+.section {
+  padding: 20px 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mut);
+}
+.panel {
+  padding: 14px 16px;
+  border-radius: var(--r-group);
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.text {
+  font-size: 14.5px;
+  line-height: 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink2);
+}
+.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.stats {
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--mut);
+}
+.more {
+  align-self: flex-start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--acc);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.linkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14.5px;
+}
+.linkRow + .linkRow {
+  border-top: 1px solid var(--line);
+}
+.source {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  font-size: 13.5px;
+}
+.source + .source {
+  border-top: 1px solid var(--line);
+}
+.source a {
+  color: var(--acc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.revision {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 0;
+}
+.revision + .revision {
+  border-top: 1px solid var(--line);
+}
+.revisionBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.revisionTitle {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.danger {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 32px;
+}

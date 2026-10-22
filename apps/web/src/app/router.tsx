@@ -1,6 +1,6 @@
 /**
  * 路由：地址和 App 的 expo-router 一一对应，浏览器的前进、后退和 App 的导航一致。
- * 登录、注册之外的页面都在外壳（侧栏 / 导航条 / Tab 栏）里。阅读页、剧本详情、编辑角色卡、设置按需加载（首屏只带故事和剧本库）。
+ * 登录、注册之外的页面都在外壳（侧栏 / 导航条 / Tab 栏）里。阅读页、剧本详情、角色卡、工作台、设置按需加载（首屏只带故事和剧本库）。
  */
 
 import { createBrowserRouter, Navigate } from "react-router";
@@ -36,8 +36,28 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import("../pages/scenario/ScenarioPage.tsx")).ScenarioPage }),
       },
       {
+        path: "/scenario/new",
+        lazy: async () => ({
+          Component: (await import("../pages/scenario/ScenarioFormPage.tsx")).ScenarioFormPage,
+        }),
+      },
+      {
         path: "/scenario/:id/edit",
-        lazy: async () => ({ Component: (await import("../pages/scenario/EditCardPage.tsx")).EditCardPage }),
+        lazy: async () => ({
+          Component: (await import("../pages/scenario/ScenarioFormPage.tsx")).ScenarioFormPage,
+        }),
+      },
+      {
+        path: "/card/:id",
+        lazy: async () => ({ Component: (await import("../pages/cards/CardPage.tsx")).CardPage }),
+      },
+      {
+        path: "/workbench",
+        lazy: async () => ({ Component: (await import("../pages/workbench/WorkbenchHome.tsx")).WorkbenchHome }),
+      },
+      {
+        path: "/workbench/d/:id",
+        lazy: async () => ({ Component: (await import("../pages/workbench/DraftPage.tsx")).DraftPage }),
       },
       {
         path: "/play/:id",
@@ -55,6 +75,10 @@ export const router = createBrowserRouter([
           {
             path: "model/:id",
             lazy: async () => ({ Component: (await import("../pages/settings/ModelBody.tsx")).ModelPage }),
+          },
+          {
+            path: "tools",
+            lazy: async () => ({ Component: (await import("../pages/settings/ToolsBody.tsx")).ToolsBody }),
           },
           {
             path: "account",

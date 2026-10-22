@@ -1,11 +1,9 @@
 /**
- * 导入角色卡：剧本库的“导入角色卡”按钮，以及把文件拖进窗口（任何页面都接收）。
+ * 导入角色卡（工作台首页的“导入角色卡”，以及把文件拖进窗口，任何页面都接收）：一次一张。
  *
- * - 拖进窗口时内容区盖上一层接收区（W04）：“松开就导入”；拖出窗口或松开后消失。
- * - 逐个上传（原样上传，服务端识别 PNG 或 JSON），剧本库的网格里“正在导入”那一格显示当前这一张和“2 / 3”。
- * - 只有一张：成功直接进剧本详情；之前导入过时浮条“‘xxx’之前已经导入过了”，带“打开”。
- * - 多张：全部完成后留在剧本库，浮条“导入了 3 张角色卡”，失败的在页面顶上的红色提示里列出。
- * 不符合的文件（不是 PNG / JSON、超过 16 MB）不上传，给出和 App 一样的红色提示。
+ * - 解析成草稿，直接进工作台的手动表单（草稿不在角色卡仓库里，保存才进）；
+ * - 这个文件之前导入过（角色卡仓库里已经有）：先问是打开已有的卡接着改，还是另外导入一份；
+ * - 不符合的文件（不是 PNG / JSON、超过 16 MB）不上传，工作台首页顶上给出红色提示。拖了几个文件只导第一个。
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,30 +22,24 @@ import { useNavigate } from "react-router";
 import { describeError } from "@bettertavern/core/api/client";
 import { i18n } from "@bettertavern/core/i18n/index";
 
-import { scenariosKey } from "../data/scenarios.ts";
+import { draftsKey } from "../data/scenarios.ts";
+import { draftPath } from "../data/workbench.ts";
 import { useOverlay } from "../overlay/OverlayProvider.tsx";
 import { useApp } from "../state/AppProvider.tsx";
 import { DropZone } from "./DropZone.tsx";
-import {
-  CARD_ACCEPT,
-  checkCardFile,
-  failureNotice,
-  importSummary,
-  type CardProblem,
-  type ImportOutcome,
-} from "./rules.ts";
+import { CARD_ACCEPT, checkCardFile, type CardProblem } from "./rules.ts";
 
-export type ImportProgress = { name: string; size: number; index: number; total: number };
+export type ImportProgress = { name: string; size: number };
 
 type Importer = {
   /** 正在上传的那一张；没有在导入时是 null */
   progress: ImportProgress | null;
-  /** 页面顶上的红色提示 */
+  /** 工作台首页顶上的红色提示 */
   problem: CardProblem | null;
   dismissProblem: () => void;
-  /** 打开文件选择框（可以多选） */
+  /** 打开文件选择框 */
   pick: () => void;
-  importFiles: (files: File[]) => Promise<void>;
+  importFile: (file: File) => Promise<void>;
 };
 
 const ImportContext = createContext<Importer | null>(null);
@@ -73,58 +65,51 @@ export function ImportProvider({ children }: { children: ReactNode }) {
   const [dragging, setDragging] = useState(false);
   const busy = useRef(false);
 
-  const importFiles = useCallback(
-    async (files: File[]): Promise<void> => {
-      if (files.length === 0 || busy.current) return;
-      busy.current = true;
+  const importFile = useCallback(
+    async (file: File): Promise<void> => {
+      if (busy.current) return;
       setProblem(null);
-      const outcomes: ImportOutcome[] = [];
-      const valid: File[] = [];
-      for (const file of files) {
-        const reason = checkCardFile(file);
-        if (reason) outcomes.push({ kind: "failed", problem: reason });
-        else valid.push(file);
+      const reason = checkCardFile(file);
+      if (reason) {
+        setProblem(reason);
+        if (window.location.pathname !== "/workbench") navigate("/workbench");
+        return;
       }
-      for (const [index, file] of valid.entries()) {
-        setProgress({ name: file.name, size: file.size, index: index + 1, total: valid.length });
-        try {
-          const scenario = await api.scenarios.importFile(file);
-          outcomes.push({
-            kind: scenario.duplicate ? "duplicate" : "imported",
-            id: scenario.id,
-            name: scenario.name,
+      busy.current = true;
+      setProgress({ name: file.name, size: file.size });
+      const language = i18n.language;
+      try {
+        let result = await api.workbench.importFile(file, { language });
+        if (!result.draft && result.existing_card) {
+          const card = result.existing_card;
+          setProgress(null);
+          const again = await overlay.confirm({
+            title: i18n.t("workbench.import.duplicateTitle", { name: card.name }),
+            message: i18n.t("workbench.import.duplicateMessage"),
+            confirmLabel: i18n.t("workbench.import.importAgain"),
+            cancelLabel: i18n.t("workbench.import.openExisting"),
+            icon: "info",
           });
-        } catch (e) {
-          outcomes.push({
-            kind: "failed",
-            problem: {
-              title: i18n.t("library.importFailed", { name: file.name }),
-              message: describeError(e),
-            },
-          });
+          if (!again) {
+            const opened = await api.workbench.openCard(card.id, language);
+            void queries.invalidateQueries({ queryKey: draftsKey });
+            navigate(draftPath(opened.draft.id));
+            return;
+          }
+          setProgress({ name: file.name, size: file.size });
+          result = await api.workbench.importFile(file, { language, allowDuplicate: true });
         }
+        if (result.draft) {
+          void queries.invalidateQueries({ queryKey: draftsKey });
+          navigate(draftPath(result.draft.draft.id));
+        }
+      } catch (e) {
+        setProblem({ title: i18n.t("workbench.import.failed", { name: file.name }), message: describeError(e) });
+        if (window.location.pathname !== "/workbench") navigate("/workbench");
+      } finally {
+        setProgress(null);
+        busy.current = false;
       }
-      setProgress(null);
-      busy.current = false;
-      if (valid.length > 0) void queries.invalidateQueries({ queryKey: scenariosKey });
-      setProblem(failureNotice(outcomes));
-
-      const [only] = outcomes;
-      if (outcomes.length === 1 && only?.kind === "imported") {
-        navigate(`/scenario/${encodeURIComponent(only.id)}`);
-        return;
-      }
-      if (window.location.pathname !== "/library") navigate("/library");
-      if (outcomes.length === 1 && only?.kind === "duplicate") {
-        overlay.toast(i18n.t("library.duplicate", { name: only.name }), {
-          icon: "info",
-          actionLabel: i18n.t("common.open"),
-          onAction: () => navigate(`/scenario/${encodeURIComponent(only.id)}`),
-        });
-        return;
-      }
-      const summary = importSummary(outcomes);
-      if (summary) overlay.toast(summary);
     },
     [api, navigate, overlay, queries],
   );
@@ -150,10 +135,17 @@ export function ImportProvider({ children }: { children: ReactNode }) {
     };
     const onDrop = (event: DragEvent): void => {
       if (!hasFiles(event)) return;
+      // 草稿页的封面区自己接图片，不当角色卡导入
+      if (event.defaultPrevented) {
+        depth = 0;
+        setDragging(false);
+        return;
+      }
       event.preventDefault();
       depth = 0;
       setDragging(false);
-      void importFiles(Array.from(event.dataTransfer?.files ?? []));
+      const [file] = Array.from(event.dataTransfer?.files ?? []);
+      if (file) void importFile(file);
     };
     window.addEventListener("dragenter", onEnter);
     window.addEventListener("dragover", onOver);
@@ -165,7 +157,7 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("dragleave", onLeave);
       window.removeEventListener("drop", onDrop);
     };
-  }, [importFiles]);
+  }, [importFile]);
 
   const value = useMemo<Importer>(
     () => ({
@@ -173,9 +165,9 @@ export function ImportProvider({ children }: { children: ReactNode }) {
       problem,
       dismissProblem: () => setProblem(null),
       pick: () => input.current?.click(),
-      importFiles,
+      importFile,
     }),
-    [progress, problem, importFiles],
+    [progress, problem, importFile],
   );
 
   return (
@@ -185,12 +177,11 @@ export function ImportProvider({ children }: { children: ReactNode }) {
         ref={input}
         type="file"
         accept={CARD_ACCEPT}
-        multiple
         hidden
         onChange={(event) => {
-          const files = Array.from(event.target.files ?? []);
+          const [file] = Array.from(event.target.files ?? []);
           event.target.value = "";
-          void importFiles(files);
+          if (file) void importFile(file);
         }}
       />
       {dragging ? <DropZone /> : null}

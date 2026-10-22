@@ -1,60 +1,36 @@
 /**
- * 剧本详情（W05，同平板 T12）：封面、角色卡概要、原卡的开场白，以及“开始新的故事”的五步表单。
- * 开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
+ * 剧本详情（W05，同平板 T12）：封面、剧本里的角色卡（第一张是主角色，点一下看卡）、剧本设置（默认主角、偏好、开场），
+ * 以及“开始新的故事”的五步表单（按剧本设置预填）。开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
  *
- * - ≥ 900：两栏各自滚动。左栏 420 是封面（高 236，返回按钮浮在上面）、名字、标签、统计、简介、原卡开场白；
+ * - ≥ 900：两栏各自滚动。左栏 420 是封面（高 236，返回按钮浮在上面）、名字、角色卡、设置、简介；
  *   右栏是五步表单，底部浮着摘要栏（已选项胶囊加“开始故事”），圆角 34，带投影。
  * - 更窄：单栏，最宽 640，居中。
- * 侧栏一直在，返回按钮回到剧本库。剧本名右边是“编辑角色卡”（EditCardPage.tsx，剧本名也在那里改），
- * 改过的卡标题上方注明“已编辑”；删除剧本的按钮在概要下面（单栏时在页面最底下）。
- * 文案同 App 的 app/scenario/[id]/index.tsx。
+ * 剧本名右边是“编辑设置”（ScenarioFormPage.tsx）；删除剧本的按钮在概要下面（单栏时在页面最底下）。
+ * 剧本实时引用角色卡：卡保存了新版本以后，新开的故事用新内容。
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
-import { currentLanguage, lookup } from "@bettertavern/core/i18n/index";
+import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
+import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Button, cx, IconButton, Notice, Pill } from "../../components/controls.tsx";
-import { Icon, type IconName } from "../../components/Icon.tsx";
+import { Icon } from "../../components/Icon.tsx";
 import { scenarioPath, useScenarioActions } from "../../data/scenarioActions.ts";
 import { storiesKey } from "../../data/stories.ts";
+import { cardPath } from "../../data/workbench.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useWindowWidth } from "../../hooks/useWindowSize.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { desktop, shell } from "../../theme/layout.ts";
 import styles from "./scenario.module.css";
 import { StartForm, type StartValues } from "./StartForm.tsx";
-
-/** 角色卡里可能被截断的字段 */
-function fieldName(field: string): string {
-  return lookup(`scenario.fields.${field}`) ?? field;
-}
-
-function Stat({
-  icon,
-  value,
-  label,
-  warn,
-}: {
-  icon: IconName;
-  value: number;
-  label: string;
-  warn?: boolean;
-}) {
-  return (
-    <div className={cx(styles.stat, warn && styles.statWarn)}>
-      <Icon name={icon} />
-      <span className={styles.statValue}>{value}</span>
-      <span className={styles.statLabel}>{label}</span>
-    </div>
-  );
-}
 
 function Description({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -85,65 +61,68 @@ function Description({ text }: { text: string }) {
   );
 }
 
+/** 开场：导演来写，或者“用‘温九’的第 2 条备选开场白” */
+function openingText(scenario: Pick<Scenario, "cards" | "setup">): string {
+  const opening = scenario.setup.opening;
+  if (!opening) return i18n.t("scenario.openingDirector");
+  const card = scenario.cards.find((c) => c.card_id === opening.card_id)?.name ?? "";
+  return opening.greeting === 0
+    ? i18n.t("scenario.openingGreeting", { card })
+    : i18n.t("scenario.openingAlternate", { card, n: opening.greeting });
+}
+
 function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void }) {
-  const truncated = scenario.truncated_fields;
   const { t } = useTranslation();
+  const { protagonist, preferences } = scenario.setup;
+  const prefs = [
+    lengthLabel(preferences.length),
+    preferences.style,
+    preferences.boundaries ? t("start.avoid", { count: splitJoined(preferences.boundaries).length }) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <>
       <div className={styles.titleBlock}>
-        <span className={styles.caption}>
-          {[
-            t("scenario.card"),
-            scenario.creator ? t("scenario.creator", { creator: scenario.creator }) : null,
-            scenario.edited_at ? t("scenario.edited") : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
         <div className={styles.titleRow}>
           <h1 className={styles.hero}>{scenario.name}</h1>
-          <Button
-            label={t("scenario.editCard")}
-            icon="write"
-            variant="secondary"
-            size="sm"
-            onClick={onEdit}
-          />
+          <Button label={t("scenario.editSetup")} icon="write" variant="secondary" size="sm" onClick={onEdit} />
         </div>
-        {scenario.tags.length > 0 ? (
-          <div className={styles.tags}>
-            {scenario.tags.slice(0, 8).map((tag) => (
-              <Pill key={tag} label={tag} className={styles.tag} />
-            ))}
-          </div>
-        ) : null}
       </div>
-      <div className={styles.stats}>
-        <Stat icon="world" value={scenario.book_entries} label={t("scenario.bookEntries")} />
-        <Stat icon="greeting" value={1 + scenario.alternate_greetings} label={t("scenario.greetings")} />
-        {truncated.length > 0 ? (
-          <Stat icon="truncated" value={truncated.length} label={t("scenario.truncatedFields")} warn />
-        ) : null}
+      <div className={styles.cast}>
+        {scenario.cards.map((card, i) => (
+          <Link key={card.card_id} to={cardPath(card.card_id)} className={styles.castRow} aria-label={t("scenario.openCard")}>
+            <Cover seed={card.card_id} blobId={card.cover_blob_id} width={44} height={44} surface="onFill" />
+            <span className={styles.castBody}>
+              <span className={styles.castName}>{card.name}</span>
+            </span>
+            {i === 0 && scenario.cards.length > 1 ? <Pill label={t("scenario.lead")} tone="acc" /> : null}
+            <Icon name="chevronRight" size={16} />
+          </Link>
+        ))}
       </div>
-      {scenario.description_preview || truncated.length > 0 ? (
+      <h2 className={styles.sectionLabel}>{t("scenario.setup")}</h2>
+      <div className={styles.setup}>
+        <div className={styles.setupRow}>
+          <span className={styles.caption}>{t("scenario.protagonist")}</span>
+          <span className={styles.setupValue}>
+            {protagonist.name
+              ? [protagonist.name, protagonist.summary].filter(Boolean).join(" · ")
+              : t("scenario.noProtagonist")}
+          </span>
+        </div>
+        <div className={styles.setupRow}>
+          <span className={styles.caption}>{t("scenario.preferences")}</span>
+          <span className={styles.setupValue}>{prefs}</span>
+        </div>
+        <div className={styles.setupRow}>
+          <span className={styles.caption}>{t("scenario.opening")}</span>
+          <span className={styles.setupValue}>{openingText(scenario)}</span>
+        </div>
+      </div>
+      {scenario.description_preview ? (
         <div className={cx(styles.card, styles.description, "surface-panel")}>
-          {scenario.description_preview ? <Description text={scenario.description_preview} /> : null}
-          {truncated.length > 0 ? (
-            <div className={styles.warn}>
-              <Icon name="alert" size={16} />
-              <span>
-                {t("scenario.truncatedNote", {
-                  fields: truncated.map((f) => `“${fieldName(f)}”`).join(t("common.listSeparator")),
-                })}
-              </span>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      {scenario.first_mes_preview ? (
-        <div className={cx(styles.card, styles.greeting)}>
-          <span className={styles.caption}>{t("scenario.originalGreeting")}</span>
-          <p className={styles.greetingText}>{scenario.first_mes_preview}</p>
+          <Description text={scenario.description_preview} />
         </div>
       ) : null}
     </>
@@ -210,7 +189,7 @@ export function ScenarioPage() {
     <div className={styles.cover}>
       <Cover
         seed={scenario.id}
-        blobId={scenario.avatar_blob_id}
+        blobId={scenario.cover_blob_id}
         width={coverWidth}
         height={wide ? 236 : Math.round(coverWidth * 0.82)}
         rounded={34}
@@ -232,9 +211,12 @@ export function ScenarioPage() {
       <span className={styles.caption}>{t("start.hint")}</span>
     </div>
   );
+  const { protagonist, preferences } = scenario.setup;
   const form = (
     <StartForm
+      key={scenario.version}
       wide={wide}
+      initial={{ name: protagonist.name, summary: protagonist.summary, ...preferences }}
       onChange={(next, parts) => {
         setValues(next);
         setSummary(parts);

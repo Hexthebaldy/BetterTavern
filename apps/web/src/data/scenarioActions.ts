@@ -39,7 +39,7 @@ export function useScenarioActions() {
     });
     if (!name || name === scenario.name) return;
     try {
-      const updated = await api.scenarios.rename(scenario.id, name);
+      const updated = await api.scenarios.update(scenario.id, { name });
       patchList((list) => list.map((s) => (s.id === scenario.id ? updated : s)));
       queries.setQueryData(["scenario", scenario.id], updated);
     } catch (e) {

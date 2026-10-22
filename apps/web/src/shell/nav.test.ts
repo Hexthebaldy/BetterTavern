@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
 
-const [stories, library, settings] = NAV_ITEMS;
+const [stories, library, workbench, settings] = NAV_ITEMS;
 
 describe("导航的选中项", () => {
   it("剧本详情算在剧本下，设置子页和连接测试算在设置下", () => {

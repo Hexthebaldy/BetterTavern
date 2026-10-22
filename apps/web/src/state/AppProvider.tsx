@@ -21,6 +21,7 @@ import {
 import { ApiClient, ApiError } from "@bettertavern/core/api/client";
 import { createApi, type Api } from "@bettertavern/core/api/endpoints";
 import { sseTurnConnector, type TurnConnector } from "@bettertavern/core/api/turnStream";
+import { sseWorkbenchConnector, type WorkbenchConnector } from "@bettertavern/core/api/workbenchStream";
 import type { AuthResponse, User } from "@bettertavern/core/api/types";
 import {
   SessionManager,
@@ -37,6 +38,7 @@ type Services = {
   api: Api;
   session: SessionManager;
   connectTurn: TurnConnector;
+  connectWorkbench: WorkbenchConnector;
   authHeaders: () => Promise<Record<string, string>>;
   restore: () => Promise<void>;
 };
@@ -92,15 +94,23 @@ function createServices(): Services {
     onUnauthorized: () => manager.refresh().catch(() => false),
     log: (level, event, fields) => diagnostics.log(level, event, fields),
   });
+  const connectWorkbench = sseWorkbenchConnector({
+    url: (draftId) => api.workbench.eventsPath(draftId),
+    fetch: (url, init) => fetch(url, init),
+    headers: authHeaders,
+    onUnauthorized: () => manager.refresh().catch(() => false),
+    log: (level, event, fields) => diagnostics.log(level, event, fields),
+  });
   // 开发时 React 的严格模式会把 effect 跑两遍：恢复只做一次
   let restoring: Promise<void> | null = null;
   const restore = (): Promise<void> => (restoring ??= manager.restore());
-  return { api, session: manager, connectTurn, authHeaders, restore };
+  return { api, session: manager, connectTurn, connectWorkbench, authHeaders, restore };
 }
 
 export type AppContextValue = {
   api: Api;
   connectTurn: TurnConnector;
+  connectWorkbench: WorkbenchConnector;
   authHeaders: () => Promise<Record<string, string>>;
   status: SessionStatus;
   user: User | null;
@@ -144,6 +154,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       api: services.api,
       connectTurn: services.connectTurn,
+      connectWorkbench: services.connectWorkbench,
       authHeaders: services.authHeaders,
       status,
       user,

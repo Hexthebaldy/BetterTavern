@@ -376,7 +376,7 @@ function PlayPage({ id }: { id: string }) {
           header={
             <BookHeader
               seed={state.scenarioId ?? id}
-              blobId={scenario.data?.avatar_blob_id ?? null}
+              blobId={scenario.data?.cover_blob_id ?? null}
               title={shownTitle}
               card={scenario.data?.name ?? null}
               protagonist={state.protagonist}

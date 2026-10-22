@@ -15,7 +15,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { Outlet, useLocation } from "react-router";
+import { Outlet, ScrollRestoration, useLocation } from "react-router";
 
 import { useWindowWidth } from "../hooks/useWindowSize.ts";
 import { ImportProvider } from "../import/ImportProvider.tsx";
@@ -47,7 +47,7 @@ type ShellValue = {
 
 const ShellContext = createContext<ShellValue | null>(null);
 
-const TOP_LEVEL = new Set(["/playthroughs", "/library", "/settings"]);
+const TOP_LEVEL = new Set(["/playthroughs", "/library", "/workbench", "/settings"]);
 
 export function useShell(): ShellValue {
   const value = useContext(ShellContext);
@@ -65,7 +65,7 @@ export function AppShell() {
   const preferred = navMode(width, sidebarCollapsed);
   const nav = override ?? preferred;
   const showOverlay = overlay && nav === "rail";
-  // 和 App 一样：底部 Tab 栏只在三个一级页上，进了阅读页、剧本详情、设置子页就收起（它们有自己的返回）
+  // 和 App 一样：底部 Tab 栏只在四个一级页上，进了阅读页、剧本详情、草稿、设置子页就收起（它们有自己的返回）
   const topLevel = TOP_LEVEL.has(pathname);
 
   // 点了侧栏里的一项（换了页面）就收回盖在上面的侧栏
@@ -143,6 +143,8 @@ export function AppShell() {
             <main className={styles.main} id="main">
               <Outlet />
             </main>
+            {/* 进新页面从顶上开始，前进、后退回到原来的位置 */}
+            <ScrollRestoration />
             {nav === "tabbar" && topLevel ? <TabBar /> : null}
             {shortcuts ? <ShortcutsDialog onClose={() => setShortcuts(false)} /> : null}
             <TooltipLayer />

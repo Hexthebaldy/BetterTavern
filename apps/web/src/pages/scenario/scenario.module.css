@@ -1,4 +1,4 @@
-/* 剧本详情（W05）与开始表单：数值同 App 的 app/scenario/[id]/index.tsx、StartForm.tsx */
+/* 剧本详情（W05）、新建和编辑剧本、开始表单：数值同 App 的 app/scenario/[id]/index.tsx、StartForm.tsx */
 
 /* ---- 版式 ---- */
 .split {
@@ -102,38 +102,6 @@
   border-radius: 15px;
   font-size: 13px;
 }
-.stats {
-  display: flex;
-  gap: 8px;
-  padding: 0 12px;
-}
-.stat {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-  border-radius: 22px;
-  background: var(--fill);
-}
-.statValue {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  font-size: 22px;
-  line-height: 26px;
-}
-.statLabel {
-  font-size: 13px;
-  line-height: 19px;
-  color: var(--mut);
-}
-.statWarn {
-  background: var(--warn-bg);
-  color: var(--warn);
-}
-.statWarn .statLabel {
-  color: var(--warn);
-}
 .card {
   margin: 8px 12px 0;
   padding: 0 16px;
@@ -167,36 +135,6 @@
   color: var(--acc);
   font-size: 14px;
   font-weight: 500;
-}
-.warn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 -4px 8px;
-  padding: 10px 12px;
-  border-radius: var(--r-input);
-  background: var(--card);
-  color: var(--warn);
-  font-size: 13px;
-  line-height: 19px;
-}
-.greeting {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 18px;
-  padding-bottom: 18px;
-}
-.greetingText {
-  /* 角色卡原文，语言不定：用无衬线，缺字交给浏览器回退 */
-  font-family: var(--font-sans);
-  font-size: 14.5px;
-  line-height: 25px;
-  color: var(--mut);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 .danger {
   display: flex;
@@ -354,4 +292,180 @@
   height: 56px;
   border-radius: 28px;
   padding-left: 24px;
+}
+
+/* ---- 剧本里的卡、剧本设置 ---- */
+.cast {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px;
+}
+.castRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 8px;
+  border-radius: var(--r-option);
+  background: var(--fill);
+  color: inherit;
+  text-decoration: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  a.castRow:hover {
+    background: var(--hover);
+  }
+}
+.castBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.castName {
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.setup {
+  margin: 8px 12px 0;
+  padding: 6px 16px;
+  border-radius: var(--r-group);
+  background: var(--bg2);
+}
+.setupRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+}
+.setupRow + .setupRow {
+  border-top: 1px solid var(--line);
+}
+.setupValue {
+  font-size: 14.5px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+.sectionLabel {
+  padding: 22px 24px 8px;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+/* ---- 新建、编辑剧本 ---- */
+.formPage {
+  max-width: calc(var(--readable) + 24px);
+  margin: 0 auto;
+  padding: 0 12px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.formBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  margin: 0 -12px;
+  padding: 0 12px;
+  background: var(--bg);
+}
+.formTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.formSection {
+  padding-top: 20px;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 700;
+}
+.formHint {
+  margin-top: -4px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--mut);
+}
+.pickList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pickRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 8px;
+  border-radius: var(--r-option);
+  background: var(--fill);
+}
+.pickIndex {
+  width: 22px;
+  flex: none;
+  text-align: center;
+  font-size: 12px;
+  color: var(--mut);
+  font-variant-numeric: tabular-nums;
+}
+.pickOn {
+  box-shadow: inset 0 0 0 1.5px var(--acc);
+}
+.pickButton {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.openings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.opening {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--r-option);
+  background: var(--fill);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.openingOn {
+  box-shadow: inset 0 0 0 2px var(--acc);
+}
+.openingTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+.openingText {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--mut);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

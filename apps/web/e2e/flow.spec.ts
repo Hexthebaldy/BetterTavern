@@ -1,5 +1,5 @@
 /**
- * 一条完整的路：注册 → 刷新后还登录着（Cookie）→ 添加假模型 → 导入角色卡 → 编辑角色卡 → 开局 → 按 A 选选项 →
+ * 一条完整的路：注册 → 刷新后还登录着（Cookie）→ 添加假模型 → 在工作台导入角色卡、手动改 → 保存并建剧本 → 开局 → 按 A 选选项 →
  * 按 / 自己写、Enter 发送 → 按 W 停靠世界状态 → 拖窄窗口看让位和滑出 → 按 ? 看快捷键 → 写结局 → 删除账户。
  * 假模型每次的回复不一样（按调用次数轮换），所以断言只看“选了什么就出现什么”，不写死叙述的内容。
  */
@@ -39,31 +39,28 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await expect(page).toHaveURL(/\/settings\/model\//);
   await expect(page.getByRole("link", { name: "模型" }).first()).toBeVisible();
 
-  // ---- 导入角色卡，进剧本详情 ----
-  await page.goto("/library");
+  // ---- 在工作台导入角色卡：解析完进草稿的手动表单 ----
+  await page.goto("/workbench");
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "导入角色卡" }).first().click();
   await (await chooser).setFiles(CARD);
-  await expect(page).toHaveURL(/\/scenario\//);
-  await expect(page.getByRole("heading", { name: "沈知微" })).toBeVisible();
+  await expect(page).toHaveURL(/\/workbench\/d\//);
+  await expect(page.getByRole("radio", { name: "手动" })).toHaveAttribute("aria-checked", "true");
 
-  // ---- 编辑角色卡：改描述、加一条世界书；没保存就离开会先问；空条目标红，改好马上恢复；保存后详情跟着变 ----
-  await page.getByRole("button", { name: "编辑角色卡", exact: true }).click();
-  await expect(page).toHaveURL(/\/scenario\/[^/]+\/edit$/);
+  // ---- 手动改：改描述（自动保存）、加一条世界书；空条目保存时标红，改好马上恢复 ----
   await page.getByLabel("描述").fill("{{char}} 是渡口的船娘，替人摆渡。");
-  await page.getByRole("link", { name: "剧本", exact: true }).first().click();
-  const discard = page.getByRole("dialog", { name: "放弃修改？" });
-  await discard.getByRole("button", { name: "继续编辑" }).click();
-  await expect(page).toHaveURL(/\/edit$/);
+  await expect(page.getByText("已自动保存")).toBeVisible();
   await page.getByRole("button", { name: "添加条目" }).click();
-  await page.getByRole("button", { name: "保存修改" }).click();
-  await expect(page.getByText("条目内容不能为空")).toBeVisible();
+  await page.getByRole("button", { name: "保存到角色卡仓库" }).click();
+  await expect(page.getByText("条目内容不能为空", { exact: true })).toBeVisible();
   await page.getByLabel("内容", { exact: true }).fill("子时才有最后一班船。");
-  await expect(page.getByText("条目内容不能为空")).toHaveCount(0);
-  await page.getByRole("button", { name: "保存修改" }).click();
+  await expect(page.getByText("条目内容不能为空", { exact: true })).toHaveCount(0);
+
+  // ---- 保存并开始新故事：先进角色卡仓库，再用这张卡建剧本，进剧本详情 ----
+  await page.getByRole("button", { name: "保存并开始新故事" }).click();
   await expect(page).toHaveURL(/\/scenario\/[^/]+$/);
+  await expect(page.getByRole("heading", { name: "沈知微" })).toBeVisible();
   await expect(page.getByText("沈知微 是渡口的船娘，替人摆渡。")).toBeVisible();
-  await expect(page.getByText(/· 已编辑/)).toBeVisible();
 
   // ---- 开局，等开场写完、选项出来 ----
   await page.getByLabel("主角的名字").fill("林川");

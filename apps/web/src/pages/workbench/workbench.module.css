@@ -1,0 +1,485 @@
+/* 工作台：首页（W01）和草稿页的框架（W02–W06）。对话在 chat.module.css，右栏预览在 preview.module.css，
+   手动表单沿用 edit.module.css。数值参照 docs/design/workbench/source/WbWeb*.dc.html，设计稿只是参考 */
+
+.hidden {
+  display: none;
+}
+
+/* ---- 首页：单栏，最宽 720，居中 ---- */
+.home {
+  max-width: calc(720px + 2 * var(--gutter));
+  padding-top: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.homeTitle {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.composer {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-sheet);
+  background: var(--fill);
+  padding: 16px 16px 12px;
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.composer:focus-within {
+  box-shadow: 0 0 0 2px var(--acc);
+}
+.composerInput {
+  width: 100%;
+  min-height: 72px;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  line-height: 24px;
+}
+.composerInput::placeholder {
+  color: var(--mut);
+}
+.composerBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.kbd {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--mut);
+}
+.sendButton {
+  background: var(--ink);
+  color: var(--bg);
+}
+.sendButton:disabled {
+  background: var(--inset);
+  color: var(--mut);
+}
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.example {
+  max-width: 100%;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .example:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+.entries {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+@media (max-width: 599px) {
+  .entries {
+    grid-template-columns: 1fr;
+  }
+}
+.entry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px;
+  border: 0;
+  border-radius: var(--r-card);
+  background: var(--fill);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.entry:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+@media (hover: hover) and (pointer: fine) {
+  .entry:not(:disabled):hover {
+    background: var(--card-hover);
+  }
+}
+.entryIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--on-fill);
+  margin-bottom: 6px;
+}
+.entryTitle {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.entryNote {
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--mut);
+}
+.homeSection {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sectionTitle {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.sectionLink {
+  font-size: 13px;
+  color: var(--mut);
+}
+.sectionLink:hover {
+  color: var(--ink);
+}
+.draftList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.draftRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+  border-radius: var(--r-option);
+  background: var(--fill);
+}
+.draftLink {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0 10px 10px;
+  color: inherit;
+  text-decoration: none;
+}
+.draftBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.draftName {
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.draftStatus {
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.draftWaiting {
+  color: var(--acc);
+}
+.recent {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 699px) {
+  .recent {
+    grid-template-columns: 1fr;
+  }
+}
+.recentCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--r-option);
+  background: var(--fill);
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .draftLink:hover .draftName,
+  .recentCard:hover .draftName {
+    text-decoration: underline;
+  }
+}
+
+/* ---- 草稿页：整屏高，顶上一条，下面左右两栏各自滚动 ---- */
+.draft {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 10px 20px 10px 12px;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 10px 0 4px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  flex: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .back:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 260px;
+}
+.title {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.subtitle {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.subtitleError {
+  color: var(--err);
+}
+.modes {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 20px;
+  background: var(--inset);
+  flex: none;
+}
+.mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--mut);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.modeOn {
+  background: var(--raised);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+}
+.barSpacer {
+  flex: 1;
+  min-width: 0;
+}
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mut);
+  white-space: nowrap;
+}
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.stepDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line2);
+}
+.stepDone .stepDot {
+  background: var(--ink);
+}
+.stepDone {
+  color: var(--ink2);
+}
+.stepDoing {
+  color: var(--acc);
+  font-weight: 600;
+}
+.stepDoing .stepDot {
+  background: var(--acc);
+}
+.stepLine {
+  width: 14px;
+  height: 1px;
+  background: var(--line2);
+}
+@media (max-width: 1199px) {
+  .steps {
+    display: none;
+  }
+}
+.barButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* 两栏：左边对话或表单，右边预览或检查。窄于 1100 时只有左栏，预览从页头打开 */
+.body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.82fr);
+  gap: 16px;
+  padding: 0 20px 16px 12px;
+}
+.bodyManual {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+.left {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.right {
+  min-height: 0;
+  min-width: 0;
+  border-radius: var(--r-sheet);
+  background: var(--bg2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 1099px) {
+  .body,
+  .bodyManual {
+    grid-template-columns: minmax(0, 1fr);
+    padding-right: 12px;
+  }
+  .right {
+    display: none;
+  }
+}
+.previewButton {
+  display: none;
+}
+@media (max-width: 1099px) {
+  .previewButton {
+    display: inline-flex;
+  }
+}
+@media (max-width: 899px) {
+  .bar {
+    flex-wrap: wrap;
+    padding-left: 4px;
+    padding-right: 12px;
+  }
+  .titleBlock {
+    max-width: none;
+    flex: 1;
+  }
+  .barSpacer {
+    display: none;
+  }
+  .backText {
+    display: none;
+  }
+  .body {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+.loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+.center {
+  max-width: 480px;
+  margin: 48px auto;
+  padding: 0 24px;
+}
+
+/* 版本冲突的三选一 */
+.choiceButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 24px 24px;
+}
+.previewDialog {
+  height: min(820px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

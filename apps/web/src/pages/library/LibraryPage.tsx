@@ -1,27 +1,31 @@
 /**
- * 剧本库（W04）：网格或列表显示已导入的剧本，右上角是网格 / 列表切换和“导入角色卡”。
+ * “剧本”页（W04）：剧本仓库和角色卡仓库两个标签（地址 ?tab=cards 是角色卡），网格或列表显示。
  * 网格按内容宽度 ÷ 240 取整（2–5 列，平板中屏 3 列、手机 2 列），间距 16；列表限宽 640、居中。
- * 导入（按钮和拖放）在 import/ImportProvider.tsx；导入失败的红色提示显示在页面顶上。
+ * - 剧本仓库右上角的加号：从角色卡仓库选一张或几张卡新建剧本；
+ * - 角色卡仓库右上角：去工作台（新建和导入都在工作台）。
+ * 顶上提示一次“新建和导入挪到了工作台”，关掉以后不再出现。
  */
 
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { cellWidth, libraryColumns, sizeClass } from "@bettertavern/design/layout";
 
 import { Button, Notice } from "../../components/controls.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
-import { useScenarios } from "../../data/scenarios.ts";
-import { useScenarioActions } from "../../data/scenarioActions.ts";
+import { newScenarioPath, useCardActions } from "../../data/cardActions.ts";
+import { scenarioPath, useScenarioActions } from "../../data/scenarioActions.ts";
+import { useCards, useScenarios } from "../../data/scenarios.ts";
+import { cardPath } from "../../data/workbench.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useElementWidth } from "../../hooks/useElementWidth.ts";
 import { useWindowWidth } from "../../hooks/useWindowSize.ts";
-import { useImporter } from "../../import/ImportProvider.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
 import { desktop } from "../../theme/layout.ts";
 import pages from "../pages.module.css";
-import { Empty, HeaderControls, ImportingRow, ImportingTile, Row, Tile } from "./LibraryParts.tsx";
+import { cardItem, Empty, HeaderControls, Row, scenarioItem, Tabs, Tile, type Item, type LibraryTab } from "./LibraryParts.tsx";
 import styles from "./library.module.css";
 
 const GAP = 16;
@@ -29,80 +33,115 @@ const GAP = 16;
 export function LibraryPage() {
   const { t } = useTranslation();
   useDocumentTitle(t("nav.library"));
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const tab: LibraryTab = params.get("tab") === "cards" ? "cards" : "scenarios";
   const scenarios = useScenarios();
-  const actions = useScenarioActions();
-  const importer = useImporter();
-  const { libraryView, setLibraryView } = usePrefs();
+  const cards = useCards();
+  const scenarioActions = useScenarioActions();
+  const cardActions = useCardActions();
+  const { libraryView, setLibraryView, movedHintDismissed, dismissMovedHint } = usePrefs();
   const windowWidth = useWindowWidth();
   const box = useRef<HTMLDivElement>(null);
   const contentWidth = useElementWidth(box);
   const size = sizeClass(windowWidth);
   const columns = libraryColumns(size, contentWidth);
   const tileWidth = contentWidth > 0 ? cellWidth(contentWidth, columns, GAP) : 0;
-  const list = scenarios.data;
-  const importing = importer.progress;
-  const empty = list !== undefined && list.length === 0 && !importing;
   const grid = libraryView === "grid";
+
+  const query = tab === "cards" ? cards : scenarios;
+  const items: (Item & { menu: (place: Parameters<typeof scenarioActions.menu>[1]) => void })[] | undefined =
+    tab === "cards"
+      ? cards.data?.map((c) => ({ ...cardItem(c, cardPath(c.id)), menu: (place) => void cardActions.menu(c, place) }))
+      : scenarios.data?.map((s) => ({
+          ...scenarioItem(s, scenarioPath(s)),
+          menu: (place) => void scenarioActions.menu(s, place),
+        }));
+  const empty = items !== undefined && items.length === 0;
+  const hasCards = (cards.data?.length ?? 0) > 0;
+
+  const setTab = (next: LibraryTab): void => {
+    setParams(next === "cards" ? { tab: "cards" } : {}, { replace: true });
+  };
+
+  const add =
+    tab === "cards"
+      ? { label: t("library.goWorkbench"), icon: "workbench" as const, run: () => navigate("/workbench") }
+      : { label: t("library.newScenario"), icon: "plus" as const, run: () => navigate(newScenarioPath()) };
 
   return (
     <div className={pages.page}>
-      <PageHeader title={t("nav.library")} count={list && !empty ? list.length : null}>
-        {list && !empty ? (
-          <HeaderControls
-            view={libraryView}
-            onView={setLibraryView}
-            importing={importing !== null}
-            onImport={importer.pick}
-            labelled={windowWidth >= desktop.rail}
-          />
-        ) : null}
+      <PageHeader title={t("nav.library")} count={null}>
+        <HeaderControls
+          view={libraryView}
+          onView={setLibraryView}
+          addLabel={add.label}
+          addIcon={add.icon}
+          onAdd={add.run}
+          labelled={windowWidth >= desktop.rail}
+        />
       </PageHeader>
-      {importer.problem ? (
+      <Tabs
+        tab={tab}
+        onTab={setTab}
+        counts={{ scenarios: scenarios.data?.length ?? null, cards: cards.data?.length ?? null }}
+      />
+      {!movedHintDismissed ? (
         <Notice
-          message={
-            <>
-              <strong className={styles.problemTitle}>{importer.problem.title}</strong>
-              {importer.problem.message}
-            </>
-          }
-          onClose={importer.dismissProblem}
+          tone="info"
+          message={t("library.moved")}
+          actionLabel={t("library.movedAction")}
+          onAction={() => navigate("/workbench")}
+          onClose={dismissMovedHint}
           className={styles.banner}
         />
       ) : null}
-      {scenarios.error ? (
+      {query.error ? (
         <Notice
           icon="offline"
           message={
-            list
-              ? describeError(scenarios.error)
-              : t("library.loadFailedWith", { error: describeError(scenarios.error) })
+            items ? describeError(query.error) : t("library.loadFailedWith", { error: describeError(query.error) })
           }
-          actionLabel={list ? t("common.retry") : t("common.reload")}
-          onAction={() => void scenarios.refetch()}
+          actionLabel={items ? t("common.retry") : t("common.reload")}
+          onAction={() => void query.refetch()}
           className={styles.banner}
         />
       ) : null}
       <div ref={box}>
-        {!list ? (
-          scenarios.isPending ? (
+        {!items ? (
+          query.isPending ? (
             <div className={styles.loading}>
               <Button label={t("common.loading")} variant="text" busy />
             </div>
           ) : null
         ) : empty ? (
-          <Empty onImport={importer.pick} importing={false} />
+          tab === "cards" || !hasCards ? (
+            <Empty
+              title={tab === "cards" ? t("library.emptyCards") : t("library.emptyScenarios")}
+              note={tab === "cards" ? t("library.emptyCardsNote") : t("library.emptyScenariosNote")}
+              actionLabel={t("library.goWorkbench")}
+              actionIcon="workbench"
+              onAction={() => navigate("/workbench")}
+            />
+          ) : (
+            <Empty
+              title={t("library.emptyScenarios")}
+              note={t("library.emptyScenariosNote")}
+              actionLabel={t("library.newScenario")}
+              actionIcon="plus"
+              onAction={() => navigate(newScenarioPath())}
+            />
+          )
         ) : grid ? (
           <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-            {importing ? <ImportingTile file={importing} width={tileWidth} /> : null}
-            {list.map((scenario) => (
-              <Tile key={scenario.id} scenario={scenario} width={tileWidth} onMenu={actions.menu} />
+            {items.map((item) => (
+              <Tile key={item.id} item={item} width={tileWidth} onMenu={item.menu} />
             ))}
           </div>
         ) : (
           <div className={styles.list}>
-            {importing ? <ImportingRow file={importing} /> : null}
-            {list.map((scenario) => (
-              <Row key={scenario.id} scenario={scenario} onMenu={actions.menu} />
+            {items.map((item) => (
+              <Row key={item.id} item={item} onMenu={item.menu} />
             ))}
           </div>
         )}

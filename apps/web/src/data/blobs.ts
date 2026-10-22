@@ -15,7 +15,7 @@ export function useBlobUrl(blobId: string | null | undefined) {
     gcTime: 30 * 60_000,
     retry: false,
     queryFn: async () => {
-      const response = await fetch(api.scenarios.blobPath(blobId ?? ""), { headers: await authHeaders() });
+      const response = await fetch(api.blobPath(blobId ?? ""), { headers: await authHeaders() });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return URL.createObjectURL(await response.blob());
     },

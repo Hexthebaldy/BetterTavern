@@ -133,6 +133,11 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
       update(await api.models.update(route.id, { background: on }));
       overlay.toast(on ? t("models.backgroundOn") : t("models.backgroundOff"));
     });
+  const setWorkbench = (on: boolean): Promise<void> =>
+    run(async () => {
+      update(await api.models.update(route.id, { workbench: on }));
+      overlay.toast(on ? t("models.workbenchOn") : t("models.workbenchOff"));
+    });
   const cancelDirector = async (): Promise<void> => {
     const ok = await overlay.confirm({
       title: t("models.cancelDirectorTitle"),
@@ -178,6 +183,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
               <StatusPill kind={kind} label={modelStatusLabel(route.status)} />
               {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
               {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
+              {route.is_workbench ? <Pill label={t("models.workbenchPill")} /> : null}
             </div>
           </div>
           <IconButton
@@ -307,6 +313,26 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
             checked={route.is_background}
             disabled={!route.supports_tools && !route.is_background}
             onChange={(e) => void setBackground(e.target.checked)}
+          />
+        </label>
+
+        <label className={styles.switchRow}>
+          <span className={styles.switchIcon}>
+            <Icon name="workbench" size={20} />
+          </span>
+          <span className={styles.rowText}>
+            <span>{t("models.workbench")}</span>
+            <span className={cx(styles.rowSub, !route.supports_tools && styles.warnText)}>
+              {route.supports_tools ? t("models.workbenchNote") : t("models.workbenchNoTools")}
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            className={styles.toggle}
+            checked={route.is_workbench}
+            disabled={!route.supports_tools && !route.is_workbench}
+            onChange={(e) => void setWorkbench(e.target.checked)}
           />
         </label>
 

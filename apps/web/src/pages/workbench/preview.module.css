@@ -1,0 +1,408 @@
+/* 工作台右栏：卡片预览（正在写的地方高亮，待采用的改动绿框）、资料、图片；手动模式的检查；封面面板 */
+
+.head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 10px;
+}
+.headTitle {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 700;
+}
+.headStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mut);
+}
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: currentColor;
+}
+.writing {
+  color: var(--acc);
+}
+.ok {
+  color: var(--ok);
+}
+.err {
+  color: var(--err);
+}
+.warnText {
+  color: var(--warn);
+}
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 18px;
+  background: var(--inset);
+}
+.tab {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--mut);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tabOn {
+  background: var(--raised);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---- 卡片 ---- */
+.cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border: 0;
+  padding: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--card);
+  color: var(--mut);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+}
+.coverEmpty {
+  border: 1.5px dashed var(--line2);
+  background: transparent;
+}
+.cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.coverChange {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, #000 55%, transparent);
+  color: #fff;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.cover:hover .coverChange,
+.cover:focus-visible .coverChange {
+  opacity: 1;
+}
+@media (hover: none) {
+  .coverChange {
+    opacity: 1;
+  }
+}
+.nameRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 4px 0;
+  min-width: 0;
+}
+.name {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.displayName {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px;
+}
+.block {
+  border-radius: 16px;
+  background: var(--card);
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1.5px solid transparent;
+}
+.blockHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--mut);
+}
+.blockText {
+  font-size: 13.5px;
+  line-height: 21px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.blockEmpty {
+  font-size: 13px;
+  color: var(--mut);
+}
+.blockWriting {
+  background: var(--acc-bg);
+}
+.blockWriting .blockHead {
+  color: var(--acc);
+}
+.blockChange {
+  border-color: var(--ok);
+}
+.blockChange .blockHead {
+  color: var(--ok);
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.listItem {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink2);
+}
+.listItem strong {
+  color: var(--ink);
+  font-weight: 600;
+  margin-right: 6px;
+}
+.issues {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.issue {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  line-height: 19px;
+}
+.issue svg {
+  flex: none;
+  margin-top: 2px;
+}
+.issueError {
+  color: var(--err);
+}
+.issueWarn {
+  color: var(--warn);
+}
+.issueButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.issueButton:hover {
+  text-decoration: underline;
+}
+
+/* ---- 资料 ---- */
+.intro {
+  font-size: 12.5px;
+  line-height: 19px;
+  color: var(--mut);
+  padding: 0 4px;
+}
+.note {
+  border-radius: 16px;
+  background: var(--card);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.noteHead {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.noteTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.noteSite {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--mut);
+}
+.noteText {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink2);
+}
+.usedIn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.empty {
+  padding: 32px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+/* ---- 手动模式的检查栏 ---- */
+.check {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.okLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--ok-bg);
+  color: var(--ok);
+  font-size: 12.5px;
+}
+.stats {
+  font-size: 12.5px;
+  line-height: 20px;
+  color: var(--ink2);
+}
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 4px 0;
+}
+.opening {
+  border-radius: 16px;
+  background: var(--card);
+  padding: 14px 16px;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 27px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.footnote {
+  font-size: 11.5px;
+  line-height: 18px;
+  color: var(--mut);
+  padding: 0 4px;
+}
+
+/* ---- 封面面板 ---- */
+.coverDialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: 24px;
+}
+.coverDialogHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.coverDialogTitle {
+  font-size: 18px;
+  font-weight: 700;
+}
+.coverCurrent {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.coverCurrentImg {
+  width: 96px;
+  aspect-ratio: 2 / 3;
+  border-radius: 14px;
+  object-fit: cover;
+  background: var(--fill);
+  flex: none;
+}
+.coverCurrentBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.rowLabel {
+  font-size: 12.5px;
+  color: var(--mut);
+  margin-right: 4px;
+}
+.generate {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--fill);
+}
+.service {
+  font-size: 12px;
+  color: var(--mut);
+}
+.fileInput {
+  display: none;
+}

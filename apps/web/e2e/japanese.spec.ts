@@ -48,11 +48,13 @@ test("Japanese interface: errors, story language, and the Japanese serif", async
   await expect(page).toHaveURL(/\/settings\/model\//);
 
   // ---- 导入角色卡，开局：请求里带上界面语言 ----
-  await page.goto("/library");
+  await page.goto("/workbench");
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "キャラクターカードを読み込む" }).first().click();
   await (await chooser).setFiles(CARD);
-  await expect(page.getByRole("button", { name: "キャラクターカードを編集", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/workbench\/d\//);
+  await page.getByRole("button", { name: "保存して物語を始める" }).click();
+  await expect(page).toHaveURL(/\/scenario\/[^/]+$/);
   await page.getByPlaceholder("名前", { exact: true }).fill("朝霧湊");
   const started = page.waitForRequest(
     (request) => request.method() === "POST" && new URL(request.url()).pathname === "/v1/playthroughs",

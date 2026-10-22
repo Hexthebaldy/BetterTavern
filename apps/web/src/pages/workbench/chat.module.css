@@ -1,0 +1,534 @@
+/* 工作台的对话（W02–W05 的左栏）：对话记录、问卷、方案、改动对比、图片、进度清单和底下的输入框 */
+
+.pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.transcript {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 8px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.transcriptInner {
+  max-width: 720px;
+  width: 100%;
+  margin: auto auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- 一条消息 ---- */
+.userRow {
+  display: flex;
+  justify-content: flex-end;
+  padding-left: 64px;
+}
+.bubble {
+  padding: 9px 16px;
+  border-radius: 20px;
+  background: var(--fill);
+  font-size: 14.5px;
+  line-height: 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.agentRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+  color: var(--bg);
+}
+.agentBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 3px;
+}
+.agentText {
+  font-size: 14.5px;
+  line-height: 23px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--acc);
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink {
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .caret::after {
+    animation: none;
+  }
+}
+.muted {
+  color: var(--mut);
+}
+.toolLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--mut);
+}
+
+/* 收起来的一行：✓ 答了 6 题 悬疑 · 民国…… 展开 */
+.summaryLine {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--mut);
+  min-width: 0;
+}
+.summaryLine svg {
+  flex: none;
+  align-self: center;
+}
+.summaryLabel {
+  flex: none;
+  color: var(--ink2);
+  font-weight: 600;
+}
+.summaryText {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.linkButton {
+  flex: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--acc);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ---- 灰底的卡片（问卷、方案、改动、进度） ---- */
+.card {
+  border-radius: 22px;
+  background: var(--fill);
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.cardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cardMeta {
+  color: var(--mut);
+  font-size: 12px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- 问卷 ---- */
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.questionTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.questionIndex {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mut);
+  font-variant-numeric: tabular-nums;
+}
+.questionMulti {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mut);
+}
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: var(--on-fill);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  text-align: left;
+  cursor: pointer;
+}
+.choice:disabled {
+  cursor: default;
+}
+.choiceOn {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+.badge {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--acc-bg);
+  color: var(--acc);
+  font-size: 10.5px;
+  line-height: 15px;
+}
+.choiceOn .badge {
+  background: color-mix(in srgb, var(--bg) 22%, transparent);
+  color: var(--bg);
+}
+.otherInput {
+  min-width: 180px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--acc);
+  background: var(--on-fill);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+/* ---- 方案 ---- */
+.planName {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+.planPitch {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--ink2);
+}
+.planSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.planHeading {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--mut);
+}
+.planBody {
+  font-size: 14px;
+  line-height: 22px;
+  white-space: pre-wrap;
+}
+.planList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 22px;
+}
+.sources {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.sources a {
+  color: var(--acc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- 改动对比 ---- */
+.hunk {
+  border-radius: 16px;
+  background: var(--on-fill);
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hunkHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.hunkTarget {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.hunkSummary {
+  color: var(--mut);
+  font-size: 12px;
+}
+.before,
+.after {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 21px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.before {
+  background: var(--err-bg);
+  color: var(--err);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--err) 55%, transparent);
+}
+.after {
+  background: var(--ok-bg);
+  color: var(--ink);
+}
+.hunkDecided {
+  opacity: 0.6;
+}
+.hunkActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* ---- 图片 ---- */
+.images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.imageTile {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border: 0;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--inset);
+  cursor: pointer;
+}
+.imageTile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.imageSelected {
+  box-shadow: 0 0 0 3px var(--acc);
+}
+.license {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, #000 55%, transparent);
+  color: #fff;
+  font-size: 10.5px;
+  line-height: 16px;
+}
+.check {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--acc);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- 进度清单：正在写 3 / 7 ---- */
+.todos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.todo {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 20px;
+  color: var(--mut);
+}
+.todoMark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 9px;
+  border: 1.5px solid var(--line2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.todoDone {
+  color: var(--ink);
+}
+.todoDone .todoMark {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+.todoDoing {
+  color: var(--ink);
+  background: var(--on-fill);
+}
+.todoDoing .todoMark {
+  border-color: var(--acc);
+  box-shadow: inset 0 0 0 3px var(--on-fill);
+  background: var(--acc);
+}
+.todoText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.todoDetail {
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* ---- 底下：建议、输入框 ---- */
+.bottom {
+  flex: none;
+  padding: 8px 8px 0;
+}
+.bottomInner {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.suggestion {
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .suggestion:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+}
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px 6px 6px 16px;
+  border-radius: 24px;
+  background: var(--fill);
+}
+.composer:focus-within {
+  box-shadow: 0 0 0 2px var(--acc);
+}
+.composerInput {
+  flex: 1;
+  min-width: 0;
+  max-height: 160px;
+  padding: 8px 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14.5px;
+  line-height: 22px;
+}
+.composerInput::placeholder {
+  color: var(--mut);
+}
+.send {
+  background: var(--ink);
+  color: var(--bg);
+}
+.send:disabled {
+  background: var(--inset);
+  color: var(--mut);
+}
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 12.5px;
+  color: var(--mut);
+}

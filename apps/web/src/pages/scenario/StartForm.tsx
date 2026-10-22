@@ -3,6 +3,8 @@
  * 篇幅（行数图示）、文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）。只有第 1 步必填。
  * 选择最终拼回接口原来的字段，见 @bettertavern/core 的 scenario/startForm.ts。
  * 宽屏（wide）：名字建议排在输入框右边。
+ * initial：按剧本设置预填（默认主角、偏好）；不在内置标签里的文风、不想看到的内容当作自定义的项。
+ * 也用在新建、编辑剧本（ScenarioFormPage.tsx）里填剧本的默认设置。
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -16,6 +18,7 @@ import {
   lengthLabel,
   NAME_MAX,
   randomName,
+  splitJoined,
   styleTags as builtinStyles,
   suggestNames,
   SUMMARY_MAX,
@@ -70,9 +73,11 @@ const LENGTH_GLYPHS: Record<Preferences["length"], { d: string; width: number }>
 export function StartForm({
   onChange,
   wide,
+  initial,
 }: {
   onChange: (values: StartValues, summary: string[]) => void;
   wide?: boolean;
+  initial?: StartValues;
 }) {
   const overlay = useOverlay();
   const { t, i18n } = useTranslation();
@@ -80,13 +85,17 @@ export function StartForm({
   const suggestions = useMemo(() => suggestNames(4), [i18n.language]);
   const builtinTags = useMemo(() => builtinStyles(), [i18n.language]);
   const avoidItems = useMemo(() => boundaryItems(), [i18n.language]);
-  const [name, setName] = useState("");
-  const [summary, setSummary] = useState("");
-  const [length, setLength] = useState<Preferences["length"]>("medium");
-  const [styleTags, setStyleTags] = useState<string[]>([]);
-  const [customStyles, setCustomStyles] = useState<string[]>([]);
-  const [bounds, setBounds] = useState<string[]>([]);
-  const [customBounds, setCustomBounds] = useState<string[]>([]);
+  const [name, setName] = useState(initial?.name ?? "");
+  const [summary, setSummary] = useState(initial?.summary ?? "");
+  const [length, setLength] = useState<Preferences["length"]>(initial?.length ?? "medium");
+  const [styleTags, setStyleTags] = useState<string[]>(() => splitJoined(initial?.style ?? ""));
+  const [customStyles, setCustomStyles] = useState<string[]>(() =>
+    splitJoined(initial?.style ?? "").filter((tag) => !builtinTags.includes(tag)),
+  );
+  const [bounds, setBounds] = useState<string[]>(() => splitJoined(initial?.boundaries ?? ""));
+  const [customBounds, setCustomBounds] = useState<string[]>(() =>
+    splitJoined(initial?.boundaries ?? "").filter((item) => !avoidItems.includes(item)),
+  );
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;

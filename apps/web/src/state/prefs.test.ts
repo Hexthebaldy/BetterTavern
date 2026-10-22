@@ -22,6 +22,7 @@ describe("parsePrefs", () => {
       worldDocked: true,
       sidebarCollapsed: true,
       singleKeys: false,
+      movedHintDismissed: true,
     });
     assert.deepEqual(prefs, {
       reading: { font: "sans", size: 20.5 },
@@ -31,6 +32,7 @@ describe("parsePrefs", () => {
       worldDocked: true,
       sidebarCollapsed: true,
       singleKeys: false,
+      movedHintDismissed: true,
     });
   });
 

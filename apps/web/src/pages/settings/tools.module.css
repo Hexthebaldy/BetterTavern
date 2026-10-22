@@ -1,0 +1,71 @@
+/* 外部服务（ToolsBody）：每一种一节，配好的服务一行一张灰卡，添加用居中对话框 */
+
+.kind {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 24px;
+  background: var(--fill);
+}
+.rowHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.name {
+  font-size: 15.5px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--mut);
+  overflow-wrap: anywhere;
+}
+.rowFoot {
+  display: flex;
+  min-width: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.none {
+  padding: 4px 12px 8px;
+  font-size: 13.5px;
+  color: var(--mut);
+}
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dialogTitle {
+  font-size: 18px;
+  font-weight: 700;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dialogButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}

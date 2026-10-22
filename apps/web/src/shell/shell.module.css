@@ -1,6 +1,6 @@
 /*
  * 外壳：侧栏、导航条、底部 Tab 栏和内容区。数值取自 docs/design/ui/web/source 的 .sb、.ni、.sr、.rail、.rn、.rcv；
- * Tab 栏同 App（高 64，左右 20；中屏宽 392 居中）。导航都是 fixed，只有内容区（整个页面）滚动。
+ * Tab 栏同 App（高 64，左右 20；中屏宽 460 居中）。导航都是 fixed，只有内容区（整个页面）滚动。
  */
 
 .shell {
@@ -347,7 +347,7 @@
   .tabBar {
     left: 50%;
     right: auto;
-    width: 392px;
+    width: 460px;
     transform: translateX(-50%);
   }
 }
@@ -370,8 +370,9 @@
   gap: 8px;
   flex: 1.4;
   height: 48px;
-  padding: 0 20px;
+  padding: 0 16px;
   border-radius: 24px;
+  white-space: nowrap;
   color: var(--tab-on);
   font-size: 14px;
   font-weight: 500;
