@@ -50,7 +50,8 @@ chmod 700 /srv/bettertavern/backups
 echo "== 5. 源站证书的私钥和证书请求"
 sudo mkdir -p /etc/ssl/bettertavern
 sudo chmod 700 /etc/ssl/bettertavern
-if [[ ! -f /etc/ssl/bettertavern/origin.key ]]; then
+# 目录只有 root 能进，判断文件在不在也要用 sudo（否则看不见，会重新生成私钥，覆盖掉已经签过证书的那一把）
+if ! sudo test -f /etc/ssl/bettertavern/origin.key; then
   sudo openssl req -new -newkey rsa:2048 -nodes \
     -keyout /etc/ssl/bettertavern/origin.key \
     -out /etc/ssl/bettertavern/origin.csr \
@@ -58,7 +59,7 @@ if [[ ! -f /etc/ssl/bettertavern/origin.key ]]; then
     -addext "subjectAltName=DNS:bettertavern.com,DNS:*.bettertavern.com" 2> /dev/null
   sudo chmod 600 /etc/ssl/bettertavern/origin.key
 fi
-if [[ ! -f /etc/ssl/bettertavern/origin.pem ]]; then
+if ! sudo test -f /etc/ssl/bettertavern/origin.pem; then
   echo "把下面这段 CSR 贴到 Cloudflare：SSL/TLS › Origin Server › Create Certificate ›"
   echo "选 Use my private key and CSR，主机名填 bettertavern.com 和 *.bettertavern.com。"
   echo "签好的证书保存到 /etc/ssl/bettertavern/origin.pem（docs/ops.md 有命令）。"
