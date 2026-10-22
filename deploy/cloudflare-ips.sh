@@ -38,9 +38,10 @@ echo "已写入 $snippet（$count 段）"
 
 # 防火墙：先删掉上次加的（注释是 cloudflare），再按新的列表加
 while true; do
-  num=$(ufw status numbered | grep '# cloudflare' | head -1 | sed -E 's/^\[ *([0-9]+)\].*/\1/')
+  # 一条都没有时 grep 返回 1，不算出错
+  num=$(ufw status numbered | { grep '# cloudflare' || true; } | head -1 | sed -E 's/^\[ *([0-9]+)\].*/\1/')
   [[ -z $num ]] && break
-  yes | ufw delete "$num" > /dev/null
+  ufw --force delete "$num" > /dev/null
 done
 while read -r cidr; do
   ufw allow proto tcp from "$cidr" to any port 80,443 comment cloudflare > /dev/null
