@@ -15,9 +15,26 @@ import type {
   ProbeReport,
   Provider,
   RouteParams,
+  Asset,
+  CardDetail,
+  CardRevision,
+  CardSummary,
+  CharacterCardInput,
+  Draft,
+  DraftImport,
+  DraftMode,
+  DraftSave,
+  DraftSummary,
+  NewMessage,
+  NewScenario,
+  NewToolRoute,
   Scenario,
-  ScenarioCard,
-  ScenarioCardInput,
+  ScenarioPatch,
+  ToolProvider,
+  ToolRoute,
+  ToolRoutePatch,
+  Transcript,
+  WorkbenchMessage,
   Turn,
   TurnCreated,
   User,
@@ -35,6 +52,7 @@ export type NewModelRoute = {
   manual_window?: number | null;
   params?: RouteParams;
   director?: boolean;
+  workbench?: boolean;
 };
 
 /** 只改给出的字段；manual_window 传 null 表示清空 */
@@ -49,13 +67,27 @@ export type ModelRoutePatch = {
   params?: RouteParams;
   director?: boolean;
   background?: boolean;
+  workbench?: boolean;
+};
+
+/** 导入一张卡：已经导入过同一个文件时默认不建草稿，返回那张卡（allowDuplicate 为真时另起一份） */
+export type ImportOptions = { language: string; allowDuplicate?: boolean };
+
+export type SaveOptions = { new_scenario?: boolean; on_conflict?: "overwrite" | "copy" };
+
+export type CoverRequest = {
+  prompt: string;
+  style?: string;
+  count?: number;
+  aspect?: "portrait" | "square" | "landscape";
 };
 
 export type ModelListQuery = { api_key: string; base_url?: string | null };
 
 export type NewPlaythrough = {
   scenario_id: string;
-  protagonist: { name: string; summary?: string };
+  /** 不传时用剧本设置里的默认主角 */
+  protagonist?: { name: string; summary?: string };
   title?: string;
   preferences?: Partial<Preferences>;
   /** 这一局给 agent 的提示词用哪种语言：传当前的界面语言（docs/i18n.md 第 4 节）；不传按 zh */
@@ -119,26 +151,89 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
       listModels: (id: string) =>
         client.get<ModelInfo[]>(`/v1/model-routes/${enc(id)}/models`, { timeoutMs: 30_000 }),
     },
+    cards: {
+      list: () => client.get<CardSummary[]>("/v1/cards"),
+      get: (id: string) => client.get<CardDetail>(`/v1/cards/${enc(id)}`),
+      /** 有剧本在用时是 409 CARD_IN_USE（带 scenarios） */
+      remove: (id: string) => client.delete<void>(`/v1/cards/${enc(id)}`),
+      revisions: (id: string) => client.get<CardRevision[]>(`/v1/cards/${enc(id)}/revisions`),
+      restore: (id: string, version: number) =>
+        client.post<CardDetail>(`/v1/cards/${enc(id)}/revisions/${version}/restore`),
+      exportPath: (id: string, format: "png" | "json") => `/v1/cards/${enc(id)}/export?format=${format}`,
+    },
     scenarios: {
-      importFile: (file: Blob) => {
+      list: () => client.get<Scenario[]>("/v1/scenarios"),
+      get: (id: string) => client.get<Scenario>(`/v1/scenarios/${enc(id)}`),
+      create: (body: NewScenario) => client.post<Scenario>("/v1/scenarios", body),
+      /** 带 version 时检查有没有在别处改过（409 SCENARIO_CHANGED） */
+      update: (id: string, body: ScenarioPatch) => client.patch<Scenario>(`/v1/scenarios/${enc(id)}`, body),
+      remove: (id: string) => client.delete<void>(`/v1/scenarios/${enc(id)}`),
+    },
+    blobPath: (blobId: string) => `/v1/blobs/${enc(blobId)}`,
+    workbench: {
+      list: () => client.get<DraftSummary[]>("/v1/workbench/drafts"),
+      get: (id: string) => client.get<Draft>(`/v1/workbench/drafts/${enc(id)}`),
+      createManual: (language: string) =>
+        client.post<Draft>("/v1/workbench/drafts", { origin: "manual", language }),
+      /** 从仓库打开一张卡：这张卡已经有草稿就返回那一份 */
+      openCard: (cardId: string, language: string) =>
+        client.post<Draft>("/v1/workbench/drafts", { origin: "edit_card", card_id: cardId, language }),
+      /** 从聊天框开始：同时开 agent 的第一轮 */
+      startAgent: (text: string, language: string) =>
+        client.post<Draft>("/v1/workbench/drafts", { origin: "agent", text, language }),
+      importFile: (file: Blob, options: ImportOptions) => {
         const form = new FormData();
         // SDK 57 的全局 fetch 是 expo/fetch，不认 RN 的 { uri, name, type }，只认能读出字节的对象：
         // 调用方传 expo-file-system 的 File。服务端按内容识别 PNG 或 JSON，不看文件名
         form.append("file", file);
-        return client.request<Scenario>("POST", "/v1/scenarios/import", { form, timeoutMs: 120_000 });
+        form.append("language", options.language);
+        form.append("allow_duplicate", options.allowDuplicate ? "true" : "false");
+        return client.request<DraftImport>("POST", "/v1/workbench/drafts/import", { form, timeoutMs: 120_000 });
       },
-      list: () => client.get<Scenario[]>("/v1/scenarios"),
-      get: (id: string) => client.get<Scenario>(`/v1/scenarios/${enc(id)}`),
-      rename: (id: string, name: string) => client.patch<Scenario>(`/v1/scenarios/${enc(id)}`, { name }),
-      /** 编辑页：能编辑的那部分卡片和版本号 */
-      card: (id: string) => client.get<ScenarioCard>(`/v1/scenarios/${enc(id)}/card`),
-      /** 保存编辑；版本号对不上（别处改过）时是 409 CARD_CHANGED。整张卡可能接近 1 MB，超时放宽 */
-      saveCard: (id: string, input: ScenarioCardInput) =>
-        client.put<ScenarioCard>(`/v1/scenarios/${enc(id)}/card`, input, { timeoutMs: 60_000 }),
-      /** 恢复成导入时的内容（显示名不变） */
-      resetCard: (id: string) => client.post<ScenarioCard>(`/v1/scenarios/${enc(id)}/card/reset`),
-      remove: (id: string) => client.delete<void>(`/v1/scenarios/${enc(id)}`),
-      blobPath: (blobId: string) => `/v1/blobs/${enc(blobId)}`,
+      /** 自动保存：版本号对不上是 409 DRAFT_CHANGED。整张卡可能接近 1 MB，超时放宽 */
+      saveCard: (id: string, version: number, name: string, card: CharacterCardInput) =>
+        client.put<Draft>(`/v1/workbench/drafts/${enc(id)}/card`, { version, name, card }, { timeoutMs: 60_000 }),
+      setMode: (id: string, mode: DraftMode) => client.patch<Draft>(`/v1/workbench/drafts/${enc(id)}`, { mode }),
+      uploadAsset: (id: string, file: Blob) => {
+        const form = new FormData();
+        form.append("file", file);
+        return client.request<Asset>("POST", `/v1/workbench/drafts/${enc(id)}/assets`, {
+          form,
+          timeoutMs: 120_000,
+        });
+      },
+      setCover: (id: string, assetId: string | null, personalUse = false) =>
+        client.put<Draft>(`/v1/workbench/drafts/${enc(id)}/cover`, {
+          asset_id: assetId,
+          personal_use: personalUse,
+        }),
+      /** 封面面板里直接出图（不经过 agent），可能要一两分钟 */
+      generateCovers: (id: string, body: CoverRequest) =>
+        client.post<Asset[]>(`/v1/workbench/drafts/${enc(id)}/covers`, body, { timeoutMs: 180_000 }),
+      save: (id: string, options: SaveOptions = {}) =>
+        client.post<DraftSave>(`/v1/workbench/drafts/${enc(id)}/save`, options, { timeoutMs: 60_000 }),
+      remove: (id: string) => client.delete<void>(`/v1/workbench/drafts/${enc(id)}`),
+      messages: (id: string) => client.get<Transcript>(`/v1/workbench/drafts/${enc(id)}/messages`),
+      /** 说话、交问卷、回复方案；agent 还在跑时是 409 DRAFT_BUSY */
+      post: (id: string, message: NewMessage) =>
+        client.post<WorkbenchMessage>(`/v1/workbench/drafts/${enc(id)}/messages`, message),
+      decide: (
+        id: string,
+        seq: number,
+        body: { accept?: string[]; reject?: string[]; all?: "accept" | "reject" },
+      ) => client.post<{ message: WorkbenchMessage; draft: Draft }>(`/v1/workbench/drafts/${enc(id)}/changes/${seq}`, body),
+      stop: (id: string) => client.post<{ stopped: boolean }>(`/v1/workbench/drafts/${enc(id)}/stop`),
+      continue: (id: string) => client.post<Draft>(`/v1/workbench/drafts/${enc(id)}/continue`),
+      eventsPath: (id: string) => `/v1/workbench/drafts/${enc(id)}/events`,
+    },
+    tools: {
+      providers: () => client.get<ToolProvider[]>("/v1/tool-providers"),
+      list: () => client.get<ToolRoute[]>("/v1/tool-routes"),
+      create: (body: NewToolRoute) => client.post<ToolRoute>("/v1/tool-routes", body),
+      update: (id: string, body: ToolRoutePatch) => client.patch<ToolRoute>(`/v1/tool-routes/${enc(id)}`, body),
+      remove: (id: string) => client.delete<void>(`/v1/tool-routes/${enc(id)}`),
+      /** 真的搜一个词、读一个页面或者出一张小图，最多 60 秒 */
+      test: (id: string) => client.post<ToolRoute>(`/v1/tool-routes/${enc(id)}/test`, undefined, { timeoutMs: 90_000 }),
     },
     playthroughs: {
       create: (body: NewPlaythrough) => client.post<PlaythroughCreated>("/v1/playthroughs", body),

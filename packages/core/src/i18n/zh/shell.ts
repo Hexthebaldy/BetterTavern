@@ -4,6 +4,7 @@ export const shell = {
   nav: {
     saves: "存档",
     library: "剧本",
+    workbench: "工作台",
     settings: "设置",
     count_other: "{{count}} 个",
     main: "主导航",
@@ -41,14 +42,6 @@ export const shell = {
       help: "显示这张表",
       close: "关闭菜单、对话框和滑出的面板",
     },
-  },
-  import: {
-    dropTitle: "松开就导入",
-    dropFormats: "PNG（卡面图片里带数据）或 JSON（纯文本角色卡），最大 16 MB",
-    dropSupports: "支持 SillyTavern V1、V2、V3，可以一次拖多张",
-    imported_other: "导入了 {{count}} 张角色卡",
-    duplicates_other: "{{count}} 张之前已经导入过",
-    failed_other: "有 {{count}} 张没有导入",
   },
   splash: {
     restoring: "正在恢复登录状态",

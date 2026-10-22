@@ -30,6 +30,7 @@ function route(id: string, provider: string, last4: string, shares: string[] = [
     last_probe: null,
     is_director: false,
     is_background: false,
+    is_workbench: false,
     supports_tools: true,
     shares_key_with: shares,
     window,

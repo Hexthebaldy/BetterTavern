@@ -5,6 +5,7 @@ export const shell: MessagesOtherOnly<typeof source> = {
   nav: {
     saves: "セーブ",
     library: "シナリオ",
+    workbench: "ワークベンチ",
     settings: "設定",
     count_other: "{{count}} 件",
     main: "メインナビゲーション",
@@ -43,14 +44,6 @@ export const shell: MessagesOtherOnly<typeof source> = {
       help: "この一覧を表示",
       close: "メニュー、ダイアログ、スライドしたパネルを閉じる",
     },
-  },
-  import: {
-    dropTitle: "離すと読み込みます",
-    dropFormats: "PNG（カード画像にデータ入り）または JSON（テキストのキャラクターカード）、最大 16 MB",
-    dropSupports: "SillyTavern V1、V2、V3 に対応。複数枚まとめてドロップできます",
-    imported_other: "キャラクターカードを {{count}} 枚読み込みました",
-    duplicates_other: "{{count}} 枚はすでに読み込み済みです",
-    failed_other: "{{count}} 枚は読み込めませんでした",
   },
   splash: {
     restoring: "ログイン状態を復元しています",

@@ -98,7 +98,9 @@ export type ModelRoute = {
   is_director: boolean;
   /** 是不是后台整理世界状态用的模型；没有时后台用导演的模型 */
   is_background: boolean;
-  /** 能不能调用工具：不能的模型不能用于后台整理 */
+  /** 是不是工作台用的模型；没有时工作台用导演的模型 */
+  is_workbench: boolean;
+  /** 能不能调用工具：不能的模型不能用于后台整理和工作台 */
   supports_tools: boolean;
   /** 和它用同一个 Key 的其他模型 */
   shares_key_with: string[];
@@ -107,28 +109,7 @@ export type ModelRoute = {
   updated_at: string;
 };
 
-export type Scenario = {
-  id: string;
-  name: string;
-  source_kind: string;
-  avatar_blob_id: string | null;
-  description_preview: string;
-  first_mes_preview: string;
-  creator: string;
-  tags: string[];
-  book_entries: number;
-  alternate_greetings: number;
-  truncated_fields: string[];
-  /** 版本号：改名、编辑卡片、恢复都会加 1；保存编辑时带回去 */
-  version: number;
-  /** 最近一次编辑卡片的时间；没编辑过（或恢复成导入时的内容之后）是 null */
-  edited_at: string | null;
-  created_at: string;
-  updated_at: string;
-  duplicate: boolean;
-};
-
-/** 角色卡自带的世界书条目 */
+/** 卡片自带的世界书条目 */
 export type LoreEntry = {
   name: string;
   keys: string[];
@@ -137,7 +118,7 @@ export type LoreEntry = {
   constant: boolean;
 };
 
-/** 能编辑的那部分角色卡（原文，{{char}}、{{user}} 不替换） */
+/** 角色卡的内容（原文，{{char}}、{{user}} 不替换）；角色卡详情和工作台的草稿共用 */
 export type CharacterCard = {
   name: string;
   description: string;
@@ -145,26 +126,323 @@ export type CharacterCard = {
   scenario: string;
   first_mes: string;
   mes_example: string;
+  system_prompt: string;
+  creator_notes: string;
+  alternate_greetings: string[];
   tags: string[];
   book: LoreEntry[];
+  /** 下面几项不能在 BetterTavern 里改，原样保留 */
+  creator: string;
+  character_version: string;
+  post_history_instructions: string;
+  /** 导入时因为太长被截断、之后没改过的字段 */
+  truncated: string[];
 };
 
-/** GET / PUT /v1/scenarios/{id}/card 的响应 */
-export type ScenarioCard = {
-  scenario_id: string;
+/** 自动保存草稿时发的卡片：只有能编辑的部分 */
+export type CharacterCardInput = Pick<
+  CharacterCard,
+  | "name"
+  | "description"
+  | "personality"
+  | "scenario"
+  | "first_mes"
+  | "mes_example"
+  | "system_prompt"
+  | "creator_notes"
+  | "alternate_greetings"
+  | "tags"
+  | "book"
+>;
+
+export type CardSource = "card_v1" | "card_v2" | "card_v3" | "manual" | "agent";
+
+/** 角色卡仓库的一张卡 */
+export type CardSummary = {
+  id: string;
+  name: string;
+  character_name: string;
+  source: CardSource;
+  cover_blob_id: string | null;
+  description_preview: string;
+  creator: string;
+  tags: string[];
+  book_entries: number;
+  greetings: number;
+  made_by: "agent" | "manual" | "mixed";
+  ip: { work: string; character: string } | null;
+  /** 几个剧本在用（大于 0 时不能删） */
+  scenario_count: number;
+  /** 有没保存修改的草稿时，是那份草稿 */
+  draft_id: string | null;
   version: number;
-  edited_at: string | null;
-  display_name: string;
-  card: CharacterCard;
-  truncated_fields: string[];
+  created_at: string;
+  updated_at: string;
 };
 
-/** PUT /v1/scenarios/{id}/card 的请求体：完整的可编辑内容，加读取时的版本号 */
-export type ScenarioCardInput = {
-  version: number;
-  display_name: string;
-  card: CharacterCard;
+export type CardDetail = {
+  card: CardSummary;
+  content: CharacterCard;
+  sources: { url: string; title: string; used_in: string[] }[];
+  scenarios: { id: string; name: string }[];
 };
+
+export type CardRevision = {
+  version: number;
+  name: string;
+  note: string;
+  cover_blob_id: string | null;
+  from_draft: boolean;
+  created_at: string;
+};
+
+/** 剧本的设置：开新故事时预填 */
+export type ScenarioSetup = {
+  protagonist: { name: string; summary: string };
+  preferences: Preferences;
+  /** 用哪张卡的哪条开场白开场（0 是 first_mes，1 起是备选开场白）；null 时由导演写开场 */
+  opening: { card_id: string; greeting: number } | null;
+};
+
+export type Scenario = {
+  id: string;
+  name: string;
+  /** 用了哪几张卡，按顺序；第一张是主角色卡 */
+  cards: { card_id: string; name: string; cover_blob_id: string | null }[];
+  cover_blob_id: string | null;
+  setup: ScenarioSetup;
+  description_preview: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NewScenario = {
+  name?: string | null;
+  card_ids: string[];
+  setup?: ScenarioSetup;
+};
+
+export type ScenarioPatch = {
+  name?: string;
+  card_ids?: string[];
+  setup?: ScenarioSetup;
+  version?: number;
+};
+
+// ---- 工作台 ------------------------------------------------------------------------------
+
+export type DraftOrigin = "agent" | "manual" | "import_file" | "edit_card";
+export type DraftMode = "agent" | "manual";
+export type DraftStage = "start" | "research" | "questions" | "plan" | "build" | "check" | "done" | "revise";
+export type AgentStatus = "idle" | "running" | "awaiting_user";
+export type Awaiting = { kind: "questions" | "plan" | "changes"; seq: number };
+
+export type DraftSummary = {
+  id: string;
+  name: string;
+  character_name: string;
+  origin: DraftOrigin;
+  card_id: string | null;
+  cover_blob_id: string | null;
+  mode: DraftMode;
+  stage: DraftStage;
+  agent_status: AgentStatus;
+  awaiting: Awaiting | null;
+  version: number;
+  saved_version: number | null;
+  unsaved: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** 按保存的规则检查出的一个问题；code 见 docs/api/workbench.md 的 IssueOut */
+export type Issue = {
+  field: string;
+  code: string;
+  level: "error" | "warning";
+  params: Record<string, string | number>;
+};
+
+export type ImageLicense = "public_domain" | "copyrighted" | "unknown" | "own";
+
+export type Asset = {
+  id: string;
+  blob_id: string;
+  source: "search" | "generated" | "upload" | "card";
+  license: ImageLicense;
+  source_url: string | null;
+  prompt: string | null;
+  mime: string;
+  width: number | null;
+  height: number | null;
+  personal_use: boolean;
+  created_at: string;
+};
+
+export type Note = {
+  id: string;
+  text: string;
+  url: string;
+  title: string;
+  site: string;
+  used_in: string[];
+};
+
+export type Todo = { key: string; text: string; state: "todo" | "doing" | "done"; detail: string };
+
+export type Draft = {
+  draft: DraftSummary;
+  card: CharacterCard;
+  cover_asset_id: string | null;
+  base_version: number | null;
+  todos: Todo[];
+  language: string;
+  issues: Issue[];
+  assets: Asset[];
+  notes: Note[];
+};
+
+export type DraftImport = { draft: Draft | null; existing_card: CardSummary | null };
+
+export type DraftSave = { card: CardSummary; draft: Draft; scenario: Scenario | null };
+
+export type Question = {
+  qid: string;
+  question: string;
+  choices: string[];
+  recommended: number | null;
+  multi: boolean;
+};
+
+export type Plan = {
+  names: string[];
+  pitch: string;
+  sections: { key: string; heading: string; body: string }[];
+  lore: string[];
+  opening: string;
+  cover: { mode: "generate" | "search" | "upload" | "none"; count: number; style: string; note: string };
+  sources: { url: string; title: string }[];
+  estimate: { searches: number; pages: number; images: number };
+  language: string;
+  ip: { work: string; character: string } | null;
+};
+
+export type HunkTarget =
+  | { field: string }
+  | { greeting: number }
+  | { lore: number }
+  | { lore_new: { name: string; keys: string[]; constant: boolean } };
+
+export type Hunk = {
+  id: string;
+  target: HunkTarget;
+  before: string;
+  after: string | null;
+  summary: string;
+  state: "pending" | "accepted" | "rejected" | "stale";
+};
+
+/** 对话记录的一条；content 随 kind 变 */
+export type WorkbenchMessage =
+  | MessageBase<"text", { text: string }>
+  | MessageBase<"questions", { intro: string; questions: Question[]; skippable: boolean }>
+  | MessageBase<
+      "answers",
+      { answers: Record<string, string | string[]>; delegated: boolean; questions_seq?: number }
+    >
+  | MessageBase<"plan", Plan>
+  | MessageBase<"plan_reply", { approved: boolean; name?: string; text?: string; plan_seq?: number }>
+  | MessageBase<"changes", { intro: string; hunks: Hunk[] }>
+  | MessageBase<"images", { asset_ids: string[]; purpose: "cover_candidates" | "references"; note: string }>
+  | MessageBase<
+      "progress",
+      { fields: string[]; lore: { added: number }; cover: boolean; complete: boolean; stopped: boolean }
+    >
+  | MessageBase<"research", { searches: string[]; pages: string[]; images: number }>
+  | MessageBase<"error", { code: string; message: string; reason: string | null }>;
+
+type MessageBase<K extends string, C> = {
+  seq: number;
+  role: "user" | "assistant";
+  kind: K;
+  content: C;
+  created_at: string;
+};
+
+export type Transcript = { messages: WorkbenchMessage[]; last_event_id: number };
+
+export type NewMessage =
+  | { kind: "text"; text: string }
+  | { kind: "answers"; answers: Record<string, string | string[]>; delegated?: boolean }
+  | { kind: "plan_reply"; approved: true; name?: string }
+  | { kind: "plan_reply"; approved: false; text: string };
+
+/** 工作台推送事件（data 已解析） */
+export type WorkbenchEvent =
+  | {
+      event: "status";
+      data: {
+        agent_status?: AgentStatus;
+        stage?: DraftStage;
+        awaiting?: Awaiting | null;
+        trigger?: string;
+        mode?: string;
+        done?: boolean;
+      };
+    }
+  | { event: "delta"; data: { text: string } }
+  | { event: "field_delta"; data: { target: { field: string } | { lore: string }; text: string } }
+  | { event: "tool"; data: { name: string; state: string; query?: string; urls?: number; count?: number } }
+  | { event: "message"; data: WorkbenchMessage }
+  | { event: "todos"; data: { todos: Todo[] } }
+  | { event: "draft"; data: { version: number; fields: string[] } };
+
+// ---- 外部服务 ----------------------------------------------------------------------------
+
+export type ToolKind = "search" | "fetch" | "image";
+
+export type ToolProvider = {
+  id: string;
+  kinds: ToolKind[];
+  can_search: boolean;
+  can_images: boolean;
+  can_fetch: boolean;
+  needs_key: boolean;
+  needs_base_url: boolean;
+  needs_model: boolean;
+  max_references: number;
+};
+
+export type ToolRoute = {
+  id: string;
+  kind: ToolKind;
+  provider: string;
+  label: string;
+  base_url: string | null;
+  key_last4: string;
+  has_key: boolean;
+  model: string | null;
+  params: Record<string, unknown>;
+  status: "unverified" | "ok" | "invalid";
+  probe: { ok?: boolean; detail?: string; latency_ms?: number; tested_at?: string };
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NewToolRoute = {
+  kind: ToolKind;
+  provider: string;
+  label?: string;
+  api_key?: string | null;
+  base_url?: string | null;
+  model?: string | null;
+  params?: Record<string, unknown>;
+  default?: boolean;
+};
+
+export type ToolRoutePatch = Partial<Omit<NewToolRoute, "kind" | "provider">>;
 
 export type TurnOption = { id: string; text: string };
 

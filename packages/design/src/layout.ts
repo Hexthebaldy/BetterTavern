@@ -57,7 +57,7 @@ export const rail = {
 } as const;
 
 /** 中屏的底部胶囊 Tab 栏：固定宽度、水平居中 */
-export const bottomBar = { width: 392 } as const;
+export const bottomBar = { width: 460 } as const;
 
 /** 页面左右边距：中屏两侧 32；宽屏左侧从导航栏右边算起，右侧 40；两栏页面的详情区四周 16、内边距 24 */
 export const gutter = { medium: 32, expandedRight: 40, detail: 24, detailEdge: 16 } as const;

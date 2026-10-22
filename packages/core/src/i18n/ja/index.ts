@@ -9,6 +9,7 @@ import { play } from "./play.ts";
 import { settings } from "./settings.ts";
 import { shell } from "./shell.ts";
 import { stories } from "./stories.ts";
+import { workbench } from "./workbench.ts";
 
 export const ja: MessagesOtherOnly<typeof zh> = {
   ...common,
@@ -17,5 +18,6 @@ export const ja: MessagesOtherOnly<typeof zh> = {
   ...stories,
   ...play,
   ...library,
+  ...workbench,
   ...settings,
 };

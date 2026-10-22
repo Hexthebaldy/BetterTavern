@@ -5,6 +5,7 @@ export const shell: Messages<typeof source> = {
   nav: {
     saves: "Saves",
     library: "Library",
+    workbench: "Workbench",
     settings: "Settings",
     count_one: "{{count}} item",
     count_other: "{{count}} items",
@@ -44,17 +45,6 @@ export const shell: Messages<typeof source> = {
       help: "Show this list",
       close: "Close menus, dialogs and slide-out panels",
     },
-  },
-  import: {
-    dropTitle: "Drop to import",
-    dropFormats: "PNG (data inside the card image) or JSON (plain-text card), up to 16 MB",
-    dropSupports: "Supports SillyTavern V1, V2 and V3. You can drop several at once.",
-    imported_one: "Imported {{count}} character card",
-    imported_other: "Imported {{count}} character cards",
-    duplicates_one: "{{count}} was already imported",
-    duplicates_other: "{{count}} were already imported",
-    failed_one: "{{count}} card wasn't imported",
-    failed_other: "{{count}} cards weren't imported",
   },
   splash: {
     restoring: "Signing you back in",

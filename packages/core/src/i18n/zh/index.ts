@@ -7,5 +7,15 @@ import { play } from "./play.ts";
 import { settings } from "./settings.ts";
 import { shell } from "./shell.ts";
 import { stories } from "./stories.ts";
+import { workbench } from "./workbench.ts";
 
-export const zh = { ...common, ...shell, ...auth, ...stories, ...play, ...library, ...settings };
+export const zh = {
+  ...common,
+  ...shell,
+  ...auth,
+  ...stories,
+  ...play,
+  ...library,
+  ...workbench,
+  ...settings,
+};

@@ -8,6 +8,7 @@ import {
   composeStyle,
   namePool,
   randomName,
+  splitJoined,
   STYLE_MAX,
   suggestNames,
   summaryParts,
@@ -83,5 +84,10 @@ describe("开始新故事的表单", () => {
     } finally {
       applyLanguage("zh");
     }
+  });
+
+  it("存下的文风拆回一项项，顿号和逗号都认", () => {
+    assert.deepEqual(splitJoined("克制、白描, 悬疑感，克制"), ["克制", "白描", "悬疑感"]);
+    assert.deepEqual(splitJoined(""), []);
   });
 });

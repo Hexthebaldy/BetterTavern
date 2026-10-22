@@ -54,6 +54,16 @@ export function lengthLabel(length: Preferences["length"]): string {
   return i18n.t(`start.length.${length}`);
 }
 
+/** 反过来：存下的文风、不想看到的内容拆回一项项（顿号、逗号都认），剧本设置预填表单时用 */
+export function splitJoined(text: string): string[] {
+  const items: string[] = [];
+  for (const part of text.split(/[、,，;；]/)) {
+    const value = part.trim();
+    if (value && !items.includes(value)) items.push(value);
+  }
+  return items;
+}
+
 /** 用界面语言的分隔符连起来（中文是顿号，英文是逗号）；放不下的项整项丢掉，不截断半个词 */
 export function joinWithin(items: string[], max: number): string {
   const separator = i18n.t("common.listSeparator");
