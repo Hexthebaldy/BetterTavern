@@ -73,16 +73,20 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 | 路由 | 页面 | 要点 |
 | --- | --- | --- |
 | `(auth)/login`、`register` | 登录与注册 |  |
-| `(tabs)/library` | 剧本库 | 导入角色卡，列表，进入详情 |
-| `scenario/[id]` | 剧本详情 | 预览、设置主角名与偏好、开始 |
-| `scenario/[id]/edit` | 编辑角色卡 | 改角色信息和卡片自带的世界书，只影响之后开始的故事 |
+| `(tabs)/library` | 剧本 | 剧本仓库和角色卡仓库两个标签，进入详情；加号从角色卡新建剧本 |
+| `(tabs)/workbench` | 工作台 | 一句话让 agent 写、导入角色卡、手动新建；没保存的草稿 |
+| `workbench/[id]` | 草稿 | Agent / 手动随时切换；对话（问卷、方案、改动对比）或表单；预览、封面、保存进角色卡仓库（见 [workbench.md](workbench.md)） |
+| `card/[id]` | 角色卡 | 在工作台里改、新建剧本、在用的剧本、版本历史、删除 |
+| `scenario/[id]` | 剧本详情 | 剧本里的卡、剧本设置、按设置预填的开始表单 |
+| `scenario/form` | 新建、编辑剧本 | 选一张或几张卡、剧本名、默认主角和偏好、用哪条开场白 |
 | `(tabs)/playthroughs` | 继续游玩 | 最近的故事 |
 | `play/[id]` | 阅读主屏 | 故事流、两个选项、自由输入、菜单（重新生成、回退、世界、时间线） |
 | `play/[id]/world` | 世界 | 按类型分页浏览实体；角色私有的秘密默认隐藏 |
 | `play/[id]/timeline` | 时间线 | 回合列表带一句话摘要，每一回合都可以作为回退的目标 |
 | `play/[id]/outline` | 大纲 | 打开剧透开关才显示 |
 | `settings/models` | 模型 | 配好的模型列表；添加模型时 Key、端点、模型名、窗口一次填完 |
-| `settings/model/[id]` | 模型详情 | 测试、设为导演、用于后台整理、窗口上限（显示当前模型能否满足）与思考开关、更换 Key |
+| `settings/model/[id]` | 模型详情 | 测试、设为导演、用于后台整理、用于工作台、窗口上限（显示当前模型能否满足）与思考开关、更换 Key |
+| `settings/tools` | 外部服务 | 网页搜索、读网页、生成封面的服务（工作台用） |
 | `settings/account` | 账户 | 导出数据、删除账户 |
 
 **发布**：EAS Build 出包，EAS Update 推 JS 补丁；补丁与服务端的兼容性靠 `X-Client-Version` 加服务端的最低版本检查兜住（[backend.md 第 9 节](backend.md)）。
@@ -97,10 +101,11 @@ apps/mobile/
 ├── app/                                # Expo Router：文件即路由
 │   ├── _layout.tsx  index.tsx
 │   ├── (auth)/  login.tsx  register.tsx
-│   ├── (tabs)/  _layout.tsx  library.tsx  playthroughs.tsx  settings.tsx
-│   ├── scenario/[id]/  index.tsx  edit.tsx
+│   ├── (tabs)/  _layout.tsx  library.tsx  workbench.tsx  playthroughs.tsx  settings.tsx
+│   ├── workbench/[id].tsx  card/[id].tsx
+│   ├── scenario/  [id]/index.tsx  form.tsx
 │   ├── play/[id]/  index.tsx  world.tsx  timeline.tsx  outline.tsx
-│   └── settings/  models.tsx  model/[id].tsx  account.tsx
+│   └── settings/  models.tsx  model/[id].tsx  tools.tsx  account.tsx
 ├── src/
 │   ├── api/
 │   │   ├── client.ts  sse.ts           # openapi-fetch 客户端；SseClient
@@ -122,7 +127,7 @@ apps/mobile/
 
 ## 3 实现状态与偏差
 
-已经实现：登录注册、剧本库与角色卡导入和编辑、故事列表、阅读主屏（流式叙述、选项、自由输入、停止、重试、写结局、回到更早的一段、世界状态面板）、模型设置（导演模型、后台整理模型）、外观和语言、平板布局。
+已经实现：登录注册、工作台（agent 写卡、导入、手动编辑、草稿、封面）、剧本仓库和角色卡仓库、群像剧本、故事列表、阅读主屏（流式叙述、选项、自由输入、停止、重试、写结局、回到更早的一段、世界状态面板）、模型设置（导演模型、后台整理模型）、外观和语言、平板布局。
 为了先把主线跑通，技术栈做了简化，页面和数据流按第 1 节设计，下面这些还没补齐：
 
 | 设计 | 现在的做法 | 什么时候补 |
@@ -150,12 +155,16 @@ apps/mobile/
 | 路由 | 页面 |
 | --- | --- |
 | `(auth)/login`、`(auth)/register` | 登录、注册；底部的服务器行打开服务器面板（最近用过的地址单选、输入新地址、测试连接），连不上时自动打开 |
-| `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 存档列表（界面上叫“存档”；每行方形封面 72，标题后面跟状态胶囊，右上角是更新时间，下面两行摘要；左滑或长按：重命名、删除）、剧本库（网格 / 列表，导入角色卡，长按或左滑：重命名、删除）、设置首页（导演模型卡片） |
-| `scenario/[id]`（`scenario/[id]/index.tsx`） | 剧本详情：封面、概要（剧本名右边是“编辑角色卡”，改过的卡标“已编辑”）、原卡开场白；“开始新的故事”五步表单（名字建议、“这个角色是谁”输入框、篇幅、文风标签、不想看到的勾选清单），拼回原来的字段；页面最底下是删除剧本（剧本名在编辑页里改；封面上只有返回按钮，没有“更多”） |
-| `scenario/[id]/edit` | 编辑角色卡：剧本名、角色名、标签，描述、性格，情境、开场白，对话示例，卡片自带的世界书（条目收起显示名称和常驻 / 未启用 / 有问题的标记，展开改名称、关键词、内容、启用、常驻，上移、下移、删除）。保存前按和服务端相同的规则检查（`@bettertavern/core/scenario/cardEdit`），不合格的字段标红，之后每次修改重新检查；保存带版本号，别处改过（409 `CARD_CHANGED`）时问要不要重新加载；有没保存的修改时离开先问“放弃修改？”；页底“恢复导入时的内容” |
+| `(tabs)/playthroughs`、`(tabs)/library`、`(tabs)/settings` | 存档列表（界面上叫“存档”；每行方形封面 72，标题后面跟状态胶囊，右上角是更新时间，下面两行摘要；左滑或长按：重命名、删除）、剧本（剧本仓库和角色卡仓库两个标签，网格 / 列表；剧本长按或左滑：重命名、删除；角色卡长按：在工作台里改、新建剧本、删除；顶上提示一次“新建和导入挪到了工作台”）、设置首页（导演模型卡片） |
+| `(tabs)/workbench` | 工作台首页：一句话开始（示例）、导入角色卡（一次一张，导入过的问打开已有的还是另外导入）、手动新建；没保存的草稿（写明在等什么，长按删除）、最近保存的角色卡 |
+| `workbench/[id]` | 草稿：顶上名字和保存状态、预览、更多（保存并开始新故事、删除草稿）；“Agent / 手动”切换和保存。Agent 模式是对话：问卷、方案、改动对比（全部采用 / 逐条看 / 都不要）、图片、进度清单和停止、接着写完；手动模式是表单（分节标签、自动保存、备选开场白、世界书）。预览是整屏面板：卡片（正在写的字段实时出字）、资料、图片；手动模式里是检查和开场的样子。封面面板：上传、生成、选图 |
+| `card/[id]` | 角色卡：封面、来源、标签；在工作台里改、用这张卡新建剧本；描述、在用的剧本、参考资料、版本历史（恢复）、删除（有剧本在用时说明是哪几个）。导出只在网页端 |
+| `scenario/form` | 新建（`?card=` 预选一张）和编辑（`?id=`）剧本：选卡（最多 8 张，可以调先后）、剧本名、默认主角和偏好（同开始表单）、开场（导演写或某张卡的某条开场白） |
+| `scenario/[id]`（`scenario/[id]/index.tsx`） | 剧本详情：封面、剧本名（右边是“编辑设置”）、剧本里的卡（第一张是主角色，点一下看卡）、剧本设置（默认主角、偏好、开场）、简介；“开始新的故事”五步表单（名字建议、“这个角色是谁”输入框、篇幅、文风标签、不想看到的勾选清单），按剧本设置预填，拼回原来的字段；页面最底下是删除剧本 |
 | `play/[id]` | 阅读主屏；选项接在最新一段后面，跟着正文滚动（这一段的选项补了两次也没补齐时，那里写一行“这一段没有给出选项，在下面写下你接下来要做的事”）；底部固定的操作栏左边是世界状态面板（标题下写截至第几回合，整理失败或跳过时有一条提示；人物与地点、关系图、事实，揭示秘密前确认。面板开着时，最新一段变了（写完新的一段、回退）就重新取；后台还没整理到最新一段时每 4 秒再取一次，整理到了就停，最新一段整理失败、要等下一回合再试时也停，`worldRefreshDelay()`；网页同样），右边是“更多”（阅读设置：宋体 / 黑体、字号；重命名、回到更早的一段、写结局、删除故事。“回到更早的一段”列出之前的每一段，点一段、确认后回退，之后的段落和世界状态的变化都撤销；生成中不能点，这个存档的回退次数用完时写明已用完。正文长按是选中复制，所以回退不用长按），中间是“自己写…”或生成中的状态和“停止”，往上翻时右端多出一个回到最新的下箭头按钮；导航栏只有返回和标题 |
 | `settings/models` | 模型列表（导演和后台模型那一行带标记）和添加模型：服务商图块（DeepSeek、OpenAI、Grok、Gemini、Hugging Face、自定义兼容端点，一行三块；圆标里是各家的标志，取自 Lobe Icons，形状数据在 `@bettertavern/design/providerLogos`，可以带线性渐变（Gemini 的彩色四角星），自定义端点写 { }）→ Key（每次都新填，可粘贴；不列出已配置过的 Key）→ 端点（使用官方地址）→ 模型列表（Key 和端点填好后自动获取，也可以手动重新获取）、搜索兼手动输入 → 上下文窗口（只有服务商列表和内置资料都不知道时才让填，不知道就按 32K 估计）→ 备注名、是否设为导演 → 保存。一个 Key 配几个模型时每个模型一行 |
-| `settings/model/[id]` | 模型详情：服务商、Key、模型名、端点；测试这个模型（结果存在模型上）、设为导演；“能记住多少”格子图，标出窗口的来源（服务商提供、内置资料、你填的、按服务商报错纠正、估计值），估计值和手填的可以改；工作窗口上限、深度思考；“用于后台整理”开关（点了立刻保存；模型不能调用工具时打不开，并说明原因）；编辑备注名、模型名和端点；更换 Key（别的模型也用这个 Key 时可以一起换）；取消导演；删除 |
+| `settings/model/[id]` | 模型详情：服务商、Key、模型名、端点；测试这个模型（结果存在模型上）、设为导演；“能记住多少”格子图，标出窗口的来源（服务商提供、内置资料、你填的、按服务商报错纠正、估计值），估计值和手填的可以改；工作窗口上限、深度思考；“用于后台整理”“用于工作台”开关（点了立刻保存；模型不能调用工具时打不开，并说明原因）；编辑备注名、模型名和端点；更换 Key（别的模型也用这个 Key 时可以一起换）；取消导演；删除 |
+| `settings/tools` | 外部服务：网页搜索、读网页、生成封面三种，每种可以配几个、一个默认；测试、设为默认、换 Key、删除；添加用底部面板，加好就测一次 |
 | `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、模型数，输入密码确认） |
 | 设置首页的“语言” | 选择面板（手机是底部面板，平板是对话框）：跟随系统（下面注明系统语言）、中文、English、日本語；每种语言用它自己的文字写 |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
@@ -245,11 +254,14 @@ apps/mobile/
     │   ├── play/     usePlaySession.ts  StoryFeed.tsx  TurnActions.tsx  BottomBar.tsx
     │   │             ActionParts.tsx  WorldSheet.tsx  WorldParts.tsx  MoreSheet.tsx
     │   ├── stories/  StoryCards.tsx                   # 平板的存档卡片（网格小卡、主卡）
-    │   ├── library/  LibraryParts.tsx                 # 剧本库的卡片、列表行、空状态
-    │   ├── scenario/ StartForm.tsx  BookEditor.tsx    # 开始新故事的表单；编辑角色卡里的世界书
+    │   ├── library/  LibraryParts.tsx  cardActions.ts # 两个仓库的卡片、列表行、空状态；角色卡的操作
+    │   ├── scenario/ StartForm.tsx                    # 开始新故事的表单（剧本设置也用它）
+    │   ├── workbench/ useDraftSession.ts  useCardForm.ts  useCardImport.ts  assets.tsx  # 草稿的状态、自动保存、导入、图片
+    │   │             AgentPane.tsx  Messages.tsx  QuestionsCard.tsx  PlanCard.tsx  ChangesCard.tsx  chatStyles.ts
+    │   │             ManualPane.tsx  BookEditor.tsx  PreviewSheet.tsx  CoverSheet.tsx
     │   ├── settings/ servers.ts  AddModelForm.tsx  ModelPicker.tsx  ModelSheets.tsx
     │   │             MemoryBlocks.tsx  ProbeResults.tsx  AppearanceSheet.tsx  LanguageSheet.tsx  nav.tsx  SettingsPane.tsx
-    │   │             screens/（模型列表、模型详情、账户的页面主体）
+    │   │             screens/（模型列表、模型详情、外部服务、账户的页面主体）
     │   └── probe/    DiagnosticsCard.tsx  ProbeBody.tsx   # 连接测试；诊断日志的导出和清空
     ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  sheet  overlay  dialog  icons
     │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx  AuthLayout.tsx
@@ -302,11 +314,14 @@ apps/mobile/
 | --- | --- |
 | `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交；宽屏左边是插画区 |
 | `/playthroughs` | 存档（W03）：三列网格，最近一个存档放大成主卡（两列两行）；600–899 两列，手机一列。卡片布局同 App，“…”在右下角 |
-| `/library` | 剧本库（W04）：网格按内容宽度 ÷ 240 取整（2–5 列）或限宽 640 的列表；导入按钮可以多选 |
-| `/scenario/:id` | 剧本详情（W05）：≥ 900 两栏各自滚动，右栏是开始新故事的五步，底部浮着摘要栏；更窄单栏。剧本名右边进编辑角色卡；封面上只有返回按钮，删除剧本在概要下面（单栏时在最底下） |
-| `/scenario/:id/edit` | 编辑角色卡：单栏（≤ 640）居中，顶上一条（返回、标题、保存）贴着；内容和规则同 App 的 `scenario/[id]/edit`。没保存时站内跳转（侧栏、返回、浏览器后退）由路由的 blocker 先问，刷新或关标签页由浏览器提示（`beforeunload`） |
+| `/library` | 剧本（W04）：剧本仓库和角色卡仓库两个标签（`?tab=cards`），网格按内容宽度 ÷ 240 取整（2–5 列）或限宽 640 的列表；剧本仓库的加号新建剧本，角色卡仓库的去工作台 |
+| `/workbench` | 工作台首页：一句话开始、导入（按钮和拖放，一次一张）、手动新建；草稿、最近保存的角色卡 |
+| `/workbench/d/:id` | 草稿（设计稿 W02–W06）：顶上一条（返回、名字和保存状态、Agent / 手动、进度、保存、保存并开始新故事）；下面两栏，Agent 模式左边对话、右边卡片预览（卡片、资料、图片），手动模式左边分节目录和表单、右边检查。窄于 1100 只有左栏，预览从页头打开；宽屏时导航临时收成导航条 |
+| `/card/:id` | 角色卡：在工作台里改、新建剧本、导出 PNG / JSON、在用的剧本、参考资料、版本历史、删除 |
+| `/scenario/:id` | 剧本详情（W05）：≥ 900 两栏各自滚动，左栏是剧本里的卡和剧本设置，右栏是按设置预填的开始新故事五步，底部浮着摘要栏；更窄单栏。剧本名右边是“编辑设置” |
+| `/scenario/new`、`/scenario/:id/edit` | 新建（`?card=` 预选）和编辑剧本：选卡（最多 8 张）、剧本名、默认主角和偏好、开场 |
 | `/play/:id` | 阅读页（W06–W11）：书名页、故事流、选项（≥ 900 两列）、底部操作栏、世界状态（停靠 / 滑出）、更多（含写结局，行为同 App）。鼠标移到更早的一段上，右上角出现“回到这里”，确认后回退；回退次数用完时那里写明已用完；没有鼠标的设备上它一直显示在这一段下面 |
-| `/settings` 及子页 | 设置（W13–W17）：≥ 900 两栏，左栏是设置首页，右栏是子页（模型、模型详情、账户、连接测试）；更窄逐层进入。“外观”“语言”是居中对话框，选了立刻生效；跟随系统时看浏览器的语言 |
+| `/settings` 及子页 | 设置（W13–W17）：≥ 900 两栏，左栏是设置首页，右栏是子页（模型、模型详情、外部服务、账户、连接测试）；更窄逐层进入。“外观”“语言”是居中对话框，选了立刻生效；跟随系统时看浏览器的语言 |
 
 和 App 不同的只是布局和输入方式：文案、状态、错误提示、接口调用都照 App 的页面写，纯逻辑直接用 `@bettertavern/core`。
 
@@ -314,8 +329,9 @@ apps/mobile/
 
 - 断点只看窗口宽度：`src/theme/layout.ts`（设计稿的 `layout.ts`，平板的函数从 `@bettertavern/design/layout` 引入）。
   拖动窗口时布局即时切换，页面不卸载：草稿、滚动位置、打开着的世界面板都不丢。
-- 外壳 `src/shell/`：≥ 1280 侧栏（三项导航、按“今天 / 本周 / 更早”分组的最近故事、账户），900–1279 导航条（最近四个故事的封面），
-  更窄是底部 Tab 栏（只在三个一级页上，进了阅读页、剧本详情、设置子页就收起，和 App 一样有返回）。
+- 外壳 `src/shell/`：≥ 1280 侧栏（四项导航、按“今天 / 本周 / 更早”分组的最近故事、账户），900–1279 导航条（最近四个故事的封面），
+  更窄是底部 Tab 栏（只在四个一级页上，进了阅读页、剧本详情、草稿、设置子页就收起，和 App 一样有返回）。
+  站内跳转进新页面从顶上开始，前进、后退回到原来的位置（`ScrollRestoration`）。
   侧栏收起存在浏览器里；窄于 1280 时“展开”打开的侧栏盖在内容上，点遮罩、按 Esc、点了里面的一项都会收回。
 - 阅读页用 `readingLayout()`：窗口 − 导航 ≥ 1100 时世界停靠；侧栏展开放不下、收成导航条就放得下时，侧栏临时收成导航条（`useShell().setNavOverride`）；
   其余从右侧滑出。页面整体滚动（浏览器的查找、滚动条都是原生的），停在底部时跟着新文字滚，往上翻就停下，操作栏中间多出“回到最新”。
@@ -334,7 +350,7 @@ apps/mobile/
 - 快捷键：A–D 选选项、/ 自己写、W 世界状态、End 回到最新（阅读页），[ 展开或收起侧栏、? 快捷键一览（任何地方）。
   单键快捷键在输入、输入法组字、按着修饰键、对话框开着时不响应，可以在快捷键一览里关掉（存在浏览器里）。
   输入框里 Enter 发送、Shift + Enter 换行，组字时的 Enter 不发送（`isComposing`，Safari 还要看 `keyCode === 229`）。
-- 拖放导入：文件拖进窗口时任何页面都接收，内容区盖上“松开就导入”；逐个上传，一张成功进剧本详情，多张汇总成一句浮条，失败的列在红色提示里。
+- 拖放导入：文件拖进窗口时任何页面都接收，内容区盖上“松开就导入”；一次一张，解析完进草稿的手动表单；导入过的问打开已有的还是另外导入，失败的写在红色提示里。
 - 草稿每个故事一份存在浏览器里（`bt.draft.<故事 ID>`）；诊断日志存最近 500 条（`bt.diagnostics`），连接测试页可以导出、清空。
 - 标签页标题“页面名 · BetterTavern”，阅读页生成中在前面加“● ”。
 
@@ -346,7 +362,7 @@ apps/web/
 ├── e2e/                         # Playwright 端到端测试（中文的完整流程、英文界面的冒烟测试）和测试用的角色卡
 └── src/
     ├── main.tsx                 # 诊断日志 → 界面语言 → 数据缓存 → 界面偏好 → 主题 → 登录状态 → 路由
-    ├── app/       router.tsx  guards.tsx        # 路由表（阅读页、剧本详情、编辑角色卡、设置按需加载）；没登录去登录页、登录了不停在登录页
+    ├── app/       router.tsx  guards.tsx        # 路由表（阅读页、剧本详情、角色卡、工作台、设置按需加载）；没登录去登录页、登录了不停在登录页
     ├── state/     AppProvider.tsx  PrefsProvider.tsx  prefs.ts   # 接口、会话（Cookie 模式）；浏览器里的界面偏好
     │              language.ts                  # 按设置和浏览器语言（navigator.languages）切换界面语言，设好 <html lang>
     ├── storage/   local.ts                      # localStorage：存不进去、读不出来都当作没存过
@@ -354,10 +370,11 @@ apps/web/
     ├── theme/     tokens.css  base.css  layout.ts  palette.ts  ThemeProvider.tsx
     ├── shell/     AppShell.tsx  Sidebar.tsx  Rail.tsx  TabBar.tsx  StoryRow.tsx  glass.tsx  nav.ts  recent.ts
     ├── overlay/   OverlayProvider.tsx  Dialog.tsx  Menu.tsx  Tooltip.tsx  ShortcutsDialog.tsx  useContextMenu.ts
-    ├── import/    ImportProvider.tsx  DropZone.tsx  rules.ts   # 导入角色卡（按钮和拖放）
+    ├── import/    ImportProvider.tsx  DropZone.tsx  rules.ts   # 导入角色卡（按钮和拖放，一次一张，进草稿）
     ├── components/ controls.tsx（按钮、输入框、提示条、胶囊、标签、勾选）Icon.tsx  Logo.tsx  Cover.tsx  PageHeader.tsx
-    ├── data/      stories.ts  scenarios.ts  models.ts  blobs.ts  storyActions.ts  scenarioActions.ts   # 查询和共用的操作
-    └── pages/     auth/  stories/  library/  scenario/  play/  settings/  Splash.tsx  NotFound.tsx
+    ├── data/      stories.ts  scenarios.ts  models.ts  tools.ts  blobs.ts  workbench.ts   # 查询
+    │              storyActions.ts  scenarioActions.ts  cardActions.ts                 # 共用的操作
+    └── pages/     auth/  stories/  library/  cards/  scenario/  workbench/  play/  settings/  Splash.tsx  NotFound.tsx
 ```
 
 纯逻辑（`theme/layout.ts`、`theme/palette.ts`、`storage/local.ts`、`state/prefs.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/play/reading.ts`）

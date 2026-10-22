@@ -56,14 +56,15 @@ cp apps/mobile/.env.example apps/mobile/.env
 | `make install` | `uv sync`，装后端依赖 |
 | `make migrate` | 建表；拉了新代码以后也要跑一次 |
 | `make dev` | 启动 api，接口文档在 http://localhost:8000/docs |
-| `make worker` | 另开一个终端，启动 worker：后台整理世界状态、章节和大纲（[agent-runtime.md](agent-runtime.md) 第 4 节）。不开也能玩，只是世界状态停在开局、没有章节摘要和大纲，回合一直是 `replied` |
+| `make worker` | 另开一个终端，启动 worker：后台整理世界状态、章节和大纲，工作台的 agent（[agent-runtime.md](agent-runtime.md) 第 4 节）。不开也能玩，只是世界状态停在开局、没有章节摘要和大纲，回合一直是 `replied` |
 | `make mobile-install` | 装客户端依赖（在根目录 `npm install`，手机端和 `packages/` 是同一个 npm 工作区）；之后在 `apps/mobile` 下 `npm start`，用 Expo Go 打开 |
 
 开发环境不配置密钥也能启动：服务端第一次启动时生成主密钥和令牌签名密钥，存在 `apps/server/.data/dev-secrets.json`
 （权限 0600，已在 .gitignore 里）。生产环境必须在环境变量里配置 `MASTER_KEYS` 和 `AUTH_SECRET`，用
 `uv run bettertavern keygen` 生成；主密钥丢了，已保存的模型 Key 就解不开了。
 
-然后在 App 里：注册 → 设置 → 模型 → 添加模型（填 Key、选模型、设为导演）→ 剧本里导入角色卡 → 开始故事。
+然后在 App 里：注册 → 设置 → 模型 → 添加模型（填 Key、选模型、设为导演）→ 工作台里导入角色卡（或者让 agent 写一张）→ 保存并开始新故事。
+工作台的 agent 在 worker 里跑，要另开一个终端 `make worker`。
 手机连不上服务器时的排查，以及在真机上运行的细节，见 [apps/mobile/README.md](../apps/mobile/README.md)。
 
 网页端（`apps/web`）和手机端是同一个 npm 工作区，`make js-install` 装过依赖后：

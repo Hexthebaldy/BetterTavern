@@ -245,7 +245,7 @@ Cookie 模式的请求头和请求体）。网页端（`apps/web`）自己的纯
 快捷键判断、标签页标题）、浏览器存储、界面偏好、最近故事分组、导入规则、跟随新文字、Enter 发送与输入法组字。App 的界面还没有自动化测试。
 
 网页端的端到端测试（`apps/web/e2e`，`make web-e2e`）：Playwright 自己起后端（开发数据库）、假模型服务（`tests/fakes/story_llm.py`）和 Vite，
-用本机的 Chrome 走一遍注册 → 刷新后仍登录（Cookie）→ 添加模型 → 导入角色卡 → 开局 → 按 A 选选项 → 按 / 自己写、Enter 发送 → 按 W 停靠世界状态 →
+用本机的 Chrome 走一遍注册 → 刷新后仍登录（Cookie）→ 添加模型 → 在工作台导入角色卡、手动改（自动保存，空的世界书条目保存时标红、改好就恢复）→ 保存并开始新故事（建剧本）→ 开局 → 按 A 选选项 → 按 / 自己写、Enter 发送 → 按 W 停靠世界状态 →
 把窗口拖到 1300、1100、390 看侧栏让位、世界滑出、没有横向滚动 → 按 ? → 删除账户。设 `E2E_ALL_BROWSERS=1` 时加跑 WebKit 和 Firefox
 （先 `npx playwright install webkit firefox`）。上面这条按中文跑；`e2e/english.spec.ts` 用英文浏览器跑一条冒烟：
 界面是英文、登录失败的说明按错误码翻译、设置里切到中文再切回来立刻生效、开局请求带 `language: "en"`。
