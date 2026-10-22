@@ -1,5 +1,5 @@
 /**
- * 三个标签页：存档、剧本、设置。标签栏自己画（components/bars.tsx 的 TabBar），每页自己画大标题。
+ * 四个标签页：存档、剧本、工作台、设置。标签栏自己画（components/bars.tsx 的 TabBar），每页自己画大标题。
  * 切换标签时页面交叉淡入淡出，和标签栏胶囊的动画同时长。
  */
 
@@ -28,6 +28,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="playthroughs" options={{ title: t("nav.saves") }} />
       <Tabs.Screen name="library" options={{ title: t("nav.library") }} />
+      <Tabs.Screen name="workbench" options={{ title: t("nav.workbench") }} />
       <Tabs.Screen name="settings" options={{ title: t("nav.settings") }} />
     </Tabs>
   );

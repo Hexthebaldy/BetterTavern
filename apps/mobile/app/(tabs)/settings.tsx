@@ -302,6 +302,14 @@ export default function SettingsScreen() {
           onPress={() => open({ screen: "models" })}
           selected={isOpen("models")}
         />
+        <ListRow
+          key="tools"
+          title={t("settings.tools")}
+          subtitle={t("settings.toolsSub")}
+          leading={<RowIcon name="search" />}
+          onPress={() => open({ screen: "tools" })}
+          selected={isOpen("tools")}
+        />
       </Group>
       <GroupLabel style={styles.label}>{t("settings.groupOther")}</GroupLabel>
       <Group>

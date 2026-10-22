@@ -158,7 +158,7 @@ export function Cover({
     >
       <Image
         accessibilityIgnoresInvertColors
-        source={{ uri: `${serverUrl}${api.scenarios.blobPath(blobId)}`, headers }}
+        source={{ uri: `${serverUrl}${api.blobPath(blobId)}`, headers }}
         onError={() => setFailed(true)}
         style={{ width, height }}
         resizeMode="cover"

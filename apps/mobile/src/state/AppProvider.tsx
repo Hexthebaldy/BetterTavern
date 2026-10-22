@@ -1,5 +1,5 @@
 /**
- * 全局的服务与登录状态：ApiClient、各接口、会话、回合事件流的连接方式，以及服务器地址。
+ * 全局的服务与登录状态：ApiClient、各接口、会话、回合和工作台事件流的连接方式，以及服务器地址。
  * 用 useApp() 取。登录状态变化（包括刷新令牌失败被动退出）会触发路由守卫切换页面。
  */
 
@@ -19,6 +19,7 @@ import { ApiClient } from "@bettertavern/core/api/client";
 import { createApi, type Api } from "@bettertavern/core/api/endpoints";
 import type { FetchLike } from "@bettertavern/core/api/sse/sseClient";
 import { sseTurnConnector, type TurnConnector } from "@bettertavern/core/api/turnStream";
+import { sseWorkbenchConnector, type WorkbenchConnector } from "@bettertavern/core/api/workbenchStream";
 import type { AuthResponse, User } from "@bettertavern/core/api/types";
 import { SessionManager, type SessionStatus } from "@bettertavern/core/auth/session";
 import { diagnostics } from "@bettertavern/core/observability/log";
@@ -31,6 +32,7 @@ type Services = {
   api: Api;
   session: SessionManager;
   connectTurn: TurnConnector;
+  connectWorkbench: WorkbenchConnector;
   authHeaders: () => Promise<Record<string, string>>;
   serverUrl: { current: string };
 };
@@ -77,12 +79,20 @@ function createServices(): Services {
     onUnauthorized: () => manager.refresh().catch(() => false),
     log: (level, event, fields) => diagnostics.log(level, event, fields),
   });
-  return { api, session: manager, connectTurn, authHeaders, serverUrl };
+  const connectWorkbench = sseWorkbenchConnector({
+    url: (draftId) => `${serverUrl.current}${api.workbench.eventsPath(draftId)}`,
+    fetch: streamFetch,
+    headers: authHeaders,
+    onUnauthorized: () => manager.refresh().catch(() => false),
+    log: (level, event, fields) => diagnostics.log(level, event, fields),
+  });
+  return { api, session: manager, connectTurn, connectWorkbench, authHeaders, serverUrl };
 }
 
 export type AppContextValue = {
   api: Api;
   connectTurn: TurnConnector;
+  connectWorkbench: WorkbenchConnector;
   authHeaders: () => Promise<Record<string, string>>;
   status: SessionStatus;
   user: User | null;
@@ -148,6 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       api: services.api,
       connectTurn: services.connectTurn,
+      connectWorkbench: services.connectWorkbench,
       authHeaders: services.authHeaders,
       status,
       user,

@@ -259,7 +259,7 @@ export default function PlaythroughsScreen() {
       api.playthroughs.list(),
       api.scenarios.list().catch(() => []),
     ]);
-    return { stories, avatars: new Map(scenarios.map((s) => [s.id, s.avatar_blob_id])) };
+    return { stories, avatars: new Map(scenarios.map((s) => [s.id, s.cover_blob_id])) };
   }, [api]);
 
   const rename = async (story: Playthrough): Promise<void> => {

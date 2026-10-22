@@ -21,6 +21,7 @@ import { SettingsNavProvider, type SettingsNav, type SettingsTarget } from "./na
 import { AccountBody } from "./screens/AccountBody.tsx";
 import { ModelBody } from "./screens/ModelBody.tsx";
 import { ModelsBody } from "./screens/ModelsBody.tsx";
+import { ToolsBody } from "./screens/ToolsBody.tsx";
 
 function keyOf(target: SettingsTarget): string {
   return target.screen === "model" ? `model:${target.id}` : target.screen;
@@ -32,6 +33,8 @@ function Body({ target }: { target: SettingsTarget }) {
       return <ModelsBody />;
     case "model":
       return <ModelBody id={target.id} />;
+    case "tools":
+      return <ToolsBody />;
     case "account":
       return <AccountBody />;
     case "probe":

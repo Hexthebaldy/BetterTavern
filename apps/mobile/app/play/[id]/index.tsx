@@ -311,7 +311,7 @@ export default function PlayScreen() {
             header={
               <BookHeader
                 seed={state.scenarioId ?? id}
-                blobId={scenario?.avatar_blob_id ?? null}
+                blobId={scenario?.cover_blob_id ?? null}
                 title={shownTitle}
                 card={scenario?.name ?? null}
                 protagonist={state.protagonist}

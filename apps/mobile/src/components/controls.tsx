@@ -150,6 +150,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
 /** 几个互斥选项：凹进去的灰色轨道，选中项是浮起的白色胶囊 */
 export function Segmented<T extends string>({
   label,
+  hideLabel,
   value,
   options,
   onChange,
@@ -160,6 +161,8 @@ export function Segmented<T extends string>({
   style,
 }: {
   label?: string;
+  /** 标签只给读屏用，不显示 */
+  hideLabel?: boolean;
   value: T | null;
   options: { value: T; label: string; icon?: IconName; count?: number | string }[];
   onChange: (value: T) => void;
@@ -174,7 +177,9 @@ export function Segmented<T extends string>({
   const inner = height - 8;
   return (
     <View style={[styles.field, style]}>
-      {label ? <Text style={[type.label, styles.label, { color: palette.ink2 }]}>{label}</Text> : null}
+      {label && !hideLabel ? (
+        <Text style={[type.label, styles.label, { color: palette.ink2 }]}>{label}</Text>
+      ) : null}
       <View
         style={[styles.segmented, { borderRadius: height / 2, backgroundColor: trackColor ?? palette.bg3 }]}
         accessibilityRole="radiogroup"

@@ -6,7 +6,7 @@
  * 标签栏是一条离开屏幕边缘的胶囊（高 64，左右 20），浮在内容上面；标签页的内容底部要用
  * useTabBarSpace() 留出它的位置，提示浮条贴在它上方（tabBarTop）。
  *
- * 平板（断点见 theme/layout.ts）：中屏的胶囊固定宽 392、水平居中；宽屏改成左侧竖着的浮动导航栏
+ * 平板（断点见 theme/layout.ts）：中屏的胶囊固定宽 460、水平居中；宽屏改成左侧竖着的浮动导航栏
  * （Logo 加三个标签，选中项是 60×64 的玻璃框），一级页的内容从 x = 124 开始，底部不再留标签栏的位置。
  * 选中项是一块滑动的框，图标和文字是 tabOn 蓝；切换时框滑过去。
  * iOS 26 起有系统的液态玻璃（expo-glass-effect）：整条标签栏是一块玻璃（页面内容从下面透出来），选中框是另一块
@@ -170,6 +170,7 @@ export function BackBar({ onBack, right }: { onBack?: () => void; right?: ReactN
 const TAB_ICONS: Record<string, IconName> = {
   playthroughs: "story",
   library: "library",
+  workbench: "workbench",
   settings: "settings",
 };
 
@@ -245,28 +246,31 @@ function TabItem({
         <Icon name={icon} size={22} color={palette.mut} />
         <Text style={[vertical ? styles.railText : type.tab, { color: palette.mut }]}>{label}</Text>
       </Animated.View>
-      <Animated.View
-        pointerEvents="none"
-        onLayout={(e) => onActiveWidth(e.nativeEvent.layout.width)}
-        style={[
-          vertical ? styles.railActive : styles.tabActive,
-          {
-            opacity: progress,
-            transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
-          },
-        ]}
-      >
-        <Icon name={icon} size={22} color={palette.tabOn} />
-        <Text
-          style={
-            vertical
-              ? [styles.railText, { fontWeight: "500", color: palette.tabOn }]
-              : { fontSize: 14, fontWeight: "500", color: palette.tabOn }
-          }
+      {/* 横排时选中的胶囊比这一格宽（四个标签时尤其），放进一个左右各多出 60 的框里居中，文字不被挤成两行 */}
+      <View pointerEvents="none" style={vertical ? styles.railActiveWrap : styles.tabActiveWrap}>
+        <Animated.View
+          onLayout={(e) => onActiveWidth(e.nativeEvent.layout.width)}
+          style={[
+            vertical ? styles.railActive : styles.tabActive,
+            {
+              opacity: progress,
+              transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
+            },
+          ]}
         >
-          {label}
-        </Text>
-      </Animated.View>
+          <Icon name={icon} size={22} color={palette.tabOn} />
+          <Text
+            numberOfLines={1}
+            style={
+              vertical
+                ? [styles.railText, { fontWeight: "500", color: palette.tabOn }]
+                : { fontSize: 14, fontWeight: "500", color: palette.tabOn }
+            }
+          >
+            {label}
+          </Text>
+        </Animated.View>
+      </View>
     </Pressable>
   );
 }
@@ -376,7 +380,7 @@ function GlassBox({
 /**
  * 浮动的胶囊标签栏：选中项是一块透明的玻璃框，图标和文字变成蓝色横排；未选中项灰色，图标在上、文字在下。
  * 切换时玻璃框从原来的标签滑到新的标签。
- * 中屏固定宽 392 水平居中；宽屏改成左侧竖着的导航栏，顶上是 Logo，高度随内容，玻璃框上下滑。
+ * 中屏固定宽 460 水平居中；宽屏改成左侧竖着的导航栏，顶上是 Logo，高度随内容，玻璃框上下滑。
  */
 export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
   const palette = usePalette();
@@ -481,14 +485,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tabSlot: { flex: 1, height: size.tabBar, alignItems: "center", justifyContent: "center" },
-  tabActive: {
+  tabActiveWrap: {
     position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: -60,
+    right: -60,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabActive: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space.s,
+    gap: 6,
     height: size.tabActive,
-    paddingLeft: 24,
-    paddingRight: 24,
+    paddingLeft: 16,
+    paddingRight: 18,
     borderRadius: size.tabActive,
   },
   tabIdle: { alignItems: "center", gap: 2 },
@@ -510,6 +522,7 @@ const styles = StyleSheet.create({
   },
   glass: { position: "absolute", borderWidth: 1, backgroundColor: "transparent" },
   glassSlot: { position: "absolute" },
+  railActiveWrap: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   railActive: {
     position: "absolute",
     top: 0,

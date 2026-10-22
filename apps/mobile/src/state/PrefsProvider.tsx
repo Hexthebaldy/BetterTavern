@@ -31,6 +31,8 @@ type Stored = {
   language: LanguageSetting;
   /** 平板阅读页够宽（≥ 1100）时，世界状态停靠在右侧：开着还是收着 */
   worldDocked: boolean;
+  /** 剧本页顶上“新建和导入挪到了工作台”的提示已经关掉 */
+  movedHintDismissed: boolean;
 };
 
 const DEFAULTS: Stored = {
@@ -40,6 +42,7 @@ const DEFAULTS: Stored = {
   theme: "system",
   language: "system",
   worldDocked: false,
+  movedHintDismissed: false,
 };
 
 /** 存储读得太慢（几乎不会）也不能一直挡着启动画面 */
@@ -55,6 +58,7 @@ function parse(raw: unknown): Stored {
     theme: parseThemeSetting(r.theme),
     language: parseLanguageSetting(r.language),
     worldDocked: r.worldDocked === true,
+    movedHintDismissed: r.movedHintDismissed === true,
   };
 }
 
@@ -66,6 +70,7 @@ type PrefsValue = Stored & {
   setLanguage: (language: LanguageSetting) => void;
   setLibraryView: (view: LibraryView) => void;
   setWorldDocked: (open: boolean) => void;
+  dismissMovedHint: () => void;
   /** 这个服务器刚用成功过 */
   serverUsed: (url: string) => void;
   /** 这个服务器刚才连不上 */
@@ -112,6 +117,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       setLanguage: (language) => update((p) => ({ ...p, language })),
       setLibraryView: (libraryView) => update((p) => ({ ...p, libraryView })),
       setWorldDocked: (worldDocked) => update((p) => ({ ...p, worldDocked })),
+      dismissMovedHint: () => update((p) => ({ ...p, movedHintDismissed: true })),
       serverUsed: (url) => update((p) => ({ ...p, servers: rememberServer(p.servers, url, new Date()) })),
       serverFailed: (url) => update((p) => ({ ...p, servers: markServerFailed(p.servers, url, new Date()) })),
     }),

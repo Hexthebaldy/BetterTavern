@@ -139,6 +139,11 @@ export function ModelBody({ id }: { id: string }) {
       }
     });
 
+  const setWorkbench = (on: boolean): Promise<void> =>
+    run(async () => {
+      update(await api.models.update(route.id, { workbench: on }));
+      overlay.toast(on ? t("models.workbenchOn") : t("models.workbenchOff"));
+    });
   const setBackground = (on: boolean): Promise<void> =>
     run(async () => {
       update(await api.models.update(route.id, { background: on }));
@@ -200,6 +205,7 @@ export function ModelBody({ id }: { id: string }) {
               <Status kind={kind} label={modelStatusLabel(route.status)} />
               {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
               {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
+              {route.is_workbench ? <Pill label={t("models.workbenchPill")} /> : null}
             </View>
           </View>
           <IconButton
@@ -330,6 +336,7 @@ export function ModelBody({ id }: { id: string }) {
         </View>
 
         <BackgroundRow route={route} onChange={(on) => void setBackground(on)} />
+        <WorkbenchRow route={route} onChange={(on) => void setWorkbench(on)} />
 
         <View style={styles.bottom}>
           <Button
@@ -406,6 +413,38 @@ function BackgroundRow({ route, onChange }: { route: ModelRoute; onChange: (on: 
       </View>
       {locked ? null : (
         <Toggle value={route.is_background} onChange={onChange} label={t("models.background")} />
+      )}
+    </Pressable>
+  );
+}
+
+/** “用于工作台”：工作台的 agent 用这个模型（要能调用工具） */
+function WorkbenchRow({ route, onChange }: { route: ModelRoute; onChange: (on: boolean) => void }) {
+  const palette = usePalette();
+  const { t } = useTranslation();
+  const locked = !route.supports_tools && !route.is_workbench;
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: route.is_workbench, disabled: locked }}
+      accessibilityLabel={t("models.workbench")}
+      disabled={locked}
+      onPress={() => onChange(!route.is_workbench)}
+      style={[styles.switchRow, { backgroundColor: palette.bg2, marginTop: space.s }]}
+    >
+      <View style={[styles.switchIcon, { backgroundColor: palette.card }]}>
+        <Icon name="workbench" size={20} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontSize: 16, color: palette.ink }}>{t("models.workbench")}</Text>
+        <Text
+          style={{ fontSize: 13, lineHeight: 20, color: route.supports_tools ? palette.mut : palette.warn }}
+        >
+          {route.supports_tools ? t("models.workbenchNote") : t("models.workbenchNoTools")}
+        </Text>
+      </View>
+      {locked ? null : (
+        <Toggle value={route.is_workbench} onChange={onChange} label={t("models.workbench")} />
       )}
     </Pressable>
   );

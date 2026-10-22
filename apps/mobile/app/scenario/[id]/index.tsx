@@ -1,11 +1,10 @@
 /**
- * 剧本详情：封面、角色卡概要、原卡的开场白，下面是“开始新的故事”的五步表单。
- * 开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
- * 剧本名右边是“编辑角色卡”（edit.tsx，剧本名也在那里改）；删除剧本的按钮在页面最底下。
- * 编辑过的卡在标题上方标“已编辑”。从编辑页回来时重新加载（useAsync 在回到页面时会再取一次）。
+ * 剧本详情：封面、剧本里的角色卡（第一张是主角色，点一下看卡）、剧本设置（默认主角、偏好、开场），
+ * 下面是“开始新的故事”的五步表单（按剧本设置预填）。开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
+ * 剧本名右边是“编辑设置”（form.tsx）；删除剧本的按钮在页面最底下。从编辑页回来时重新加载（useAsync 在回到页面时会再取一次）。
  *
  * 平板（theme/layout.ts）：中屏单栏，宽 640，居中。宽屏两栏（设计稿 T12），两栏各自滚动：
- * 左栏宽 420 是封面（高 236，返回按钮浮在上面）、名字、标签、统计、简介、原卡开场白；
+ * 左栏宽 420 是封面（高 236，返回按钮浮在上面）、名字、角色卡、设置、简介；
  * 右栏是开始新故事的五步，底部浮着一条摘要栏（已选项胶囊加“开始故事”），圆角 34，带投影。
  */
 
@@ -17,7 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
-import { currentLanguage, lookup } from "@bettertavern/core/i18n/index";
+import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
+import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
 import { pane } from "@bettertavern/design/layout";
 
 import { Cover } from "../../../src/components/Cover.tsx";
@@ -40,128 +40,105 @@ import { useLayout } from "../../../src/hooks/useLayout.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
 import { font, radius, size, space, type, usePalette } from "../../../src/theme/index.ts";
 
-/** 角色卡里可能被截断的字段的名字；不认识的字段显示它的 id */
-function fieldName(field: string): string {
-  return lookup(`scenario.fields.${field}`) ?? field;
-}
-
-function Stat({
-  icon,
-  value,
-  label,
-  warn,
-}: {
-  icon: IconName;
-  value: number;
-  label: string;
-  warn?: boolean;
-}) {
-  const palette = usePalette();
-  const color = warn ? palette.warn : palette.ink;
-  return (
-    <View style={[styles.stat, { backgroundColor: warn ? palette.warnBg : palette.bg2 }]}>
-      <Icon name={icon} color={color} />
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={{ fontSize: 13, lineHeight: 19, color: warn ? palette.warn : palette.mut }}>{label}</Text>
-    </View>
-  );
+/** 开场：导演来写，或者“用‘温九’的第 2 条备选开场白” */
+function openingText(scenario: Pick<Scenario, "cards" | "setup">): string {
+  const opening = scenario.setup.opening;
+  if (!opening) return i18n.t("scenario.openingDirector");
+  const card = scenario.cards.find((c) => c.card_id === opening.card_id)?.name ?? "";
+  return opening.greeting === 0
+    ? i18n.t("scenario.openingGreeting", { card })
+    : i18n.t("scenario.openingAlternate", { card, n: opening.greeting });
 }
 
 function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void }) {
   const palette = usePalette();
+  const router = useRouter();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [clamped, setClamped] = useState(false);
-  const truncated = scenario.truncated_fields;
+  const { protagonist, preferences } = scenario.setup;
+  const prefs = [
+    lengthLabel(preferences.length),
+    preferences.style,
+    preferences.boundaries ? t("start.avoid", { count: splitJoined(preferences.boundaries).length }) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const setupRow = (label: string, value: string) => (
+    <View style={styles.setupRow}>
+      <Text style={[styles.caption, { color: palette.mut }]}>{label}</Text>
+      <Text style={{ fontSize: 15, lineHeight: 22, color: palette.ink }}>{value}</Text>
+    </View>
+  );
   return (
     <>
       <View style={styles.titleBlock}>
-        <Text style={[styles.caption, { color: palette.mut }]}>
-          {[
-            t("scenario.card"),
-            scenario.creator ? t("scenario.creator", { creator: scenario.creator }) : null,
-            scenario.edited_at ? t("scenario.edited") : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </Text>
         <View style={styles.titleRow}>
           <Text accessibilityRole="header" style={[styles.hero, { flex: 1, color: palette.ink }]}>
             {scenario.name}
           </Text>
           <Button
-            label={t("scenario.editCard")}
+            label={t("scenario.editSetup")}
             icon="write"
             variant="secondary"
             onPress={onEdit}
             style={styles.edit}
           />
         </View>
-        {scenario.tags.length > 0 ? (
-          <View style={styles.tags}>
-            {scenario.tags.slice(0, 8).map((tag) => (
-              <Pill key={tag} label={tag} height={30} />
-            ))}
-          </View>
-        ) : null}
       </View>
-      <View style={styles.stats}>
-        <Stat icon="world" value={scenario.book_entries} label={t("scenario.bookEntries")} />
-        <Stat icon="greeting" value={1 + scenario.alternate_greetings} label={t("scenario.greetings")} />
-        {truncated.length > 0 ? (
-          <Stat icon="truncated" value={truncated.length} label={t("scenario.truncatedFields")} warn />
-        ) : null}
-      </View>
-      {scenario.description_preview || truncated.length > 0 ? (
-        <View style={[styles.card, styles.description, { backgroundColor: palette.bg2 }]}>
-          {scenario.description_preview ? (
-            <>
-              <Text
-                numberOfLines={expanded ? undefined : 4}
-                onTextLayout={(e) => {
-                  if (!expanded) setClamped(e.nativeEvent.lines.length >= 4);
-                }}
-                selectable
-                style={{ fontSize: 15, lineHeight: 26, color: palette.ink2 }}
-              >
-                {scenario.description_preview}
-              </Text>
-              {clamped || expanded ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded }}
-                  onPress={() => setExpanded((v) => !v)}
-                  style={styles.expand}
-                >
-                  <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
-                    {expanded ? t("scenario.collapse") : t("scenario.expand")}
-                  </Text>
-                  <Icon name={expanded ? "chevronUp" : "chevronDown"} size={16} color={palette.acc} />
-                </Pressable>
-              ) : null}
-            </>
-          ) : null}
-          {truncated.length > 0 ? (
-            <View style={[styles.warn, { backgroundColor: palette.card }]}>
-              <Icon name="alert" size={16} color={palette.warn} />
-              <Text style={{ flex: 1, fontSize: 13, lineHeight: 19, color: palette.warn }}>
-                {t("scenario.truncatedNote", {
-                  fields: truncated.map((f) => `“${fieldName(f)}”`).join(t("common.listSeparator")),
-                })}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-      {scenario.first_mes_preview ? (
-        <View style={[styles.card, styles.greeting, { backgroundColor: palette.bg2 }]}>
-          <Text style={[styles.caption, { color: palette.mut }]}>{t("scenario.originalGreeting")}</Text>
-          <Text
-            numberOfLines={3}
-            style={{ fontSize: 14.5, lineHeight: 25, color: palette.mut }}
+      <View style={styles.cast}>
+        {scenario.cards.map((card, i) => (
+          <Pressable
+            key={card.card_id}
+            accessibilityRole="button"
+            accessibilityHint={t("scenario.openCard")}
+            onPress={() => router.push({ pathname: "/card/[id]", params: { id: card.card_id } })}
+            style={({ pressed }) => [styles.castRow, { backgroundColor: pressed ? palette.bg3 : palette.bg2 }]}
           >
-            {scenario.first_mes_preview}
+            <Cover seed={card.card_id} blobId={card.cover_blob_id} width={44} height={44} surface="card" />
+            <Text numberOfLines={1} style={{ flex: 1, fontSize: 15, fontWeight: "600", color: palette.ink }}>
+              {card.name}
+            </Text>
+            {i === 0 && scenario.cards.length > 1 ? <Pill label={t("scenario.lead")} tone="acc" /> : null}
+            <Icon name="chevronRight" size={16} color={palette.mut} />
+          </Pressable>
+        ))}
+      </View>
+      <View style={[styles.card, styles.setup, { backgroundColor: palette.bg2 }]}>
+        {setupRow(
+          t("scenario.protagonist"),
+          protagonist.name
+            ? [protagonist.name, protagonist.summary].filter(Boolean).join(" · ")
+            : t("scenario.noProtagonist"),
+        )}
+        {setupRow(t("scenario.preferences"), prefs)}
+        {setupRow(t("scenario.opening"), openingText(scenario))}
+      </View>
+      {scenario.description_preview ? (
+        <View style={[styles.card, styles.description, { backgroundColor: palette.bg2 }]}>
+          <Text
+            numberOfLines={expanded ? undefined : 4}
+            onTextLayout={(e) => {
+              if (!expanded) setClamped(e.nativeEvent.lines.length >= 4);
+            }}
+            selectable
+            style={{ fontSize: 15, lineHeight: 26, color: palette.ink2 }}
+          >
+            {scenario.description_preview}
           </Text>
+          {clamped || expanded ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded }}
+              onPress={() => setExpanded((v) => !v)}
+              style={styles.expand}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
+                {expanded ? t("scenario.collapse") : t("scenario.expand")}
+              </Text>
+              <Icon name={expanded ? "chevronUp" : "chevronDown"} size={16} color={palette.acc} />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </>
@@ -236,7 +213,7 @@ export default function ScenarioScreen() {
     }
   };
 
-  const edit = (): void => router.push({ pathname: "/scenario/[id]/edit", params: { id: scenario.id } });
+  const edit = (): void => router.push({ pathname: "/scenario/form", params: { id: scenario.id } });
 
   const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
   // 封面宽度：手机整屏减两边 12；中屏的居中栏最宽 640；宽屏左栏 420
@@ -249,7 +226,7 @@ export default function ScenarioScreen() {
     <View style={styles.cover}>
       <Cover
         seed={scenario.id}
-        blobId={scenario.avatar_blob_id}
+        blobId={scenario.cover_blob_id}
         width={coverWidth}
         height={coverHeight}
         rounded={34}
@@ -274,9 +251,12 @@ export default function ScenarioScreen() {
       <Text style={[styles.caption, { color: palette.mut }]}>{t("start.hint")}</Text>
     </View>
   );
+  const { protagonist, preferences } = scenario.setup;
   const form = (
     <StartForm
+      key={scenario.version}
       wide={expanded}
+      initial={{ name: protagonist.name, summary: protagonist.summary, ...preferences }}
       onChange={(next, parts) => {
         setValues(next);
         setSummary(parts);
@@ -399,10 +379,10 @@ const styles = StyleSheet.create({
   titleBlock: { paddingTop: 22, paddingHorizontal: space.page, paddingBottom: space.l, gap: space.m },
   caption: { fontSize: 13, lineHeight: 19 },
   hero: { ...type.hero },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  stats: { flexDirection: "row", gap: space.s, paddingHorizontal: space.list },
-  stat: { flex: 1, padding: 14, borderRadius: 22, gap: 6 },
-  statValue: { fontFamily: font.monoMedium, fontSize: 22, lineHeight: 26 },
+  cast: { paddingHorizontal: space.list, gap: 6 },
+  castRow: { flexDirection: "row", alignItems: "center", gap: space.m, padding: 8, paddingRight: space.m, borderRadius: radius.option },
+  setup: { paddingVertical: 6 },
+  setupRow: { paddingVertical: 10, gap: 2 },
   card: {
     marginTop: space.s,
     marginHorizontal: space.list,
@@ -411,17 +391,6 @@ const styles = StyleSheet.create({
   },
   description: { paddingTop: 18, paddingBottom: space.s },
   expand: { flexDirection: "row", alignItems: "center", gap: 4, height: 44, alignSelf: "flex-start" },
-  warn: {
-    flexDirection: "row",
-    gap: space.s,
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: space.m,
-    marginHorizontal: -4,
-    marginBottom: space.s,
-    borderRadius: radius.input,
-  },
-  greeting: { paddingVertical: 18, gap: 6 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: space.m },
   /** 剧本名右边的小按钮 */
   edit: { height: 40, paddingHorizontal: space.l },
