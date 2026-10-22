@@ -1,0 +1,105 @@
+# 线上部署（bettertavern.com）用的 compose 文件。scripts/deploy.sh 每次部署时把它复制到服务器的
+# /srv/bettertavern/compose.yml；服务器上不构建镜像，只拉 GitHub Actions 构建好的（BT_IMAGE）。
+# 和 docker-compose.yml（自己部署全套、本机构建）的区别：镜像来自 GHCR、按 1 GB 内存调小了 Postgres、日志限量。
+#
+# 同目录的 .env 放私密的配置（只在服务器上，不进仓库），格式见 docs/ops.md 的“第一次部署”：
+#   BT_IMAGE、POSTGRES_PASSWORD、MASTER_KEYS、AUTH_SECRET、RESEND_API_KEY、MAIL_FROM、ALERT_EMAIL
+# BT_IMAGE 由部署脚本改写，别的手动维护。
+#
+# 常用命令（在 /srv/bettertavern 下）：
+#   docker compose ps                     # 看状态
+#   docker compose logs -f --tail 200 api # 看日志
+#   docker compose run --rm migrate       # 跑迁移（部署脚本会做）
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-server: &server
+  image: ${BT_IMAGE:?BT_IMAGE is not set}
+  environment:
+    DATABASE_URL: postgresql+asyncpg://bettertavern:${POSTGRES_PASSWORD:?}@postgres:5432/bettertavern
+    ENV: prod
+    MASTER_KEYS: ${MASTER_KEYS:?}
+    AUTH_SECRET: ${AUTH_SECRET:?}
+    RESEND_API_KEY: ${RESEND_API_KEY:-}
+    MAIL_FROM: ${MAIL_FROM:-}
+    ALERT_EMAIL: ${ALERT_EMAIL:-}
+    REGISTRATION_OPEN: ${REGISTRATION_OPEN:-true}
+    LOG_FORMAT: json
+    ENABLE_PROBE_ENDPOINTS: "false"
+    ALLOW_PRIVATE_ENDPOINTS: "false"
+    # 宿主机上的 nginx 经 Docker 网关连进容器；只信任这些内网段带来的 X-Forwarded-For。
+    # 安全的前提是 api 只发布在 127.0.0.1 上（见下面的 ports），公网连不到
+    FORWARDED_ALLOW_IPS: 127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+    WORKER_CONCURRENCY: "4"
+  depends_on:
+    postgres:
+      condition: service_healthy
+  restart: unless-stopped
+  # 要比 SHUTDOWN_GRACE_S / WORKER_SHUTDOWN_GRACE_S（默认 60 秒）长，进行中的回合和任务才能收尾
+  stop_grace_period: 75s
+  logging: *logging
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: bettertavern
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: bettertavern
+    # 1 GB 内存的机器上，api、worker 各占 150 MB 左右，给 Postgres 留 300 MB 上下
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=40
+      - -c
+      - wal_buffers=4MB
+      - -c
+      - random_page_cost=1.1
+    shm_size: 128m
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bettertavern"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  # 只在部署时跑（docker compose run --rm migrate），跑完就退出
+  migrate:
+    <<: *server
+    command: ["bettertavern", "migrate"]
+    restart: "no"
+    profiles: ["tools"]
+
+  api:
+    <<: *server
+    command: ["bettertavern", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    <<: *server
+    command: ["bettertavern", "worker"]
+
+volumes:
+  pgdata:

@@ -18,8 +18,15 @@ RUN uv sync --no-dev $( [ -f uv.lock ] && echo --frozen )
 RUN useradd --create-home --uid 10001 app
 USER app
 
+# 构建时写进提交号（GitHub Actions 传进来），/health 返回它，部署脚本据此确认新版本已经起来
+ARG BUILD_ID=dev
+LABEL org.opencontainers.image.source="https://github.com/Hexthebaldy/BetterTavern" \
+      org.opencontainers.image.description="BetterTavern server (api, worker, migrate)" \
+      org.opencontainers.image.revision="${BUILD_ID}"
+
 ENV PATH="/app/.venv/bin:$PATH" \
-    ALEMBIC_CONFIG=/app/alembic.ini
+    ALEMBIC_CONFIG=/app/alembic.ini \
+    BUILD_ID=${BUILD_ID}
 
 EXPOSE 8000
 CMD ["bettertavern", "serve", "--host", "0.0.0.0", "--port", "8000"]

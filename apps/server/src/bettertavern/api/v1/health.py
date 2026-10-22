@@ -1,17 +1,19 @@
-"""运维接口：/health 只看进程活着；/ready 在开始优雅退出时转为不就绪。"""
+"""运维接口：/health 只看进程活着（顺带报版本）；/ready 在开始优雅退出时转为不就绪。"""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response, status
 
+from bettertavern import __version__
+from bettertavern.api.deps import SettingsDep
 from bettertavern.api.lifecycle import Shutdown
 
 router = APIRouter(tags=["ops"])
 
 
 @router.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health(settings: SettingsDep) -> dict[str, str]:
+    return {"status": "ok", "version": __version__, "build": settings.build_id}
 
 
 @router.get("/ready")

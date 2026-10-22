@@ -1,0 +1,109 @@
+# 每次推送和每个 PR：服务端的检查和测试（真实 Postgres）、前端的类型检查和测试。
+# 推送到 m1 并且都通过时，构建服务端镜像推到 GHCR：
+#   ghcr.io/hexthebaldy/bettertavern-server:sha-<提交号前 12 位>   ← scripts/deploy.sh 部署的就是它
+#   ghcr.io/hexthebaldy/bettertavern-server:m1                     ← 这个分支最新的一版
+# 服务器上不构建，只拉镜像（docs/ops.md）。
+
+name: CI
+
+on:
+  push:
+    branches: [m1]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: 服务端
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bettertavern
+          POSTGRES_PASSWORD: bettertavern
+          POSTGRES_DB: bettertavern
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bettertavern"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: apps/server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: apps/server/uv.lock
+      - run: uv sync --frozen
+      - name: 检查（ruff、pyright、分层）
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run pyright
+          uv run lint-imports --config importlinter.ini
+      - name: 测试（单元、数据库、端到端）
+        run: uv run pytest -q
+        env:
+          BT_TEST_DATABASE_URL: postgresql://bettertavern:bettertavern@localhost:5432/bettertavern
+
+  js:
+    name: 前端
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 检查（类型、写死的中文）
+        run: |
+          npm run typecheck
+          node scripts/check-i18n.mjs
+      - name: 测试
+        run: npm test
+      - name: 网页端能构建
+        run: npm run build --workspace apps/web
+
+  image:
+    name: 构建镜像
+    needs: [server, js]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/m1'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - id: meta
+        run: echo "sha=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/Dockerfile.server
+          platforms: linux/amd64
+          push: true
+          build-args: BUILD_ID=${{ steps.meta.outputs.sha }}
+          tags: |
+            ghcr.io/hexthebaldy/bettertavern-server:sha-${{ steps.meta.outputs.sha }}
+            ghcr.io/hexthebaldy/bettertavern-server:m1
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

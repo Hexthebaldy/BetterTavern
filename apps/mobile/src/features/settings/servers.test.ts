@@ -51,7 +51,7 @@ describe("最近用过的服务器", () => {
       ["http://c", "http://a"],
     );
     assert.equal(serverChoices(list, "http://a").length, 1);
-    // 还没设置服务器（安装包不带默认地址）时不列空的一项
+    // 还没设置服务器（没有默认地址）时不列空的一项
     assert.deepEqual(serverChoices(list, ""), list);
   });
 

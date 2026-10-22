@@ -76,6 +76,7 @@ make web
 打开 http://localhost:5173 。开发服务器把 `/v1`、`/health`、`/ready` 转给 http://localhost:8000 的后端，网页和接口同源，
 不用配跨域，Cookie 登录也能用；后端在别的地址时设环境变量 `BT_API_URL`。设计和实现说明见 [client.md 第 4 节](client.md)。
 部署时 `make web-build` 生成 `apps/web/dist`，由反向代理和接口放在同一个域名下（见 `deploy/nginx.example.conf`）。
+线上服务（bettertavern.com）的部署用 `scripts/deploy.sh`，步骤见 [ops.md](ops.md)。
 
 没有模型 Key 也能从导入一路玩下去：起一个假模型服务，在“添加模型”里选“自定义兼容端点”，端点填 `http://127.0.0.1:8020/v1`，
 Key 随便填，模型选 `fake-model`（后端要设 `ALLOW_PRIVATE_ENDPOINTS=true`）。后台整理世界状态时，它每回合直接 `commit`、不改世界状态；大纲修订时写一版三拍的大纲，之后都回“不改”；
@@ -172,6 +173,6 @@ DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --mo
 | `apps/site` | 项目主页（落地页）：React + Vite，构建时预渲染成静态 HTML |
 | `apps/vis` | 本机日志查看器的网页（接口在 `apps/server` 的 `bettertavern vis`） |
 | `packages` | 手机端和网页端共用的包：`core`（接口客户端、SSE、会话、回合状态机、i18n 资源）、`design`（色板、主题、尺寸、图标、封面） |
-| `deploy` | docker compose、镜像、反向代理示例 |
+| `deploy` | docker compose、镜像、反向代理示例；线上用的 compose、nginx 配置和装机脚本（[ops.md](ops.md)） |
 | `scripts` | 仓库级的检查脚本（界面代码里有没有写死的中文） |
 | `docs` | 设计文档，数据模型和接口的参考文档，界面与标志的设计稿 |

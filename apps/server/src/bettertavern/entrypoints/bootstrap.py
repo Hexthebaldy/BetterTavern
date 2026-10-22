@@ -50,7 +50,9 @@ def mail_sender(settings: Settings) -> MailSender | None:
     """配了 RESEND_API_KEY 走 Resend；开发和测试环境没配时把验证码写进日志；生产环境没配就不发信
     （这时不能要求验证邮箱，也用不了找回密码）。"""
     if settings.resend_api_key is not None:
-        if settings.is_prod and "@localhost" in settings.mail_from:
+        if settings.is_prod and (
+            not settings.mail_from.strip() or "@localhost" in settings.mail_from
+        ):
             raise RuntimeError("Set MAIL_FROM to an address on a domain verified in Resend")
         # 注册、找回密码时接口直接等发信结果，超时不能太长
         return ResendSender(

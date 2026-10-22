@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     env: Literal["dev", "test", "prod"] = "dev"
+    # 这个版本是从哪次提交构建的（镜像构建时写进 BUILD_ID）。/health 会返回它，
+    # 部署脚本据此确认新版本已经起来
+    build_id: str = "dev"
     host: str = "0.0.0.0"
     port: int = 8000
     # 反向代理的地址（逗号隔开，可以写网段）：只有来自这些地址的请求，
@@ -111,6 +114,14 @@ class Settings(BaseSettings):
     # 允许的跨域来源，逗号分隔。网页和接口同源部署时不需要；网页放在别的域名下时把网页的地址加进来，
     # 网页端的 Cookie 登录也只接受同源和这里列出的来源
     cors_origins: str = ""
+
+    @field_validator("resend_api_key", "alert_email", mode="before")
+    @classmethod
+    def _blank_is_unset(cls, value: object) -> object:
+        # compose 里没填的变量以空字符串传进来，当作没配置
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @property
     def is_prod(self) -> bool:

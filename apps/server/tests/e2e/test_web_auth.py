@@ -54,6 +54,7 @@ async def _serve(
             cors_origins=WEB_ORIGIN,
             shutdown_grace_s=2.0,
             email_verification=verification,
+            build_id="3f2c1ab",
         )
         services = build_app_services(
             settings, EventBufferRegistry(), engine=engine_for(URL, schema), mailer=mail
@@ -272,3 +273,11 @@ async def test_email_verification_over_http(verifying_url: str, outbox: MemorySe
             "/v1/auth/refresh", headers={**SAME_ORIGIN, "Cookie": f"bt_refresh={second}"}
         )
         assert r.status_code == 200
+
+
+async def test_health_reports_the_running_build(base_url: str) -> None:
+    async with httpx.AsyncClient(base_url=base_url, timeout=30) as client:
+        r = await client.get("/health")
+        # 部署脚本据此确认新版本已经起来
+        assert r.status_code == 200 and r.json()["status"] == "ok"
+        assert r.json()["build"] == "3f2c1ab" and r.json()["version"]
