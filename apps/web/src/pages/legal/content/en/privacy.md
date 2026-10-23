@@ -12,6 +12,8 @@ This policy explains what information BetterTavern (the "Service", run by an ind
 
 **API keys you enter**: keys for model, search, page-reading and image services. They are encrypted with a master key on the server, and the app only ever shows their last four characters.
 
+**Credit records**: when you use the official model, we record which model each call used, how many tokens, and how many credits it cost, but not the content. So that each email address only gets the trial allowance once, we also keep a one-way hash of your email address.
+
 **Sign-in information**: the server issues sign-in tokens so you stay signed in. On the web, the browser keeps a single cookie used to renew your sign-in (HttpOnly, so page scripts can't read it). We use no advertising or analytics cookies.
 
 **Logs**: to fix problems and prevent abuse, the server records the time, address, result and duration of requests. Application logs refer to your account by an irreversible code, and never record story text or API keys. The reverse proxy's access logs record IP addresses and are kept for about two weeks.
@@ -21,6 +23,8 @@ We don't collect your real name, phone number, location or contacts, and we use 
 ## 2. How we use it
 
 - To provide the Service: storing your content and calling your connected services when you ask;
+- To work out credits: taking credits for official-model usage and estimating how many more turns you have;
+- To check content: before a character card is saved to your library, an AI checks it for sexual content that breaks the [Content Rules](/rules); the result is only used to decide whether it can be saved;
 - To send necessary emails: sign-up verification codes and password reset codes;
 - For security and abuse prevention: rate limits, spotting unusual sign-ins and attacks;
 - To fix problems: when something goes wrong, we get an alert with only the type and number of errors, never your content.
@@ -31,6 +35,7 @@ We don't sell your information, use your content for advertising, or use your co
 
 Only with the providers needed to run the Service:
 
+- **The official model**: when you use the official model to write stories or cards, and when a character card is checked before saving, your input, character cards and story context are sent to DeepSeek for processing. DeepSeek's servers are in China.
 - **Your connected services**: when you write stories or cards, your input, character cards and story context go to the model provider you chose; search terms, the addresses of pages to read and image descriptions go to the matching service you connected. See their own privacy policies for how they handle it.
 - **Servers and network**: the Service's server is in Singapore (Vultr). The website runs through Cloudflare's network for speed and protection, so Cloudflare processes your IP address and traffic.
 - **Email**: verification emails are sent through Resend, which processes your email address and the message.
@@ -39,12 +44,14 @@ We may have to provide information to the authorities where the law requires it.
 
 ## 4. International transfers
 
-The Service's server is in Singapore, and the providers listed above may process data in other countries or regions. By using the Service you agree that your information may be stored and processed there.
+The Service's server is in Singapore, and the providers listed above may process data in other countries or regions. In particular, when you use the official model your content is sent to DeepSeek in China for processing; if you'd rather it weren't, you can switch to a model you connect yourself in Settings. By using the Service you agree that your information may be stored and processed there.
 
 ## 5. How long we keep it
 
 - Your account and what you create: until you delete them or your account;
 - Deleting your account: your account and all of its data are deleted from the database immediately. Copies in backups (automatic server backups and database backups taken before upgrades) are removed as the backups rotate, usually within a few weeks;
+- Credit records: until you delete your account;
+- The email hash for trial allowances: kept after you delete your account, to stop the same email address claiming it again;
 - Accounts not verified within 24 hours of signing up: deleted automatically;
 - Verification codes: valid for 15 minutes, deleted once used or expired;
 - Cached web pages the agent read: 7 days;

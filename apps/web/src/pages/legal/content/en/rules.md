@@ -2,10 +2,11 @@
 
 Effective date: October 23, 2026
 
-BetterTavern is a tool for adults to write fiction. Stories can be dark, violent or adult, but some lines can't be crossed. These rules cover the text you enter, the character cards you import, the images you upload, and what you have the AI generate.
+BetterTavern is a tool for adults to write fiction. Stories can be dark and can deal with violence, crime, war and complicated relationships, but sexual content isn't allowed, and some lines can't be crossed. These rules cover the text you enter, the character cards you import, the images you upload, and what you have the AI generate.
 
 ## Never allowed
 
+- **Sexual content**: explicit sexual content, and character cards or stories centered on sex. Stories can include romance and intimacy, but intimate scenes should be passed over in a line or two.
 - **Sexual content involving minors**: any sexual content involving minors, including fictional, anime or game-style characters, and characters described as or appearing to be under 18. No exceptions.
 - **Sexual content about, or harm to, real people**: sexual content about identifiable real people, and content used to harass, threaten, defame or impersonate real people.
 - **Exposing other people's private information**: real people's addresses, phone numbers, ID numbers and similar details.
@@ -21,6 +22,8 @@ BetterTavern is a tool for adults to write fiction. Stories can be dark, violent
 ## How we handle it
 
 Only you can see your content, and we don't go looking through it. We only look at content when we get a report, see signs of abuse, you ask us for help, or the law requires it.
+
+Two things happen automatically to keep to these lines: the AI that writes your story is told not to write sexual content and to steer the story elsewhere when asked to cross the line; and before a character card is saved to your library, an AI checks it for sexual content, and cards that have it can't be saved. The check only decides whether the card can be saved; no person reads your card.
 
 If we find a violation, we may remove content, limit features, or suspend or close the account, depending on the case. For sexual content involving minors, we close the account right away and report it to the authorities as the law requires.
 

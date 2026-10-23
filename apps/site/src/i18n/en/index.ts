@@ -236,7 +236,7 @@ export const en: Copy = {
     title: "Models & data",
     model: {
       title: "Models",
-      text: "Add them under Settings → Models: pick a provider, paste an API key, and the model list loads by itself. You can add several and switch the one writing your story with a tap. The provider bills you for what you use.",
+      text: "On the official web app and apps, you get the official model (DeepSeek) as soon as you sign up, with nothing to set up, and new users get 1,500 trial credits. You can also add your own under Settings → Models: pick a provider, paste an API key, and the model list loads by itself. You can add several and switch the one writing your story with a tap; the provider bills you for what you use.",
       providersAria: "Provider",
       getKey: "Get a key from {name}",
       customHint: "Also enter an endpoint URL, such as a model running on your own computer",
@@ -319,7 +319,7 @@ export const en: Copy = {
     items: [
       {
         q: "Does it cost anything?",
-        a: "No. The web app, the apps and the code are free; BetterTavern is open source. Stories are written with your own model key, and the model provider bills you for what you use.",
+        a: "The web app, the apps and the code are free; BetterTavern is open source. The official service gives you 1,500 trial credits when you sign up, to write with the official model (DeepSeek) right away; that's enough for a few dozen turns. After that you can switch to your own model key, and the model provider bills you for what you use.",
       },
       {
         q: "Do I have to run a server myself?",
@@ -332,6 +332,10 @@ export const en: Copy = {
       {
         q: "Which character cards work?",
         a: "SillyTavern character cards: PNG images or JSON files, V1, V2 or V3, up to 16 MB. A PNG card keeps its data inside the image file, and compressed images or screenshots lose that data, so use the original file.",
+      },
+      {
+        q: "What can't I write?",
+        a: "The official service doesn't allow sexual content, or anything else the content rules forbid (see the content rules in the web app). Stories can be dark and can deal with violence, crime and complicated relationships. Character cards are checked automatically when you save them, and cards with sexual content can't go into your library.",
       },
       {
         q: "Can I use a model running on my own computer?",
@@ -347,7 +351,7 @@ export const en: Copy = {
       },
       {
         q: "Will my stories be used to train models?",
-        a: "BetterTavern doesn't use your stories to train models or for anything else (see the web app's privacy policy). While writing, the needed context is sent to the model provider you chose, and how they handle it is up to their terms. If that concerns you, host it yourself and use a model running on your own computer.",
+        a: "BetterTavern doesn't use your stories to train models or for anything else (see the web app's privacy policy). While writing, the needed context is sent to the model provider you chose (DeepSeek, for the official model), and how they handle it is up to their terms. If that concerns you, host it yourself and use a model running on your own computer.",
       },
     ],
   },
