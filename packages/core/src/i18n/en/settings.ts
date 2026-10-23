@@ -71,7 +71,7 @@ export const settings: Messages<typeof source> = {
   tools: {
     title: "External services",
     intro:
-      "The Workbench agent uses these to research, read web pages and make cover images. Reading pages works without setup (the server reads them itself); search and cover images need a service.",
+      "The Workbench agent uses these to research, read web pages and make cover images. Reading pages works without setup (the server reads them itself). Search also works without setup, but with limited reach (once the official service's free searches run out, it only searches Wikipedia); set up your own to use it instead. Cover images need a service.",
     loadFailed: "External services didn't load",
     kinds: {
       search: "Web search",
