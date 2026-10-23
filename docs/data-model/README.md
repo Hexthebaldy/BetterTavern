@@ -4,7 +4,7 @@
 >
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
-这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0022`）。
+这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0023`）。
 设计意图和还没建的表见 [backend.md 第 2 节](../backend.md)。
 
 表按领域分文件。每个领域文件写这个领域的表（列、类型、约束、索引）、JSON 列的结构和状态变化；本页写各领域共用的约定、
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | [accounts.md](accounts.md) | 账户与令牌 | `users`、`refresh_tokens` |
 | [models.md](models.md) | 模型路由（玩家配好的模型，含 Key 和端点；官方模型） | `model_routes` |
-| [credits.md](credits.md) | 点数（官方模型的余额、账本、体验额度） | `credit_ledger`、`credit_grants` |
+| [credits.md](credits.md) | 点数和官方服务的用量（官方模型的余额、账本、体验额度；官方搜索的次数） | `credit_ledger`、`credit_grants`、`platform_usage` |
 | [tools.md](tools.md) | 外部服务（搜索、读网页、文生图）和读过的网页 | `tool_routes`、`web_pages` |
 | [library.md](library.md) | 角色卡仓库与剧本仓库 | `blobs`、`cards`、`card_revisions`、`scenarios`、`scenario_cards` |
 | [workbench.md](workbench.md) | 工作台 | `workbench_drafts`、`workbench_messages`、`workbench_events`、`workbench_assets`、`workbench_notes` |
@@ -51,6 +51,7 @@ erDiagram
     users ||--o{ email_codes : "user_id"
     users ||--o{ model_routes : "user_id"
     users ||--o{ credit_ledger : "user_id"
+    users ||--o{ platform_usage : "user_id"
     users ||--o{ blobs : "user_id"
     users ||--o{ cards : "user_id"
     users ||--o{ scenarios : "user_id"
@@ -126,7 +127,7 @@ erDiagram
 
 | 操作 | 连带删除或修改 |
 | --- | --- |
-| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`email_codes`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`）、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys`、`credit_ledger`。`credit_grants` 不删（同一个邮箱重新注册不再送体验额度） |
+| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`email_codes`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`）、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys`、`credit_ledger`、`platform_usage`。`credit_grants` 不删（同一个邮箱重新注册不再送体验额度） |
 | 删除游玩 | 级联删除 `turns`、`entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes`、`story_summaries`、`player_profiles`、`outline_revisions` 和 `agent_runs`（连同 `agent_steps`；`credit_ledger` 里这些运行的扣点记录留着，`run_id` 置空）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 级联删除 `scenario_cards`，卡不动；`playthroughs.scenario_id` 置空 |
 | 删除角色卡 | `scenario_cards` 里有这张卡就拒绝（409 `CARD_IN_USE`，外键也是 RESTRICT）。级联删除 `card_revisions`；指向它的草稿 `card_id` 置空。它和它的版本用过的封面没有别处在用时一起删掉 |

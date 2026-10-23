@@ -26,6 +26,9 @@ class Quotas:
     max_running_agents: int = 2
     max_open_drafts: int = 50
     max_image_bytes: int = 200 * MIB
+    # 官方搜索：每个用户每天几次、全站每个月几次（用完了查维基百科，不报错）
+    platform_searches_per_day: int = 30
+    platform_searches_per_month: int = 950
 
 
 async def lock_user(conn: AsyncConnection, user_id: str) -> None:

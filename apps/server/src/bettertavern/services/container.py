@@ -17,6 +17,7 @@ from bettertavern.providers.transport import build_http_client
 from bettertavern.runtime.events.buffer import EventBufferRegistry
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
 from bettertavern.runtime.outline_runner import OutlineRunner, OutlineRunnerConfig
+from bettertavern.runtime.ports import ToolConfig
 from bettertavern.runtime.prompts import PromptBook
 from bettertavern.runtime.runner import RunnerConfig, TurnRunner, TurnRunnerPool
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
@@ -244,8 +245,10 @@ def build_workbench_runner(
     http: httpx.AsyncClient | None = None,
     quotas: Quotas | None = None,
     platform: PlatformModel | None = None,
+    platform_search: ToolConfig | None = None,
 ) -> WorkbenchRunner:
-    """worker 进程用：工作台的 agent（联网和出图走 http，不给时新建一个，由调用方负责关闭）。"""
+    """worker 进程用：工作台的 agent（联网和出图走 http，不给时新建一个，由调用方负责关闭）。
+    platform_search：官方搜索，用户自己没配搜索时用它（次数用完了查维基百科）。"""
     routes = RouteService(engine, secrets.keyring, hub, policy, platform)
     client = http or build_http_client(policy)
     web_store = PgWebStore(engine, quotas)
@@ -255,7 +258,9 @@ def build_workbench_runner(
         hub=hub,
         prompts=prompts or PromptBook(),
         config=config,
-        tools=ToolRouteService(engine, secrets.keyring, policy, client=client),
+        tools=ToolRouteService(
+            engine, secrets.keyring, policy, client=client, platform_search=platform_search
+        ),
         web_store=web_store,
         http=client,
         policy=policy,

@@ -179,7 +179,10 @@ def card_maker_messages(
     plan: Mapping[str, Any] | None,
     image_budget: int,
     can_generate: bool = False,
+    search_scope: str = "",
 ) -> list[Message]:
+    """search_scope：搜索用的是谁（own 自己配的、platform 官方、wiki 只有维基百科），
+    提示词按它说明能查到什么。"""
     labels: Mapping[str, str] = prompts.data("card_maker")["labels"]
     system = prompts.render(
         "card_maker.system",
@@ -188,6 +191,7 @@ def card_maker_messages(
         can_fetch="web_fetch" in tools,
         can_generate=can_generate,
         image_budget=image_budget,
+        search_scope=search_scope,
     )
     digest = draft_digest(run.card, display_name=run.name, has_cover=run.cover_asset_id is not None)
     state = prompts.render(
@@ -403,6 +407,7 @@ async def make_card(
         plan=plan,
         image_budget=ctx.limits.image_budget if "generate_image" in tools else 0,
         can_generate=ctx.web is not None and ctx.web.can_generate,
+        search_scope=ctx.web.search_scope if ctx.web is not None else "",
     )
 
     async def should_stop() -> bool:

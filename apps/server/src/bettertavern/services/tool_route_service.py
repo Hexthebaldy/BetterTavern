@@ -200,11 +200,14 @@ class ToolRouteService:
         keyring: Keyring,
         policy: EndpointPolicy,
         client: httpx.AsyncClient | None = None,
+        platform_search: ToolConfig | None = None,
     ) -> None:
         self._engine = engine
         self._keyring = keyring
         self._policy = policy
         self._client = client
+        # 官方搜索（运营方的 Key，只用免费额度）：用户自己没配搜索时工作台 agent 用它
+        self._platform_search = platform_search
 
     # ---- 增删改查 ----
 
@@ -371,7 +374,12 @@ class ToolRouteService:
                     found[kind] = self.config(row) if row is not None else None
                 except AppError:
                     found[kind] = None
-        return ResolvedTools(search=found["search"], fetch=found["fetch"], image=found["image"])
+        return ResolvedTools(
+            search=found["search"],
+            fetch=found["fetch"],
+            image=found["image"],
+            platform_search=self._platform_search,
+        )
 
     async def default_image(self, user_id: str) -> ToolConfig | None:
         return (await self.resolve_tools(user_id)).image

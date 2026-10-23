@@ -13,6 +13,7 @@ from bettertavern.infra.mail.resend import ResendSender
 from bettertavern.infra.observability.alerts import AlertMailer
 from bettertavern.providers import EndpointPolicy, ProviderHub, Secret
 from bettertavern.providers.limiter import CredentialLimiter, LimiterConfig
+from bettertavern.runtime.ports import ToolConfig
 from bettertavern.runtime.prompts import PromptBook
 from bettertavern.services.auth_service import AccountPolicy
 from bettertavern.services.credits import CreditPolicy
@@ -85,6 +86,21 @@ def quotas(settings: Settings) -> Quotas:
         max_running_agents=settings.max_running_agents,
         max_open_drafts=settings.max_open_drafts,
         max_image_bytes=settings.max_image_bytes_per_user,
+        platform_searches_per_day=settings.platform_search_daily,
+        platform_searches_per_month=settings.platform_search_monthly,
+    )
+
+
+def platform_search(settings: Settings) -> ToolConfig | None:
+    """配了 PLATFORM_SEARCH_API_KEY 才有官方搜索。"""
+    if settings.platform_search_api_key is None:
+        return None
+    return ToolConfig(
+        route_id=f"platform:{settings.platform_search_provider}",
+        kind="search",
+        provider=settings.platform_search_provider,
+        label="official",
+        api_key=settings.platform_search_api_key.get_secret_value(),
     )
 
 

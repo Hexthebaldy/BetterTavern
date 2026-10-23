@@ -123,6 +123,14 @@ class Settings(BaseSettings):
     # 没有自己的记录时，估计每回合花多少点（给用户看“大约还能写多少回合”）
     platform_turn_points: int = Field(default=40, ge=1)
 
+    # 官方搜索：工作台 agent 查资料用运营方的搜索 Key（只用免费额度），用户自己没配搜索时用它；
+    # 次数用完了就查维基百科（不用 Key）。不设 PLATFORM_SEARCH_API_KEY 就只查维基百科
+    platform_search_api_key: SecretStr | None = None
+    platform_search_provider: str = "tavily"
+    # 每个用户每天最多几次、全站每个月最多几次（Tavily 免费每月 1000 次，留一点余量）
+    platform_search_daily: int = Field(default=30, ge=0)
+    platform_search_monthly: int = Field(default=950, ge=0)
+
     # 账号
     # 能不能注册新账号（出问题时先关掉）
     registration_open: bool = True
@@ -140,7 +148,12 @@ class Settings(BaseSettings):
     cors_origins: str = ""
 
     @field_validator(
-        "resend_api_key", "alert_email", "platform_api_key", "platform_base_url", mode="before"
+        "resend_api_key",
+        "alert_email",
+        "platform_api_key",
+        "platform_base_url",
+        "platform_search_api_key",
+        mode="before",
     )
     @classmethod
     def _blank_is_unset(cls, value: object) -> object:

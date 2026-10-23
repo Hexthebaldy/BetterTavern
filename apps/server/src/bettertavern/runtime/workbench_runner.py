@@ -27,8 +27,9 @@ from bettertavern.providers import EndpointPolicy, ProviderError, ProviderHub
 
 from .agent import AgentStopped, StepLog
 from .agents.card_maker import AGENT, make_card
+from .agents.card_maker_search import SearchMemo
 from .agents.card_maker_tools import CardMakerContext, Limits, registry
-from .agents.card_maker_web import SearchMemo, WebTools
+from .agents.card_maker_web import WebTools
 from .ports import (
     AgentRunRecord,
     RouteResolver,

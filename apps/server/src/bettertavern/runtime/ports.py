@@ -541,6 +541,8 @@ class ResolvedTools:
     search: ToolConfig | None = None
     fetch: ToolConfig | None = None
     image: ToolConfig | None = None
+    # 官方搜索：运营方的 Key（只用免费额度）。用户自己没配搜索时用它，用完了查维基百科
+    platform_search: ToolConfig | None = None
 
 
 class ToolResolver(Protocol):
@@ -590,6 +592,10 @@ class WebStore(Protocol):
     ) -> str: ...
 
     async def page(self, user_id: str, page_id: str) -> StoredPage | None: ...
+
+    async def claim_platform_search(self, user_id: str) -> bool:
+        """用一次官方搜索：记一次数；这个用户今天或全站这个月的次数用完了返回 False（不记）。"""
+        ...
 
     async def add_note(
         self, draft_id: str, *, text: str, source: Mapping[str, Any], used_in: Sequence[str]

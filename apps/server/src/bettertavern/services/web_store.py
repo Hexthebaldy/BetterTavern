@@ -1,5 +1,5 @@
 """WebStore 的 Postgres 实现：worker 里的工作台 agent 通过它读写网页缓存、资料笔记，
-存搜到的、生成的图。"""
+存搜到的、生成的图，记官方搜索的次数。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from bettertavern.infra.db.repositories import credits as usage_repo
 from bettertavern.infra.db.repositories import drafts as drafts_repo
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import web as repo
@@ -66,6 +67,17 @@ class PgWebStore:
         async with self._engine.connect() as conn:
             row = await repo.get_page(conn, user_id, page_id)
         return None if row is None else _page(row)
+
+    async def claim_platform_search(self, user_id: str) -> bool:
+        """官方搜索记一次：全站这个月、这个用户今天都还有次数时记下并返回 True。
+        两个上限之间没有锁，几个请求同时来可能超出月上限几次（上限本来就比免费额度少一截）。"""
+        async with self._engine.begin() as conn:
+            used = await usage_repo.month_usage(conn, "search")
+            if used >= self._quotas.platform_searches_per_month:
+                return False
+            return await usage_repo.add_usage(
+                conn, user_id, "search", daily_limit=self._quotas.platform_searches_per_day
+            )
 
     async def add_note(
         self, draft_id: str, *, text: str, source: Mapping[str, Any], used_in: Sequence[str]

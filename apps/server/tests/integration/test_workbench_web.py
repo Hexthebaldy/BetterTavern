@@ -25,11 +25,13 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from bettertavern.infra.crypto.keyring import load_secrets, new_master_key_entry
 from bettertavern.providers import EndpointPolicy, ToolCall
 from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.runtime.ports import ToolConfig
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.runtime.workbench_runner import WorkbenchRunner
 from bettertavern.services.container import Services, build_services, build_workbench_runner
 from bettertavern.services.cover_service import CoverRequest
 from bettertavern.services.errors import AppError
+from bettertavern.services.quotas import Quotas
 from bettertavern.services.route_inputs import RouteInput
 from bettertavern.services.tool_route_service import ToolRouteInput, ToolRoutePatch
 from tests.fakes.runtime import ScriptedAdapter, StreamScript, scripted_hub
@@ -58,13 +60,20 @@ WIKI = (
 
 @dataclass
 class FakeWeb:
-    """假的外网：Tavily 的接口、几个网页、一张图、一个出图服务。"""
+    """假的外网：Tavily 的接口、维基百科的搜索接口、几个网页、一张图、一个出图服务。
+    tavily_status 不是 200 时，Tavily 的搜索按这个状态码报错（432 是免费额度用完）。"""
 
     requests: list[str] = field(default_factory=list)
+    tavily_status: int = 200
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(f"{request.method} {request.url.host}{request.url.path}")
         host, path = request.url.host, request.url.path
+        if host.endswith("wikipedia.org") and path == "/w/api.php":
+            item = {"title": "林黛玉", "snippet": "金陵十二钗之首"}
+            return httpx.Response(200, json={"query": {"search": [item]}})
+        if host == "api.tavily.com" and self.tavily_status != 200:
+            return httpx.Response(self.tavily_status, json={"detail": "usage limit"})
         if host == "api.tavily.com" and path == "/search":
             body = json.loads(request.content)
             if body.get("include_images"):
@@ -110,7 +119,9 @@ class Bench:
 
 
 @asynccontextmanager
-async def bench(tmp_path: Path) -> AsyncIterator[Bench]:
+async def bench(
+    tmp_path: Path, *, platform_search: ToolConfig | None = None, quotas: Quotas | None = None
+) -> AsyncIterator[Bench]:
     url = database_url()
     assert url is not None
     async with schema_engine(url, pool_size=10) as engine:
@@ -136,7 +147,13 @@ async def bench(tmp_path: Path) -> AsyncIterator[Bench]:
             http=http,
         )
         runner = build_workbench_runner(
-            engine=engine, secrets=secrets, hub=hub, policy=EndpointPolicy(), http=http
+            engine=engine,
+            secrets=secrets,
+            hub=hub,
+            policy=EndpointPolicy(),
+            http=http,
+            quotas=quotas,
+            platform_search=platform_search,
         )
         user, _ = await services.auth.register("web@example.com", "correct horse")
         await services.routes.create(
@@ -179,6 +196,11 @@ async def run_once(b: Bench, draft_id: str) -> None:
 
 def tool_results(b: Bench) -> list[str]:
     return [m.content for m in b.adapter.requests[-1].messages if m.role == "tool"]
+
+
+def recalled(content: str) -> Any:
+    """读工具的结果包在 <recall> 里，取出里面的 JSON。"""
+    return json.loads(content.removeprefix("<recall>\n").removesuffix("\n</recall>"))
 
 
 async def test_tool_routes_are_encrypted_defaulted_and_tested(tmp_path: Path) -> None:
@@ -373,16 +395,85 @@ async def test_agent_researches_saves_notes_images_and_generates_covers(tmp_path
         assert saved.card.cover_blob_id == covers[0].blob_id
 
 
-async def test_without_search_the_agent_gets_no_search_tools(tmp_path: Path) -> None:
+async def test_without_a_search_service_the_agent_searches_wikipedia(tmp_path: Path) -> None:
     async with bench(tmp_path) as b:
         s = b.services
-        draft = await s.workbench.start(b.user_id, text="做个原创角色", language="zh")
-        b.adapter.streams.append(say("好。"))
+        draft = await s.workbench.start(b.user_id, text="做《红楼梦》的林黛玉", language="zh")
+        b.adapter.streams.extend(
+            [say("先查资料。", ("web_search", {"query": "林黛玉"})), say("好。")]
+        )
         await run_once(b, draft.summary.id)
         offered = {t.name for t in b.adapter.requests[0].tools or ()}
-        assert "web_search" not in offered and "web_fetch" in offered  # 读网页总能用
+        assert {"web_search", "web_fetch"} <= offered
+        assert "image_search" not in offered  # 搜图只用自己配的服务
         system = b.adapter.requests[0].messages[0].content
-        assert "没有配置联网搜索" in system and "没有配置文生图" in system
+        assert "只能搜维基百科" in system and "没有配置文生图" in system
+        assert "外形" in system and "背景经历" in system  # 角色要写全的几项
+        result = recalled(tool_results(b)[-1])
+        assert result["source"] == "wikipedia"
+        assert result["results"][0]["url"].startswith("https://zh.wikipedia.org/zh-cn/")
+        assert "GET zh.wikipedia.org/w/api.php" in b.web.requests  # 按草稿的语言选站点
         with pytest.raises(AppError) as info:
             await s.covers.generate(b.user_id, draft.summary.id, CoverRequest(prompt="p"))
         assert info.value.code == "TOOL_ROUTE_MISSING"
+
+
+PLATFORM_SEARCH = ToolConfig(
+    route_id="platform:tavily",
+    kind="search",
+    provider="tavily",
+    label="official",
+    api_key="tvly-platform-0001",
+)
+
+
+async def platform_usage(b: Bench) -> int:
+    async with b.engine.connect() as conn:
+        used = (
+            await conn.execute(
+                text("SELECT COALESCE(SUM(count), 0) FROM platform_usage WHERE user_id = :u"),
+                {"u": b.user_id},
+            )
+        ).scalar_one()
+    return int(used)
+
+
+async def test_official_search_uses_its_daily_quota_then_wikipedia(tmp_path: Path) -> None:
+    quotas = Quotas(platform_searches_per_day=2)
+    async with bench(tmp_path, platform_search=PLATFORM_SEARCH, quotas=quotas) as b:
+        s = b.services
+        draft = await s.workbench.start(b.user_id, text="做《红楼梦》的林黛玉", language="zh")
+        b.adapter.streams.extend(
+            [
+                say("", ("web_search", {"query": "林黛玉 性格"})),
+                say("", ("web_search", {"query": "林黛玉 性格"})),  # 同一个查询：用内存里的
+                say("", ("web_search", {"query": "林黛玉 外貌"})),
+                say("", ("web_search", {"query": "林黛玉 判词"})),  # 今天的 2 次用完了
+                say("好。"),
+            ]
+        )
+        await run_once(b, draft.summary.id)
+        system = b.adapter.requests[0].messages[0].content
+        assert "只能搜维基百科" not in system
+        assert [r for r in b.web.requests if "tavily" in r] == ["POST api.tavily.com/search"] * 2
+        assert await platform_usage(b) == 2
+        results = tool_results(b)
+        assert isinstance(recalled(results[0]), list)  # 官方搜索：和自己配的一样
+        assert recalled(results[3])["source"] == "wikipedia"
+
+
+async def test_official_search_out_of_quota_falls_back_and_pauses(tmp_path: Path) -> None:
+    async with bench(tmp_path, platform_search=PLATFORM_SEARCH) as b:
+        s = b.services
+        b.web.tavily_status = 432  # 这个月的免费额度用完了
+        draft = await s.workbench.start(b.user_id, text="做《红楼梦》的林黛玉", language="zh")
+        b.adapter.streams.extend(
+            [
+                say("", ("web_search", {"query": "林黛玉 性格"})),
+                say("", ("web_search", {"query": "林黛玉 外貌"})),  # 一小时内不再试 Tavily
+                say("好。"),
+            ]
+        )
+        await run_once(b, draft.summary.id)
+        assert [r for r in b.web.requests if "tavily" in r] == ["POST api.tavily.com/search"]
+        assert all(recalled(r)["source"] == "wikipedia" for r in tool_results(b))

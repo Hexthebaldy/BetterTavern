@@ -15,6 +15,7 @@ from PIL import Image
 from bettertavern.providers.transport import EndpointPolicy, check_url, resolve_and_check
 from bettertavern.providers.web import (
     WEB_PROVIDERS,
+    WIKIPEDIA,
     WebConfig,
     WebError,
     clip_page,
@@ -298,3 +299,44 @@ async def test_vendor_errors_become_web_errors() -> None:
         with pytest.raises(WebError) as info:
             await WEB_PROVIDERS["tavily"].search(http, WebConfig(api_key="x"), "q", 3)
     assert info.value.kind == "auth" and "x" not in info.value.message.split()
+
+
+async def test_wikipedia_search_needs_no_key_and_falls_back_to_english() -> None:
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.host, request.url.params["srsearch"]))
+        assert request.url.path == "/w/api.php"
+        assert "BetterTavern" in request.headers["user-agent"]  # 维基媒体要求带上能找到项目的 UA
+        assert "authorization" not in request.headers
+        if request.url.host == "zh.wikipedia.org" and request.url.params["srsearch"] == "林黛玉":
+            item = {
+                "title": "林黛玉",
+                "snippet": '<span class="searchmatch">林黛玉</span>，金陵十二钗之首&amp;',
+            }
+            return httpx.Response(200, json={"query": {"search": [item]}})
+        if request.url.host == "en.wikipedia.org":
+            return httpx.Response(
+                200, json={"query": {"search": [{"title": "Frieren (character)"}]}}
+            )
+        return httpx.Response(200, json={"query": {"search": []}})
+
+    async with client(handler) as http:
+        hits = await WIKIPEDIA.search(http, WebConfig(params={"lang": "zh"}), "林黛玉", 5)
+        assert [(h.title, h.snippet) for h in hits] == [("林黛玉", "林黛玉，金陵十二钗之首&")]
+        assert hits[0].url == "https://zh.wikipedia.org/zh-cn/%E6%9E%97%E9%BB%9B%E7%8E%89"  # 简体
+        # 中文站一条也没有：再搜英文站
+        hits = await WIKIPEDIA.search(http, WebConfig(params={"lang": "zh"}), "Frieren", 5)
+        assert [h.url for h in hits] == ["https://en.wikipedia.org/wiki/Frieren_%28character%29"]
+    assert seen[-2:] == [("zh.wikipedia.org", "Frieren"), ("en.wikipedia.org", "Frieren")]
+    assert "wikipedia" not in WEB_PROVIDERS  # 内置的兜底，用户不能把它配成自己的服务
+
+
+async def test_tavily_out_of_quota_is_a_quota_error() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(432, json={"detail": {"error": "This request exceeds your plan"}})
+
+    async with client(handler) as http:
+        with pytest.raises(WebError) as info:
+            await WEB_PROVIDERS["tavily"].search(http, WebConfig(api_key="x"), "q", 3)
+    assert info.value.kind == "quota"

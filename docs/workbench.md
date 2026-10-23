@@ -560,7 +560,17 @@ agent 读完网页，只把要点记成笔记，后面写卡时读笔记，不�
   - 同样走防内网访问的网络层下载，只收图片，最大 10 MB；
   - 用图片库解码一遍，转成 PNG 或 WebP，去掉 EXIF，再存进 `blobs`。
 - **`FAKE_IP_RANGES`**：新设置，写 Clash fake-ip 用的地址段（例如 `198.18.0.0/15`）。这个段里的地址当作外网放行，用户就不必为了联网打开 `ALLOW_PRIVATE_ENDPOINTS`。
-- **没配搜索服务时**：不给 agent 搜索和搜图的工具，读网页仍然可以（用户贴了地址时）。作品里的角色会先提示“没法查资料，只能按模型自己知道的写”。
+- **搜索按顺序找能用的服务**（`runtime/agents/card_maker_search.py`），agent 总能搜：
+  1. 用户自己配的搜索服务：出错（Key 不对、额度用完）照实告诉 agent，要用户自己处理；
+  2. 官方搜索：服务器配了 `PLATFORM_SEARCH_API_KEY`（官方服务用 Tavily，只用它每月的免费额度）时，用户自己没配就用它。
+     每个用户每天最多 `PLATFORM_SEARCH_DAILY`（默认 30）次、全站每个月最多 `PLATFORM_SEARCH_MONTHLY`（默认 950）次，
+     计数在 `platform_usage`（[数据模型：点数](data-model/credits.md)）；用完了跳到下一层。
+     服务商说额度用完或 Key 不对时也跳，并且这个 worker 一小时内不再试。不扣用户的点数；
+  3. 维基百科（`providers/web/wikipedia.py`）：不用 Key，按草稿的语言搜中文、英文或日文维基，一条也没搜到时再搜英文；
+     中文站的地址用简体（`/zh-cn/`）。结果里带 `"source": "wikipedia"`，提示词也告诉 agent：搜不到不代表没有，
+     知道别的百科页面（萌娘百科、Fandom 等）的地址可以直接读。
+
+  命中内存缓存（20 分钟）的查询不算官方搜索的次数。搜图只用用户自己配的服务，官方搜索的额度留给查资料。
 
 ## 6 文生图的实现
 

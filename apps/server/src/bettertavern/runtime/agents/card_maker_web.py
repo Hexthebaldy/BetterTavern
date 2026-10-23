@@ -1,6 +1,7 @@
 """工作台 agent 的联网和出图工具（docs/workbench.md 第 5、6 节，照 hermes agent 的做法）。
 
-- web_search 只给标题、地址、摘要；结果在 worker 内存里留 20 分钟，同一个查询同时来几次只花一次钱；
+- web_search 只给标题、地址、摘要；依次用自己配的服务、官方搜索、维基百科
+  （card_maker_search.py），结果在 worker 内存里留 20 分钟，同一个查询同时来几次只花一次钱；
 - web_fetch 一次最多 5 个地址。每个地址依次过：地址里带着像 Key 的东西就拒绝 →
   防内网访问的静态检查 →
   web_pages 缓存（24 小时）→ 服务器自己读 → 读出来是空的或被拒时，配了读网页的服务商就换它再读。
@@ -15,9 +16,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import hashlib
-import time
 import uuid
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -38,7 +38,6 @@ from bettertavern.providers.web import (
     MAX_DOWNLOAD_BYTES,
     WEB_PROVIDERS,
     Page,
-    WebConfig,
     WebError,
     clip_page,
     download_image,
@@ -51,54 +50,24 @@ from bettertavern.runtime.ports import (
     NewImage,
     ResolvedTools,
     StorageFull,
-    ToolConfig,
     WebStore,
     WorkbenchRun,
 )
 
+from .card_maker_search import (
+    SearchMemo,
+    SearchScope,
+    find,
+    own_search,
+    search_scope,
+    web_config,
+)
 from .card_maker_tools import MAX_PAGES, MAX_SEARCHES, CardMakerContext, to_json
 
 PAGE_CHARS = 12_000
 MAX_FETCH_URLS = 5
 MAX_READ_LINES = 400
 CACHE_S = 24 * 3600
-MEMO_S = 20 * 60
-
-
-class SearchMemo:
-    """搜索结果在内存里留 20 分钟；同一个查询同时来几次，只请求一次。整个 worker 共用一份。"""
-
-    def __init__(self, ttl_s: float = MEMO_S, clock: Callable[[], float] = time.monotonic) -> None:
-        self._ttl = ttl_s
-        self._clock = clock
-        self._done: dict[tuple[str, ...], tuple[float, Any]] = {}
-        self._pending: dict[tuple[str, ...], asyncio.Future[Any]] = {}
-
-    async def get(self, key: tuple[str, ...], load: Callable[[], Any]) -> Any:
-        now = self._clock()
-        hit = self._done.get(key)
-        if hit is not None and now - hit[0] < self._ttl:
-            return hit[1]
-        pending = self._pending.get(key)
-        if pending is not None:
-            return await asyncio.shield(pending)
-        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
-        self._pending[key] = future
-        try:
-            value = await load()
-        except BaseException as exc:
-            future.set_exception(exc)
-            future.exception()  # 没人等时不报“异常没取走”
-            raise
-        finally:
-            self._pending.pop(key, None)
-        future.set_result(value)
-        self._done[key] = (now, value)  # 只缓存成功的结果
-        if len(self._done) > 500:
-            oldest = sorted(self._done.items(), key=lambda kv: kv[1][0])[:100]
-            for k, _ in oldest:
-                self._done.pop(k, None)
-        return value
 
 
 @dataclass
@@ -114,14 +83,18 @@ class WebTools:
 
     @property
     def can_search(self) -> bool:
-        config = self.tools.search
-        return config is not None and WEB_PROVIDERS.get(config.provider) is not None
+        """总能搜：没有别的搜索服务时查维基百科。"""
+        return True
+
+    @property
+    def search_scope(self) -> SearchScope:
+        return search_scope(self.tools)
 
     @property
     def can_images(self) -> bool:
-        config = self.tools.search
-        provider = WEB_PROVIDERS.get(config.provider) if config is not None else None
-        return provider is not None and provider.can_images
+        """搜图只用用户自己配的搜索服务（官方搜索的免费额度留给搜资料）。"""
+        own = own_search(self.tools)
+        return own is not None and own[1].can_images
 
     @property
     def can_generate(self) -> bool:
@@ -130,10 +103,6 @@ class WebTools:
 
     def tool_list(self) -> list[Tool]:
         return list(WEB_TOOLS)
-
-
-def _config(config: ToolConfig) -> WebConfig:
-    return WebConfig(api_key=config.api_key, base_url=config.base_url, params=config.params)
 
 
 def _web(ctx: CardMakerContext) -> WebTools:
@@ -159,45 +128,42 @@ async def _researching(ctx: CardMakerContext, web: WebTools) -> None:
 async def web_search(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
     ctx.count_call()
     web = _web(ctx)
-    config = web.tools.search
-    if config is None or not web.can_search:
-        raise ctx.fail("no_search")
     ctx.limits.searches += 1
     if ctx.limits.searches > MAX_SEARCHES:
         raise ctx.fail("limit_searches", max=MAX_SEARCHES)
     query = str(args["query"]).strip()[:300]
     count = max(1, min(int(args.get("count") or 8), 10))
-    provider = WEB_PROVIDERS[config.provider]
     await _researching(ctx, web)
     await ctx.events.event("tool", {"name": "web_search", "state": "start", "query": query})
     try:
-        hits = await web.memo.get(
-            ("search", config.route_id, query, str(count)),
-            lambda: provider.search(web.client, _config(config), query, count),
-        )
+        hits, source = await find(web, query, count)
     except WebError as exc:
         raise ctx.fail("search_failed", detail=exc.message) from exc
     web.searches.append(query)
-    return to_json([{"title": h.title, "url": h.url, "snippet": h.snippet} for h in hits])
+    results = [{"title": h.title, "url": h.url, "snippet": h.snippet} for h in hits]
+    if source == "wikipedia":
+        # 告诉 agent 只搜了维基百科：没搜到不等于没有这个角色
+        return to_json({"source": "wikipedia", "results": results})
+    return to_json(results)
 
 
 async def image_search(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
     ctx.count_call()
     web = _web(ctx)
-    config = web.tools.search
-    if config is None or not web.can_images:
+    own = own_search(web.tools)
+    if own is None or not own[1].can_images:
         raise ctx.fail("no_search")
+    config, provider = own
     ctx.limits.searches += 1
     if ctx.limits.searches > MAX_SEARCHES:
         raise ctx.fail("limit_searches", max=MAX_SEARCHES)
     query = str(args["query"]).strip()[:300]
     count = max(1, min(int(args.get("count") or 8), 10))
-    provider = WEB_PROVIDERS[config.provider]
     await ctx.events.event("tool", {"name": "image_search", "state": "start", "query": query})
     try:
         hits = await web.memo.get(
             ("images", config.route_id, query, str(count)),
-            lambda: provider.images(web.client, _config(config), query, count),
+            lambda: provider.images(web.client, web_config(config), query, count),
         )
     except WebError as exc:
         raise ctx.fail("search_failed", detail=exc.message) from exc
@@ -257,7 +223,7 @@ async def _read_one(web: WebTools, url: str) -> tuple[str, Page]:
     ):
         provider = WEB_PROVIDERS.get(fallback.provider)
         if provider is not None and provider.can_fetch:
-            results = await provider.fetch(web.client, _config(fallback), [url])
+            results = await provider.fetch(web.client, web_config(fallback), [url])
             first = results[0] if results else WebError("empty", "No result")
             if isinstance(first, Page):
                 page, error = first, None

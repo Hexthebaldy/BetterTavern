@@ -216,7 +216,13 @@ def test_content_boundary_only_on_the_hosted_service(language: str) -> None:
         .text
         == repair
     )
-    card_values = {"mode": "create", "can_search": True, "can_generate": False, "image_budget": 0}
+    card_values = {
+        "mode": "create",
+        "can_search": True,
+        "can_generate": False,
+        "image_budget": 0,
+        "search_scope": "own",
+    }
     card = library.render("card_maker.system", **card_values).text
     assert card.endswith(
         PromptLibrary(language).render("_content_boundary_card", **card_values).text

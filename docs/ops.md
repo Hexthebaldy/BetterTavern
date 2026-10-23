@@ -227,3 +227,21 @@ SQL
 | `PLATFORM_DAILY_BUDGET` | 50 | 全站最近 24 小时最多花多少元，到了就暂停官方模型并发报错提醒 |
 | `TRIAL_CREDITS` | 1500 | 新用户送多少点 |
 | `PLATFORM_MODEL`、`PLATFORM_PRICE_*` | `deepseek-flash`，2 / 0.04 / 8 | 换模型或 DeepSeek 调价时改（单价是元 / 百万 token）；换了模型，api 启动时会把所有用户的官方模型改成新的 |
+| `PLATFORM_SEARCH_API_KEY` | 空 | 官方搜索（Tavily）的 Key，见下面 |
+| `PLATFORM_SEARCH_DAILY`、`PLATFORM_SEARCH_MONTHLY` | 30、950 | 官方搜索每个用户每天、全站每个月最多几次 |
+
+**官方搜索**：工作台 agent 查资料时，用户自己没配搜索服务就用运营方的 Tavily Key，只用 Tavily 每月的免费额度（1000 次，不绑卡，用完就停、不会扣钱），
+不扣用户的点数；次数用完了、或者没配这个 Key，agent 改查维基百科。配上或更换（只重启 worker，agent 在 worker 里跑）：
+
+```bash
+cd /srv/bettertavern
+sed -i '/^PLATFORM_SEARCH_API_KEY=/d' .env
+read -rsp "Tavily 的 API key：" key && echo "PLATFORM_SEARCH_API_KEY=$key" >> .env && unset key && echo
+docker compose up -d worker
+```
+
+这个月用了多少次：
+
+```bash
+docker compose exec postgres psql -U bettertavern -c "select sum(count) from platform_usage where kind='search' and day >= date_trunc('month', now() at time zone 'UTC')::date"
+```

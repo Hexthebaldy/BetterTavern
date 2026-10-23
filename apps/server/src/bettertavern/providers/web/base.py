@@ -86,7 +86,8 @@ def raise_for(response: httpx.Response, vendor: str) -> None:
         return
     if response.status_code in (401, 403):
         raise WebError("auth", f"{vendor} rejected the key ({response.status_code})")
-    if response.status_code in (402, 429):
+    # Tavily 用 432、433 表示套餐的额度用完了
+    if response.status_code in (402, 429, 432, 433):
         raise WebError(
             "quota", f"{vendor} is out of quota or rate-limiting ({response.status_code})"
         )

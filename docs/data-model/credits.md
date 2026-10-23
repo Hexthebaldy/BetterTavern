@@ -4,7 +4,9 @@
 >
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
-官方模型的点数：用户不用自己配 Key，直接用运营方的 Key（服务器配置了 `PLATFORM_API_KEY` 才有，见 [models.md](models.md) 里的 `source`），
+官方模型的点数，以及官方服务里只限次数的用量（`platform_usage`，目前是官方搜索）。
+
+官方模型：用户不用自己配 Key，直接用运营方的 Key（服务器配置了 `PLATFORM_API_KEY` 才有，见 [models.md](models.md) 里的 `source`），
 按每次调用的用量扣点数。余额在 [`users.credit_micro`](accounts.md#users)，每一笔记在 `credit_ledger`。对应的接口见 [api/auth.md 的 `GET /v1/me/credits`](../api/auth.md)。
 
 单位：库里存**微元**（百万分之一元），界面显示**点**，1 点 = 1000 微元 = 0.001 元。显示时向下取整。
@@ -46,6 +48,27 @@
 | --- | --- | --- | --- | --- |
 | `email_hash` | text | 否 |  | 主键，邮箱的 HMAC（十六进制） |
 | `granted_at` | timestamptz | 否 | `now()` | 第一次送的时间 |
+
+### `platform_usage`
+
+官方服务里不扣点数、只限次数的用量：每个用户每天一行一种。目前只有官方搜索（工作台 agent 查资料时用运营方的搜索 Key，只用免费额度，
+见 [workbench.md 第 5 节](../workbench.md)）。每个用户每天、全站每个月的上限在设置里（`PLATFORM_SEARCH_DAILY`、`PLATFORM_SEARCH_MONTHLY`），
+用完了 agent 改查维基百科。
+
+| 列 | 类型 | 可空 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `user_id` | uuid | 否 |  | → `users.id`，级联删除 |
+| `day` | date | 否 |  | 哪一天（UTC） |
+| `kind` | text | 否 |  | 用的是什么：`search`（官方搜索） |
+| `count` | integer | 否 | `0` | 这一天用了几次 |
+
+约束与索引：
+- 主键 `(user_id, day, kind)`；`kind` 的 CHECK；`count >= 0`。
+- `platform_usage_day_idx (kind, day)`：算全站这个月用了多少。
+
+记一次的做法（`services/web_store.py` 的 `claim_platform_search`）：先算全站这个月（UTC）的总数，没到月上限再
+`INSERT … ON CONFLICT DO UPDATE SET count = count + 1 WHERE count < 每天的上限 RETURNING`，没返回行就是今天用完了。
+两步之间没有锁，几个请求同时来可能超出月上限几次（月上限本来就比免费额度少一截）。
 
 ## 计费
 

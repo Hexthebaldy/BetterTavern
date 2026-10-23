@@ -46,6 +46,7 @@ from .bootstrap import (
     endpoint_policy,
     mail_sender,
     platform_model,
+    platform_search,
     prompt_book,
     provider_hub,
     quotas,
@@ -119,6 +120,7 @@ async def run_worker(settings: Settings) -> None:
         quotas=quotas(settings),
         prompts=prompts,
         platform=platform,
+        platform_search=platform_search(settings),
     )
     queue = PgJobQueue(engine, lock_timeout=settings.job_lock_timeout_s)
     listener = PgNotifyListener(engine, queue.channel)

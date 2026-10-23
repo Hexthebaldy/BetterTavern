@@ -99,3 +99,33 @@ async def recent_turn_cost(conn: AsyncConnection, user_id: str, *, seconds: int)
     if row is None:
         return 0, 0
     return int(row["spent"]), int(row["turns"])
+
+
+# ---- 官方服务的用量（platform_usage：每个用户每天一行一种） -------------------------------------
+
+
+async def month_usage(conn: AsyncConnection, kind: str) -> int:
+    """全站这个月（UTC）用了几次。"""
+    row = await fetch_one(
+        conn,
+        """SELECT COALESCE(SUM(count), 0) AS used FROM platform_usage
+           WHERE kind = :k AND day >= date_trunc('month', now() AT TIME ZONE 'UTC')::date""",
+        {"k": kind},
+    )
+    return int(row["used"]) if row is not None else 0
+
+
+async def add_usage(conn: AsyncConnection, user_id: str, kind: str, *, daily_limit: int) -> bool:
+    """这个用户今天（UTC）再用一次：没到 daily_limit 就加一并返回 True，到了返回 False（不加）。"""
+    if daily_limit <= 0:
+        return False
+    row = await fetch_one(
+        conn,
+        """INSERT INTO platform_usage (user_id, day, kind, count)
+           VALUES (:u, (now() AT TIME ZONE 'UTC')::date, :k, 1)
+           ON CONFLICT (user_id, day, kind)
+           DO UPDATE SET count = platform_usage.count + 1 WHERE platform_usage.count < :limit
+           RETURNING count""",
+        {"u": user_id, "k": kind, "limit": daily_limit},
+    )
+    return row is not None
