@@ -1,14 +1,16 @@
 /**
- * “剧本”页（W04）：剧本仓库和角色卡仓库两个标签（地址 ?tab=cards 是角色卡），网格或列表显示。
- * 网格按内容宽度 ÷ 240 取整（2–5 列，平板中屏 3 列、手机 2 列），间距 16；列表限宽 640、居中。
- * - 剧本仓库右上角的加号：从角色卡仓库选一张或几张卡新建剧本；
- * - 角色卡仓库右上角：去工作台（新建和导入都在工作台）。
- * 顶上提示一次“新建和导入挪到了工作台”，关掉以后不再出现。
+ * “剧本”（/scenarios）和“角色”（/characters）两个一级页，共用一套框架（CollectionPage）：
+ * - 页头：标题和数量；右边一行工具条：搜索、排序、网格/表格切换、主按钮
+ *   （剧本是“新建剧本”，从角色卡里选一张或几张；角色是“去工作台”，新建和导入都在工作台）；
+ * - 网格：按内容宽度 ÷ 240 取整（2–5 列），间距 16；
+ * - 表格：一行一个，列出更多信息（剧本：用了哪些角色卡、简介、修改时间；角色：来源、世界书、几个剧本在用、修改时间）。
+ * 卡片和行都是指向详情的链接；悬停出现“…”，右键打开同一个菜单。
+ * 旧地址 /library（?tab=cards 是角色卡）跳到这两页（LibraryRedirect）。
  */
 
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import { cellWidth, libraryColumns, sizeClass } from "@bettertavern/design/layout";
@@ -25,54 +27,127 @@ import { useWindowWidth } from "../../hooks/useWindowSize.ts";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
 import { desktop } from "../../theme/layout.ts";
 import pages from "../pages.module.css";
-import { cardItem, Empty, HeaderControls, Row, scenarioItem, Tabs, Tile, type Item, type LibraryTab } from "./LibraryParts.tsx";
+import {
+  cardItem,
+  Empty,
+  matches,
+  scenarioItem,
+  sortItems,
+  Tile,
+  Toolbar,
+  ItemTable,
+  type Item,
+  type Kind,
+  type SortKey,
+} from "./LibraryParts.tsx";
 import styles from "./library.module.css";
 
 const GAP = 16;
 
-export function LibraryPage() {
+export function ScenariosPage() {
+  return <CollectionPage kind="scenarios" />;
+}
+
+export function CharactersPage() {
+  return <CollectionPage kind="cards" />;
+}
+
+/** 旧地址 /library 和 /library?tab=cards */
+export function LibraryRedirect() {
+  const [params] = useSearchParams();
+  return <Navigate to={params.get("tab") === "cards" ? "/characters" : "/scenarios"} replace />;
+}
+
+function CollectionPage({ kind }: { kind: Kind }) {
   const { t } = useTranslation();
-  useDocumentTitle(t("nav.library"));
+  const title = kind === "cards" ? t("nav.characters") : t("nav.scenarios");
+  useDocumentTitle(title);
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-  const tab: LibraryTab = params.get("tab") === "cards" ? "cards" : "scenarios";
   const scenarios = useScenarios();
   const cards = useCards();
   const scenarioActions = useScenarioActions();
   const cardActions = useCardActions();
   const { libraryView, setLibraryView, movedHintDismissed, dismissMovedHint } = usePrefs();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortKey>("recent");
   const windowWidth = useWindowWidth();
   const box = useRef<HTMLDivElement>(null);
   const contentWidth = useElementWidth(box);
-  const size = sizeClass(windowWidth);
-  const columns = libraryColumns(size, contentWidth);
+  const columns = libraryColumns(sizeClass(windowWidth), contentWidth);
   const tileWidth = contentWidth > 0 ? cellWidth(contentWidth, columns, GAP) : 0;
   const grid = libraryView === "grid";
 
-  const query = tab === "cards" ? cards : scenarios;
-  const items: (Item & { menu: (place: Parameters<typeof scenarioActions.menu>[1]) => void })[] | undefined =
-    tab === "cards"
-      ? cards.data?.map((c) => ({ ...cardItem(c, cardPath(c.id)), menu: (place) => void cardActions.menu(c, place) }))
-      : scenarios.data?.map((s) => ({
-          ...scenarioItem(s, scenarioPath(s)),
-          menu: (place) => void scenarioActions.menu(s, place),
-        }));
-  const empty = items !== undefined && items.length === 0;
+  const query = kind === "cards" ? cards : scenarios;
+  const all: Item[] | undefined = useMemo(
+    () =>
+      kind === "cards"
+        ? cards.data?.map((c) => ({
+            ...cardItem(c, cardPath(c.id)),
+            menu: (place) => void cardActions.menu(c, place),
+          }))
+        : scenarios.data?.map((s) => ({
+            ...scenarioItem(s, scenarioPath(s)),
+            menu: (place) => void scenarioActions.menu(s, place),
+          })),
+    [kind, cards.data, scenarios.data, cardActions, scenarioActions],
+  );
+  const items = all ? sortItems(all.filter((item) => matches(item, search)), sort) : undefined;
   const hasCards = (cards.data?.length ?? 0) > 0;
 
-  const setTab = (next: LibraryTab): void => {
-    setParams(next === "cards" ? { tab: "cards" } : {}, { replace: true });
-  };
-
   const add =
-    tab === "cards"
+    kind === "cards"
       ? { label: t("library.goWorkbench"), icon: "workbench" as const, run: () => navigate("/workbench") }
       : { label: t("library.newScenario"), icon: "plus" as const, run: () => navigate(newScenarioPath()) };
 
+  let body;
+  if (!all || !items) {
+    body = query.isPending ? (
+      <div className={styles.loading}>
+        <Button label={t("common.loading")} variant="text" busy />
+      </div>
+    ) : null;
+  } else if (all.length === 0) {
+    body =
+      kind === "cards" || !hasCards ? (
+        <Empty
+          title={kind === "cards" ? t("library.emptyCards") : t("library.emptyScenarios")}
+          note={kind === "cards" ? t("library.emptyCardsNote") : t("library.emptyScenariosNote")}
+          actionLabel={t("library.goWorkbench")}
+          actionIcon="workbench"
+          onAction={() => navigate("/workbench")}
+        />
+      ) : (
+        <Empty
+          title={t("library.emptyScenarios")}
+          note={t("library.emptyScenariosNote")}
+          actionLabel={t("library.newScenario")}
+          actionIcon="plus"
+          onAction={() => navigate(newScenarioPath())}
+        />
+      );
+  } else if (items.length === 0) {
+    body = <p className={styles.noMatch}>{t("library.noMatch", { query: search.trim() })}</p>;
+  } else if (grid) {
+    body = (
+      <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        {items.map((item) => (
+          <Tile key={item.id} item={item} width={tileWidth} onMenu={item.menu} />
+        ))}
+      </div>
+    );
+  } else {
+    body = <ItemTable kind={kind} items={items} />;
+  }
+
   return (
     <div className={pages.page}>
-      <PageHeader title={t("nav.library")} count={null}>
-        <HeaderControls
+      <PageHeader title={title} count={all?.length ?? null}>
+        <Toolbar
+          kind={kind}
+          search={search}
+          onSearch={setSearch}
+          sort={sort}
+          onSort={setSort}
           view={libraryView}
           onView={setLibraryView}
           addLabel={add.label}
@@ -81,12 +156,7 @@ export function LibraryPage() {
           labelled={windowWidth >= desktop.rail}
         />
       </PageHeader>
-      <Tabs
-        tab={tab}
-        onTab={setTab}
-        counts={{ scenarios: scenarios.data?.length ?? null, cards: cards.data?.length ?? null }}
-      />
-      {!movedHintDismissed ? (
+      {kind === "cards" && !movedHintDismissed ? (
         <Notice
           tone="info"
           message={t("library.moved")}
@@ -99,53 +169,13 @@ export function LibraryPage() {
       {query.error ? (
         <Notice
           icon="offline"
-          message={
-            items ? describeError(query.error) : t("library.loadFailedWith", { error: describeError(query.error) })
-          }
-          actionLabel={items ? t("common.retry") : t("common.reload")}
+          message={all ? describeError(query.error) : t("library.loadFailedWith", { error: describeError(query.error) })}
+          actionLabel={all ? t("common.retry") : t("common.reload")}
           onAction={() => void query.refetch()}
           className={styles.banner}
         />
       ) : null}
-      <div ref={box}>
-        {!items ? (
-          query.isPending ? (
-            <div className={styles.loading}>
-              <Button label={t("common.loading")} variant="text" busy />
-            </div>
-          ) : null
-        ) : empty ? (
-          tab === "cards" || !hasCards ? (
-            <Empty
-              title={tab === "cards" ? t("library.emptyCards") : t("library.emptyScenarios")}
-              note={tab === "cards" ? t("library.emptyCardsNote") : t("library.emptyScenariosNote")}
-              actionLabel={t("library.goWorkbench")}
-              actionIcon="workbench"
-              onAction={() => navigate("/workbench")}
-            />
-          ) : (
-            <Empty
-              title={t("library.emptyScenarios")}
-              note={t("library.emptyScenariosNote")}
-              actionLabel={t("library.newScenario")}
-              actionIcon="plus"
-              onAction={() => navigate(newScenarioPath())}
-            />
-          )
-        ) : grid ? (
-          <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-            {items.map((item) => (
-              <Tile key={item.id} item={item} width={tileWidth} onMenu={item.menu} />
-            ))}
-          </div>
-        ) : (
-          <div className={styles.list}>
-            {items.map((item) => (
-              <Row key={item.id} item={item} onMenu={item.menu} />
-            ))}
-          </div>
-        )}
-      </div>
+      <div ref={box}>{body}</div>
     </div>
   );
 }

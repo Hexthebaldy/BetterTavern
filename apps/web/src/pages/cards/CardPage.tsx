@@ -74,7 +74,7 @@ export function CardPage() {
   const [expanded, setExpanded] = useState(false);
   useDocumentTitle(detail?.card.name ?? t("cards.title"));
 
-  const back = (): void => void navigate("/library?tab=cards");
+  const back = (): void => void navigate("/characters");
 
   if (!detail) {
     return (

@@ -207,14 +207,13 @@
 /* ---------- 布局 ---------- */
 :root {
   --edge: 12px; /* 浮起的面板离窗口边 */
-  --sidebar: 268px;
-  --rail: 76px;
+  --sidebar: 240px; /* 侧栏展开 */
+  --rail: 64px; /* 侧栏收起 */
   --gutter: 40px;
   --content-max: 1200px;
   --readable: 640px;
   --action-panel: 672px;
   --world: 400px;
-  --settings-list: 340px;
   --scenario-info: 420px;
   --dialog: 480px;
   --popover: 340px;

@@ -1,0 +1,218 @@
+/* 模型页（/models）：分工、模型表格、右边的详情面板。白底页面上的灰块用 --fill；详情面板是整片灰底白卡（.surface-raised） */
+
+.page {
+  max-width: none;
+}
+.lead {
+  max-width: 760px;
+  margin: -8px 0 20px;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--mut);
+}
+.balance {
+  font-size: 13.5px;
+  color: var(--ink2);
+  margin-right: 4px;
+}
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* ---- 分工 ---- */
+.roles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.role {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px 16px;
+  border-radius: var(--r-card);
+  background: var(--fill);
+  min-width: 0;
+}
+.roleName {
+  font-size: 14px;
+  font-weight: 600;
+}
+.roleNote {
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--mut);
+  margin-bottom: 10px;
+}
+.roleSelect {
+  width: 100%;
+  height: 40px;
+  padding: 0 32px 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--card)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%236e6d68' stroke-width='1.6' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E")
+    no-repeat right 12px center;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  appearance: none;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+.roleSelect:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.rolesWarn {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--warn);
+}
+
+/* ---- 表格和详情 ---- */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (min-width: 1240px) {
+  .splitOpen {
+    grid-template-columns: minmax(0, 1fr) 440px;
+  }
+}
+.tableBox {
+  min-width: 0;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+}
+.table th {
+  height: 36px;
+  padding: 0 12px;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--mut);
+  border-bottom: 1px solid var(--line);
+}
+.table th:nth-child(1) {
+  width: 32%;
+}
+.table th:nth-child(4) {
+  width: 90px;
+}
+.table th:nth-child(5) {
+  width: 120px;
+}
+.tr {
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.tr td {
+  height: 60px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.trOn {
+  background: var(--acc-bg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tr:not(.trOn):hover {
+    background: var(--fill);
+  }
+}
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.nameText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sub {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.dim {
+  color: var(--ink2);
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px;
+  border-radius: var(--r-card);
+  background: var(--fill);
+  color: var(--mut);
+}
+
+/* 详情：宽屏贴在表格右边，跟着页面滚到顶上就停住；窄一点时盖在右边 */
+.detail {
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 12px 12px 32px;
+  border-radius: var(--r-sheet);
+  background: var(--bg2);
+  container: pane / inline-size;
+}
+.detailClose {
+  float: right;
+  position: relative;
+  z-index: 1;
+  margin: 4px 4px -40px 0;
+}
+@media (max-width: 1239px) {
+  .detail {
+    position: fixed;
+    z-index: 30;
+    top: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: min(460px, calc(100vw - var(--nav-width, 0px) - 24px));
+    max-height: none;
+    box-shadow: var(--shadow-float);
+  }
+}
+
+/* 添加模型的对话框：够宽时表单分两栏（AddModelForm 的容器查询认 pane） */
+.addDialog {
+  container: pane / inline-size;
+}

@@ -41,7 +41,7 @@ export function useCardActions() {
       queries.setQueryData<CardSummary[]>(cardsKey, (list) => list?.filter((c) => c.id !== card.id));
       queries.removeQueries({ queryKey: ["card", card.id] });
       void queries.invalidateQueries({ queryKey: draftsKey });
-      if (pathname === cardPath(card.id)) navigate("/library?tab=cards", { replace: true });
+      if (pathname === cardPath(card.id)) navigate("/characters", { replace: true });
       overlay.toast(t("common.deleted", { name: card.name }));
     } catch (e) {
       if (e instanceof ApiError && e.code === "CARD_IN_USE") {

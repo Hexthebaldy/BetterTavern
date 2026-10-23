@@ -388,7 +388,7 @@ function PlayPage({ id }: { id: string }) {
               state={state}
               controls={controls}
               twoColumns={width >= desktop.rail}
-              onOpenSettings={() => navigate("/settings/models")}
+              onOpenSettings={() => navigate("/models")}
               onPicked={() => setWriting(false)}
             />
           }

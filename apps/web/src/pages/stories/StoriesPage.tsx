@@ -69,7 +69,7 @@ function Empty() {
         label={t("stories.emptyAction")}
         trailingIcon="arrowRight"
         between
-        onClick={() => navigate("/library")}
+        onClick={() => navigate("/scenarios")}
       />
     </div>
   );

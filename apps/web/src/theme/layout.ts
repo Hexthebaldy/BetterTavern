@@ -2,8 +2,8 @@
  * 电脑 Web 端的布局常量和纯函数，取自 docs/design/ui/web/layout.ts（source/WebSystem.dc.html）。
  *
  * 这是平板响应式（@bettertavern/design 的 layout.ts）上面多出来的一档：
- * - 窗口 ≥ 1280 时，左边是常驻的侧栏（268）；用户收起后是导航条（76）；
- * - 900–1279 是导航条，和平板宽屏那条相同；
+ * - 窗口 ≥ 1280 时，左边是贴边的侧栏（240）；用户收起后缩成 64 宽，只剩图标（同一个组件，宽度动画）；
+ * - 900–1279 是收起的窄侧栏，展开时盖在内容上；
  * - < 900 沿用平板中屏和手机的布局，这里返回 "tabbar"。
  *
  * 只依赖窗口宽度和“用户有没有收起侧栏”，不判断设备。这里只有数据和纯函数，不依赖 React 或 DOM，用 node --test 测。
@@ -26,10 +26,10 @@ export const desktop = {
 export const shell = {
   /** 浮起的面板（侧栏、导航条、世界、设置右栏）离窗口边 */
   edge: 12,
-  /** 侧栏 */
-  sidebar: 268,
-  /** 导航条（和平板相同） */
-  rail: 76,
+  /** 侧栏展开 */
+  sidebar: 240,
+  /** 侧栏收起（只剩图标） */
+  rail: 64,
   /** 一级页的内容离侧栏、离窗口右边 */
   gutter: 40,
   /** 故事、剧本列表的内容最宽，超出后居中 */
@@ -40,12 +40,6 @@ export const shell = {
   actionPanel: pane.actionPanel,
   /** 世界面板：停靠和滑出 */
   world: pane.world,
-  /** 设置左栏 */
-  settingsList: pane.list,
-  /** 设置左栏和右栏之间 */
-  settingsGap: 24,
-  /** 设置右栏宽于这个值时，模型详情、添加模型、连接测试分成两栏 */
-  paneTwoColumns: 720,
   /** 剧本详情左栏 */
   scenarioInfo: pane.scenarioInfo,
   /** 居中对话框；键盘快捷键对话框宽一些 */
@@ -79,10 +73,10 @@ export function navMode(width: number, collapsed: boolean): NavMode {
   return "sidebar";
 }
 
-/** 导航占掉的宽度（含离窗口左边的 12）：侧栏 280，导航条 88，底部 Tab 栏 0 */
+/** 导航占掉的宽度（侧栏贴着窗口左边）：展开 240，收起 64，底部 Tab 栏 0 */
 export function navWidth(mode: NavMode): number {
-  if (mode === "sidebar") return shell.edge + shell.sidebar;
-  if (mode === "rail") return shell.edge + shell.rail;
+  if (mode === "sidebar") return shell.sidebar;
+  if (mode === "rail") return shell.rail;
   return 0;
 }
 
@@ -107,7 +101,7 @@ export type WorldMode = "dock" | "slideOver" | "sheet";
 /**
  * 阅读页的导航和世界面板。worldOpen 是用户有没有打开世界。
  * - 窗口 − 导航 ≥ 1100：世界停靠；
- * - 侧栏展开放不下，但收成导航条就放得下（1188 ≤ 窗口 < 1380）：导航临时收成导航条，世界停靠，关掉世界后侧栏回来；
+ * - 侧栏展开放不下，但收起就放得下（1164 ≤ 窗口 < 1340）：侧栏临时收起，世界停靠，关掉世界后侧栏回来；
  * - 其余：从右侧滑出（< 600 是底部面板）。
  * 返回的 nav 是这一刻实际画出来的导航；用户的“收起”设置不因此改变。
  */
@@ -137,17 +131,6 @@ export function readingArea(
   const left = navWidth(nav);
   const right = world === "dock" ? shell.world + shell.edge : 0;
   return { left, width: Math.max(0, width - left - right) };
-}
-
-/** 设置：左栏和右栏的位置；右栏够宽时，模型详情、添加模型、连接测试分两栏 */
-export function settingsFrame(
-  width: number,
-  nav: NavMode,
-): { listLeft: number; paneLeft: number; paneWidth: number; twoColumns: boolean } {
-  const listLeft = navWidth(nav) + shell.gutter;
-  const paneLeft = listLeft + shell.settingsList + shell.settingsGap;
-  const paneWidth = Math.max(0, width - shell.edge - paneLeft);
-  return { listLeft, paneLeft, paneWidth, twoColumns: paneWidth >= shell.paneTwoColumns };
 }
 
 /** 故事列表的列数：桌面和平板宽屏一样是三列，最近一个故事占两列两行 */

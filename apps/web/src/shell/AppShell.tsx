@@ -1,9 +1,10 @@
 /**
- * 登录后的外壳：左边的侧栏或导航条（窄于 900 时是底部 Tab 栏），右边是页面。
+ * 登录后的外壳：左边贴边的侧栏（窄于 900 时是底部 Tab 栏），右边是页面。
  *
- * 形态由 theme/layout.ts 的 navMode(窗口宽度, 用户收起了侧栏) 决定，拖动窗口时即时切换，页面不卸载。
- * 窄于 1280 时“展开”打开的侧栏盖在内容上（带遮罩），点遮罩、按 Esc、点了侧栏里的一项都会收回。
- * 阅读页打开世界、侧栏放不下时，用 useNavOverride 临时收成导航条（用户的“收起”设置不变）。
+ * 形态由 theme/layout.ts 的 navMode(窗口宽度, 用户收起了侧栏) 决定：sidebar 是展开（240），rail 是收起（64）。
+ * 两种是同一个侧栏组件，切换时宽度动画缩放，内容区的左边距跟着动。拖动窗口时即时切换，页面不卸载。
+ * 窄于 1280 时“展开”的侧栏盖在内容上（带遮罩），点遮罩、按 Esc、点了侧栏里的一项都会收回。
+ * 阅读页打开世界、草稿页要宽一点时，用 setNavOverride 临时收起（用户的“收起”设置不变）。
  */
 
 import {
@@ -31,7 +32,6 @@ import {
   sidebarOverlays,
   type NavMode,
 } from "../theme/layout.ts";
-import { Rail } from "./Rail.tsx";
 import styles from "./shell.module.css";
 import { Sidebar } from "./Sidebar.tsx";
 import { TabBar } from "./TabBar.tsx";
@@ -47,7 +47,15 @@ type ShellValue = {
 
 const ShellContext = createContext<ShellValue | null>(null);
 
-const TOP_LEVEL = new Set(["/playthroughs", "/library", "/workbench", "/settings"]);
+const TOP_LEVEL = new Set([
+  "/playthroughs",
+  "/scenarios",
+  "/characters",
+  "/workbench",
+  "/models",
+  "/tools",
+  "/settings",
+]);
 
 export function useShell(): ShellValue {
   const value = useContext(ShellContext);
@@ -132,13 +140,15 @@ export function AppShell() {
       <div className={styles.shell} data-nav={nav} data-top={topLevel || undefined} style={frame}>
         <OverlayProvider>
           <ImportProvider>
-            {nav === "sidebar" ? <Sidebar onCollapse={toggleSidebar} /> : null}
-            {nav === "rail" ? <Rail onExpand={toggleSidebar} /> : null}
+            {nav === "tabbar" ? null : (
+              <Sidebar
+                collapsed={nav === "rail" && !showOverlay}
+                overlay={showOverlay}
+                onToggle={showOverlay ? () => setOverlay(false) : toggleSidebar}
+              />
+            )}
             {showOverlay ? (
-              <>
-                <div className={styles.scrim} onClick={() => setOverlay(false)} aria-hidden="true" />
-                <Sidebar overlay onCollapse={() => setOverlay(false)} />
-              </>
+              <div className={styles.scrim} onClick={() => setOverlay(false)} aria-hidden="true" />
             ) : null}
             <main className={styles.main} id="main">
               <Outlet />

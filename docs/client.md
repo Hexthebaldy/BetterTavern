@@ -176,7 +176,7 @@ apps/mobile/
 选中标签的图标和文字是 `#5B7CFF`（色板的 `tabOn`），底下是一块选中框，切换时滑到新标签（宽屏的竖向导航栏上下滑）：
 iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）——整条标签栏是一块玻璃，页面内容从下面透出来，选中框是另一块透明玻璃；
 没有液态玻璃时（Android、更早的 iOS）标签栏是白卡，选中框没有底色，一圈蓝色细描边加灰色投影（`tabCapsuleShadow`）。
-玻璃和它的上层都不能改透明度（改了玻璃不画），选中框只改位置。网页的侧栏、导航条、底部 Tab 栏是透明玻璃框加蓝色描边和高光（`shell/glass.tsx`）。和设计稿不同：
+玻璃和它的上层都不能改透明度（改了玻璃不画），选中框只改位置。网页的侧栏、底部 Tab 栏不用滑动的选中框，选中项是浅蓝底淡入。和设计稿不同：
 阅读页的选项不再放在固定于底部的行动面板里（它在手机上长期盖住小半屏正文），而是接在故事流末尾（`TurnActions.tsx`），跟着正文滚动；
 底部只留一条贴边的操作栏（`BottomBar.tsx`，iPhone 上连同安全区约 80pt，故事流的底部按它的高度留白）：左边世界状态，右边“更多”，
 中间按状态换成“自己写…”（点了原地展开成输入框，跟着键盘浮起）、生成中的状态和“停止”、同步中的提示；
@@ -284,8 +284,9 @@ apps/mobile/
 
 ## 4 网页端（`apps/web`）
 
-电脑浏览器里的客户端，按 [design/ui/web/](design/ui/web/README.md) 的设计稿做：窗口 ≥ 1280 时左边是常驻侧栏，
-900–1279 是导航条，更窄时沿用平板中屏和手机的布局（底部胶囊 Tab 栏）。设计稿只管外观和交互；文案、状态和错误提示以 App 现有代码为准。
+电脑浏览器里的客户端，按 14 寸以上的横屏重新排过（不照搬手机的“列表 → 详情”）：左边是贴边的侧栏，窗口 ≥ 1280 时展开（240），
+用户收起或窗口 900–1279 时收成 64 宽、只剩图标；更窄时沿用平板中屏和手机的布局（底部胶囊 Tab 栏）。
+最早按 [design/ui/web/](design/ui/web/README.md) 的设计稿做，设计稿只管外观和交互；文案、状态和错误提示以 App 现有代码为准。
 
 ### 技术栈
 
@@ -293,7 +294,7 @@ apps/mobile/
 | --- | --- | --- |
 | 构建 | Vite + TypeScript（strict） | 开发和预览服务器把 `/v1`、`/health`、`/ready` 转给后端（默认 `http://localhost:8000`，`BT_API_URL` 可以改） |
 | 界面 | React 19，浏览器的 DOM 和 CSS | 不用 react-native-web：链接、表单自动填充、`:focus-visible`、悬停、右键菜单、拖放、选中复制都是浏览器原生的 |
-| 路由 | react-router 7 | 地址和 App 的 expo-router 一一对应：`/login`、`/register`、`/verify`、`/forgot`、`/terms`、`/privacy`、`/rules`、`/playthroughs`、`/library`、`/scenario/:id`、`/scenario/:id/edit`、`/play/:id`、`/settings`、`/settings/models`、`/settings/model/:id`、`/settings/account`、`/dev/probe` |
+| 路由 | react-router 7 | `/login`、`/register`、`/verify`、`/forgot`、`/terms`、`/privacy`、`/rules`、`/playthroughs`、`/scenarios`、`/characters`、`/scenario/:id`、`/scenario/:id/edit`、`/card/:id`、`/workbench`、`/workbench/d/:id`、`/play/:id`、`/models`、`/models/:id`、`/tools`、`/settings`、`/dev/probe`。和 App 不再一一对应：剧本和角色分开，模型、外部服务从设置里拿出来；旧地址 `/library`、`/settings/models`、`/settings/model/:id`、`/settings/tools`、`/settings/account` 跳到新地址 |
 | 服务端数据 | TanStack Query | 没有下拉刷新：回到标签页、窗口回到前台时自动刷新 |
 | 样式 | CSS Modules + CSS 变量 | 变量名同 `docs/design/ui/web/tokens.css`；色板由 `ThemeProvider` 从 `@bettertavern/design` 写到 `<html>` 上 |
 | 共用 | `@bettertavern/core`、`@bettertavern/design` | 接口客户端、SSE、会话、回合状态机、色板、布局函数、图标和封面的数据，和 App 是同一份代码（见第 3 节的“目录”） |
@@ -317,14 +318,16 @@ apps/mobile/
 | `/verify`、`/forgot` | 验证邮箱、找回密码，同 App 的 `(auth)/verify`、`(auth)/forgot`；验证码框用 `autocomplete="one-time-code"` |
 | `/terms`、`/privacy`、`/rules` | 用户协议、隐私政策、内容规则：登录前后都能打开（App 在浏览器里打开这三个地址）。正文是 `pages/legal/content/<语言>/*.md`，按界面语言按需加载，用页面里的极简 Markdown 渲染（标题、段落、列表、粗体、链接）；三种语言一一对应，改一份就改另外两份 |
 | `/playthroughs` | 存档（W03）：三列网格，最近一个存档放大成主卡（两列两行）；600–899 两列，手机一列。卡片布局同 App，“…”在右下角 |
-| `/library` | 剧本（W04）：剧本仓库和角色卡仓库两个标签（`?tab=cards`），网格按内容宽度 ÷ 240 取整（2–5 列）或限宽 640 的列表；剧本仓库的加号新建剧本，角色卡仓库的去工作台 |
+| `/scenarios`、`/characters` | 剧本、角色两个一级页（`pages/library/`）：页头一行工具条（搜索、排序、网格 / 表格、主按钮：剧本是“新建剧本”，角色是“去工作台”）。网格按内容宽度 ÷ 240 取整（2–5 列）；表格一行一个，剧本列出用了哪些角色卡、简介、修改时间，角色列出来源、世界书条数、几个剧本在用、修改时间 |
 | `/workbench` | 工作台首页：一句话开始、导入（按钮和拖放，一次一张）、手动新建；草稿、最近保存的角色卡 |
-| `/workbench/d/:id` | 草稿（设计稿 W02–W06）：顶上一条（返回、名字和保存状态、Agent / 手动、进度、保存、保存并开始新故事）；下面两栏，Agent 模式左边对话、右边卡片预览（卡片、资料、图片），手动模式左边分节目录和表单、右边检查。窄于 1100 只有左栏，预览从页头打开；宽屏时导航临时收成导航条 |
+| `/workbench/d/:id` | 草稿（设计稿 W02–W06）：顶上一条（返回、名字和保存状态、Agent / 手动、进度、保存、保存并开始新故事）；下面两栏，Agent 模式左边对话、右边卡片预览（卡片、资料、图片），手动模式左边分节目录和表单、右边检查。窄于 1100 只有左栏，预览从页头打开；宽屏时侧栏临时收起 |
 | `/card/:id` | 角色卡：在工作台里改、新建剧本、导出 PNG / JSON、在用的剧本、参考资料、版本历史、删除 |
 | `/scenario/:id` | 剧本详情（W05）：≥ 900 两栏各自滚动，左栏是剧本里的卡和剧本设置，右栏是按设置预填的开始新故事五步，底部浮着摘要栏；更窄单栏。剧本名右边是“编辑设置” |
 | `/scenario/new`、`/scenario/:id/edit` | 新建（`?card=` 预选）和编辑剧本：选卡（最多 8 张）、剧本名、默认主角和偏好、开场 |
 | `/play/:id` | 阅读页（W06–W11）：书名页、故事流、选项（≥ 900 两列）、底部操作栏、世界状态（停靠 / 滑出）、更多（含写结局，行为同 App）。鼠标移到更早的一段上，右上角出现“回到这里”，确认后回退；回退次数用完时那里写明已用完；没有鼠标的设备上它一直显示在这一段下面 |
-| `/settings` 及子页 | 设置（W13–W17）：≥ 900 两栏，左栏是设置首页，右栏是子页（模型、模型详情、外部服务、账户、连接测试）；更窄逐层进入。“外观”“语言”是居中对话框，选了立刻生效；跟随系统时看浏览器的语言 |
+| `/models`、`/models/:id` | 模型（侧栏“连接”里）：页头是官方模型的余额和“添加模型”（对话框）；“分工”三个下拉框直接换导演、后台整理、工作台用哪个模型；下面是模型表格，点一行在右边打开详情（宽于 1240 时和表格并排，更窄盖在右边） |
+| `/tools` | 外部服务（侧栏“连接”里）：网页搜索、读网页、生成封面三栏并排，每栏是配好的服务，添加用对话框 |
+| `/settings` | 设置（从账户小窗进）：一页分组，外观、语言的选项直接摆在页面上（选了立刻生效，跟随系统时看浏览器的语言），单键快捷键开关，连接测试和诊断日志的入口（`/dev/probe`），版本号 |
 
 和 App 不同的只是布局和输入方式：文案、状态、错误提示、接口调用都照 App 的页面写，纯逻辑直接用 `@bettertavern/core`。
 
@@ -332,26 +335,29 @@ apps/mobile/
 
 - 断点只看窗口宽度：`src/theme/layout.ts`（设计稿的 `layout.ts`，平板的函数从 `@bettertavern/design/layout` 引入）。
   拖动窗口时布局即时切换，页面不卸载：草稿、滚动位置、打开着的世界面板都不丢。
-- 外壳 `src/shell/`：≥ 1280 侧栏（四项导航、按“今天 / 本周 / 更早”分组的最近故事、账户），900–1279 导航条（最近四个故事的封面），
-  更窄是底部 Tab 栏（只在四个一级页上，进了阅读页、剧本详情、草稿、设置子页就收起，和 App 一样有返回）。
+- 外壳 `src/shell/`：侧栏（`Sidebar.tsx`）贴着窗口左边、整条浅灰底，导航分两组：创作（存档、剧本、角色、工作台）和连接（模型、外部服务），
+  下面是按“今天 / 本周 / 更早”分组的最近存档，最下面是头像。展开 240、收起 64 是同一个组件，切换时宽度动画缩放（内容区的左边距跟着动），
+  文字淡出、图标不动；选中项是底色淡入，不滑动。收起后不显示收起按钮，点 Logo 展开（或按 [）；收起时最近存档藏起来，图标悬停有提示。
+  侧栏收起存在浏览器里；窄于 1280 时展开的侧栏盖在内容上，点遮罩、按 Esc、点了里面的一项都会收回。
+  点头像弹出账户小窗（`AccountMenu.tsx`）：设置、修改密码、退出登录、删除账户（后两样开对话框，`AccountDialogs.tsx`）和三份条款。
+  更窄是底部 Tab 栏：存档、剧本、角色、工作台和“更多”（同一个账户小窗，多了模型和外部服务），只在一级页上，进了阅读页、剧本详情、草稿就收起。
   站内跳转进新页面从顶上开始，前进、后退回到原来的位置（`ScrollRestoration`）。
-  侧栏收起存在浏览器里；窄于 1280 时“展开”打开的侧栏盖在内容上，点遮罩、按 Esc、点了里面的一项都会收回。
-- 阅读页用 `readingLayout()`：窗口 − 导航 ≥ 1100 时世界停靠；侧栏展开放不下、收成导航条就放得下时，侧栏临时收成导航条（`useShell().setNavOverride`）；
+- 阅读页用 `readingLayout()`：窗口 − 导航 ≥ 1100 时世界停靠；侧栏展开放不下、收起就放得下时，侧栏临时收起（`useShell().setNavOverride`）；
   其余从右侧滑出。页面整体滚动（浏览器的查找、滚动条都是原生的），停在底部时跟着新文字滚，往上翻就停下，操作栏中间多出“回到最新”。
   已完成的回合用 `content-visibility: auto`，很长的故事也只排版看得见的部分。
-- 设置右栏是容器（`container-type: inline-size`），宽于 720 时模型详情、添加模型、连接测试分两栏。
+- 模型详情面板、添加模型的对话框、连接测试页是容器（`container: pane / inline-size`），宽于 720 时分两栏。
 - 深色模式：`index.html` 里的一小段脚本在页面脚本加载前按外观设置设好 `data-scheme`，深色下打开不闪白。
 
 ### 鼠标、键盘与浮层
 
 - 悬停只在 `(hover: hover) and (pointer: fine)` 下生效；键盘焦点是 2px 蓝环（`:focus-visible`）；按下缩到 0.98。都写在共用控件的样式里。
-- 卡片、侧栏的故事行、导航条的封面、设置左栏的每一项都是 `<a href>`，⌘ / Ctrl + 点击、中键在新标签页打开。
+- 卡片、表格的一行、侧栏的导航项和故事行都是 `<a href>`，⌘ / Ctrl + 点击、中键在新标签页打开。
   卡片和故事行悬停时出现“…”，右键（或 Shift + F10）打开同一个菜单：在新标签页打开、重命名、删除。正文和输入框保留浏览器自己的右键菜单。
 - 浮层在 `src/overlay/`：确认、输入、外观、快捷键、世界状态的滑出都用浏览器的 `<dialog>`（焦点进出、Esc、点遮罩关闭，删除类默认焦点在“取消”）；
   菜单按 `contextMenuFrame` 定位，↑↓ 移动；“更多”贴着按钮弹出（`popoverFrame`）；提示浮条在内容区底部居中，4 秒，鼠标停留时不消失；
-  提示（tooltip）给图标按钮和导航条的封面，悬停 500ms 或键盘焦点到达时出现，有快捷键时带键帽。
+  提示（tooltip）给图标按钮和收起时侧栏的导航项，悬停 500ms 或键盘焦点到达时出现，有快捷键时带键帽。
 - 快捷键：A–D 选选项、/ 自己写、W 世界状态、End 回到最新（阅读页），[ 展开或收起侧栏、? 快捷键一览（任何地方）。
-  单键快捷键在输入、输入法组字、按着修饰键、对话框开着时不响应，可以在快捷键一览里关掉（存在浏览器里）。
+  单键快捷键在输入、输入法组字、按着修饰键、对话框开着时不响应，可以在快捷键一览或设置页里关掉（存在浏览器里）。
   输入框里 Enter 发送、Shift + Enter 换行，组字时的 Enter 不发送（`isComposing`，Safari 还要看 `keyCode === 229`）。
 - 拖放导入：文件拖进窗口时任何页面都接收，内容区盖上“松开就导入”；一次一张，解析完进草稿的手动表单；导入过的问打开已有的还是另外导入，失败的写在红色提示里。
 - 草稿每个故事一份存在浏览器里（`bt.draft.<故事 ID>`）；诊断日志存最近 500 条（`bt.diagnostics`），连接测试页可以导出、清空。
@@ -371,13 +377,13 @@ apps/web/
     ├── storage/   local.ts                      # localStorage：存不进去、读不出来都当作没存过
     ├── observability/ setup.ts                 # 诊断日志接回、定时写入、页面报错
     ├── theme/     tokens.css  base.css  layout.ts  palette.ts  ThemeProvider.tsx
-    ├── shell/     AppShell.tsx  Sidebar.tsx  Rail.tsx  TabBar.tsx  StoryRow.tsx  glass.tsx  nav.ts  recent.ts
+    ├── shell/     AppShell.tsx  Sidebar.tsx  TabBar.tsx  AccountMenu.tsx  AccountDialogs.tsx  StoryRow.tsx  nav.ts  recent.ts
     ├── overlay/   OverlayProvider.tsx  Dialog.tsx  Menu.tsx  Tooltip.tsx  ShortcutsDialog.tsx  useContextMenu.ts
     ├── import/    ImportProvider.tsx  DropZone.tsx  rules.ts   # 导入角色卡（按钮和拖放，一次一张，进草稿）
     ├── components/ controls.tsx（按钮、输入框、提示条、胶囊、标签、勾选）Icon.tsx  Logo.tsx  Cover.tsx  PageHeader.tsx
     ├── data/      stories.ts  scenarios.ts  models.ts  tools.ts  blobs.ts  workbench.ts   # 查询
     │              storyActions.ts  scenarioActions.ts  cardActions.ts                 # 共用的操作
-    └── pages/     auth/  stories/  library/  cards/  scenario/  workbench/  play/  settings/  Splash.tsx  NotFound.tsx
+    └── pages/     auth/  stories/  library/  cards/  scenario/  workbench/  play/  models/  tools/  settings/  Splash.tsx  NotFound.tsx
 ```
 
 纯逻辑（`theme/layout.ts`、`theme/palette.ts`、`storage/local.ts`、`state/prefs.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/play/reading.ts`）

@@ -1,14 +1,15 @@
 /**
- * “剧本”页（W04）的部件：页头的视图切换和加号、两个仓库的切换、网格卡片、列表行、空状态。
- * 卡片和行都是指向详情（剧本详情或角色卡详情）的链接；悬停出现“…”，右键打开同一个菜单。数值同 App 的 LibraryParts.tsx。
+ * “剧本”“角色”两页的部件：页头的工具条（搜索、排序、网格/表格、主按钮）、网格卡片、表格、空状态，
+ * 以及搜索和排序的纯函数。卡片和表格的一行都指向详情（剧本详情或角色卡详情）；悬停出现“…”，右键打开同一个菜单。
  */
 
 import { useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import type { CardSummary, Scenario } from "@bettertavern/core/api/types";
 import { i18n } from "@bettertavern/core/i18n/index";
+import { formatRelative } from "@bettertavern/core/utils/format";
 import { cardOrigin } from "@bettertavern/core/workbench/labels";
 
 import { Cover } from "../../components/Cover.tsx";
@@ -19,9 +20,12 @@ import { useContextMenu } from "../../overlay/useContextMenu.ts";
 import type { LibraryView } from "../../state/prefs.ts";
 import styles from "./library.module.css";
 
-export type LibraryTab = "scenarios" | "cards";
+/** scenarios：剧本；cards：角色（角色卡） */
+export type Kind = "scenarios" | "cards";
 
-/** 一格的内容（剧本和角色卡共用一种卡片） */
+export type SortKey = "recent" | "name";
+
+/** 一格或表格的一行（剧本和角色卡共用） */
 export type Item = {
   id: string;
   to: string;
@@ -29,10 +33,17 @@ export type Item = {
   summary: string;
   meta?: string;
   coverBlobId: string | null;
+  updatedAt: string;
+  /** 表格里名字和修改时间之间的几列（顺序同 columnLabels） */
+  cells: string[];
+  /** 搜索时也看这些字（标签、角色卡的名字） */
+  keywords: string;
+  menu: (place: MenuPlace) => void;
 };
 
-export function scenarioItem(s: Scenario, to: string): Item {
-  const cast = s.cards.length > 1 ? s.cards.map((c) => c.name).join(i18n.t("common.listSeparator")) : "";
+export function scenarioItem(s: Scenario, to: string): Omit<Item, "menu"> {
+  const names = s.cards.map((c) => c.name).join(i18n.t("common.listSeparator"));
+  const cast = s.cards.length > 1 ? names : "";
   return {
     id: s.id,
     to,
@@ -40,10 +51,13 @@ export function scenarioItem(s: Scenario, to: string): Item {
     summary: s.description_preview || cast,
     meta: s.cards.length > 1 ? i18n.t("library.cardsIn", { count: s.cards.length }) : undefined,
     coverBlobId: s.cover_blob_id,
+    updatedAt: s.updated_at,
+    cells: [names, s.description_preview],
+    keywords: names,
   };
 }
 
-export function cardItem(c: CardSummary, to: string): Item {
+export function cardItem(c: CardSummary, to: string): Omit<Item, "menu"> {
   const meta = [
     cardOrigin(c),
     c.scenario_count ? i18n.t("library.usedBy", { count: c.scenario_count }) : "",
@@ -58,7 +72,36 @@ export function cardItem(c: CardSummary, to: string): Item {
     summary: c.description_preview || (c.creator ? i18n.t("library.byCreator", { creator: c.creator }) : ""),
     meta,
     coverBlobId: c.cover_blob_id,
+    updatedAt: c.updated_at,
+    cells: [
+      cardOrigin(c),
+      c.book_entries ? i18n.t("library.loreCount", { count: c.book_entries }) : "–",
+      c.scenario_count ? i18n.t("library.usedBy", { count: c.scenario_count }) : "–",
+    ],
+    keywords: [c.character_name, c.creator, ...c.tags].join(" "),
   };
+}
+
+/** 表格名字和修改时间之间那几列的标题 */
+export function columnLabels(kind: Kind): string[] {
+  return kind === "cards"
+    ? [i18n.t("library.columns.source"), i18n.t("library.columns.lore"), i18n.t("library.columns.usedBy")]
+    : [i18n.t("library.columns.cards"), i18n.t("library.columns.summary")];
+}
+
+/** 名字、简介、关键词里含有搜索的字（不分大小写）；没输入时都算 */
+export function matches(item: Pick<Item, "title" | "summary" | "keywords">, search: string): boolean {
+  const q = search.trim().toLowerCase();
+  if (!q) return true;
+  return [item.title, item.summary, item.keywords].some((text) => text.toLowerCase().includes(q));
+}
+
+/** recent：修改时间新的在前；name：按名字（当前界面语言的排序规则） */
+export function sortItems<T extends Pick<Item, "title" | "updatedAt">>(items: T[], sort: SortKey): T[] {
+  const sorted = [...items];
+  if (sort === "name") sorted.sort((a, b) => a.title.localeCompare(b.title, i18n.language));
+  else sorted.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return sorted;
 }
 
 /** 封面的宽高比：96 × 76 */
@@ -66,28 +109,12 @@ export function coverHeight(width: number): number {
   return (width * 76) / 96;
 }
 
-export function Tabs({ tab, onTab, counts }: { tab: LibraryTab; onTab: (tab: LibraryTab) => void; counts: Record<LibraryTab, number | null> }) {
-  const { t } = useTranslation();
-  return (
-    <div role="tablist" aria-label={t("library.tabs.label")} className={styles.tabs}>
-      {(["scenarios", "cards"] as const).map((key) => (
-        <button
-          key={key}
-          type="button"
-          role="tab"
-          aria-selected={tab === key}
-          className={cx(styles.tab, tab === key && styles.tabOn)}
-          onClick={() => onTab(key)}
-        >
-          {t(`library.tabs.${key}`)}
-          {counts[key] !== null ? <span className={styles.tabCount}>{counts[key]}</span> : null}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export function HeaderControls({
+export function Toolbar({
+  kind,
+  search,
+  onSearch,
+  sort,
+  onSort,
   view,
   onView,
   addLabel,
@@ -95,12 +122,17 @@ export function HeaderControls({
   onAdd,
   labelled,
 }: {
+  kind: Kind;
+  search: string;
+  onSearch: (value: string) => void;
+  sort: SortKey;
+  onSort: (sort: SortKey) => void;
   view: LibraryView;
   onView: (view: LibraryView) => void;
   addLabel: string;
   addIcon: IconName;
   onAdd: () => void;
-  /** 宽屏：加号是带文字的胶囊 */
+  /** 宽屏：主按钮是带文字的胶囊 */
   labelled: boolean;
 }) {
   const { t } = useTranslation();
@@ -110,6 +142,7 @@ export function HeaderControls({
       role="radio"
       aria-checked={view === value}
       aria-label={label}
+      data-tip={label}
       className={cx(styles.segButton, view === value && styles.segOn)}
       onClick={() => onView(value)}
     >
@@ -118,9 +151,28 @@ export function HeaderControls({
   );
   return (
     <>
+      <label className={styles.search}>
+        <Icon name="search" size={16} />
+        <input
+          type="search"
+          value={search}
+          placeholder={kind === "cards" ? t("library.searchCards") : t("library.searchScenarios")}
+          aria-label={t("library.search")}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </label>
+      <select
+        className={styles.sort}
+        value={sort}
+        aria-label={t("library.sort.label")}
+        onChange={(e) => onSort(e.target.value as SortKey)}
+      >
+        <option value="recent">{t("library.sort.recent")}</option>
+        <option value="name">{t("library.sort.name")}</option>
+      </select>
       <div role="radiogroup" aria-label={t("library.view")} className={styles.seg}>
         {option("grid", "grid", t("library.grid"))}
-        {option("list", "list", t("library.list"))}
+        {option("list", "list", t("library.table"))}
       </div>
       {labelled ? (
         <Button label={addLabel} icon={addIcon} onClick={onAdd} className={styles.addPill} />
@@ -188,16 +240,75 @@ export function Tile({ item, width, onMenu }: { item: Item; width: number; onMen
   );
 }
 
-export function Row({ item, onMenu }: { item: Item; onMenu: (place: MenuPlace) => void }) {
+/** 表格：名字（带小封面）、各自的几列、修改时间、“…”。点一行进详情 */
+export function ItemTable({ kind, items }: { kind: Kind; items: Item[] }) {
+  const { t } = useTranslation();
+  const labels = columnLabels(kind);
   return (
-    <Frame item={item} className={styles.row} moreClass={styles.rowMore} onMenu={onMenu}>
-      <Cover seed={item.id} blobId={item.coverBlobId} width={56} height={56} surface="onFill" />
-      <span className={styles.rowBody}>
-        <span className={styles.rowTitle}>{item.title}</span>
-        <span className={styles.rowSummary}>{item.summary}</span>
-        {item.meta ? <span className={styles.meta}>{item.meta}</span> : null}
-      </span>
-    </Frame>
+    <table className={cx(styles.table, kind === "cards" ? styles.cardsTable : styles.scenariosTable)}>
+      <thead>
+        <tr>
+          <th scope="col">{t("library.columns.name")}</th>
+          {labels.map((label) => (
+            <th key={label} scope="col">
+              {label}
+            </th>
+          ))}
+          <th scope="col">{t("library.columns.updated")}</th>
+          <th scope="col">
+            <span className={styles.srOnly}>{t("library.columns.actions")}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item) => (
+          <TableRow key={item.id} item={item} />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function TableRow({ item }: { item: Item }) {
+  const navigate = useNavigate();
+  const more = useRef<HTMLButtonElement>(null);
+  const context = useContextMenu(item.menu);
+  const { t } = useTranslation();
+  return (
+    <tr
+      className={styles.tr}
+      {...context}
+      onClick={(event) => {
+        // 点在链接、按钮上时交给它们自己
+        if ((event.target as HTMLElement).closest("a, button")) return;
+        navigate(item.to);
+      }}
+    >
+      <td>
+        <Link to={item.to} className={styles.nameCell}>
+          <Cover seed={item.id} blobId={item.coverBlobId} width={36} height={36} surface="onFill" rounded={10} />
+          <span className={styles.nameText}>{item.title}</span>
+        </Link>
+      </td>
+      {item.cells.map((cell, i) => (
+        <td key={i} className={styles.dim}>
+          <span className={styles.clip}>{cell || "–"}</span>
+        </td>
+      ))}
+      <td className={styles.dim}>{formatRelative(item.updatedAt)}</td>
+      <td className={styles.moreCell}>
+        <IconButton
+          ref={more}
+          icon="more"
+          label={t("nav.moreFor", { title: item.title })}
+          tone="plain"
+          diameter={32}
+          iconSize={18}
+          className={styles.tableMore}
+          onClick={() => more.current && item.menu({ anchor: more.current })}
+        />
+      </td>
+    </tr>
   );
 }
 

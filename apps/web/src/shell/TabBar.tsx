@@ -1,27 +1,32 @@
-/** 窄于 900 的底部胶囊 Tab 栏（手机、平板中屏）：选中项是透明的玻璃框（glass.tsx），图标和文字横排、蓝色 */
+/**
+ * 窄于 900 的底部胶囊 Tab 栏（手机、平板中屏）：存档、剧本、角色、工作台，最后一项“更多”弹出账户小窗
+ * （里面还有模型、外部服务、设置）。选中项的底色淡入，图标和文字横排、蓝色。
+ */
 
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router";
 
 import { Icon } from "../components/Icon.tsx";
 import { cx } from "../components/controls.tsx";
-import { useGlass } from "./glass.tsx";
+import { useAccountMenu } from "./AccountMenu.tsx";
 import { isActive, NAV_ITEMS } from "./nav.ts";
 import styles from "./shell.module.css";
+
+const TABS = NAV_ITEMS.filter((item) => item.group === "create");
+const MORE = ["/models", "/tools", "/settings", "/dev"];
 
 export function TabBar() {
   const { pathname } = useLocation();
   const { t } = useTranslation();
-  const { ref, glass } = useGlass(NAV_ITEMS.find((item) => isActive(item, pathname))?.to ?? null);
+  const account = useAccountMenu({ connect: true });
+  const moreOn = MORE.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   return (
     <nav aria-label={t("nav.main")} className={styles.tabBar}>
-      {glass}
-      {NAV_ITEMS.map((item) => {
+      {TABS.map((item) => {
         const active = isActive(item, pathname);
         return (
           <Link
             key={item.to}
-            ref={ref(item.to)}
             to={item.to}
             className={cx(styles.tab, active && styles.tabOn)}
             aria-current={active ? "page" : undefined}
@@ -31,6 +36,17 @@ export function TabBar() {
           </Link>
         );
       })}
+      <button
+        type="button"
+        className={cx(styles.tab, moreOn && styles.tabOn)}
+        aria-haspopup="dialog"
+        aria-expanded={account.isOpen}
+        onClick={(event) => account.open(event.currentTarget)}
+      >
+        <Icon name="more" size={22} />
+        <span>{t("nav.more")}</span>
+      </button>
+      {account.element}
     </nav>
   );
 }

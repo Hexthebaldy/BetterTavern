@@ -150,7 +150,7 @@ export function ScenarioPage() {
   if (!scenario) {
     return (
       <div className={styles.single}>
-        <IconButton icon="back" label={t("scenario.backToLibrary")} onClick={() => navigate("/library")} />
+        <IconButton icon="back" label={t("scenario.backToLibrary")} onClick={() => navigate("/scenarios")} />
         {query.isPending ? null : (
           <Notice
             message={t("scenario.loadFailedWith", { error: describeError(query.error) })}
@@ -204,7 +204,7 @@ export function ScenarioPage() {
           label={t("scenario.backToLibrary")}
           tone="card"
           diameter={44}
-          onClick={() => navigate("/library")}
+          onClick={() => navigate("/scenarios")}
         />
       </div>
     </div>
@@ -231,7 +231,7 @@ export function ScenarioPage() {
     <Notice
       message={routeMissing ? t("start.noModel") : describeError(startError)}
       actionLabel={toSettings ? t("start.goSettings") : undefined}
-      onAction={toSettings ? () => navigate("/settings/models") : undefined}
+      onAction={toSettings ? () => navigate("/models") : undefined}
     />
   ) : null;
   const pills = (

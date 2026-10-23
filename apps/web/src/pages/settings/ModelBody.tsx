@@ -1,13 +1,13 @@
 /**
- * 一个模型的详情（W14，同 App 的 ModelBody）：名字、状态、导演标记、四格信息；测试这个模型、设为导演、测试结果；
+ * 一个模型的详情（模型页右边的面板，同 App 的 ModelBody）：名字、状态、导演标记、四格信息；测试这个模型、设为导演、测试结果；
  * “能记住多少”的格子图和窗口来源说明（拿不到窗口时可以手填）；工作窗口上限和深度思考；更换 Key、删除模型、取消导演模型。
- * 右栏够宽（≥ 720）时分两栏：左边是名字到测试结果，右边是上下文到最后。
+ * 面板够宽（≥ 720）时分两栏：左边是名字到测试结果，右边是上下文到最后。
  * 官方模型的 Key、模型名、端点、窗口不能改，也不用测试：不显示编辑、测试、更换 Key、手填窗口，换成余额和说明。
  */
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import {
@@ -43,12 +43,6 @@ import styles from "./settings.module.css";
 import { StatusPill } from "./StatusPill.tsx";
 
 type Message = { tone: "error" | "info"; text: string };
-
-/** /settings/model/:id：换一个模型就换一页（表单里没保存的改动不带过去） */
-export function ModelPage() {
-  const { id = "" } = useParams();
-  return <ModelBody key={id} id={id} />;
-}
 
 export function ModelBody({ id, titled = true }: { id: string; titled?: boolean }) {
   const { t } = useTranslation();
@@ -168,7 +162,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
       await api.models.remove(route.id);
       update({ ...route, is_director: false });
       overlay.toast(t("common.deleted", { name: modelTitle(route) }));
-      navigate("/settings/models", { replace: true });
+      navigate("/models", { replace: true });
     });
   };
 

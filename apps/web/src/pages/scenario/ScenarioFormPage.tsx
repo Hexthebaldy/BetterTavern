@@ -85,7 +85,7 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
 
   const back = (): void => {
     if (location.key !== "default") navigate(-1);
-    else navigate(scenario ? scenarioPath(scenario) : "/library", { replace: true });
+    else navigate(scenario ? scenarioPath(scenario) : "/scenarios", { replace: true });
   };
 
   const save = async (): Promise<void> => {
@@ -311,7 +311,7 @@ export function ScenarioFormPage() {
     return (
       <div className={styles.formPage}>
         <header className={styles.formBar}>
-          <IconButton icon="back" label={t("common.back")} onClick={() => navigate("/library")} />
+          <IconButton icon="back" label={t("common.back")} onClick={() => navigate("/scenarios")} />
           <h1 className={styles.formTitle}>{t("newScenario.editTitle")}</h1>
         </header>
         {query.error ? (

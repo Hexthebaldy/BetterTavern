@@ -40,15 +40,19 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await page.reload();
   await expect(page).toHaveURL(/\/playthroughs$/);
 
-  // ---- 添加假模型并设为导演 ----
-  await page.goto("/settings/models");
-  await page.getByRole("radio", { name: "自定义兼容端点" }).click();
-  await page.getByLabel("API Key").fill("sk-e2e-0000-fake");
-  await page.getByPlaceholder("https://example.com/v1").fill(FAKE_LLM);
-  await page.getByRole("radio", { name: "fake-model" }).click();
-  await page.getByRole("button", { name: "保存模型" }).click();
-  await expect(page).toHaveURL(/\/settings\/model\//);
-  await expect(page.getByRole("link", { name: "模型" }).first()).toBeVisible();
+  // ---- 侧栏：模型在“连接”一组里；添加假模型（对话框）并设为导演，加好后右边打开详情 ----
+  await page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "模型" }).click();
+  await expect(page).toHaveURL(/\/models$/);
+  await page.getByRole("button", { name: "添加模型" }).first().click();
+  const add = page.getByRole("dialog", { name: "添加模型" });
+  await add.getByRole("radio", { name: "自定义兼容端点" }).click();
+  await add.getByLabel("API Key").fill("sk-e2e-0000-fake");
+  await add.getByPlaceholder("https://example.com/v1").fill(FAKE_LLM);
+  await add.getByRole("radio", { name: "fake-model" }).click();
+  await add.getByRole("button", { name: "保存模型" }).click();
+  await expect(page).toHaveURL(/\/models\/[^/]+$/);
+  await expect(page.getByRole("complementary", { name: "设置详情" })).toBeVisible();
+  await expect(page.getByRole("combobox").first()).toHaveValue(/.+/); // 分工里的导演已经是它
 
   // ---- 在工作台导入角色卡：解析完进草稿的手动表单 ----
   await page.goto("/workbench");
@@ -143,11 +147,12 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await expect(page.getByRole("button", { name: "写结局", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  // ---- 删除账户：输入密码，再确认 ----
-  await page.goto("/settings/account");
-  await page.getByRole("button", { name: "删除账户" }).first().click();
-  await page.getByPlaceholder("输入密码确认").fill(password);
-  await page.getByRole("button", { name: "删除账户" }).last().click();
+  // ---- 删除账户：侧栏最下面的头像弹出账户小窗 → 删除账户，输入密码，再确认 ----
+  await page.getByRole("navigation", { name: "主导航" }).locator("button[aria-haspopup=dialog]").click();
+  await page.getByRole("dialog", { name: "账户" }).getByRole("button", { name: "删除账户" }).click();
+  const remove = page.getByRole("dialog", { name: "删除账户", exact: true });
+  await remove.getByLabel("输入密码确认").fill(password);
+  await remove.getByRole("button", { name: "删除账户" }).click();
   const confirm = page.getByRole("dialog", { name: "删除账户？" });
   await expect(confirm.getByRole("button", { name: "取消" })).toBeFocused();
   await confirm.getByRole("button", { name: "删除账户" }).click();

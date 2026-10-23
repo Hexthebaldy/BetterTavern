@@ -40,13 +40,15 @@ test("Japanese interface: errors, story language, and the Japanese serif", async
   expect(serif.startsWith('"Noto Serif JP"')).toBe(true);
 
   // ---- 添加假模型并设为导演 ----
-  await page.goto("/settings/models");
-  await page.getByRole("radio", { name: "カスタム互換エンドポイント" }).click();
-  await page.getByLabel("API キー").fill("sk-e2e-0000-fake");
-  await page.getByPlaceholder("https://example.com/v1").fill(FAKE_LLM);
-  await page.getByRole("radio", { name: "fake-model" }).click();
-  await page.getByRole("button", { name: "モデルを保存" }).click();
-  await expect(page).toHaveURL(/\/settings\/model\//);
+  await page.goto("/models");
+  await page.getByRole("button", { name: "モデルを追加" }).first().click();
+  const add = page.getByRole("dialog", { name: "モデルを追加" });
+  await add.getByRole("radio", { name: "カスタム互換エンドポイント" }).click();
+  await add.getByLabel("API キー").fill("sk-e2e-0000-fake");
+  await add.getByPlaceholder("https://example.com/v1").fill(FAKE_LLM);
+  await add.getByRole("radio", { name: "fake-model" }).click();
+  await add.getByRole("button", { name: "モデルを保存" }).click();
+  await expect(page).toHaveURL(/\/models\/[^/]+$/);
 
   // ---- 导入角色卡，开局：请求里带上界面语言 ----
   await page.goto("/workbench");
@@ -72,10 +74,12 @@ test("Japanese interface: errors, story language, and the Japanese serif", async
   expect(family.startsWith('"Noto Serif JP"')).toBe(true);
 
   // ---- 删除账户 ----
-  await page.goto("/settings/account");
-  await page.getByRole("button", { name: "アカウントを削除" }).first().click();
-  await page.getByPlaceholder("確認のためパスワードを入力").fill(password);
-  await page.getByRole("button", { name: "アカウントを削除" }).last().click();
+  await page.goto("/settings");
+  await page.getByRole("navigation", { name: "メインナビゲーション" }).locator("button[aria-haspopup=dialog]").click();
+  await page.getByRole("dialog", { name: "アカウント" }).getByRole("button", { name: "アカウントを削除" }).click();
+  const remove = page.getByRole("dialog", { name: "アカウントを削除", exact: true });
+  await remove.getByLabel("確認のためパスワードを入力").fill(password);
+  await remove.getByRole("button", { name: "アカウントを削除" }).click();
   const confirm = page.getByRole("dialog", { name: "アカウントを削除しますか？" });
   await confirm.getByRole("button", { name: "アカウントを削除" }).click();
   await expect(page).toHaveURL(/\/login/);

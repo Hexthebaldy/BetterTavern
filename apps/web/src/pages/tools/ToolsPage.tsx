@@ -1,5 +1,5 @@
 /**
- * 外部服务（/settings/tools，同 App 的 ToolsBody）：工作台的 agent 查资料、读网页、生成封面时用的服务，分三种：
+ * 外部服务（/tools，侧栏“连接”里的一项）：工作台的 agent 查资料、读网页、生成封面时用的服务，分三种，宽屏时三栏并排：
  * - 网页搜索：Tavily、Brave、博查要 Key，SearXNG 填自己架的地址；
  * - 读网页：默认由服务器自己读，不用配；可选 Jina，读不出来的网页换它再读；
  * - 生成封面：按接口协议接（OpenAI Images、对话接口出图、Gemini），填地址、模型名和 Key。
@@ -15,15 +15,17 @@ import { describeError } from "@bettertavern/core/api/client";
 import type { ToolKind, ToolProvider, ToolRoute } from "@bettertavern/core/api/types";
 import { i18n } from "@bettertavern/core/i18n/index";
 
-import { Button, Chip, Field, Notice, Pill } from "../../components/controls.tsx";
+import { Button, Chip, cx, Field, Notice, Pill } from "../../components/controls.tsx";
+import { PageHeader } from "../../components/PageHeader.tsx";
 import { toolRoutesKey, useToolProviders, useToolRoutes } from "../../data/tools.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { Dialog } from "../../overlay/Dialog.tsx";
 import { useOverlay } from "../../overlay/OverlayProvider.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
-import { BodyHead, KeyField, SectionHeader } from "./parts.tsx";
-import styles from "./settings.module.css";
-import { StatusPill } from "./StatusPill.tsx";
+import pages from "../pages.module.css";
+import { KeyField } from "../settings/parts.tsx";
+import styles from "../settings/settings.module.css";
+import { StatusPill } from "../settings/StatusPill.tsx";
 import tools from "./tools.module.css";
 
 const KINDS: ToolKind[] = ["search", "fetch", "image"];
@@ -238,9 +240,9 @@ function RouteRow({ route, onChanged }: { route: ToolRoute; onChanged: () => voi
   );
 }
 
-export function ToolsBody() {
+export function ToolsPage() {
   const { t } = useTranslation();
-  useDocumentTitle(t("tools.title"));
+  useDocumentTitle(t("nav.tools"));
   const routes = useToolRoutes();
   const providers = useToolProviders();
   const queries = useQueryClient();
@@ -250,8 +252,9 @@ export function ToolsBody() {
   const refresh = (): void => void queries.invalidateQueries({ queryKey: toolRoutesKey });
 
   return (
-    <div className={styles.body}>
-      <BodyHead title={t("tools.title")} lead={t("tools.intro")} />
+    <div className={cx(pages.page, tools.page)}>
+      <PageHeader title={t("nav.tools")} />
+      <p className={tools.lead}>{t("tools.intro")}</p>
       {routes.error || providers.error ? (
         <Notice
           icon="offline"
@@ -263,13 +266,15 @@ export function ToolsBody() {
           }}
         />
       ) : null}
-      {KINDS.map((kind) => {
-        const list = (routes.data ?? []).filter((r) => r.kind === kind);
-        return (
-          <section key={kind} className={tools.kind}>
-            <SectionHeader
-              title={t(`tools.kinds.${kind}`)}
-              meta={
+      <div className={tools.columns}>
+        {KINDS.map((kind) => {
+          const list = (routes.data ?? []).filter((r) => r.kind === kind);
+          return (
+            <section key={kind} className={tools.column} aria-labelledby={`tools-${kind}`}>
+              <div className={tools.columnHead}>
+                <h2 id={`tools-${kind}`} className={tools.columnTitle}>
+                  {t(`tools.kinds.${kind}`)}
+                </h2>
                 <Button
                   label={t("tools.add")}
                   icon="plus"
@@ -278,21 +283,21 @@ export function ToolsBody() {
                   disabled={!providers.data}
                   onClick={() => setAdding(kind)}
                 />
-              }
-            />
-            <p className={styles.note}>{t(`tools.kindNotes.${kind}`)}</p>
-            {list.length ? (
-              <div className={tools.list}>
-                {list.map((route) => (
-                  <RouteRow key={route.id} route={route} onChanged={refresh} />
-                ))}
               </div>
-            ) : routes.data ? (
-              <p className={tools.none}>{t("tools.none")}</p>
-            ) : null}
-          </section>
-        );
-      })}
+              <p className={tools.columnNote}>{t(`tools.kindNotes.${kind}`)}</p>
+              {list.length ? (
+                <div className={tools.list}>
+                  {list.map((route) => (
+                    <RouteRow key={route.id} route={route} onChanged={refresh} />
+                  ))}
+                </div>
+              ) : routes.data ? (
+                <p className={tools.none}>{t("tools.none")}</p>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
       {adding && providers.data ? (
         <AddDialog
           kind={adding}

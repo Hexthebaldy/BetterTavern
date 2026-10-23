@@ -220,7 +220,7 @@ export function WorkbenchHome() {
         <section className={styles.homeSection}>
           <div className={styles.sectionHead}>
             <h2 className={styles.sectionTitle}>{t("workbench.home.recent")}</h2>
-            <Link to="/library?tab=cards" className={styles.sectionLink}>
+            <Link to="/characters" className={styles.sectionLink}>
               {t("workbench.home.allCards")}
             </Link>
           </div>

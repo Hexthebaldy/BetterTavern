@@ -498,6 +498,10 @@
 .composer:focus-within {
   box-shadow: 0 0 0 2px var(--acc);
 }
+/* 外层整块已经有聚焦环：去掉全局给输入框加的内描边，不然框里还套一个长方形 */
+.composerInput:focus {
+  box-shadow: none;
+}
 .composerInput {
   flex: 1;
   min-width: 0;

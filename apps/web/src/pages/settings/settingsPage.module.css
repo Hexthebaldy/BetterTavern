@@ -1,0 +1,124 @@
+/* 设置页（/settings）：一页分组。白底页面上的分组是灰卡（--fill），选项卡片是 settings.module.css 的 .themeOption */
+
+.page {
+  max-width: calc(1000px + 2 * var(--gutter));
+  margin: 0;
+}
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 24px;
+}
+@media (min-width: 1100px) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.section {
+  margin-bottom: 28px;
+}
+.heading {
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+/* 灰卡里的次要按钮是白的 */
+.card {
+  --fill: var(--card);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-card);
+  background: var(--bg2);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 12px 16px;
+}
+.row + .row {
+  border-top: 1px solid var(--line);
+}
+.rowIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  flex: none;
+}
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.rowTitle {
+  font-size: 15px;
+  font-weight: 500;
+}
+.rowSub {
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--mut);
+}
+.toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 52px;
+  height: 32px;
+  margin: 0;
+  border-radius: 16px;
+  background: var(--bg3);
+  flex: none;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease);
+}
+.toggle::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: #ffffff;
+  box-shadow: var(--shadow-knob);
+  transition: left var(--dur) var(--ease);
+}
+.toggle:checked {
+  background: var(--acc);
+}
+.toggle:checked::after {
+  left: 23px;
+}
+.footer {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* 连接测试和诊断日志（/dev/probe）：宽于 720 时分两栏（ProbeBody 的容器查询认 pane） */
+.probe {
+  max-width: calc(1100px + 2 * var(--gutter));
+  margin: 0;
+}
+.probeBody {
+  container: pane / inline-size;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  margin-bottom: 12px;
+  padding: 0 14px 0 8px;
+  border-radius: 18px;
+  background: var(--fill);
+  font-size: 13.5px;
+}

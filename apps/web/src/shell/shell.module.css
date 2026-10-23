@@ -1,5 +1,5 @@
 /*
- * 外壳：侧栏、导航条、底部 Tab 栏和内容区。数值取自 docs/design/ui/web/source 的 .sb、.ni、.sr、.rail、.rn、.rcv；
+ * 外壳：侧栏（展开、收起是同一个）、底部 Tab 栏和内容区。
  * Tab 栏同 App（高 64，左右 20；中屏宽 460 居中）。导航都是 fixed，只有内容区（整个页面）滚动。
  */
 
@@ -10,6 +10,10 @@
   min-height: 100vh;
   padding-left: var(--nav-width, 0px);
 }
+/* 侧栏展开、收起时内容跟着动；切到底部 Tab 栏（窄窗口）时直接到位，不然过渡中内容会被挤出窗口 */
+.shell:not([data-nav="tabbar"]) .main {
+  transition: padding-left var(--dur) var(--ease);
+}
 .shell[data-nav="tabbar"][data-top] .main {
   /* 最后一项不被底部的胶囊挡住：16 + 64 + 24 */
   padding-bottom: 104px;
@@ -19,30 +23,31 @@
   font-family: var(--font-mono);
 }
 
-/* ---- 侧栏 ---- */
+/* ---- 侧栏：贴着窗口左边，展开 240、收起 64，宽度动画缩放 ---- */
 .sidebar {
   position: fixed;
   z-index: 20;
-  left: var(--edge);
-  top: var(--edge);
-  bottom: var(--edge);
+  left: 0;
+  top: 0;
+  bottom: 0;
   width: var(--sidebar);
-  border-radius: var(--r-group);
   background: var(--bg2);
+  border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 10px 8px;
+  overflow: hidden;
+  transition:
+    width var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
+.collapsed {
+  width: var(--rail);
+}
+/* 窄窗口展开时盖在内容上 */
 .sidebarOverlay {
   z-index: 40;
   box-shadow: var(--shadow-float);
-  animation: slideIn var(--dur-panel) var(--ease);
-}
-@keyframes slideIn {
-  from {
-    transform: translateX(-24px);
-    opacity: 0;
-  }
 }
 .scrim {
   position: fixed;
@@ -56,52 +61,124 @@
     opacity: 0;
   }
 }
+/* 收起时淡出的文字：不换行，宽度跟着侧栏收 */
+.fade {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.collapsed .fade {
+  opacity: 0;
+}
 .sidebarHead {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   height: 44px;
-  padding-left: 8px;
+  padding-left: 4px;
   flex: none;
+}
+/* Logo 的中心对准收起后 64 宽的正中 */
+.logoButton {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  transition: background-color var(--dur) var(--ease);
 }
 .brand {
   flex: 1;
-  font-size: 16px;
+  min-width: 0;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.collapsed .brand {
+  opacity: 0;
 }
 .navList {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: 12px;
+  margin-top: 14px;
   flex: none;
 }
+/* 图标离侧栏左边 22，收起后正好在 64 宽的正中 */
 .navItem {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 44px;
+  height: 40px;
   padding: 0 14px;
-  border-radius: 22px;
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 14.5px;
   color: var(--ink2);
   transition:
-    background-color var(--dur-fast) var(--ease),
+    background-color var(--dur) var(--ease),
     color var(--dur) var(--ease);
 }
-/* 选中项：底下是滑过来的玻璃框（glass.tsx），自己没有底色，图标和文字是蓝色 */
+.navItem > svg {
+  flex: none;
+}
+/* 选中项：底色淡入（不滑动） */
 .navItemOn {
-  color: var(--tab-on);
+  background: var(--acc-bg);
+  color: var(--acc);
   font-weight: 500;
+}
+.navGroup {
+  position: relative;
+  height: 30px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 14px 6px;
+  font-size: 12px;
+  color: var(--mut);
+}
+/* 收起时分组名换成一条短线 */
+.navGroup::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  width: 20px;
+  height: 1px;
+  margin-left: -10px;
+  background: var(--line2);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.collapsed .navGroup::after {
+  opacity: 1;
+}
+.recent {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  transition:
+    opacity var(--dur-fast) var(--ease),
+    visibility var(--dur-fast);
+}
+.collapsed .recent {
+  opacity: 0;
+  visibility: hidden;
 }
 .recentLabel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
+  padding: 0 14px;
   margin: 22px 0 4px;
   font-size: 12.5px;
   color: var(--mut);
@@ -200,21 +277,31 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px;
-  border-radius: 20px;
-  margin-top: auto;
+  width: 100%;
+  height: 48px;
+  padding: 0 8px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
   flex: none;
-  transition: background-color var(--dur-fast) var(--ease);
+  transition: background-color var(--dur) var(--ease);
 }
 .accountText {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 .accountName {
   font-size: 14px;
   line-height: 20px;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .accountEmail {
   font-size: 11.5px;
@@ -223,6 +310,99 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---- 账户小窗（AccountMenu）和它打开的对话框 ---- */
+.accountMenu {
+  position: fixed;
+  z-index: 60;
+  padding: 6px;
+  border-radius: 20px;
+  background: var(--sheet);
+  box-shadow: var(--shadow-float);
+  animation: pop var(--dur) var(--ease);
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+.accountMenuHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 12px;
+}
+.accountItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font-size: 14.5px;
+  color: var(--ink);
+  text-align: left;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.accountItem:focus-visible {
+  outline-offset: -2px;
+}
+.accountItemDanger {
+  color: var(--err);
+}
+.accountRule {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 10px;
+}
+.accountLegal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 8px 12px 6px;
+  font-size: 12px;
+  color: var(--mut);
+}
+.accountLegal a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.dialogForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stats {
+  display: flex;
+  gap: 6px;
+}
+.stat {
+  flex: 1;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--fill);
+}
+.statValue {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 17px;
+}
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--mut);
 }
 .avatar {
   display: inline-flex;
@@ -239,93 +419,15 @@
   .navItem:not(.navItemOn):hover,
   .storyRow:not(.storyRowOn):hover,
   .account:hover,
-  .railItem:not(.railItemOn):hover,
-  .railCover:not(.railCoverOn):hover {
+  .logoButton:hover {
     background: var(--bg3);
+  }
+  .accountItem:hover {
+    background: var(--hover);
   }
   .tab:not(.tabOn):hover {
     color: var(--ink);
   }
-}
-
-/* ---- 导航条 ---- */
-.rail {
-  position: fixed;
-  z-index: 20;
-  left: var(--edge);
-  top: var(--edge);
-  bottom: var(--edge);
-  width: var(--rail);
-  border-radius: var(--r-group);
-  background: var(--bg2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 0 12px;
-  gap: 4px;
-  overflow-y: auto;
-}
-.railExpand {
-  margin: 8px 0 6px;
-}
-.railItem {
-  position: relative;
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  color: var(--ink2);
-  font-size: 11px;
-  line-height: 14px;
-  flex: none;
-  transition:
-    background-color var(--dur-fast) var(--ease),
-    color var(--dur) var(--ease);
-}
-.railItemOn {
-  color: var(--tab-on);
-  font-weight: 500;
-}
-.railRule {
-  width: 28px;
-  height: 1px;
-  background: var(--line2);
-  margin: 8px 0;
-  flex: none;
-}
-.railCover {
-  position: relative;
-  width: 52px;
-  height: 52px;
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  transition: background-color var(--dur-fast) var(--ease);
-}
-.railCoverOn {
-  background: var(--card);
-  box-shadow: var(--shadow-lift);
-}
-.railLive {
-  position: absolute;
-  right: 5px;
-  top: 5px;
-  width: 9px;
-  height: 9px;
-  border-radius: 5px;
-  background: var(--acc);
-  box-shadow: 0 0 0 2px var(--bg2);
-}
-.railAccount {
-  margin-top: auto;
-  padding: 6px;
-  border-radius: 22px;
 }
 
 /* ---- 底部 Tab 栏 ---- */
@@ -365,33 +467,24 @@
   color: var(--mut);
   transition: color var(--dur) var(--ease);
 }
+.tab {
+  border: 0;
+  background: transparent;
+  border-radius: 24px;
+  transition:
+    color var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
+}
+/* 选中项：底色淡入（不滑动） */
 .tabOn {
   flex-direction: row;
   gap: 8px;
   flex: 1.4;
   height: 48px;
   padding: 0 16px;
-  border-radius: 24px;
   white-space: nowrap;
-  color: var(--tab-on);
+  background: var(--acc-bg);
+  color: var(--acc);
   font-size: 14px;
   font-weight: 500;
-}
-
-/* 滑动的玻璃框（glass.tsx）：没有底色，一圈半透明蓝色描边、内侧高光和淡蓝投影；换选中项时滑过去 */
-.glass {
-  position: absolute;
-  top: 0;
-  left: 0;
-  box-sizing: border-box;
-  border: 1px solid var(--tab-glass-edge);
-  border-radius: 999px;
-  box-shadow: var(--tab-glass-shadow);
-  pointer-events: none;
-}
-.glassSlide {
-  transition:
-    transform var(--dur) var(--ease),
-    width var(--dur) var(--ease),
-    height var(--dur) var(--ease);
 }

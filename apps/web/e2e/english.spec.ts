@@ -33,32 +33,35 @@ test("English interface: errors, language switch, and the story's prompt languag
   await expect(page).toHaveURL(/\/playthroughs$/);
   await expect(page.getByRole("heading", { name: "No saves yet" })).toBeVisible();
   await expect(page).toHaveTitle("Saves · BetterTavern");
-  await expect(page.getByRole("link", { name: "Library", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Scenarios", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Characters", exact: true }).first()).toBeVisible();
 
-  // ---- 设置里切到中文，再切回跟随系统 ----
-  await page.goto("/settings");
-  await page.getByRole("button", { name: /^Language/ }).click();
-  const dialog = page.getByRole("dialog", { name: "Language" });
-  await expect(dialog.getByText("System language: English")).toBeVisible();
-  await dialog.getByRole("radio", { name: /中文/ }).click();
-  await expect(page.getByRole("dialog", { name: "语言" })).toBeVisible();
+  // ---- 设置（从账户小窗进）：语言直接摆在页面上，切到中文，再切回跟随系统 ----
+  await page.getByRole("navigation", { name: "Main navigation" }).locator("button[aria-haspopup=dialog]").click();
+  await page.getByRole("dialog", { name: "Account" }).getByRole("button", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  const languages = page.getByRole("radiogroup", { name: "Language" });
+  await expect(languages.getByText("System language: English")).toBeVisible();
+  await languages.getByRole("radio", { name: /中文/ }).click();
+  await expect(page.getByRole("radiogroup", { name: "语言" })).toBeVisible();
   await expect(page).toHaveTitle("设置 · BetterTavern");
   expect(await page.evaluate(() => document.documentElement.lang)).toBe("zh-CN");
   await page
-    .getByRole("dialog", { name: "语言" })
+    .getByRole("radiogroup", { name: "语言" })
     .getByRole("radio", { name: /跟随系统/ })
     .click();
   await expect(page).toHaveTitle("Settings · BetterTavern");
-  await page.keyboard.press("Escape");
 
   // ---- 添加假模型并设为导演 ----
-  await page.goto("/settings/models");
-  await page.getByRole("radio", { name: "Custom compatible endpoint" }).click();
-  await page.getByLabel("API key").fill("sk-e2e-0000-fake");
-  await page.getByPlaceholder("https://example.com/v1").fill(FAKE_LLM);
-  await page.getByRole("radio", { name: "fake-model" }).click();
-  await page.getByRole("button", { name: "Save model" }).click();
-  await expect(page).toHaveURL(/\/settings\/model\//);
+  await page.goto("/models");
+  await page.getByRole("button", { name: "Add a model" }).first().click();
+  const add = page.getByRole("dialog", { name: "Add a model" });
+  await add.getByRole("radio", { name: "Custom compatible endpoint" }).click();
+  await add.getByLabel("API key").fill("sk-e2e-0000-fake");
+  await add.getByPlaceholder("https://example.com/v1").fill(FAKE_LLM);
+  await add.getByRole("radio", { name: "fake-model" }).click();
+  await add.getByRole("button", { name: "Save model" }).click();
+  await expect(page).toHaveURL(/\/models\/[^/]+$/);
 
   // ---- 导入角色卡，开局：请求里带上界面语言 ----
   await page.goto("/workbench");
@@ -78,10 +81,12 @@ test("English interface: errors, language switch, and the story's prompt languag
   await expect(page.getByRole("toolbar", { name: "Reading actions" })).toBeVisible({ timeout: 30_000 });
 
   // ---- 删除账户 ----
-  await page.goto("/settings/account");
-  await page.getByRole("button", { name: "Delete account" }).first().click();
-  await page.getByPlaceholder("Enter your password to confirm").fill(password);
-  await page.getByRole("button", { name: "Delete account" }).last().click();
+  await page.goto("/settings");
+  await page.getByRole("navigation", { name: "Main navigation" }).locator("button[aria-haspopup=dialog]").click();
+  await page.getByRole("dialog", { name: "Account" }).getByRole("button", { name: "Delete account" }).click();
+  const remove = page.getByRole("dialog", { name: "Delete account", exact: true });
+  await remove.getByLabel("Enter your password to confirm").fill(password);
+  await remove.getByRole("button", { name: "Delete account" }).click();
   const confirm = page.getByRole("dialog", { name: "Delete your account?" });
   await confirm.getByRole("button", { name: "Delete account" }).click();
   await expect(page).toHaveURL(/\/login/);

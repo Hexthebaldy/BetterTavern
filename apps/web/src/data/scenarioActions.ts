@@ -59,7 +59,7 @@ export function useScenarioActions() {
       await api.scenarios.remove(scenario.id);
       patchList((list) => list.filter((s) => s.id !== scenario.id));
       queries.removeQueries({ queryKey: ["scenario", scenario.id] });
-      if (pathname === scenarioPath(scenario)) navigate("/library", { replace: true });
+      if (pathname === scenarioPath(scenario)) navigate("/scenarios", { replace: true });
       overlay.toast(t("common.deleted", { name: scenario.name }));
     } catch (e) {
       overlay.toast(t("common.deleteFailed", { error: describeError(e) }), { icon: "alert" });
