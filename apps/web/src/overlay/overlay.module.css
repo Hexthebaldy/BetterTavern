@@ -159,11 +159,11 @@
 .toast {
   position: fixed;
   z-index: 70;
-  left: calc(var(--nav-width, 0px) + (100vw - var(--nav-width, 0px)) / 2);
+  left: calc(var(--page-left, 0px) + (100vw - var(--page-left, 0px) - var(--page-right, 0px)) / 2);
   bottom: 24px;
   transform: translateX(-50%);
   width: max-content;
-  max-width: min(var(--toast, 480px), calc(100vw - var(--nav-width, 0px) - 32px));
+  max-width: min(var(--toast, 480px), calc(100vw - var(--page-left, 0px) - var(--page-right, 0px) - 32px));
   min-height: 52px;
   display: flex;
   align-items: center;

@@ -137,7 +137,7 @@ export function ScenarioPage() {
   const queries = useQueryClient();
   const actions = useScenarioActions();
   const width = useWindowWidth();
-  const wide = width >= desktop.rail;
+  const wide = width >= desktop.wheel;
   const query = useQuery({ queryKey: ["scenario", id], queryFn: () => api.scenarios.get(id) });
   const scenario = query.data;
   const [values, setValues] = useState<StartValues | null>(null);

@@ -4,7 +4,7 @@
   top: var(--edge);
   right: var(--edge);
   bottom: var(--edge);
-  left: calc(var(--nav-width, 0px) + 16px);
+  left: calc(var(--page-left, 0px) + 16px);
   border-radius: var(--r-sheet);
   background: color-mix(in srgb, var(--acc-bg) 94%, transparent);
   box-shadow: inset 0 0 0 2px var(--acc);

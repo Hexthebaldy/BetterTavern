@@ -27,19 +27,10 @@ import { useStoryActions } from "../../data/storyActions.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useWindowWidth } from "../../hooks/useWindowSize.ts";
 import { useOverlay } from "../../overlay/OverlayProvider.tsx";
-import { useShell } from "../../shell/AppShell.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
 import { localStore } from "../../storage/local.ts";
-import {
-  acceptsSingleKey,
-  desktop,
-  navMode,
-  optionIndexForKey,
-  readingArea,
-  readingLayout,
-  shell,
-} from "../../theme/layout.ts";
+import { acceptsSingleKey, desktop, optionIndexForKey, usesWheel, worldMode } from "../../theme/layout.ts";
 import { BottomBar } from "./BottomBar.tsx";
 import { MorePopover, type MoreAction } from "./MorePopover.tsx";
 import styles from "./play.module.css";
@@ -100,8 +91,7 @@ function PlayPage({ id }: { id: string }) {
   const queries = useQueryClient();
   const { api } = useApp();
   const actions = useStoryActions();
-  const { reading, worldDocked, setWorldDocked, sidebarCollapsed, singleKeys } = usePrefs();
-  const { setNavOverride } = useShell();
+  const { reading, singleKeys } = usePrefs();
   const width = useWindowWidth();
   const controls = usePlaySession(id);
   const { state } = controls;
@@ -132,32 +122,11 @@ function PlayPage({ id }: { id: string }) {
     [overlay, t, rollback, queries],
   );
 
-  // ---- 世界状态：停靠时开关跟着浏览器里的偏好（所有故事共用）；滑出只在这一页里开关 ----
-  const dockable = readingLayout(width, sidebarCollapsed, true).world === "dock";
-  const [worldOpen, setWorldOpen] = useState(() => dockable && worldDocked);
-  const lastDockable = useRef(dockable);
-  useEffect(() => {
-    // 变宽到可以停靠时，偏好里是开着的就展开；变窄时开着的停靠面板换成滑出的（worldOpen 不变）
-    if (!lastDockable.current && dockable && worldDocked) setWorldOpen(true);
-    lastDockable.current = dockable;
-  }, [dockable, worldDocked]);
-  const layout = readingLayout(width, sidebarCollapsed, worldOpen);
-  const preferredNav = navMode(width, sidebarCollapsed);
-  useEffect(() => {
-    setNavOverride(layout.nav !== preferredNav ? layout.nav : null);
-  }, [layout.nav, preferredNav, setNavOverride]);
-  useEffect(() => () => setNavOverride(null), [setNavOverride]);
-  const docked = layout.world === "dock";
-  const toggleWorld = useCallback(() => {
-    if (dockable) {
-      setWorldDocked(!worldOpen);
-    }
-    setWorldOpen((open) => !open);
-  }, [dockable, worldOpen, setWorldDocked]);
-  const closeWorld = useCallback(() => {
-    setWorldOpen(false);
-    if (dockable) setWorldDocked(false);
-  }, [dockable, setWorldDocked]);
+  // ---- 世界状态：从右侧滑出（手机宽度是底部面板），只在这一页里开关 ----
+  const [worldOpen, setWorldOpen] = useState(false);
+  const toggleWorld = useCallback(() => setWorldOpen((open) => !open), []);
+  const closeWorld = useCallback(() => setWorldOpen(false), []);
+  const docked = false;
 
   // ---- 更多、自己写、草稿 ----
   const moreButton = useRef<HTMLButtonElement>(null);
@@ -231,12 +200,12 @@ function PlayPage({ id }: { id: string }) {
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduced ? "auto" : "smooth" });
   }, []);
 
-  // ---- 阅读区的位置（世界停靠时让出右边）----
-  const area = readingArea(width, layout.nav, layout.world);
+  // ---- 阅读区的位置 ----
+  const area = { width: Math.max(0, width) };
   const column = readableColumn(area.width);
   const frame = {
     ...narrativeVars(reading),
-    "--dock": docked ? `${shell.world + shell.edge}px` : "0px",
+    "--dock": "0px",
     "--bar": `${barHeight}px`,
   } as CSSProperties;
 
@@ -329,7 +298,7 @@ function PlayPage({ id }: { id: string }) {
 
   const top = (
     <div className={styles.top}>
-      {layout.nav === "tabbar" ? (
+      {!usesWheel(width) ? (
         <IconButton
           icon="back"
           label={t("play.backToSaves")}
@@ -387,7 +356,7 @@ function PlayPage({ id }: { id: string }) {
             <TurnActions
               state={state}
               controls={controls}
-              twoColumns={width >= desktop.rail}
+              twoColumns={width >= desktop.wheel}
               onOpenSettings={() => navigate("/models")}
               onPicked={() => setWriting(false)}
             />
@@ -412,9 +381,9 @@ function PlayPage({ id }: { id: string }) {
         moreActive={moreOpen}
         moreRef={moreButton}
       />
-      {layout.world ? (
+      {worldOpen ? (
         <WorldPanel
-          mode={layout.world}
+          mode={worldMode(width)}
           playthroughId={id}
           version={head?.id ?? null}
           headSeq={head?.seq ?? null}

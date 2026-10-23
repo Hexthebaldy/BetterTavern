@@ -31,10 +31,8 @@ import { useWindowWidth } from "../../hooks/useWindowSize.ts";
 import { Dialog } from "../../overlay/Dialog.tsx";
 import overlayStyles from "../../overlay/overlay.module.css";
 import { useOverlay } from "../../overlay/OverlayProvider.tsx";
-import { useShell } from "../../shell/AppShell.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
-import { navMode } from "../../theme/layout.ts";
 import { AgentPane } from "./AgentPane.tsx";
 import { useCoverActions } from "./assets.tsx";
 import { CoverDialog } from "./CoverDialog.tsx";
@@ -99,15 +97,7 @@ export function DraftPage() {
   const [showEmpty, setShowEmpty] = useState(false);
   const [conflict, setConflict] = useState<((choice: Conflict) => void) | null>(null);
 
-  // 宽屏时导航收成导航条
-  const { setNavOverride } = useShell();
   const width = useWindowWidth();
-  const { sidebarCollapsed } = usePrefs();
-  const preferred = navMode(width, sidebarCollapsed);
-  useEffect(() => {
-    setNavOverride(preferred === "sidebar" ? "rail" : null);
-  }, [preferred, setNavOverride]);
-  useEffect(() => () => setNavOverride(null), [setNavOverride]);
 
   // 离开时草稿列表（更新时间、状态）重新取
   useEffect(() => () => void queries.invalidateQueries({ queryKey: draftsKey }), [queries]);

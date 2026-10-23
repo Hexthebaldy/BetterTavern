@@ -1,6 +1,6 @@
 /*
- * 外壳：侧栏（展开、收起是同一个）、底部 Tab 栏和内容区。
- * Tab 栏同 App（高 64，左右 20；中屏宽 460 居中）。导航都是 fixed，只有内容区（整个页面）滚动。
+ * 外壳：内容区、窄屏的底部 Tab 栏、账户小窗。轮盘的样式在 wheel.module.css。
+ * Tab 栏同 App（高 64，左右 20；中屏宽 460 居中），换成粗线的描边和硬投影。导航都是 fixed，只有内容区（整个页面）滚动。
  */
 
 .shell {
@@ -8,11 +8,6 @@
 }
 .main {
   min-height: 100vh;
-  padding-left: var(--nav-width, 0px);
-}
-/* 侧栏展开、收起时内容跟着动；切到底部 Tab 栏（窄窗口）时直接到位，不然过渡中内容会被挤出窗口 */
-.shell:not([data-nav="tabbar"]) .main {
-  transition: padding-left var(--dur) var(--ease);
 }
 .shell[data-nav="tabbar"][data-top] .main {
   /* 最后一项不被底部的胶囊挡住：16 + 64 + 24 */
@@ -23,282 +18,15 @@
   font-family: var(--font-mono);
 }
 
-/* ---- 侧栏：贴着窗口左边，展开 240、收起 64，宽度动画缩放 ---- */
-.sidebar {
-  position: fixed;
-  z-index: 20;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: var(--sidebar);
-  background: var(--bg2);
-  border-right: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  padding: 10px 8px;
-  overflow: hidden;
-  transition:
-    width var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
-}
-.collapsed {
-  width: var(--rail);
-}
-/* 窄窗口展开时盖在内容上 */
-.sidebarOverlay {
-  z-index: 40;
-  box-shadow: var(--shadow-float);
-}
-.scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 39;
-  background: var(--scrim);
-  animation: fadeIn var(--dur) var(--ease);
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-}
-/* 收起时淡出的文字：不换行，宽度跟着侧栏收 */
-.fade {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: opacity var(--dur-fast) var(--ease);
-}
-.collapsed .fade {
-  opacity: 0;
-}
-.sidebarHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding-left: 4px;
-  flex: none;
-}
-/* Logo 的中心对准收起后 64 宽的正中 */
-.logoButton {
-  width: 40px;
-  height: 40px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--ink);
-  transition: background-color var(--dur) var(--ease);
-}
-.brand {
-  flex: 1;
-  min-width: 0;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  transition: opacity var(--dur-fast) var(--ease);
-}
-.collapsed .brand {
-  opacity: 0;
-}
-.navList {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 14px;
-  flex: none;
-}
-/* 图标离侧栏左边 22，收起后正好在 64 宽的正中 */
-.navItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 12px;
-  font-size: 14.5px;
-  color: var(--ink2);
-  transition:
-    background-color var(--dur) var(--ease),
-    color var(--dur) var(--ease);
-}
-.navItem > svg {
-  flex: none;
-}
-/* 选中项：底色淡入（不滑动） */
-.navItemOn {
-  background: var(--acc-bg);
-  color: var(--acc);
-  font-weight: 500;
-}
-/* 两组导航之间隔一点空（不写分组名） */
-.navGap {
-  margin-top: 14px;
-}
-.recent {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  transition:
-    opacity var(--dur-fast) var(--ease),
-    visibility var(--dur-fast);
-}
-.collapsed .recent {
-  opacity: 0;
-  visibility: hidden;
-}
-.recentLabel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 14px;
-  margin: 22px 0 4px;
-  font-size: 12.5px;
-  color: var(--mut);
-  flex: none;
-}
-.recentList {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  margin: 0 -4px;
-  padding: 0 4px 8px;
-}
-.group {
-  padding: 10px 10px 4px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--mut);
-  letter-spacing: 0.04em;
-}
-.storyCell {
-  position: relative;
-}
-.storyMore {
-  position: absolute;
-  right: 8px;
-  top: 12px;
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease);
-}
-.storyCell:hover .storyMore,
-.storyCell:focus-within .storyMore {
-  opacity: 1;
-}
-@media (hover: none) {
-  .storyMore {
-    display: none;
-  }
-}
-.storyCell:hover .storyText,
-.storyCell:focus-within .storyText {
-  padding-right: 34px;
-}
-.storyRow {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 54px;
-  padding: 0 8px;
-  border-radius: 18px;
-  transition: background-color var(--dur-fast) var(--ease);
-}
-.storyRowOn {
-  background: var(--card);
-  box-shadow: var(--shadow-lift);
-}
-:global([data-scheme="dark"]) .storyRowOn {
-  box-shadow: none;
-}
-.storyText {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-.storyTitle {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.storyStatus {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  line-height: 16px;
-  color: var(--mut);
-  white-space: nowrap;
-}
-.live {
-  color: var(--acc);
-}
-.warn {
-  color: var(--warn);
-}
-.liveDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 3px;
-  background: currentColor;
-}
-.account {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  height: 48px;
-  padding: 0 8px;
-  margin-top: 8px;
-  border: 0;
-  border-radius: 14px;
-  background: transparent;
-  color: var(--ink);
-  text-align: left;
-  flex: none;
-  transition: background-color var(--dur) var(--ease);
-}
-.accountText {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-.accountName {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.accountEmail {
-  font-size: 11.5px;
-  line-height: 16px;
-  color: var(--mut);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* ---- 账户小窗（AccountMenu）和它打开的对话框 ---- */
 .accountMenu {
   position: fixed;
   z-index: 60;
   padding: 6px;
-  border-radius: 20px;
-  background: var(--sheet);
-  box-shadow: var(--shadow-float);
+  border: var(--bw) solid var(--frame);
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: var(--x4);
   animation: pop var(--dur) var(--ease);
 }
 @keyframes pop {
@@ -321,9 +49,10 @@
   height: 40px;
   padding: 0 12px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: transparent;
   font-size: 14.5px;
+  font-weight: 600;
   color: var(--ink);
   text-align: left;
   transition: background-color var(--dur-fast) var(--ease);
@@ -335,8 +64,8 @@
   color: var(--err);
 }
 .accountRule {
-  height: 1px;
-  background: var(--line);
+  height: 1.5px;
+  background: var(--grey2);
   margin: 4px 10px;
 }
 .accountLegal {
@@ -363,17 +92,18 @@
 .stat {
   flex: 1;
   height: 60px;
-  border-radius: 16px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  background: var(--fill);
+  background: var(--paper);
 }
 .statValue {
   font-family: var(--font-mono);
-  font-weight: 500;
+  font-weight: 700;
   font-size: 17px;
 }
 .statLabel {
@@ -388,21 +118,17 @@
   align-items: center;
   justify-content: center;
   flex: none;
+  border: var(--bw-sm) solid var(--frame);
   border-radius: 999px;
-  background: var(--acc-bg);
-  color: var(--acc);
-  font-weight: 700;
+  background: var(--ht-acc), var(--acc);
+  color: var(--on-acc);
+  font-family: var(--font-display);
+  font-weight: 900;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .navItem:not(.navItemOn):hover,
-  .storyRow:not(.storyRowOn):hover,
-  .account:hover,
-  .logoButton:hover {
-    background: var(--bg3);
-  }
   .accountItem:hover {
-    background: var(--hover);
+    background: var(--grey);
   }
   .tab:not(.tabOn):hover {
     color: var(--ink);
@@ -417,12 +143,13 @@
   right: 20px;
   bottom: 16px;
   height: 64px;
+  border: var(--bw) solid var(--frame);
   border-radius: 32px;
-  padding: 0 8px;
+  padding: 0 6px;
   display: flex;
   align-items: center;
-  background: var(--card);
-  box-shadow: var(--shadow-float);
+  background: var(--paper);
+  box-shadow: var(--x4);
 }
 @media (min-width: 600px) {
   .tabBar {
@@ -459,11 +186,11 @@
   flex-direction: row;
   gap: 8px;
   flex: 1.4;
-  height: 48px;
+  height: 46px;
   padding: 0 16px;
   white-space: nowrap;
-  background: var(--acc-bg);
-  color: var(--acc);
+  background: var(--ink);
+  color: var(--on-ink);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 700;
 }

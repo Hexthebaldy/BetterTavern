@@ -2,9 +2,8 @@
  * 世界状态面板（W06、W07、W10、W11）：导演记下的人物与地点、关系图、事实。数据来自 GET /v1/playthroughs/{id}/world。
  * 主角不知道的秘密默认隐藏，揭示前要确认（会剧透，默认焦点在“取消”）；揭示后标为“秘密 · 已揭示”。
  *
- * 形态由 theme/layout.ts 的 readingLayout 决定：
- * - dock：停靠在右侧，宽 400，离窗口右、上、下各 12，圆角 28，灰底，不加遮罩；右上角是收起按钮（侧栏图标）；
- * - slideOver：同样的面板从右侧滑出，后面有遮罩，右上角是 ×，点遮罩或按 Esc 关闭；
+ * 形态由 theme/layout.ts 的 worldMode 决定：
+ * - slideOver：从右侧滑出，宽 400，后面有遮罩，右上角是 ×，点遮罩或按 Esc 关闭；
  * - sheet（手机宽度）：同上，左右各离窗口 8。
  */
 
@@ -82,7 +81,6 @@ function WorldContent({
     { value: "links", label: t("world.tabs.links"), count: counts?.links },
     { value: "facts", label: t("world.tabs.facts"), count: counts?.facts },
   ];
-  const docked = mode === "dock";
   return (
     <>
       <div className={styles.head}>
@@ -90,13 +88,7 @@ function WorldContent({
           <h2 className={styles.title}>{t("world.title")}</h2>
           {view ? <span className={styles.subtitle}>{worldProgress(view)}</span> : null}
         </div>
-        <IconButton
-          icon={docked ? "sidebar" : "close"}
-          label={docked ? t("play.worldHide") : t("common.close")}
-          aria-keyshortcuts={docked ? "W" : "Escape"}
-          iconSize={docked ? 20 : 22}
-          onClick={onClose}
-        />
+        <IconButton icon="close" label={t("common.close")} aria-keyshortcuts="Escape" onClick={onClose} />
       </div>
       <div className={styles.tabs} role="tablist" aria-label={t("play.world")}>
         {tabs.map((t) => (
@@ -168,13 +160,6 @@ export function WorldPanel({
   const content = (
     <WorldContent playthroughId={playthroughId} head={{ version, headSeq }} mode={mode} onClose={onClose} />
   );
-  if (mode === "dock") {
-    return (
-      <aside className={cx(styles.panel, styles.dock, "surface-panel")} aria-label={t("play.world")}>
-        {content}
-      </aside>
-    );
-  }
   return (
     <Dialog
       label={t("play.world")}

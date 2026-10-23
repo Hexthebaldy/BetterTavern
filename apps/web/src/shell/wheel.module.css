@@ -1,0 +1,249 @@
+/*
+ * 导航轮盘（NavWheel.tsx）。数值取自 docs/design/comic/source/ComicNav.dc.html 的 .whub、.wring、.wfl、.wnum：
+ * 收起是 72 的白圆（2.5 描边，--x4 投影）；展开的圆盘半径 178、2.5 描边、7px 硬投影；
+ * 名称 15.5 粗体，数量等宽 10.5；外圈的数字键帽 22 见方。
+ */
+
+.wheel {
+  position: fixed;
+  z-index: 30;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+
+/* ---- 收起的圆（展开时在圆盘中心，墨底，Logo 反白） ---- */
+.hub {
+  position: fixed;
+  z-index: 3;
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--bw) solid var(--frame);
+  border-radius: 36px;
+  background: var(--paper);
+  box-shadow: var(--x4);
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  transition:
+    left var(--wheel-shift) var(--ease),
+    top var(--wheel-shift) var(--ease),
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+:root {
+  --wheel-shift: 150ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --wheel-shift: 0ms;
+  }
+}
+.hubOpen {
+  background: var(--ink);
+  box-shadow: none;
+}
+.hubLifted {
+  transform: scale(1.12);
+  box-shadow: var(--x8);
+  cursor: grabbing;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+/* 拿起来以后原来的位置留一个虚线圈 */
+.ghost {
+  position: fixed;
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+  border: var(--bw-sm) dashed var(--frame);
+  border-radius: 36px;
+  background: var(--paper);
+  opacity: 0.8;
+}
+.dragTag {
+  position: fixed;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--r-chip);
+  background: var(--ink);
+  color: var(--on-ink);
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  transform: translate(-100%, -100%) translate(-14px, -22px);
+  pointer-events: none;
+}
+
+/* ---- 展开的圆盘 ---- */
+.disc {
+  position: fixed;
+  z-index: 2;
+  width: 416px;
+  height: 416px;
+  animation: discIn 160ms var(--ease);
+}
+@keyframes discIn {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+}
+.plate {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.shade {
+  fill: var(--shade);
+}
+.base {
+  fill: var(--paper);
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+.sector {
+  fill: var(--paper);
+  stroke: var(--frame);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.sectorOn {
+  fill: var(--ink);
+}
+.patternBg {
+  fill: var(--acc);
+}
+.patternDot {
+  fill: var(--dot-acc);
+}
+/* 指着的那块：往外弹出 14（在留缝的 4 之外），带 6px 硬投影，描边 3 */
+.hot {
+  transform: translate(var(--dx), var(--dy));
+  animation: pop 120ms var(--ease);
+}
+@keyframes pop {
+  from {
+    transform: translate(calc(var(--dx) * 0.22), calc(var(--dy) * 0.22));
+  }
+}
+.hotShadow {
+  fill: var(--shade);
+}
+.hotFace {
+  stroke: var(--frame);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+@media (prefers-reduced-motion: reduce) {
+  .disc,
+  .hot {
+    animation: none;
+  }
+}
+
+/* 每块的图标、名称、数量（在半径 102 处） */
+.slot {
+  display: contents;
+}
+.label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    left var(--dur-fast) var(--ease),
+    top var(--dur-fast) var(--ease);
+}
+.label:focus,
+.label:focus-visible {
+  outline: none;
+}
+.label b {
+  font-size: 15.5px;
+  line-height: 20px;
+  font-weight: 800;
+}
+.count {
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 10.5px;
+  line-height: 13px;
+  letter-spacing: 0.04em;
+  color: var(--mut);
+}
+.labelOn {
+  color: var(--on-ink);
+}
+.labelOn .count {
+  color: var(--sky);
+}
+.labelHot,
+.labelHot .count {
+  color: var(--on-acc);
+}
+
+/* 外圈的数字键帽（半径 168；指着的那块跟着往外挪，变成墨底） */
+.num {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-chip);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+  transition:
+    left var(--dur-fast) var(--ease),
+    top var(--dur-fast) var(--ease);
+}
+.numHot {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+/* 说明气泡 */
+.bubble {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+.bubbleBody {
+  white-space: nowrap;
+  font-size: 14.5px;
+  padding: 8px 14px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .label,
+  .num {
+    transition: none;
+  }
+}

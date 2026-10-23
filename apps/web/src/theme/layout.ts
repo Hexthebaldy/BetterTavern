@@ -1,44 +1,29 @@
 /**
- * 电脑 Web 端的布局常量和纯函数，取自 docs/design/ui/web/layout.ts（source/WebSystem.dc.html）。
+ * 电脑 Web 端的布局常量和纯函数。
  *
- * 这是平板响应式（@bettertavern/design 的 layout.ts）上面多出来的一档：
- * - 窗口 ≥ 1280 时，左边是贴边的侧栏（240）；用户收起后缩成 64 宽，只剩图标（同一个组件，宽度动画）；
- * - 900–1279 是收起的窄侧栏，展开时盖在内容上；
- * - < 900 沿用平板中屏和手机的布局，这里返回 "tabbar"。
- *
- * 只依赖窗口宽度和“用户有没有收起侧栏”，不判断设备。这里只有数据和纯函数，不依赖 React 或 DOM，用 node --test 测。
- * 阅读栏、底部操作栏、贴着按钮的菜单、剧本库列数直接用平板的 readableColumn、actionPanelFrame、popoverFrame、libraryColumns。
+ * 窗口 ≥ 900 是漫画分镜版（docs/design/comic）：没有顶栏和侧栏，导航收进一只轮盘（theme/wheel.ts、shell/NavWheel.tsx），
+ * 页面左右留边跟着轮盘贴的那一边走（wheel.ts 的 pageInsets）。< 900 沿用平板中屏和手机的布局（底部 Tab 栏）。
+ * 只依赖窗口宽度，不判断设备。这里只有数据和纯函数，不依赖 React 或 DOM，用 node --test 测。
+ * 阅读栏、贴着按钮的菜单直接用平板的 readableColumn、popoverFrame。
  */
 
 import { pane } from "@bettertavern/design/layout";
 
 /** 断点 */
 export const desktop = {
-  /** ≥ 900：左边是导航条（平板宽屏的 expanded） */
-  rail: 900,
-  /** ≥ 1280：侧栏展开（用户没有收起时） */
-  sidebar: 1280,
-  /** 阅读页：窗口减去左边导航 ≥ 1100 时，世界停靠在右边（和平板的停靠门槛同一个数） */
-  worldDock: 1100,
+  /** ≥ 900：轮盘导航和漫画格子；更窄时是底部 Tab 栏 */
+  wheel: 900,
 } as const;
 
 /** 栏宽与浮层尺寸 */
 export const shell = {
-  /** 浮起的面板（侧栏、导航条、世界、设置右栏）离窗口边 */
+  /** 浮起的面板（世界）离窗口边 */
   edge: 12,
-  /** 侧栏展开 */
-  sidebar: 240,
-  /** 侧栏收起（只剩图标） */
-  rail: 64,
-  /** 一级页的内容离侧栏、离窗口右边 */
-  gutter: 40,
-  /** 故事、剧本列表的内容最宽，超出后居中 */
-  contentMax: 1200,
+  /** 一级页的内容最宽，超出后居中 */
+  contentMax: 1600,
   /** 阅读栏 */
   readable: pane.readable,
-  /** 底部操作栏的内容 */
-  actionPanel: pane.actionPanel,
-  /** 世界面板：停靠和滑出 */
+  /** 世界面板（滑出） */
   world: pane.world,
   /** 剧本详情左栏 */
   scenarioInfo: pane.scenarioInfo,
@@ -61,81 +46,16 @@ export const timing = {
   toast: 4000,
 } as const;
 
-export type NavMode = "tabbar" | "rail" | "sidebar";
-
-/**
- * 左边导航的形态。collapsed 是用户自己收起了侧栏（存在浏览器里）。
- * < 900 返回 "tabbar"：交给平板、手机的布局（底部胶囊 Tab 栏）。
- */
-export function navMode(width: number, collapsed: boolean): NavMode {
-  if (width < desktop.rail) return "tabbar";
-  if (width < desktop.sidebar || collapsed) return "rail";
-  return "sidebar";
+/** 窗口 ≥ 900 时用轮盘，更窄时是底部 Tab 栏 */
+export function usesWheel(width: number): boolean {
+  return width >= desktop.wheel;
 }
 
-/** 导航占掉的宽度（侧栏贴着窗口左边）：展开 240，收起 64，底部 Tab 栏 0 */
-export function navWidth(mode: NavMode): number {
-  if (mode === "sidebar") return shell.sidebar;
-  if (mode === "rail") return shell.rail;
-  return 0;
-}
+export type WorldMode = "slideOver" | "sheet";
 
-/**
- * 窄于 1280 时，导航条上的“展开”按钮打开的侧栏不推开内容，而是盖在上面（带遮罩）。
- * 只有窗口 ≥ 1280 时侧栏才占位。
- */
-export function sidebarOverlays(width: number): boolean {
-  return width >= desktop.rail && width < desktop.sidebar;
-}
-
-/** 一级页（故事、剧本）内容区：侧栏右边 40 起，右边 40，最宽 1200，多出来的居中 */
-export function pageFrame(width: number, nav: NavMode): { left: number; width: number } {
-  const left = navWidth(nav) + shell.gutter;
-  const room = Math.max(0, width - left - shell.gutter);
-  const w = Math.min(shell.contentMax, room);
-  return { left: left + (room - w) / 2, width: w };
-}
-
-export type WorldMode = "dock" | "slideOver" | "sheet";
-
-/**
- * 阅读页的导航和世界面板。worldOpen 是用户有没有打开世界。
- * - 窗口 − 导航 ≥ 1100：世界停靠；
- * - 侧栏展开放不下，但收起就放得下（1164 ≤ 窗口 < 1340）：侧栏临时收起，世界停靠，关掉世界后侧栏回来；
- * - 其余：从右侧滑出（< 600 是底部面板）。
- * 返回的 nav 是这一刻实际画出来的导航；用户的“收起”设置不因此改变。
- */
-export function readingLayout(
-  width: number,
-  collapsed: boolean,
-  worldOpen: boolean,
-): { nav: NavMode; world: WorldMode | null } {
-  const nav = navMode(width, collapsed);
-  if (!worldOpen) return { nav, world: null };
-  if (width < 600) return { nav, world: "sheet" };
-  if (width - navWidth(nav) >= desktop.worldDock) return { nav, world: "dock" };
-  if (nav === "sidebar" && width - navWidth("rail") >= desktop.worldDock)
-    return { nav: "rail", world: "dock" };
-  return { nav, world: "slideOver" };
-}
-
-/**
- * 阅读区（导航和停靠的世界之间）的位置。阅读栏、底部操作栏都在这一块里居中：
- * readableColumn(area.width)、actionPanelFrame(area.width) 的 left 再加上 area.left。
- */
-export function readingArea(
-  width: number,
-  nav: NavMode,
-  world: WorldMode | null,
-): { left: number; width: number } {
-  const left = navWidth(nav);
-  const right = world === "dock" ? shell.world + shell.edge : 0;
-  return { left, width: Math.max(0, width - left - right) };
-}
-
-/** 故事列表的列数：桌面和平板宽屏一样是三列，最近一个故事占两列两行 */
-export function storyColumnsDesktop(): 3 {
-  return 3;
+/** 阅读页的世界面板：从右侧滑出；手机宽度（< 600）是底部面板 */
+export function worldMode(width: number): WorldMode {
+  return width < 600 ? "sheet" : "slideOver";
 }
 
 /**
@@ -174,7 +94,18 @@ export function tooltipFrame(
  * 说明文字在 i18n 资源里：shortcuts.items.<id>。
  */
 export type ShortcutId =
-  "pick" | "write" | "send" | "newline" | "collapse" | "latest" | "world" | "sidebar" | "help" | "close";
+  | "pick"
+  | "write"
+  | "send"
+  | "newline"
+  | "collapse"
+  | "latest"
+  | "world"
+  | "recap"
+  | "wheel"
+  | "wheelJump"
+  | "help"
+  | "close";
 
 export type Shortcut = { id: ShortcutId; keys: string[]; scope: "reading" | "app"; single: boolean };
 
@@ -186,7 +117,9 @@ export const SHORTCUTS: Shortcut[] = [
   { id: "collapse", keys: ["Esc"], scope: "reading", single: false },
   { id: "latest", keys: ["End"], scope: "reading", single: false },
   { id: "world", keys: ["W"], scope: "reading", single: true },
-  { id: "sidebar", keys: ["["], scope: "app", single: true },
+  { id: "recap", keys: ["L"], scope: "reading", single: true },
+  { id: "wheel", keys: ["Q"], scope: "app", single: true },
+  { id: "wheelJump", keys: ["1–6"], scope: "app", single: true },
   { id: "help", keys: ["?"], scope: "app", single: true },
   { id: "close", keys: ["Esc"], scope: "app", single: false },
 ];

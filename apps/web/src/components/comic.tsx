@@ -1,7 +1,7 @@
 /**
  * 漫画分镜版的部件（docs/design/comic 的“部件”一节，数值取自 source/*.dc.html）：
  * - Panel：格子，五种底（白、墨、蓝网点、白底墨点、灰网点），最重要的那一格加“热”的大投影；
- * - Bubble：对话气泡，尾巴在左下、右下或上面，左上角一块墨底小标签写说话人；玩家自己的话用蓝底；
+ * - Bubble：对话气泡，尾巴在左下、右下、左上或右上，左上角一块墨底小标签写说话人；玩家自己的话用蓝底；
  * - Caption：旁白框（宋体，圆角 6）；
  * - Keycap：键帽（高 26，2px 描边，等宽粗体），在墨底上是浅蓝；
  * - Portrait：人物位，有角色卡头像就用头像，没有就用名字里的一个大字压在网点底上；
@@ -69,9 +69,10 @@ export function Bubble({
   lang,
   children,
 }: {
-  /** 左上角的说话人（尾巴在上面时挪到右上角） */
+  /** 左上角的说话人（尾巴在左上时挪到右上角） */
   who?: ReactNode;
-  tail?: "left" | "right" | "up" | "none";
+  /** 尾巴：left 左下、right 右下、up 左上、upRight 右上 */
+  tail?: "left" | "right" | "up" | "upRight" | "none";
   /** blue：玩家自己的行动 */
   tone?: "white" | "blue";
   /** 小号（格子里的一句台词）：字小一档，内边距小一点 */
@@ -87,6 +88,7 @@ export function Bubble({
         tone === "blue" && styles.bubbleBlue,
         tail === "right" && styles.tailRight,
         tail === "up" && styles.tailUp,
+        tail === "upRight" && styles.tailUpRight,
         small && styles.bubbleSmall,
         className,
       )}

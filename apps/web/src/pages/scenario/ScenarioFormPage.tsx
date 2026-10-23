@@ -38,7 +38,7 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
   const location = useLocation();
   const overlay = useOverlay();
   const queries = useQueryClient();
-  const wide = useWindowWidth() >= desktop.rail;
+  const wide = useWindowWidth() >= desktop.wheel;
   const cards = useCards();
   const [picked, setPicked] = useState<string[]>(() =>
     scenario ? scenario.cards.map((c) => c.card_id) : presetCard ? [presetCard] : [],

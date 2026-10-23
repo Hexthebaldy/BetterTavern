@@ -10,6 +10,7 @@ import type { ReadingPrefs } from "@bettertavern/core/play/reading";
 import type { ThemeSetting } from "@bettertavern/design/themes";
 
 import { localStore } from "../storage/local.ts";
+import type { WheelSpot } from "../theme/wheel.ts";
 import { useLanguageSync } from "./language.ts";
 import { parsePrefs, PREFS_KEY, type LibraryView, type WebPrefs } from "./prefs.ts";
 
@@ -19,7 +20,7 @@ type PrefsValue = WebPrefs & {
   setLanguage: (language: LanguageSetting) => void;
   setLibraryView: (view: LibraryView) => void;
   setWorldDocked: (open: boolean) => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
+  setWheel: (spot: WheelSpot) => void;
   setSingleKeys: (enabled: boolean) => void;
   dismissMovedHint: () => void;
 };
@@ -51,7 +52,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       setLanguage: (language) => set({ language }),
       setLibraryView: (libraryView) => set({ libraryView }),
       setWorldDocked: (worldDocked) => set({ worldDocked }),
-      setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      setWheel: (wheel) => set({ wheel }),
       setSingleKeys: (singleKeys) => set({ singleKeys }),
       dismissMovedHint: () => set({ movedHintDismissed: true }),
     };

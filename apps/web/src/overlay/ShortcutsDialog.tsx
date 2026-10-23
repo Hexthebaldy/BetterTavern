@@ -12,10 +12,10 @@ import { shell, SHORTCUTS, type Shortcut } from "../theme/layout.ts";
 import { Dialog } from "./Dialog.tsx";
 import styles from "./overlay.module.css";
 
-/** 和设计稿一样分两组：前六项是读和写，其余是界面（世界状态、侧栏、这张表、关闭） */
+/** 分两组：阅读（选、写、世界、回想）和界面（轮盘、这张表、关闭） */
 const GROUPS: { title: "reading" | "app"; items: Shortcut[] }[] = [
-  { title: "reading", items: SHORTCUTS.slice(0, 6) },
-  { title: "app", items: SHORTCUTS.slice(6) },
+  { title: "reading", items: SHORTCUTS.filter((s) => s.scope === "reading") },
+  { title: "app", items: SHORTCUTS.filter((s) => s.scope === "app") },
 ];
 
 function Keys({ keys, single }: { keys: string[]; single: boolean }) {

@@ -290,8 +290,6 @@
 /* ---------- 布局 ---------- */
 :root {
   --edge: 12px; /* 浮起的面板离窗口边 */
-  --sidebar: 240px; /* 侧栏展开 */
-  --rail: 64px; /* 侧栏收起 */
   --gutter: 40px;
   --content-max: 1200px;
   --readable: 640px;

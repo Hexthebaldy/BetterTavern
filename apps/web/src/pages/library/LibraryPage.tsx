@@ -153,7 +153,7 @@ function CollectionPage({ kind }: { kind: Kind }) {
           addLabel={add.label}
           addIcon={add.icon}
           onAdd={add.run}
-          labelled={windowWidth >= desktop.rail}
+          labelled={windowWidth >= desktop.wheel}
         />
       </PageHeader>
       {kind === "cards" && !movedHintDismissed ? (

@@ -1,21 +1,12 @@
 /**
- * 登录后的外壳：左边贴边的侧栏（窄于 900 时是底部 Tab 栏），右边是页面。
+ * 登录后的外壳：没有顶栏和侧栏。窗口 ≥ 900 时导航收进一只轮盘（NavWheel，docs/design/comic），浮在页面上；
+ * 窄于 900 时是底部 Tab 栏（只在一级页上）和“更多”弹出的账户小窗。拖动窗口时即时切换，页面不卸载。
  *
- * 形态由 theme/layout.ts 的 navMode(窗口宽度, 用户收起了侧栏) 决定：sidebar 是展开（240），rail 是收起（64）。
- * 两种是同一个侧栏组件，切换时宽度动画缩放，内容区的左边距跟着动。拖动窗口时即时切换，页面不卸载。
- * 窄于 1280 时“展开”的侧栏盖在内容上（带遮罩），点遮罩、按 Esc、点了侧栏里的一项都会收回。
- * 阅读页打开世界、草稿页要宽一点时，用 setNavOverride 临时收起（用户的“收起”设置不变）。
+ * 页面左右留边写成 CSS 变量（--page-left、--page-right），页面自己用：轮盘贴着哪一边，那一边留 112，另一边 40；
+ * 轮盘没贴边（拖到中间）时两边都是 40，轮盘浮在内容上面。窄屏两边都是 24。
  */
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Outlet, ScrollRestoration, useLocation } from "react-router";
 
 import { useWindowWidth } from "../hooks/useWindowSize.ts";
@@ -24,82 +15,34 @@ import { OverlayProvider } from "../overlay/OverlayProvider.tsx";
 import { ShortcutsDialog } from "../overlay/ShortcutsDialog.tsx";
 import { TooltipLayer } from "../overlay/Tooltip.tsx";
 import { usePrefs } from "../state/PrefsProvider.tsx";
-import {
-  acceptsSingleKey,
-  desktop,
-  navMode,
-  navWidth,
-  sidebarOverlays,
-  type NavMode,
-} from "../theme/layout.ts";
+import { acceptsSingleKey, usesWheel } from "../theme/layout.ts";
+import { pageInsets } from "../theme/wheel.ts";
+import { NavWheel } from "./NavWheel.tsx";
 import styles from "./shell.module.css";
-import { Sidebar } from "./Sidebar.tsx";
 import { TabBar } from "./TabBar.tsx";
 
-type ShellValue = {
-  /** 这一刻实际画出来的导航 */
-  nav: NavMode;
-  /** 展开或收起侧栏（快捷键 [、按钮）；< 900 时什么都不做 */
-  toggleSidebar: () => void;
-  /** 页面临时指定导航形态（阅读页）；null 表示按用户设置 */
-  setNavOverride: (mode: NavMode | null) => void;
-};
-
-const ShellContext = createContext<ShellValue | null>(null);
-
+/** 窄屏底部 Tab 栏只在这些一级页上（进了阅读页、剧本详情、草稿、设置子页就收起，它们有自己的返回） */
 const TOP_LEVEL = new Set([
   "/playthroughs",
   "/scenarios",
   "/characters",
   "/workbench",
   "/models",
-  "/tools",
   "/settings",
 ]);
 
-export function useShell(): ShellValue {
-  const value = useContext(ShellContext);
-  if (!value) throw new Error("useShell must be used inside AppShell");
-  return value;
-}
+/** 窄屏的页面左右留边 */
+const NARROW = 24;
 
 export function AppShell() {
   const width = useWindowWidth();
-  const { sidebarCollapsed, setSidebarCollapsed, singleKeys } = usePrefs();
+  const { wheel, singleKeys } = usePrefs();
   const [shortcuts, setShortcuts] = useState(false);
-  const [override, setNavOverride] = useState<NavMode | null>(null);
-  const [overlay, setOverlay] = useState(false);
   const { pathname } = useLocation();
-  const preferred = navMode(width, sidebarCollapsed);
-  const nav = override ?? preferred;
-  const showOverlay = overlay && nav === "rail";
-  // 和 App 一样：底部 Tab 栏只在四个一级页上，进了阅读页、剧本详情、草稿、设置子页就收起（它们有自己的返回）
+  const withWheel = usesWheel(width);
   const topLevel = TOP_LEVEL.has(pathname);
 
-  // 点了侧栏里的一项（换了页面）就收回盖在上面的侧栏
-  useEffect(() => setOverlay(false), [pathname]);
-
-  useEffect(() => {
-    if (!showOverlay) return;
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") setOverlay(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showOverlay]);
-
-  const toggleSidebar = useCallback(() => {
-    if (width < desktop.rail) return;
-    if (nav === "sidebar") {
-      setSidebarCollapsed(true);
-      return;
-    }
-    // 窄屏，或者是页面临时收起的：盖在上面；宽屏用户自己收起的：展开回来
-    if (sidebarOverlays(width) || override !== null) setOverlay((open) => !open);
-    else setSidebarCollapsed(false);
-  }, [width, nav, override, setSidebarCollapsed]);
-
-  // 任何页面都有的快捷键：? 打开快捷键一览，[ 展开或收起侧栏（阅读页自己的 A–D、/、W、End 在 PlayPage）
+  // 任何页面都有的快捷键：? 打开快捷键一览（轮盘的 Q、1–6 在 NavWheel，阅读页的 A–D、/、W、L、End 在 PlayPage）
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
@@ -114,13 +57,9 @@ export function AppShell() {
         ctrl: event.ctrlKey,
         alt: event.altKey,
       });
-      if (!single) return;
-      if (event.key === "?") {
+      if (single && event.key === "?") {
         event.preventDefault();
         setShortcuts(true);
-      } else if (event.key === "[") {
-        event.preventDefault();
-        toggleSidebar();
       }
     };
     const open = (): void => setShortcuts(true);
@@ -130,37 +69,33 @@ export function AppShell() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("bt:shortcuts", open);
     };
-  }, [singleKeys, toggleSidebar]);
+  }, [singleKeys]);
 
-  const value = useMemo<ShellValue>(() => ({ nav, toggleSidebar, setNavOverride }), [nav, toggleSidebar]);
-  const frame = { "--nav-width": `${navWidth(nav)}px` } as CSSProperties;
+  const insets = withWheel ? pageInsets(wheel.dock) : { left: NARROW, right: NARROW };
+  const frame = {
+    "--page-left": `${insets.left}px`,
+    "--page-right": `${insets.right}px`,
+  } as CSSProperties;
 
   return (
-    <ShellContext.Provider value={value}>
-      <div className={styles.shell} data-nav={nav} data-top={topLevel || undefined} style={frame}>
-        <OverlayProvider>
-          <ImportProvider>
-            {nav === "tabbar" ? null : (
-              <Sidebar
-                collapsed={nav === "rail" && !showOverlay}
-                overlay={showOverlay}
-                onToggle={showOverlay ? () => setOverlay(false) : toggleSidebar}
-              />
-            )}
-            {showOverlay ? (
-              <div className={styles.scrim} onClick={() => setOverlay(false)} aria-hidden="true" />
-            ) : null}
-            <main className={styles.main} id="main">
-              <Outlet />
-            </main>
-            {/* 进新页面从顶上开始，前进、后退回到原来的位置 */}
-            <ScrollRestoration />
-            {nav === "tabbar" && topLevel ? <TabBar /> : null}
-            {shortcuts ? <ShortcutsDialog onClose={() => setShortcuts(false)} /> : null}
-            <TooltipLayer />
-          </ImportProvider>
-        </OverlayProvider>
-      </div>
-    </ShellContext.Provider>
+    <div
+      className={styles.shell}
+      data-nav={withWheel ? "wheel" : "tabbar"}
+      data-top={topLevel || undefined}
+      style={frame}
+    >
+      <OverlayProvider>
+        <ImportProvider>
+          <main className={styles.main} id="main">
+            <Outlet />
+          </main>
+          {/* 进新页面从顶上开始，前进、后退回到原来的位置 */}
+          <ScrollRestoration />
+          {withWheel ? <NavWheel /> : topLevel ? <TabBar /> : null}
+          {shortcuts ? <ShortcutsDialog onClose={() => setShortcuts(false)} /> : null}
+          <TooltipLayer />
+        </ImportProvider>
+      </OverlayProvider>
+    </div>
   );
 }

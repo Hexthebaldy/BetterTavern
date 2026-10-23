@@ -1,6 +1,6 @@
 /**
  * 窄于 900 的底部胶囊 Tab 栏（手机、平板中屏）：存档、剧本、角色、工作台，最后一项“更多”弹出账户小窗
- * （里面还有模型、外部服务、设置）。选中项的底色淡入，图标和文字横排、蓝色。
+ * （里面还有模型、外部服务、设置）。选中项是墨底，图标和文字横排。
  */
 
 import { useTranslation } from "react-i18next";
@@ -12,8 +12,8 @@ import { useAccountMenu } from "./AccountMenu.tsx";
 import { isActive, NAV_ITEMS } from "./nav.ts";
 import styles from "./shell.module.css";
 
-const TABS = NAV_ITEMS.filter((item) => item.group === "create");
-const MORE = ["/models", "/tools", "/settings", "/dev"];
+const TABS = NAV_ITEMS.filter((item) => item.tab);
+const MORE = ["/models", "/settings", "/dev"];
 
 export function TabBar() {
   const { pathname } = useLocation();

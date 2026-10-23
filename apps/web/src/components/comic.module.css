@@ -88,6 +88,13 @@
   top: -17px;
   transform: scaleY(-1);
 }
+.tailUpRight .tail {
+  bottom: auto;
+  top: -17px;
+  left: auto;
+  right: 26px;
+  transform: scale(-1, -1);
+}
 .who {
   position: absolute;
   top: -13px;

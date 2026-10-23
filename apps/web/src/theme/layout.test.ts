@@ -5,78 +5,24 @@ import {
   acceptsSingleKey,
   contextMenuFrame,
   documentTitle,
-  navMode,
-  navWidth,
   optionIndexForKey,
-  pageFrame,
-  readingArea,
-  readingLayout,
   SHORTCUTS,
-  sidebarOverlays,
   tooltipFrame,
+  usesWheel,
+  worldMode,
 } from "./layout.ts";
 
-describe("导航形态", () => {
-  it("< 900 是底部 Tab 栏，900–1279 是收起的侧栏，≥ 1280 是展开的侧栏；用户收起后是收起的", () => {
-    assert.equal(navMode(899, false), "tabbar");
-    assert.equal(navMode(900, false), "rail");
-    assert.equal(navMode(1279, false), "rail");
-    assert.equal(navMode(1280, false), "sidebar");
-    assert.equal(navMode(1920, true), "rail");
-    assert.equal(navMode(600, true), "tabbar");
+describe("导航和世界面板的形态", () => {
+  it("窗口 ≥ 900 用轮盘，更窄是底部 Tab 栏", () => {
+    assert.equal(usesWheel(899), false);
+    assert.equal(usesWheel(900), true);
+    assert.equal(usesWheel(1920), true);
   });
 
-  it("侧栏贴着窗口左边：展开 240，收起 64", () => {
-    assert.equal(navWidth("sidebar"), 240);
-    assert.equal(navWidth("rail"), 64);
-    assert.equal(navWidth("tabbar"), 0);
-  });
-
-  it("窄于 1280 时展开的侧栏盖在内容上", () => {
-    assert.equal(sidebarOverlays(1000), true);
-    assert.equal(sidebarOverlays(1280), false);
-    assert.equal(sidebarOverlays(800), false);
-  });
-});
-
-describe("一级页的内容区", () => {
-  it("1440 宽、侧栏展开时从 280 开始，宽 1120", () => {
-    assert.deepEqual(pageFrame(1440, "sidebar"), { left: 280, width: 1120 });
-  });
-
-  it("超过 1200 后居中", () => {
-    assert.deepEqual(pageFrame(1920, "sidebar"), { left: 480, width: 1200 });
-  });
-
-  it("窗口再窄也不会是负宽度", () => {
-    assert.equal(pageFrame(100, "rail").width, 0);
-  });
-});
-
-describe("阅读页", () => {
-  it("没打开世界时只看导航", () => {
-    assert.deepEqual(readingLayout(1440, false, false), { nav: "sidebar", world: null });
-  });
-
-  it("窗口 − 侧栏 ≥ 1100 时世界停靠", () => {
-    assert.deepEqual(readingLayout(1380, false, true), { nav: "sidebar", world: "dock" });
-  });
-
-  it("1164–1339：侧栏临时收起，世界停靠", () => {
-    assert.deepEqual(readingLayout(1339, false, true), { nav: "rail", world: "dock" });
-    assert.deepEqual(readingLayout(1164, false, true), { nav: "rail", world: "dock" });
-  });
-
-  it("再窄就从右侧滑出；手机宽度是底部面板", () => {
-    assert.deepEqual(readingLayout(1163, false, true), { nav: "rail", world: "slideOver" });
-    assert.deepEqual(readingLayout(800, false, true), { nav: "tabbar", world: "slideOver" });
-    assert.deepEqual(readingLayout(599, false, true), { nav: "tabbar", world: "sheet" });
-  });
-
-  it("阅读区在导航和停靠的世界之间", () => {
-    assert.deepEqual(readingArea(1440, "sidebar", "dock"), { left: 240, width: 788 });
-    assert.deepEqual(readingArea(1440, "sidebar", "slideOver"), { left: 240, width: 1200 });
-    assert.deepEqual(readingArea(500, "tabbar", null), { left: 0, width: 500 });
+  it("世界从右侧滑出，手机宽度是底部面板", () => {
+    assert.equal(worldMode(1440), "slideOver");
+    assert.equal(worldMode(600), "slideOver");
+    assert.equal(worldMode(599), "sheet");
   });
 });
 
@@ -138,7 +84,7 @@ describe("键盘快捷键", () => {
 
   it("快捷键表里单键的那些可以被开关关掉", () => {
     const single = SHORTCUTS.filter((s) => s.single).flatMap((s) => s.keys);
-    assert.deepEqual(single, ["A", "B", "C", "D", "/", "W", "[", "?"]);
+    assert.deepEqual(single, ["A", "B", "C", "D", "/", "W", "L", "Q", "1–6", "?"]);
   });
 });
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
+import { activeIndex, isActive, NAV_ITEMS, openStoryId } from "./nav.ts";
 
 const item = (name: string) => {
   const found = NAV_ITEMS.find((i) => i.name === name);
@@ -15,14 +15,25 @@ describe("导航的选中项", () => {
     assert.equal(isActive(item("scenarios"), "/scenario/sc_1"), true);
     assert.equal(isActive(item("characters"), "/card/c1"), true);
     assert.equal(isActive(item("models"), "/models/r1"), true);
+    assert.equal(isActive(item("settings"), "/settings/tools"), true);
+    assert.equal(isActive(item("settings"), "/dev/probe"), true);
     assert.equal(isActive(item("saves"), "/play/p1"), false);
     assert.equal(isActive(item("scenarios"), "/scenariosx"), false);
   });
 
-  it("创作在前、连接在后", () => {
+  it("轮盘上的顺序：存档、剧本、角色、工作台、模型、设置", () => {
     assert.deepEqual(
-      NAV_ITEMS.map((i) => i.group),
-      ["create", "create", "create", "create", "connect", "connect"],
+      NAV_ITEMS.map((i) => i.name),
+      ["saves", "scenarios", "characters", "workbench", "models", "settings"],
+    );
+    assert.equal(activeIndex("/workbench/d/1"), 3);
+    assert.equal(activeIndex("/play/p1"), null);
+  });
+
+  it("窄屏的 Tab 栏放前四项，模型和设置从“更多”进", () => {
+    assert.deepEqual(
+      NAV_ITEMS.filter((i) => i.tab).map((i) => i.name),
+      ["saves", "scenarios", "characters", "workbench"],
     );
   });
 

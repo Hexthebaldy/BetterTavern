@@ -1,5 +1,5 @@
 /**
- * 账户小窗：点侧栏最下面的头像（窄屏是底部栏的“更多”）弹出，贴在按钮上方。
+ * 账户小窗：窄屏底部栏的“更多”弹出，贴在按钮上方（宽屏没有它，账户在设置页的“账户”一格）。
  * 顶上是头像、昵称和邮箱；下面是设置、修改密码、退出登录、删除账户，最底下是三份条款的链接。
  * 窄屏底部栏没有“模型”“外部服务”，从这里进（connect）。
  * 修改密码、删除账户各开一个对话框（AccountDialogs.tsx）；对话框开着时小窗已经关了，所以状态放在 useAccountMenu 里。
@@ -138,7 +138,7 @@ function AccountMenu({
       {connect ? (
         <>
           {item("models", "key", t("nav.models"), () => go("/models"))}
-          {item("tools", "world", t("nav.tools"), () => go("/tools"))}
+          {item("tools", "world", t("nav.tools"), () => go("/settings/tools"))}
           <div className={styles.accountRule} />
         </>
       ) : null}

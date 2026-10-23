@@ -20,7 +20,7 @@ describe("parsePrefs", () => {
       theme: "night",
       language: "en",
       worldDocked: true,
-      sidebarCollapsed: true,
+      wheel: { dock: "right", x: 0, y: 0.25 },
       singleKeys: false,
       movedHintDismissed: true,
     });
@@ -30,7 +30,7 @@ describe("parsePrefs", () => {
       theme: "night",
       language: "en",
       worldDocked: true,
-      sidebarCollapsed: true,
+      wheel: { dock: "right", x: 0, y: 0.25 },
       singleKeys: false,
       movedHintDismissed: true,
     });
