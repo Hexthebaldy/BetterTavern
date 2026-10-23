@@ -136,30 +136,9 @@
   color: var(--acc);
   font-weight: 500;
 }
-.navGroup {
-  position: relative;
-  height: 30px;
-  display: flex;
-  align-items: flex-end;
-  padding: 0 14px 6px;
-  font-size: 12px;
-  color: var(--mut);
-}
-/* 收起时分组名换成一条短线 */
-.navGroup::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 12px;
-  width: 20px;
-  height: 1px;
-  margin-left: -10px;
-  background: var(--line2);
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease);
-}
-.collapsed .navGroup::after {
-  opacity: 1;
+/* 两组导航之间隔一点空（不写分组名） */
+.navGap {
+  margin-top: 14px;
 }
 .recent {
   flex: 1;

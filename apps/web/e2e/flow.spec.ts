@@ -40,7 +40,7 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await page.reload();
   await expect(page).toHaveURL(/\/playthroughs$/);
 
-  // ---- 侧栏：模型在“连接”一组里；添加假模型（对话框）并设为导演，加好后右边打开详情 ----
+  // ---- 侧栏进模型页；添加假模型（对话框）并设为导演，加好后打开它的详情 ----
   await page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "模型" }).click();
   await expect(page).toHaveURL(/\/models$/);
   await page.getByRole("button", { name: "添加模型" }).first().click();
@@ -51,7 +51,7 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await add.getByRole("radio", { name: "fake-model" }).click();
   await add.getByRole("button", { name: "保存模型" }).click();
   await expect(page).toHaveURL(/\/models\/[^/]+$/);
-  await expect(page.getByRole("complementary", { name: "设置详情" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "设置详情" })).toBeVisible(); // 详情在窗口正中的对话框里
   await expect(page.getByRole("combobox").first()).toHaveValue(/.+/); // 分工里的导演已经是它
 
   // ---- 在工作台导入角色卡：解析完进草稿的手动表单 ----

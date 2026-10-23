@@ -10,10 +10,6 @@ export const shell = {
     characters: "角色",
     models: "模型",
     tools: "外部服务",
-    groups: {
-      create: "创作",
-      connect: "连接",
-    },
     account: "账户",
     more: "更多",
     count_other: "{{count}} 个",

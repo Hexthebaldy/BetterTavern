@@ -2,13 +2,12 @@
  * 侧栏：贴着窗口左边、从上到下整条的浅灰底。同一个组件有两种宽度：展开 240、收起 64（只剩图标），
  * 切换时宽度动画缩放，文字淡出，图标位置不动。
  * - 顶上：Logo、名字和收起按钮；收起后不显示这个按钮，点 Logo 展开（快捷键 [ 照旧）；
- * - 两组导航：创作（存档、剧本、角色、工作台）和连接（模型、外部服务）；选中项的底色淡入，不滑动；
+ * - 导航分两组：存档、剧本、角色、工作台，隔一点空，再是模型、外部服务（不写分组名）；选中项的底色淡入，不滑动；
  * - 展开时下面是最近的存档（单独滚动），收起时藏起来；
  * - 最下面是头像，点了弹出账户小窗（AccountMenu）。
  * overlay：窗口窄于 1280 时，展开的侧栏盖在内容上（带遮罩），内容的位置不动。
  */
 
-import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router";
 
@@ -87,23 +86,17 @@ export function Sidebar({
           const label = t(`nav.${item.name}`);
           const startsGroup = index > 0 && NAV_ITEMS[index - 1]?.group !== item.group;
           return (
-            <Fragment key={item.to}>
-              {startsGroup ? (
-                <div className={styles.navGroup} role="presentation">
-                  <span className={styles.fade}>{t(`nav.groups.${item.group}`)}</span>
-                </div>
-              ) : null}
-              <Link
-                to={item.to}
-                className={cx(styles.navItem, active && styles.navItemOn)}
-                aria-current={active ? "page" : undefined}
-                aria-label={collapsed ? label : undefined}
-                data-tip={collapsed ? label : undefined}
-              >
-                <Icon name={item.icon} size={20} />
-                <span className={styles.fade}>{label}</span>
-              </Link>
-            </Fragment>
+            <Link
+              key={item.to}
+              to={item.to}
+              className={cx(styles.navItem, active && styles.navItemOn, startsGroup && styles.navGap)}
+              aria-current={active ? "page" : undefined}
+              aria-label={collapsed ? label : undefined}
+              data-tip={collapsed ? label : undefined}
+            >
+              <Icon name={item.icon} size={20} />
+              <span className={styles.fade}>{label}</span>
+            </Link>
           );
         })}
       </div>

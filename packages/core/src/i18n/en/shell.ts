@@ -11,10 +11,6 @@ export const shell: Messages<typeof source> = {
     characters: "Characters",
     models: "Models",
     tools: "External services",
-    groups: {
-      create: "Create",
-      connect: "Connect",
-    },
     account: "Account",
     more: "More",
     count_one: "{{count}} item",

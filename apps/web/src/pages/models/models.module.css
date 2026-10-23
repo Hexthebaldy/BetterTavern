@@ -74,21 +74,7 @@
   color: var(--warn);
 }
 
-/* ---- 表格和详情 ---- */
-.split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-@media (min-width: 1240px) {
-  .splitOpen {
-    grid-template-columns: minmax(0, 1fr) 440px;
-  }
-}
-.tableBox {
-  min-width: 0;
-}
+/* ---- 表格 ---- */
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -182,34 +168,31 @@
   color: var(--mut);
 }
 
-/* 详情：宽屏贴在表格右边，跟着页面滚到顶上就停住；窄一点时盖在右边 */
-.detail {
-  position: sticky;
-  top: 20px;
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-  padding: 12px 12px 32px;
-  border-radius: var(--r-sheet);
-  background: var(--bg2);
+/* 官方模型的标记：白底圆里是 BetterTavern 的 Logo */
+.officialMark {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line2);
+}
+
+/* 模型详情：窗口正中的对话框，够宽时分两栏（ModelBody 的容器查询认 pane） */
+.detailDialog {
   container: pane / inline-size;
+}
+.detailBody {
+  padding: 16px 16px 24px;
 }
 .detailClose {
   float: right;
   position: relative;
   z-index: 1;
-  margin: 4px 4px -40px 0;
-}
-@media (max-width: 1239px) {
-  .detail {
-    position: fixed;
-    z-index: 30;
-    top: 12px;
-    right: 12px;
-    bottom: 12px;
-    width: min(460px, calc(100vw - var(--nav-width, 0px) - 24px));
-    max-height: none;
-    box-shadow: var(--shadow-float);
-  }
+  margin: 2px 2px -38px 0;
 }
 
 /* 添加模型的对话框：够宽时表单分两栏（AddModelForm 的容器查询认 pane） */

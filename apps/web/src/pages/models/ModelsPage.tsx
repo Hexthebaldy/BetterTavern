@@ -1,9 +1,10 @@
 /**
- * 模型（/models；/models/:id 在右边打开这个模型的详情）。照电脑上的习惯排，不照搬手机的“列表 → 详情”：
+ * 模型（/models；/models/:id 打开这个模型的详情）。照电脑上的习惯排，不照搬手机的“列表 → 详情”：
  * - 页头：标题和数量；右边是官方模型的余额和“添加模型”（打开对话框，里面是 AddModelForm）；
  * - “分工”：导演、后台整理、工作台各用哪个模型，三个下拉框直接换（不用点进每个模型拨开关）；
- * - 模型表格：名字、服务商、Key、上下文、状态、用途；点一行在右边打开详情（ModelBody），再点一次收起。
- * 内容宽于 1000 时详情和表格并排；更窄时详情盖在表格上面。
+ * - 模型表格：名字、服务商、Key、上下文、状态、用途。官方模型永远在第一行，标记是 BetterTavern 的 Logo，
+ *   服务商和 Key 两格空着（都是服务器提供的）；
+ * - 点一行打开详情（ModelBody）：在窗口正中的对话框里，够宽时分两栏；关上回到 /models。
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,6 +25,7 @@ import {
 import { formatTokens } from "@bettertavern/core/utils/format";
 
 import { Button, cx, IconButton, Notice, Pill } from "../../components/controls.tsx";
+import { Logo } from "../../components/Logo.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { creditsKey, routesKey, useCredits, useModelRoutes, useProviders } from "../../data/models.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -51,7 +53,7 @@ export function ModelsPage() {
   const credits = useCredits();
   const [adding, setAdding] = useState(false);
   const platform = credits.data?.platform === true;
-  const list = routes.data ?? [];
+  const list = platformFirst(routes.data ?? []);
 
   return (
     <div className={cx(pages.page, styles.page)}>
@@ -77,32 +79,36 @@ export function ModelsPage() {
         <CreditsNotice credits={credits.data} missing={!list.some((r) => r.source === "platform")} />
       ) : null}
       {routes.data ? <Roles routes={list} /> : null}
-      <div className={cx(styles.split, id && styles.splitOpen)}>
-        <div className={styles.tableBox}>
-          {routes.data && list.length === 0 ? (
-            <div className={styles.empty}>
-              <p>{t("settings.noneAdded")}</p>
-              <Button label={t("models.add")} icon="plus" variant="secondary" onClick={() => setAdding(true)} />
-            </div>
-          ) : (
-            <ModelTable routes={list} selected={id ?? null} />
-          )}
+      {routes.data && list.length === 0 ? (
+        <div className={styles.empty}>
+          <p>{t("settings.noneAdded")}</p>
+          <Button label={t("models.add")} icon="plus" variant="secondary" onClick={() => setAdding(true)} />
         </div>
-        {id ? (
-          <aside className={cx(styles.detail, "surface-raised")} aria-label={t("settings.detail")}>
+      ) : (
+        <ModelTable routes={list} selected={id ?? null} />
+      )}
+      {id ? (
+        <Dialog
+          key={id}
+          label={t("settings.detail")}
+          onClose={() => navigate("/models")}
+          width={880}
+          className={styles.detailDialog}
+          bare
+        >
+          <div className={styles.detailBody}>
             <IconButton
               icon="close"
               label={t("common.close")}
-              tone="card"
               diameter={36}
               iconSize={18}
               className={styles.detailClose}
               onClick={() => navigate("/models")}
             />
-            <ModelBody key={id} id={id} titled={false} />
-          </aside>
-        ) : null}
-      </div>
+            <ModelBody id={id} titled={false} />
+          </div>
+        </Dialog>
+      ) : null}
       {adding && providers.data && routes.data ? (
         <Dialog
           label={t("models.add")}
@@ -156,6 +162,20 @@ function CreditsNotice({ credits, missing }: { credits: Credits; missing: boolea
       />
       {error ? <Notice message={describeError(error)} /> : null}
     </div>
+  );
+}
+
+/** 官方模型永远排第一，其余按添加的先后 */
+function platformFirst(routes: ModelRoute[]): ModelRoute[] {
+  return [...routes].sort((a, b) => Number(b.source === "platform") - Number(a.source === "platform"));
+}
+
+/** 官方模型的标记：白底圆里是 BetterTavern 的 Logo（Logo 的线条是墨色，所以底不跟着导演变黑） */
+function OfficialMark() {
+  return (
+    <span className={styles.officialMark} aria-hidden="true">
+      <Logo size={20} label={null} />
+    </span>
   );
 }
 
@@ -261,6 +281,7 @@ function ModelTable({ routes, selected }: { routes: ModelRoute[]; selected: stri
       <tbody>
         {routes.map((route) => {
           const title = modelTitle(route);
+          const official = route.source === "platform";
           return (
             <tr
               key={route.id}
@@ -273,15 +294,19 @@ function ModelTable({ routes, selected }: { routes: ModelRoute[]; selected: stri
             >
               <td>
                 <Link to={path(route)} className={styles.nameCell}>
-                  <ProviderMark provider={route.provider} size={32} tone={route.is_director ? "ink" : "card"} />
+                  {official ? (
+                    <OfficialMark />
+                  ) : (
+                    <ProviderMark provider={route.provider} size={32} tone={route.is_director ? "ink" : "card"} />
+                  )}
                   <span className={styles.nameText}>
                     <span className={cx(styles.name, title === route.model && styles.mono)}>{title}</span>
                     {title !== route.model ? <span className={styles.sub}>{route.model}</span> : null}
                   </span>
                 </Link>
               </td>
-              <td className={styles.dim}>{providerName(route.provider, providers.data)}</td>
-              <td className={cx(styles.dim, route.source !== "platform" && styles.mono)}>{keyText(route)}</td>
+              <td className={styles.dim}>{official ? null : providerName(route.provider, providers.data)}</td>
+              <td className={cx(styles.dim, styles.mono)}>{official ? null : keyText(route)}</td>
               <td className={cx(styles.dim, styles.mono)}>{formatTokens(route.window.model_window)}</td>
               <td>
                 <StatusPill kind={statusKind(route.status)} label={modelStatusLabel(route.status)} />

@@ -11,10 +11,6 @@ export const shell: MessagesOtherOnly<typeof source> = {
     characters: "キャラクター",
     models: "モデル",
     tools: "外部サービス",
-    groups: {
-      create: "創作",
-      connect: "接続",
-    },
     account: "アカウント",
     more: "その他",
     count_other: "{{count}} 件",

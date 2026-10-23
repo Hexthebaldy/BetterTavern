@@ -199,8 +199,9 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
         <div className={styles.cells}>
           {(
             [
-              [t("models.provider"), providerName(route.provider, providers.data), false],
-              ["Key", keyText(route), !platform],
+              // 官方模型：服务商和 Key 都是服务器提供的，两格空着
+              [t("models.provider"), platform ? "" : providerName(route.provider, providers.data), false],
+              ["Key", platform ? "" : keyText(route), true],
               [t("models.modelName"), route.model, true],
               [t("models.endpointShort"), route.base_url ?? t("models.officialShort"), !!route.base_url],
             ] as const
