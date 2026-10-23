@@ -133,6 +133,12 @@ export const common: MessagesOtherOnly<typeof source> = {
       TOO_MANY_RUNS: "同時に作成中の下書きが多すぎます（最大 {{limit}} 件）。1 件終わるまでお待ちください",
       TOO_MANY_DRAFTS: "未保存の下書きが多すぎます（最大 {{limit}} 件）。保存するか削除してください",
       STORAGE_FULL: "画像の保存容量がいっぱいです（{{limit_mb}} MB）。下書きやカードを削除してからお試しください",
+      CREDITS_EXHAUSTED: "公式モデルのポイントを使い切りました。設定で自分のモデルのキーを追加すると続きを書けます",
+      PLATFORM_BUSY: "公式モデルが混み合っています。しばらくしてからお試しいただくか、自分のモデルのキーに切り替えてください",
+      PLATFORM_UNAVAILABLE: "このサーバーには公式モデルがありません",
+      PLATFORM_ROUTE_FIXED: "公式モデルのキー、モデル名、エンドポイントは変更できません",
+      CONTENT_REJECTED: "このキャラクターカードには性的なコンテンツが含まれているため、公式サービスでは保存できません（コンテンツルールを参照）",
+      CONTENT_CHECK_UNAVAILABLE: "現在このキャラクターカードの内容を確認できません。しばらくしてから保存し直してください",
     },
     field: {
       email: "メールアドレスの形式が正しくありません",

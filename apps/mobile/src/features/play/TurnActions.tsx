@@ -22,6 +22,7 @@ import {
   needsOpening,
   type PlayState,
 } from "@bettertavern/core/play/turnMachine";
+import { needsModelSettings } from "@bettertavern/core/settings/labels";
 
 import { Button, Icon, PageSurfaces, useSheetSurfaces } from "../../components/ui.tsx";
 import { useLayout } from "../../hooks/useLayout.ts";
@@ -63,6 +64,7 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
   let content: ReactNode;
   if (state.phase === "failed" && state.error) {
     const routeMissing = state.error.code === "ROUTE_MISSING";
+    const toSettings = needsModelSettings(state.error.code);
     const opening = state.turns.length === 0;
     content = (
       <View style={styles.column}>
@@ -83,7 +85,7 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
             onPress={controls.dismissError}
             style={[styles.flex, { backgroundColor: surfaces.fill }]}
           />
-          {routeMissing ? (
+          {toSettings ? (
             <Button label={t("play.goModels")} onPress={onOpenSettings} style={styles.flex} />
           ) : canRetry(state) ? (
             <Button label={t("common.retry")} icon="retry" onPress={controls.retry} style={styles.flex} />

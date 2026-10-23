@@ -14,7 +14,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
 import { LANGUAGE_NAMES } from "@bettertavern/core/i18n/index";
-import { modelStatusLabel, windowSourceLabel } from "@bettertavern/core/settings/labels";
+import { directorLine, modelStatusLabel, windowSourceLabel } from "@bettertavern/core/settings/labels";
 import { centerColumn, pane, rail, tabInsets } from "@bettertavern/design/layout";
 import { formatTokens } from "@bettertavern/core/utils/format";
 
@@ -106,7 +106,7 @@ function DirectorCard({
             {route.model}
           </Text>
           <Text numberOfLines={1} style={[{ fontSize: 12.5, lineHeight: 18 }, faint]}>
-            {route.label || route.provider} · {t("settings.keyTail", { last4: route.key_last4 })}
+            {directorLine(route)}
           </Text>
         </View>
         {light ? null : <Icon name="chevronRight" size={18} color={fg} />}

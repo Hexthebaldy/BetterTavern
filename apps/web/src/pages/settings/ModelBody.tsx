@@ -2,6 +2,7 @@
  * 一个模型的详情（W14，同 App 的 ModelBody）：名字、状态、导演标记、四格信息；测试这个模型、设为导演、测试结果；
  * “能记住多少”的格子图和窗口来源说明（拿不到窗口时可以手填）；工作窗口上限和深度思考；更换 Key、删除模型、取消导演模型。
  * 右栏够宽（≥ 720）时分两栏：左边是名字到测试结果，右边是上下文到最后。
+ * 官方模型的 Key、模型名、端点、窗口不能改，也不用测试：不显示编辑、测试、更换 Key、手填窗口，换成余额和说明。
  */
 
 import { useEffect, useState } from "react";
@@ -10,7 +11,9 @@ import { useNavigate, useParams } from "react-router";
 
 import { describeError } from "@bettertavern/core/api/client";
 import {
+  creditsLine,
   describeWindow,
+  keyText,
   modelStatusLabel,
   modelTitle,
   providerName,
@@ -27,7 +30,7 @@ import { formatTokens } from "@bettertavern/core/utils/format";
 
 import { Button, cx, Dots, IconButton, Notice, Pill } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
-import { useModelRoute, useProviders, useRouteUpdater } from "../../data/models.ts";
+import { useCredits, useModelRoute, useProviders, useRouteUpdater } from "../../data/models.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useOverlay } from "../../overlay/OverlayProvider.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
@@ -55,6 +58,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
   const query = useModelRoute(id);
   const providers = useProviders();
   const update = useRouteUpdater();
+  const credits = useCredits();
   const [choice, setChoice] = useState<WindowChoice>("default");
   const [thinking, setThinking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -168,6 +172,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
     });
   };
 
+  const platform = route.source === "platform";
   const kind = statusKind(route.status);
   const dirty =
     windowChoice(route.params.working_window) !== choice || (route.params.thinking === true) !== thinking;
@@ -178,27 +183,30 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
       <div className={styles.column}>
         <div className={styles.modelHead}>
           <div className={styles.rowText}>
-            <h2 className={cx(styles.bodyTitle, !route.label && styles.monoTitle)}>{modelTitle(route)}</h2>
+            <h2 className={cx(styles.bodyTitle, modelTitle(route) === route.model && styles.monoTitle)}>{modelTitle(route)}</h2>
             <div className={styles.statusLine}>
               <StatusPill kind={kind} label={modelStatusLabel(route.status)} />
               {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
+              {platform ? <Pill label={t("models.officialPill")} /> : null}
               {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
               {route.is_workbench ? <Pill label={t("models.workbenchPill")} /> : null}
             </div>
           </div>
-          <IconButton
-            icon="write"
-            label={t("models.editLabel")}
-            diameter={44}
-            iconSize={20}
-            onClick={() => setDialog("edit")}
-          />
+          {platform ? null : (
+            <IconButton
+              icon="write"
+              label={t("models.editLabel")}
+              diameter={44}
+              iconSize={20}
+              onClick={() => setDialog("edit")}
+            />
+          )}
         </div>
         <div className={styles.cells}>
           {(
             [
               [t("models.provider"), providerName(route.provider, providers.data), false],
-              ["Key", `•••• ${route.key_last4}`, true],
+              ["Key", keyText(route), !platform],
               [t("models.modelName"), route.model, true],
               [t("models.endpointShort"), route.base_url ?? t("models.officialShort"), !!route.base_url],
             ] as const
@@ -214,31 +222,46 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
             {route.status === "invalid" ? t("models.keyRejected") : t("models.keyUnverified")}
           </p>
         ) : null}
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.probeButton}
-            disabled={probing}
-            onClick={() => void probe()}
-          >
-            {probing ? (
-              <Dots label={t("models.testing")} />
-            ) : (
+        {platform ? (
+          <Notice
+            tone="info"
+            message={
               <>
-                <span>{t("models.test")}</span>
-                <span className={styles.probeNote}>{t("models.testTime")}</span>
+                {t("models.officialFixed")} {t("models.creditsNote")}
+                {credits.data ? <strong> {creditsLine(credits.data)}</strong> : null}
               </>
+            }
+          />
+        ) : null}
+        {platform && route.is_director ? null : (
+          <div className={styles.actions}>
+            {platform ? null : (
+              <button
+                type="button"
+                className={styles.probeButton}
+                disabled={probing}
+                onClick={() => void probe()}
+              >
+                {probing ? (
+                  <Dots label={t("models.testing")} />
+                ) : (
+                  <>
+                    <span>{t("models.test")}</span>
+                    <span className={styles.probeNote}>{t("models.testTime")}</span>
+                  </>
+                )}
+              </button>
             )}
-          </button>
-          {route.is_director ? null : (
-            <Button
-              label={t("models.setDirector")}
-              size="lg"
-              className={styles.flex}
-              onClick={() => void makeDirector()}
-            />
-          )}
-        </div>
+            {route.is_director ? null : (
+              <Button
+                label={t("models.setDirector")}
+                size="lg"
+                className={styles.flex}
+                onClick={() => void makeDirector()}
+              />
+            )}
+          </div>
+        )}
         {message ? <Notice tone={message.tone} message={message.text} /> : null}
         {route.last_probe ? <ProbeResults report={route.last_probe} /> : null}
       </div>
@@ -246,7 +269,7 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
       <div className={styles.column}>
         <SectionHeader title={t("models.context")} />
         <MemoryBlocks route={route} choice={choice} />
-        {note ? (
+        {note && !platform ? (
           <Notice
             tone={route.window.source === "learned" ? "info" : "warn"}
             message={note}
@@ -337,13 +360,15 @@ export function ModelBody({ id, titled = true }: { id: string; titled?: boolean 
         </label>
 
         <div className={styles.bottom}>
-          <Button
-            label={t("models.replaceKey")}
-            variant="secondary"
-            icon="key"
-            size="lg"
-            onClick={() => setDialog("key")}
-          />
+          {platform ? null : (
+            <Button
+              label={t("models.replaceKey")}
+              variant="secondary"
+              icon="key"
+              size="lg"
+              onClick={() => setDialog("key")}
+            />
+          )}
           {route.is_director ? (
             <button type="button" className={styles.cancelDirector} onClick={() => void cancelDirector()}>
               {t("models.cancelDirector")}

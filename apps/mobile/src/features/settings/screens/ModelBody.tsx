@@ -2,6 +2,7 @@
  * 一个模型的详情：服务商、Key、状态、端点；测试这个模型、设为导演；“能记住多少”的格子图和窗口来源说明
  * （拿不到窗口时可以手填）；工作窗口上限和深度思考；底部更换 Key、取消导演、删除。面板见 ModelSheets.tsx。
  * 路由页面是 app/settings/model/[id].tsx；宽屏设置两栏时嵌在右栏里（见 ../nav.tsx）。
+ * 官方模型的 Key、模型名、端点、窗口不能改，也不用测试：不显示编辑、测试、更换 Key、手填窗口，换成余额和说明。
  */
 
 import { useEffect, useState } from "react";
@@ -12,7 +13,9 @@ import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
 import { formatTokens } from "@bettertavern/core/utils/format";
 import {
+  creditsLine,
   describeWindow,
+  keyText,
   modelStatusLabel,
   modelTitle,
   providerName,
@@ -60,7 +63,9 @@ export function ModelBody({ id }: { id: string }) {
   const { t } = useTranslation();
   const { data, error, loading, reload, setData } = useAsync(async () => {
     const [route, providers] = await Promise.all([api.models.get(id), api.models.providers()]);
-    return { route, providers };
+    // 余额只在官方模型的说明里用，取不到不影响页面
+    const credits = route.source === "platform" ? await api.auth.credits().catch(() => null) : null;
+    return { route, providers, credits };
   }, [api, id]);
 
   const [choice, setChoice] = useState<WindowChoice>("default");
@@ -90,7 +95,8 @@ export function ModelBody({ id }: { id: string }) {
       </View>
     );
   }
-  const { providers } = data;
+  const { providers, credits } = data;
+  const platform = route.source === "platform";
   const provider = providers.find((p) => p.id === route.provider);
 
   const update = (fresh: ModelRoute): void =>
@@ -197,29 +203,32 @@ export function ModelBody({ id }: { id: string }) {
           <View style={{ flex: 1, gap: space.s }}>
             <Text
               accessibilityRole="header"
-              style={[styles.title, { color: palette.ink }, route.label ? null : styles.mono]}
+              style={[styles.title, { color: palette.ink }, modelTitle(route) === route.model ? styles.mono : null]}
             >
               {modelTitle(route)}
             </Text>
             <View style={styles.statusLine}>
               <Status kind={kind} label={modelStatusLabel(route.status)} />
               {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
+              {platform ? <Pill label={t("models.officialPill")} /> : null}
               {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
               {route.is_workbench ? <Pill label={t("models.workbenchPill")} /> : null}
             </View>
           </View>
-          <IconButton
-            icon="write"
-            label={t("models.editLabel")}
-            size={20}
-            diameter={44}
-            onPress={() => setSheet("edit")}
-          />
+          {platform ? null : (
+            <IconButton
+              icon="write"
+              label={t("models.editLabel")}
+              size={20}
+              diameter={44}
+              onPress={() => setSheet("edit")}
+            />
+          )}
         </View>
         <View style={styles.grid}>
           {[
             [t("models.provider"), providerName(route.provider, providers), false],
-            ["Key", `•••• ${route.key_last4}`, true],
+            ["Key", keyText(route), !platform],
             [t("models.modelName"), route.model, true],
             [t("models.endpointShort"), route.base_url ?? t("models.officialShort"), !!route.base_url],
           ].map(([key, value, mono]) => (
@@ -243,29 +252,42 @@ export function ModelBody({ id }: { id: string }) {
           </Text>
         ) : null}
 
-        <View style={styles.actions}>
-          <Button
-            label={t("models.test")}
-            variant="secondary"
-            onPress={() => void probe()}
-            busy={probing}
-            style={styles.action}
-          >
-            <View style={{ alignItems: "center" }}>
-              <Text style={{ fontSize: 16, fontWeight: "500", color: palette.ink }}>{t("models.test")}</Text>
-              <Text style={{ fontFamily: font.mono, fontSize: 10.5, color: palette.mut }}>
-                {t("models.testTime")}
-              </Text>
-            </View>
-          </Button>
-          {route.is_director ? null : (
-            <Button
-              label={t("models.setDirector")}
-              onPress={() => void makeDirector()}
-              style={styles.action}
-            />
-          )}
-        </View>
+        {platform ? (
+          <Notice
+            tone="info"
+            message={[t("models.officialFixed"), t("models.creditsNote"), credits ? creditsLine(credits) : ""]
+              .filter(Boolean)
+              .join(" ")}
+            style={{ marginHorizontal: space.list, marginTop: space.s, borderRadius: 22 }}
+          />
+        ) : null}
+        {platform && route.is_director ? null : (
+          <View style={styles.actions}>
+            {platform ? null : (
+              <Button
+                label={t("models.test")}
+                variant="secondary"
+                onPress={() => void probe()}
+                busy={probing}
+                style={styles.action}
+              >
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ fontSize: 16, fontWeight: "500", color: palette.ink }}>{t("models.test")}</Text>
+                  <Text style={{ fontFamily: font.mono, fontSize: 10.5, color: palette.mut }}>
+                    {t("models.testTime")}
+                  </Text>
+                </View>
+              </Button>
+            )}
+            {route.is_director ? null : (
+              <Button
+                label={t("models.setDirector")}
+                onPress={() => void makeDirector()}
+                style={styles.action}
+              />
+            )}
+          </View>
+        )}
         {message ? (
           <Notice
             tone={message.tone}
@@ -277,7 +299,7 @@ export function ModelBody({ id }: { id: string }) {
 
         <SectionHeader title={t("models.context")} />
         <MemoryBlocks route={route} choice={choice} />
-        {note ? (
+        {note && !platform ? (
           <Notice
             tone={route.window.source === "learned" ? undefined : "warn"}
             message={note}
@@ -339,12 +361,14 @@ export function ModelBody({ id }: { id: string }) {
         <WorkbenchRow route={route} onChange={(on) => void setWorkbench(on)} />
 
         <View style={styles.bottom}>
-          <Button
-            label={t("models.replaceKey")}
-            variant="secondary"
-            icon="key"
-            onPress={() => setSheet("key")}
-          />
+          {platform ? null : (
+            <Button
+              label={t("models.replaceKey")}
+              variant="secondary"
+              icon="key"
+              onPress={() => setSheet("key")}
+            />
+          )}
           {route.is_director ? (
             <Button label={t("models.cancelDirector")} variant="text" onPress={() => void cancelDirector()}>
               <Text style={{ fontSize: 15, fontWeight: "500", color: palette.err }}>

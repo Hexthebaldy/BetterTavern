@@ -11,7 +11,7 @@ import { Link, useLocation } from "react-router";
 import { describeError } from "@bettertavern/core/api/client";
 import type { ModelRoute } from "@bettertavern/core/api/types";
 import { LANGUAGE_NAMES } from "@bettertavern/core/i18n/index";
-import { modelStatusLabel, windowSourceLabel } from "@bettertavern/core/settings/labels";
+import { directorLine, modelStatusLabel, windowSourceLabel } from "@bettertavern/core/settings/labels";
 import { formatTokens } from "@bettertavern/core/utils/format";
 
 import { cx, Notice, Pill } from "../../components/controls.tsx";
@@ -51,7 +51,7 @@ function DirectorCard({ route, light, selected }: { route: ModelRoute; light: bo
         <span className={styles.cardText}>
           <span className={styles.model}>{route.model}</span>
           <span className={styles.faintSmall}>
-            {route.label || route.provider} · {t("settings.keyTail", { last4: route.key_last4 })}
+            {directorLine(route)}
           </span>
         </span>
         {light ? null : <Icon name="chevronRight" size={18} />}

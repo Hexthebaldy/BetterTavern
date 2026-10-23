@@ -119,6 +119,17 @@ export const settings: MessagesOtherOnly<typeof source> = {
     title: "モデル",
     intro:
       "物語はあなた自身のモデルで書かれます。モデルを追加するときにキーとモデルをまとめて設定し、監督にするモデルを一つ選んでください。あとで監督を変えるのもワンタップです。",
+    introPlatform:
+      "登録するとすぐに公式モデルが使え、設定なしで物語を書き始められます。使用量に応じてポイントを消費します。自分のモデルを追加することもできます。キーとモデルをまとめて設定し、監督にするモデルを 1 つ選んでください。",
+    officialName: "公式モデル",
+    officialKey: "提供済み",
+    officialPill: "公式",
+    creditsLine: "公式モデルの残り {{balance}} ポイント、あと約 {{turns}} ターン",
+    creditsEmpty: "公式モデルのポイントを使い切りました。自分のモデルを追加して監督にすると、続きを書けます",
+    creditsNote: "公式モデルはキーの設定が不要で、実際の使用量に応じてポイントを消費します（1 ポイント = 0.001 元）。",
+    officialUse: "公式モデルを使う",
+    officialAdded: "公式モデルを追加しました",
+    officialFixed: "公式モデルのキー、モデル名、エンドポイントはサーバーが提供するため、変更できず、テストも不要です。",
     loadFailed: "モデル一覧を読み込めませんでした",
     loadFailedWith: "モデル一覧を読み込めませんでした：{{error}}",
     modelLoadFailed: "モデルを読み込めませんでした",

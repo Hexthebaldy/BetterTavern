@@ -18,6 +18,7 @@ import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
 import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
+import { needsModelSettings } from "@bettertavern/core/settings/labels";
 import { pane } from "@bettertavern/design/layout";
 
 import { Cover } from "../../../src/components/Cover.tsx";
@@ -215,7 +216,10 @@ export default function ScenarioScreen() {
 
   const edit = (): void => router.push({ pathname: "/scenario/form", params: { id: scenario.id } });
 
-  const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
+  const startCode = startError instanceof ApiError ? startError.code : undefined;
+  const routeMissing = startCode === "ROUTE_MISSING";
+  // 没有导演、官方模型的点数用完了：都带“去设置”按钮
+  const toSettings = needsModelSettings(startCode);
   // 封面宽度：手机整屏减两边 12；中屏的居中栏最宽 640；宽屏左栏 420
   const coverWidth = expanded
     ? pane.scenarioInfo
@@ -277,8 +281,8 @@ export default function ScenarioScreen() {
   const errorNotice = startError ? (
     <Notice
       message={routeMissing ? t("start.noModel") : describeError(startError)}
-      actionLabel={routeMissing ? t("start.goSettings") : undefined}
-      onAction={routeMissing ? () => router.push("/settings/models") : undefined}
+      actionLabel={toSettings ? t("start.goSettings") : undefined}
+      onAction={toSettings ? () => router.push("/settings/models") : undefined}
     />
   ) : null;
   const pills = (

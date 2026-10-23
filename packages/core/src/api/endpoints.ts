@@ -6,6 +6,7 @@ import type { ApiClient } from "./client.ts";
 import type {
   AuthResponse,
   CodePurpose,
+  Credits,
   ModelInfo,
   ModelRoute,
   NewAction,
@@ -144,6 +145,8 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
         }),
       me: () => client.get<User>("/v1/me"),
       deleteAccount: (password: string) => client.delete<void>("/v1/me", { password }),
+      /** 官方模型的点数余额 */
+      credits: () => client.get<Credits>("/v1/me/credits"),
     },
     models: {
       providers: () => client.get<Provider[]>("/v1/providers"),
@@ -158,6 +161,8 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
       update: (id: string, body: ModelRoutePatch) =>
         client.patch<ModelRoute>(`/v1/model-routes/${enc(id)}`, body, { timeoutMs: 30_000 }),
       remove: (id: string) => client.delete<void>(`/v1/model-routes/${enc(id)}`),
+      /** 把官方模型加回来（已经有就原样返回）；服务器没有官方模型时 503 PLATFORM_UNAVAILABLE */
+      addPlatform: () => client.post<ModelRoute>("/v1/model-routes/platform"),
       // 测试会真的调几次模型，给足时间
       probe: (id: string) =>
         client.post<ProbeReport>(`/v1/model-routes/${enc(id)}/probe`, undefined, { timeoutMs: 90_000 }),

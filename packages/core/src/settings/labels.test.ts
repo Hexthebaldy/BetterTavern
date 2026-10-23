@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { ModelInfo, ModelRoute, RouteWindow } from "../api/types.ts";
-import { manualWindowChoice, modelTitle, needsManualWindow, windowNote } from "./labels.ts";
+import {
+  creditsLine,
+  directorLine,
+  keyText,
+  manualWindowChoice,
+  modelMeta,
+  modelTitle,
+  needsManualWindow,
+  needsModelSettings,
+  windowNote,
+} from "./labels.ts";
 
 function route(id: string, provider: string, last4: string, shares: string[] = [], label = ""): ModelRoute {
   const window: RouteWindow = {
@@ -36,6 +46,7 @@ function route(id: string, provider: string, last4: string, shares: string[] = [
     window,
     created_at: "2026-10-15T00:00:00Z",
     updated_at: "2026-10-15T00:00:00Z",
+    source: "user",
   };
 }
 
@@ -66,6 +77,29 @@ describe("模型详情", () => {
   it("名字用备注名，没有就用模型名", () => {
     assert.equal(modelTitle({ label: "", model: "deepseek-chat" }), "deepseek-chat");
     assert.equal(modelTitle({ label: "主力", model: "deepseek-chat" }), "主力");
+  });
+
+  it("官方模型没有备注名时叫“官方模型”，Key 那一格不显示尾号", () => {
+    const official: ModelRoute = { ...route("p", "deepseek", ""), source: "platform", model: "deepseek-flash" };
+    assert.equal(modelTitle(official), "官方模型");
+    assert.equal(keyText(official), "官方提供");
+    assert.equal(modelMeta(official), "deepseek-flash · 官方提供 · 32K");
+    assert.equal(directorLine(official), "官方模型");
+    const own = route("a", "deepseek", "abcd");
+    assert.equal(modelMeta(own), "•••• abcd · 32K");
+    assert.equal(directorLine({ ...own, label: "主力" }), "主力 · 尾号 abcd");
+  });
+
+  it("官方模型的余额", () => {
+    assert.equal(creditsLine({ balance: 1480, turns_left: 37 }), "官方模型剩余 1480 点，约能写 37 回合");
+    assert.match(creditsLine({ balance: -3, turns_left: 0 }), /点数用完了/);
+  });
+
+  it("没有导演、点数用完了要去设置模型", () => {
+    assert.equal(needsModelSettings("ROUTE_MISSING"), true);
+    assert.equal(needsModelSettings("CREDITS_EXHAUSTED"), true);
+    assert.equal(needsModelSettings("PLATFORM_BUSY"), false);
+    assert.equal(needsModelSettings(undefined), false);
   });
 
   it("只有估计值、手填和纠正过的窗口要额外说明", () => {

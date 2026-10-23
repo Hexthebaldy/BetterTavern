@@ -120,6 +120,17 @@ export const settings: Messages<typeof source> = {
     title: "Models",
     intro:
       "Your stories are written by your own models. When you add a model, set up the key and the model together, then pick one as the director. Switching directors later takes one tap.",
+    introPlatform:
+      "You get the official model when you sign up, so you can start writing with nothing to set up; it uses credits as you go. You can also add your own models: set up the key and the model together, then pick one as the director.",
+    officialName: "Official model",
+    officialKey: "Provided",
+    officialPill: "Official",
+    creditsLine: "Official model: {{balance}} credits left, about {{turns}} turns",
+    creditsEmpty: "You've used up your official model credits. Add your own model and make it the director to keep writing",
+    creditsNote: "The official model needs no key and uses credits based on actual usage (1 credit = 0.001 CNY).",
+    officialUse: "Use the official model",
+    officialAdded: "Official model added",
+    officialFixed: "The official model's key, model name and endpoint come from the server. They can't be changed and don't need testing.",
     loadFailed: "The model list didn't load",
     loadFailedWith: "The model list didn't load: {{error}}",
     modelLoadFailed: "The model didn't load",

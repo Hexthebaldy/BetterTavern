@@ -1,6 +1,14 @@
 /** 设置页共用的文字和小规则（模型列表、添加模型、模型详情）。纯逻辑，node --test 可测。 */
 
-import type { ModelInfo, ModelRoute, ProbeCheck, Provider, RouteWindow, WindowSource } from "../api/types.ts";
+import type {
+  Credits,
+  ModelInfo,
+  ModelRoute,
+  ProbeCheck,
+  Provider,
+  RouteWindow,
+  WindowSource,
+} from "../api/types.ts";
 import { i18n, lookup } from "../i18n/index.ts";
 import { formatTokens } from "../utils/format.ts";
 
@@ -21,9 +29,39 @@ export function providerName(id: string, providers: Provider[] | undefined): str
   return provider?.display_name ?? id;
 }
 
-/** 列表和标题里显示的名字：备注名，没有就是模型名 */
-export function modelTitle(route: Pick<ModelRoute, "label" | "model">): string {
-  return route.label || route.model;
+/** 列表和标题里显示的名字：备注名；没有备注名时，官方模型叫“官方模型”，其他的是模型名 */
+export function modelTitle(route: Pick<ModelRoute, "label" | "model"> & { source?: ModelRoute["source"] }): string {
+  if (route.label) return route.label;
+  return route.source === "platform" ? i18n.t("models.officialName") : route.model;
+}
+
+/** Key 那一格：自己的 Key 显示后四位；官方模型不用 Key */
+export function keyText(route: Pick<ModelRoute, "source" | "key_last4">): string {
+  return route.source === "platform" ? i18n.t("models.officialKey") : `•••• ${route.key_last4}`;
+}
+
+/** 列表一行名字下面的小字：模型名（名字不是模型名时）· Key · 上下文 */
+export function modelMeta(route: Pick<ModelRoute, "label" | "model" | "source" | "key_last4" | "window">): string {
+  const parts = modelTitle(route) === route.model ? [] : [route.model];
+  parts.push(keyText(route), formatTokens(route.window.model_window));
+  return parts.join(" · ");
+}
+
+/** 设置首页导演卡片的第二行：备注名或服务商 · 尾号；官方模型写“官方模型” */
+export function directorLine(route: Pick<ModelRoute, "label" | "provider" | "source" | "key_last4">): string {
+  if (route.source === "platform") return route.label || i18n.t("models.officialName");
+  return `${route.label || route.provider} · ${i18n.t("settings.keyTail", { last4: route.key_last4 })}`;
+}
+
+/** 官方模型的余额：“剩余 1480 点，约能写 37 回合” */
+export function creditsLine(credits: Pick<Credits, "balance" | "turns_left">): string {
+  if (credits.balance <= 0) return i18n.t("models.creditsEmpty");
+  return i18n.t("models.creditsLine", { balance: credits.balance, turns: credits.turns_left });
+}
+
+/** 这些错误要去“设置 › 模型”处理：还没有导演模型；官方模型的点数用完了 */
+export function needsModelSettings(code: string | undefined): boolean {
+  return code === "ROUTE_MISSING" || code === "CREDITS_EXHAUSTED";
 }
 
 /** 窗口来源的短说明，放在“上下文 128K”后面 */

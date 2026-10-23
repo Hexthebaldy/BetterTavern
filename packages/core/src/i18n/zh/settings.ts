@@ -116,6 +116,17 @@ export const settings = {
   models: {
     title: "模型",
     intro: "故事由你自己的模型来写。添加模型时把 Key 和模型一起配好，再选一个当导演；以后换导演点一下就行。",
+    introPlatform:
+      "注册就有官方模型，不用配置就能写故事，按用量扣点数。也可以添加自己的模型：把 Key 和模型一起配好，再选一个当导演。",
+    officialName: "官方模型",
+    officialKey: "官方提供",
+    officialPill: "官方",
+    creditsLine: "官方模型剩余 {{balance}} 点，约能写 {{turns}} 回合",
+    creditsEmpty: "官方模型的点数用完了。添加自己的模型并设为导演，就能接着写",
+    creditsNote: "官方模型不用配置 Key，按实际用量扣点数（1 点 = 0.001 元）。",
+    officialUse: "使用官方模型",
+    officialAdded: "已加上官方模型",
+    officialFixed: "官方模型的 Key、模型名和端点由服务器提供，不能修改，也不用测试。",
     loadFailed: "模型列表没加载出来",
     loadFailedWith: "模型列表没加载出来：{{error}}",
     modelLoadFailed: "模型没加载出来",

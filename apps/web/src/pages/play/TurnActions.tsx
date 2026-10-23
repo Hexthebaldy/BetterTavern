@@ -18,6 +18,7 @@ import {
   needsOpening,
   type PlayState,
 } from "@bettertavern/core/play/turnMachine";
+import { needsModelSettings } from "@bettertavern/core/settings/labels";
 
 import { Button, cx } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -81,6 +82,7 @@ export function TurnActions({
 
   if (state.phase === "failed" && state.error) {
     const routeMissing = state.error.code === "ROUTE_MISSING";
+    const toSettings = needsModelSettings(state.error.code);
     const opening = state.turns.length === 0;
     return (
       <div className={styles.area}>
@@ -100,7 +102,7 @@ export function TurnActions({
             variant="secondary"
             onClick={controls.dismissError}
           />
-          {routeMissing ? (
+          {toSettings ? (
             <Button label={t("play.goModels")} onClick={onOpenSettings} />
           ) : canRetry(state) ? (
             <Button label={t("common.retry")} icon="retry" onClick={controls.retry} />

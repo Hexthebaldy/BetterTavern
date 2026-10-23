@@ -18,6 +18,7 @@ import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
 import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
+import { needsModelSettings } from "@bettertavern/core/settings/labels";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Button, cx, IconButton, Notice, Pill } from "../../components/controls.tsx";
@@ -183,7 +184,10 @@ export function ScenarioPage() {
   };
 
   const edit = (): void => void navigate(`${scenarioPath(scenario)}/edit`);
-  const routeMissing = startError instanceof ApiError && startError.code === "ROUTE_MISSING";
+  const startCode = startError instanceof ApiError ? startError.code : undefined;
+  const routeMissing = startCode === "ROUTE_MISSING";
+  // 没有导演、官方模型的点数用完了：都带“去设置”按钮
+  const toSettings = needsModelSettings(startCode);
   const coverWidth = wide ? shell.scenarioInfo : Math.min(width - 24, shell.readable);
   const cover = (
     <div className={styles.cover}>
@@ -226,8 +230,8 @@ export function ScenarioPage() {
   const errorNotice = startError ? (
     <Notice
       message={routeMissing ? t("start.noModel") : describeError(startError)}
-      actionLabel={routeMissing ? t("start.goSettings") : undefined}
-      onAction={routeMissing ? () => navigate("/settings/models") : undefined}
+      actionLabel={toSettings ? t("start.goSettings") : undefined}
+      onAction={toSettings ? () => navigate("/settings/models") : undefined}
     />
   ) : null;
   const pills = (

@@ -135,6 +135,12 @@ export const common = {
       TOO_MANY_RUNS: "同时在写的草稿太多了（最多 {{limit}} 个），等一个写完再开始",
       TOO_MANY_DRAFTS: "没保存的草稿太多了（最多 {{limit}} 份），先保存或删掉一些",
       STORAGE_FULL: "图片的存储空间满了（{{limit_mb}} MB），删掉一些草稿或角色卡再试",
+      CREDITS_EXHAUSTED: "官方模型的点数用完了。可以在设置里添加自己的模型 Key 接着写",
+      PLATFORM_BUSY: "官方模型现在太忙了，请稍后再试，或者换成自己的模型 Key",
+      PLATFORM_UNAVAILABLE: "这台服务器没有官方模型",
+      PLATFORM_ROUTE_FIXED: "官方模型的 Key、模型名和端点不能修改",
+      CONTENT_REJECTED: "这张角色卡含有色情内容，官方服务上不能保存（见内容规则）",
+      CONTENT_CHECK_UNAVAILABLE: "暂时没法检查这张角色卡的内容，请稍后再保存",
     },
     /** 业务校验（VALIDATION_ERROR 带 field）按字段的说明 */
     field: {

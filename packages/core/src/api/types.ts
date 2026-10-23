@@ -122,6 +122,22 @@ export type ModelRoute = {
   window: RouteWindow;
   created_at: string;
   updated_at: string;
+  /** user：自己的 Key；platform：官方模型（不用配 Key，按用量扣点数，连接不能改） */
+  source: "user" | "platform";
+};
+
+/** 官方模型的点数（GET /v1/me/credits）；1 点 = 0.001 元 */
+export type Credits = {
+  /** 余额（点），后台整理扣过头时可能是负数 */
+  balance: number;
+  /** 估计每回合花多少点 */
+  turn_points: number;
+  /** 估计还能写多少回合 */
+  turns_left: number;
+  /** 这台服务器有没有官方模型 */
+  platform: boolean;
+  /** 现在的导演是不是官方模型 */
+  uses_platform: boolean;
 };
 
 /** 卡片自带的世界书条目 */

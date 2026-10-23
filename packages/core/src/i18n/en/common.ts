@@ -137,6 +137,12 @@ export const common: Messages<typeof source> = {
       TOO_MANY_RUNS: "Too many drafts are being written at once (up to {{limit}}). Wait for one to finish",
       TOO_MANY_DRAFTS: "Too many unsaved drafts (up to {{limit}}). Save or delete some first",
       STORAGE_FULL: "Your image storage is full ({{limit_mb}} MB). Delete some drafts or cards and try again",
+      CREDITS_EXHAUSTED: "You've used up your official model credits. Add your own model key in Settings to keep writing",
+      PLATFORM_BUSY: "The official model is too busy right now. Please try again later, or switch to your own model key",
+      PLATFORM_UNAVAILABLE: "This server doesn't have an official model",
+      PLATFORM_ROUTE_FIXED: "The official model's key, model name and endpoint can't be changed",
+      CONTENT_REJECTED: "This character card has sexual content, which can't be saved on the official service (see the content rules)",
+      CONTENT_CHECK_UNAVAILABLE: "We couldn't check this character card's content right now. Please try saving again later",
     },
     field: {
       email: "That email address isn't valid.",

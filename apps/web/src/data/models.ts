@@ -7,6 +7,7 @@ import type { ModelRoute } from "@bettertavern/core/api/types";
 import { useApp } from "../state/AppProvider.tsx";
 
 export const routesKey = ["model-routes"] as const;
+export const creditsKey = ["credits"] as const;
 
 export function useModelRoutes() {
   const { api, status } = useApp();
@@ -28,11 +29,18 @@ export function useModelRoute(id: string) {
   return useQuery({ queryKey: ["model-route", id], queryFn: () => api.models.get(id) });
 }
 
-/** 改了一个模型：详情和列表都换成新的（设为导演会影响别的模型，列表重新取） */
+/** 官方模型的点数余额（服务器没有官方模型时 platform 为 false） */
+export function useCredits() {
+  const { api, status } = useApp();
+  return useQuery({ queryKey: creditsKey, queryFn: () => api.auth.credits(), enabled: status === "signedIn" });
+}
+
+/** 改了一个模型：详情和列表都换成新的（设为导演会影响别的模型，列表重新取；导演换了，余额卡片也要重新看） */
 export function useRouteUpdater() {
   const queries = useQueryClient();
   return (route: ModelRoute): void => {
     queries.setQueryData(["model-route", route.id], route);
     void queries.invalidateQueries({ queryKey: routesKey });
+    void queries.invalidateQueries({ queryKey: creditsKey });
   };
 }
