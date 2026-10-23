@@ -1,6 +1,6 @@
 /**
- * 一条完整的路：注册 → 刷新后还登录着（Cookie）→ 添加假模型 → 在工作台导入角色卡、手动改 → 保存并建剧本 → 开局 → 按 A 选选项 →
- * 按 / 自己写、Enter 发送 → 按 W 停靠世界状态 → 拖窄窗口看让位和滑出 → 按 ? 看快捷键 → 写结局 → 删除账户。
+ * 一条完整的路：注册 → 刷新后还登录着（Cookie）→ 用轮盘进模型页、添加假模型 → 在工作台导入角色卡、手动改 → 保存并建剧本 → 开局 →
+ * 按 A 选选项 → 按 / 自己写、Enter 发送 → 按 W 打开世界状态 → 拖窄窗口看轮盘换成 Tab 栏 → 按 ? 看快捷键 → 写结局 → 在设置里删除账户。
  * 假模型每次的回复不一样（按调用次数轮换），所以断言只看“选了什么就出现什么”，不写死叙述的内容。
  */
 
@@ -40,10 +40,15 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await page.reload();
   await expect(page).toHaveURL(/\/playthroughs$/);
 
-  // ---- 侧栏进模型页；添加假模型（对话框）并设为导演，加好后打开它的详情 ----
-  await page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "模型" }).click();
+  // ---- 轮盘进模型页（Q 展开，点“模型”那一块）；添加假模型（对话框）并设为导演，加好后打开它的详情 ----
+  await page.locator("body").click({ position: { x: 700, y: 60 } });
+  await page.keyboard.press("q");
+  const wheel = page.getByRole("menu", { name: "导航轮盘" });
+  await expect(wheel.getByRole("menuitem", { name: /^存档/ })).toHaveAttribute("aria-current", "page");
+  await wheel.getByRole("menuitem", { name: /^模型/ }).click();
   await expect(page).toHaveURL(/\/models$/);
-  await page.getByRole("button", { name: "添加模型" }).first().click();
+  await expect(wheel).toHaveCount(0);
+  await page.getByRole("button", { name: "添加", exact: true }).click();
   const add = page.getByRole("dialog", { name: "添加模型" });
   await add.getByRole("radio", { name: "自定义兼容端点" }).click();
   await add.getByLabel("API Key").fill("sk-e2e-0000-fake");
@@ -57,7 +62,7 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   // ---- 在工作台导入角色卡：解析完进草稿的手动表单 ----
   await page.goto("/workbench");
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "导入角色卡" }).first().click();
+  await page.getByRole("button", { name: "拖进来就导入" }).click();
   await (await chooser).setFiles(CARD);
   await expect(page).toHaveURL(/\/workbench\/d\//);
   await expect(page.getByRole("radio", { name: "手动" })).toHaveAttribute("aria-checked", "true");
@@ -104,23 +109,20 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await expect(page.locator("p", { hasText: "我的行动：我推开窗，看向对岸" })).toBeVisible();
   await expect(optionA).toBeVisible({ timeout: 30_000 });
 
-  // ---- 按 W：1440 宽时世界状态停靠在右边 ----
-  await page.locator("body").click({ position: { x: 700, y: 120 } });
+  // ---- 按 W：世界状态从右侧滑出，Esc 关闭；宽屏是轮盘，没有横向滚动 ----
+  await page.locator("body").click({ position: { x: 700, y: 60 } });
   await page.keyboard.press("w");
-  const dock = page.locator('aside[aria-label="世界状态"]');
-  await expect(dock).toBeVisible();
-  await expect(page.locator("[data-nav]")).toHaveAttribute("data-nav", "sidebar");
-  await noHorizontalScroll(page);
-
-  // 1300：侧栏临时收成导航条，世界仍然停靠；1100：世界从右侧滑出，Esc 关闭
-  await page.setViewportSize({ width: 1300, height: 900 });
-  await expect(page.locator("[data-nav]")).toHaveAttribute("data-nav", "rail");
-  await expect(dock).toBeVisible();
-  await page.setViewportSize({ width: 1100, height: 900 });
-  await expect(page.locator("dialog[open]")).toBeVisible();
+  const world = page.getByRole("dialog", { name: "世界状态" });
+  await expect(world).toBeVisible();
+  await expect(page.locator("[data-nav]")).toHaveAttribute("data-nav", "wheel");
   await page.keyboard.press("Escape");
-  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await expect(world).toHaveCount(0);
   await noHorizontalScroll(page);
+  for (const width of [1920, 1280, 900]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.locator("[data-nav]")).toHaveAttribute("data-nav", "wheel");
+    await noHorizontalScroll(page);
+  }
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator("[data-nav]")).toHaveAttribute("data-nav", "tabbar");
   await noHorizontalScroll(page);
@@ -147,9 +149,9 @@ test("从注册到玩下去、写结局，最后删除账户", async ({ page }) 
   await expect(page.getByRole("button", { name: "写结局", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  // ---- 删除账户：侧栏最下面的头像弹出账户小窗 → 删除账户，输入密码，再确认 ----
-  await page.getByRole("navigation", { name: "主导航" }).locator("button[aria-haspopup=dialog]").click();
-  await page.getByRole("dialog", { name: "账户" }).getByRole("button", { name: "删除账户" }).click();
+  // ---- 删除账户：设置页的“账户”一格 → 删除账户，输入密码，再确认 ----
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "删除账户" }).click();
   const remove = page.getByRole("dialog", { name: "删除账户", exact: true });
   await remove.getByLabel("输入密码确认").fill(password);
   await remove.getByRole("button", { name: "删除账户" }).click();

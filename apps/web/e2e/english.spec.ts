@@ -1,5 +1,5 @@
 /**
- * 英文界面的冒烟测试（docs/i18n.md 第 5 节）：浏览器是英文时界面跟着用英文；服务端的错误按错误码翻译；
+ * 英文界面的冒烟测试（docs/i18n.md 第 5 节）：浏览器是英文时界面跟着用英文（轮盘上的名字也是）；服务端的错误按错误码翻译；
  * 设置里切到中文、再切回来立刻生效；开局时把界面语言传给服务端（提示词用英文）；最后删除账户。
  * 完整的流程在 flow.spec.ts 里按中文跑，这里只看语言相关的部分。
  */
@@ -33,12 +33,14 @@ test("English interface: errors, language switch, and the story's prompt languag
   await expect(page).toHaveURL(/\/playthroughs$/);
   await expect(page.getByRole("heading", { name: "No saves yet" })).toBeVisible();
   await expect(page).toHaveTitle("Saves · BetterTavern");
-  await expect(page.getByRole("link", { name: "Scenarios", exact: true }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Characters", exact: true }).first()).toBeVisible();
+  await page.locator("body").click({ position: { x: 700, y: 60 } });
+  await page.keyboard.press("q");
+  const wheel = page.getByRole("menu", { name: "Navigation wheel" });
+  await expect(wheel.getByRole("menuitem", { name: /^Scenarios/ })).toBeVisible();
+  await expect(wheel.getByRole("menuitem", { name: /^Characters/ })).toBeVisible();
 
-  // ---- 设置（从账户小窗进）：语言直接摆在页面上，切到中文，再切回跟随系统 ----
-  await page.getByRole("navigation", { name: "Main navigation" }).locator("button[aria-haspopup=dialog]").click();
-  await page.getByRole("dialog", { name: "Account" }).getByRole("button", { name: "Settings" }).click();
+  // ---- 设置（轮盘里按 6）：语言直接摆在页面上，切到中文，再切回跟随系统 ----
+  await page.keyboard.press("6");
   await expect(page).toHaveURL(/\/settings$/);
   const languages = page.getByRole("radiogroup", { name: "Language" });
   await expect(languages.getByText("System language: English")).toBeVisible();
@@ -54,7 +56,7 @@ test("English interface: errors, language switch, and the story's prompt languag
 
   // ---- 添加假模型并设为导演 ----
   await page.goto("/models");
-  await page.getByRole("button", { name: "Add a model" }).first().click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
   const add = page.getByRole("dialog", { name: "Add a model" });
   await add.getByRole("radio", { name: "Custom compatible endpoint" }).click();
   await add.getByLabel("API key").fill("sk-e2e-0000-fake");
@@ -66,7 +68,7 @@ test("English interface: errors, language switch, and the story's prompt languag
   // ---- 导入角色卡，开局：请求里带上界面语言 ----
   await page.goto("/workbench");
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import a character card" }).first().click();
+  await page.getByRole("button", { name: "Drop a file here to import" }).click();
   await (await chooser).setFiles(CARD);
   await expect(page).toHaveURL(/\/workbench\/d\//);
   await page.getByRole("button", { name: "Save and start a story" }).click();
@@ -82,8 +84,7 @@ test("English interface: errors, language switch, and the story's prompt languag
 
   // ---- 删除账户 ----
   await page.goto("/settings");
-  await page.getByRole("navigation", { name: "Main navigation" }).locator("button[aria-haspopup=dialog]").click();
-  await page.getByRole("dialog", { name: "Account" }).getByRole("button", { name: "Delete account" }).click();
+  await page.getByRole("button", { name: "Delete account" }).click();
   const remove = page.getByRole("dialog", { name: "Delete account", exact: true });
   await remove.getByLabel("Enter your password to confirm").fill(password);
   await remove.getByRole("button", { name: "Delete account" }).click();

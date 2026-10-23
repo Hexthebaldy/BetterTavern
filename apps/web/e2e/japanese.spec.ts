@@ -33,7 +33,12 @@ test("Japanese interface: errors, story language, and the Japanese serif", async
   await expect(page).toHaveURL(/\/playthroughs$/);
   await expect(page.getByRole("heading", { name: "セーブはまだありません" })).toBeVisible();
   await expect(page).toHaveTitle("セーブ · BetterTavern");
-  await expect(page.getByRole("link", { name: "シナリオ", exact: true }).first()).toBeVisible();
+  await page.locator("body").click({ position: { x: 700, y: 60 } });
+  await page.keyboard.press("q");
+  await expect(
+    page.getByRole("menu", { name: "ナビゲーションホイール" }).getByRole("menuitem", { name: /^シナリオ/ }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
   const serif = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue("--font-serif").trim(),
   );
@@ -41,7 +46,7 @@ test("Japanese interface: errors, story language, and the Japanese serif", async
 
   // ---- 添加假模型并设为导演 ----
   await page.goto("/models");
-  await page.getByRole("button", { name: "モデルを追加" }).first().click();
+  await page.getByRole("button", { name: "追加", exact: true }).click();
   const add = page.getByRole("dialog", { name: "モデルを追加" });
   await add.getByRole("radio", { name: "カスタム互換エンドポイント" }).click();
   await add.getByLabel("API キー").fill("sk-e2e-0000-fake");
@@ -53,7 +58,7 @@ test("Japanese interface: errors, story language, and the Japanese serif", async
   // ---- 导入角色卡，开局：请求里带上界面语言 ----
   await page.goto("/workbench");
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "キャラクターカードを読み込む" }).first().click();
+  await page.getByRole("button", { name: "ここにドロップしてインポート" }).click();
   await (await chooser).setFiles(CARD);
   await expect(page).toHaveURL(/\/workbench\/d\//);
   await page.getByRole("button", { name: "保存して物語を始める" }).click();
@@ -75,8 +80,7 @@ test("Japanese interface: errors, story language, and the Japanese serif", async
 
   // ---- 删除账户 ----
   await page.goto("/settings");
-  await page.getByRole("navigation", { name: "メインナビゲーション" }).locator("button[aria-haspopup=dialog]").click();
-  await page.getByRole("dialog", { name: "アカウント" }).getByRole("button", { name: "アカウントを削除" }).click();
+  await page.getByRole("button", { name: "アカウントを削除" }).click();
   const remove = page.getByRole("dialog", { name: "アカウントを削除", exact: true });
   await remove.getByLabel("確認のためパスワードを入力").fill(password);
   await remove.getByRole("button", { name: "アカウントを削除" }).click();
