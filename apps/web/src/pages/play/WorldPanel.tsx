@@ -7,51 +7,18 @@
  * - sheet（手机宽度）：同上，左右各离窗口 8。
  */
 
-import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { describeError } from "@bettertavern/core/api/client";
-import { i18n } from "@bettertavern/core/i18n/index";
-import { worldIssue, worldProgress, worldRefreshDelay } from "@bettertavern/core/play/worldStatus";
+import { worldIssue, worldProgress } from "@bettertavern/core/play/worldStatus";
 
 import { Button, cx, Dots, IconButton, Notice } from "../../components/controls.tsx";
 import { Dialog } from "../../overlay/Dialog.tsx";
-import { useOverlay } from "../../overlay/OverlayProvider.tsx";
-import { useApp } from "../../state/AppProvider.tsx";
 import type { WorldMode } from "../../theme/layout.ts";
+import { useWorld, type Head } from "./useWorld.ts";
 import styles from "./world.module.css";
 import { Entities, Facts, Links, type Tab } from "./WorldParts.tsx";
-
-/**
- * 取世界状态、揭示秘密。version 变了（写完新的一段、回退）就重新取；
- * 后台还没整理到最新一段（headSeq）时每隔一会儿再取，整理到了就停（worldRefreshDelay）。
- */
-type Head = { version: string | null; headSeq: number | null };
-
-function useWorld(playthroughId: string, { version, headSeq }: Head) {
-  const { api } = useApp();
-  const overlay = useOverlay();
-  const [revealed, setRevealed] = useState(false);
-  const query = useQuery({
-    queryKey: ["world", playthroughId, revealed, version],
-    queryFn: () => api.playthroughs.world(playthroughId, revealed),
-    placeholderData: (previous) => previous,
-    refetchInterval: (q) => worldRefreshDelay(q.state.data, headSeq) ?? false,
-  });
-  const reveal = async (): Promise<void> => {
-    const count = query.data?.hidden_facts ?? 0;
-    const ok = await overlay.confirm({
-      title: count > 1 ? i18n.t("world.revealMany", { count }) : i18n.t("world.revealOne"),
-      message: i18n.t("world.revealMessage"),
-      confirmLabel: i18n.t("world.reveal"),
-      tone: "warn",
-      icon: "lock",
-    });
-    if (ok) setRevealed(true);
-  };
-  return { query, reveal };
-}
 
 function WorldContent({
   playthroughId,
@@ -164,7 +131,7 @@ export function WorldPanel({
     <Dialog
       label={t("play.world")}
       onClose={onClose}
-      className={cx(styles.panel, styles.slideOver, mode === "sheet" && styles.sheet, "surface-panel")}
+      className={cx(styles.panel, styles.slideOver, mode === "sheet" && styles.sheet)}
       bare
     >
       {content}

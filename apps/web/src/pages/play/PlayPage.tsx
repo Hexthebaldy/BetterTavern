@@ -1,13 +1,13 @@
 /**
- * 阅读页（W06–W11）：顶部的书名、故事流、底部固定的操作栏，右边是世界状态。
+ * 阅读页（docs/design/comic 的 09）：没有顶栏，页头一行是回合数、存档名、剧本名和主角，右边是“世界 W”“回想 L”和“更多”。
+ * 下面三栏：左栏回想，中间一条分镜（StoryFeed），右栏这一话的人物和刚记下的（PlaySides.tsx）；
+ * 分镜后面接着选项卡和“自己写”（TurnActions.tsx）；最底下一条提示条写当前能按的键。
+ * 窗口窄一些时先收起右栏（< 1200），窄于 900 时只剩中间一栏（没有提示条），顶上多一个返回按钮。
  * 离开页面只断开连接，服务端的生成继续，回来时会接上。
  *
- * - 三栏：readingLayout(窗口, 收起了侧栏, 世界开着) 决定导航和世界的形态。窗口 − 导航 ≥ 1100 时世界停靠，
- *   阅读栏和底栏在剩下的宽度里重新居中；侧栏展开放不下、收成导航条就放得下时，打开世界让侧栏临时收成导航条；
- *   其余从右侧滑出。停靠的开关记在浏览器里，打开别的故事时保持。
- * - 页面整个滚动（浏览器的查找、滚动条都是原生的）；停在底部时跟着新文字滚，往上翻就停下，
- *   操作栏中间多出“回到最新”。草稿存在浏览器里，每个故事一份。
- * - 键盘：A–D 选选项，/ 自己写，W 世界状态，End 回到最新（单键快捷键可以在快捷键对话框里关掉）。
+ * - 页面整个滚动（浏览器的查找、滚动条都是原生的）；停在底部时跟着新文字滚，往上翻就停下，右下角出现“回到最新”。
+ *   草稿存在浏览器里，每个故事一份。
+ * - 键盘：A–D 选选项，/ 自己写，W 世界状态（从右侧滑出），L 回想看全部，End 回到最新（单键快捷键可以在快捷键对话框里关掉）。
  * - 标签页标题：“书名 · BetterTavern”，生成中在前面加“● ”。
  */
 
@@ -17,11 +17,12 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
-import { readableColumn } from "@bettertavern/design/layout";
 import { headTurn, isEnded, isLive, canAct, turnsAfter } from "@bettertavern/core/play/turnMachine";
 
-import { Button, IconButton } from "../../components/controls.tsx";
+import { HintBar, Panel } from "../../components/comic.tsx";
+import { Button, IconButton, Pill } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
+import { HeaderTool } from "../../components/PageHeader.tsx";
 import { storiesKey } from "../../data/stories.ts";
 import { useStoryActions } from "../../data/storyActions.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -30,21 +31,22 @@ import { useOverlay } from "../../overlay/OverlayProvider.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
 import { localStore } from "../../storage/local.ts";
-import { acceptsSingleKey, desktop, optionIndexForKey, usesWheel, worldMode } from "../../theme/layout.ts";
-import { BottomBar } from "./BottomBar.tsx";
+import { acceptsSingleKey, optionIndexForKey, usesWheel, worldMode } from "../../theme/layout.ts";
 import { MorePopover, type MoreAction } from "./MorePopover.tsx";
 import styles from "./play.module.css";
+import { CastColumn, RecapColumn } from "./PlaySides.tsx";
 import { draftKey, nextFollow, parseDraft, type Follow } from "./reading.ts";
-import { BookHeader, narrativeVars, StoryFeed } from "./StoryFeed.tsx";
+import { narrativeVars, StoryFeed } from "./StoryFeed.tsx";
 import { TurnActions } from "./TurnActions.tsx";
 import { usePlaySession } from "./usePlaySession.ts";
+import { useWorld } from "./useWorld.ts";
 import { WorldPanel } from "./WorldPanel.tsx";
 
 function OpeningSkeleton() {
   const { t } = useTranslation();
   return (
-    <div className={styles.skeleton} aria-hidden="true">
-      {[100, 100, 100, 58, 0, 100, 100, 74, 0, 100, 40].map((w, i) =>
+    <Panel tone="grey" className={styles.skeleton} aria-hidden="true">
+      {[100, 100, 100, 58, 0, 100, 100, 74].map((w, i) =>
         w === 0 ? (
           <span key={i} className={styles.skeletonGap} />
         ) : (
@@ -54,21 +56,19 @@ function OpeningSkeleton() {
       <div className={styles.opening} role="progressbar" aria-label={t("play.opening")}>
         {t("play.opening")}
       </div>
-    </div>
+    </Panel>
   );
 }
 
 function LoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
   const { t } = useTranslation();
   return (
-    <div className={styles.failed} role="alert">
-      <span className={styles.failedIcon}>
-        <Icon name="alertCircle" size={28} />
-      </span>
+    <Panel tone="dots" hot className={styles.failed} role="alert">
+      <Icon name="alertCircle" size={28} />
       <h2 className={styles.failedTitle}>{t("play.openFailed")}</h2>
       <p className={styles.failedText}>{message}</p>
-      <Button label={t("common.reload")} icon="retry" size="lg" className={styles.wide} onClick={onRetry} />
-    </div>
+      <Button label={t("common.reload")} icon="retry" onClick={onRetry} />
+    </Panel>
   );
 }
 
@@ -93,6 +93,7 @@ function PlayPage({ id }: { id: string }) {
   const actions = useStoryActions();
   const { reading, singleKeys } = usePrefs();
   const width = useWindowWidth();
+  const wide = usesWheel(width);
   const controls = usePlaySession(id);
   const { state } = controls;
   // “回到这里”的处理函数要稳定（故事流里每一段都是 memo 的），所以经 ref 读最新的状态
@@ -122,11 +123,16 @@ function PlayPage({ id }: { id: string }) {
     [overlay, t, rollback, queries],
   );
 
-  // ---- 世界状态：从右侧滑出（手机宽度是底部面板），只在这一页里开关 ----
+  // ---- 世界状态：从右侧滑出（手机宽度是底部面板），只在这一页里开关；右栏的人物和刚记下的也取它 ----
   const [worldOpen, setWorldOpen] = useState(false);
   const toggleWorld = useCallback(() => setWorldOpen((open) => !open), []);
   const closeWorld = useCallback(() => setWorldOpen(false), []);
-  const docked = false;
+  const head = headTurn(state);
+  const world = useWorld(id, { version: head?.id ?? null, headSeq: head?.seq ?? null });
+
+  // ---- 回想：默认最近几段，L 看全部 ----
+  const [recapAll, setRecapAll] = useState(false);
+  const toggleRecap = useCallback(() => setRecapAll((all) => !all), []);
 
   // ---- 更多、自己写、草稿 ----
   const moreButton = useRef<HTMLButtonElement>(null);
@@ -142,7 +148,7 @@ function PlayPage({ id }: { id: string }) {
     [id],
   );
 
-  // ---- 剧本名和封面（剧本删掉了也不影响阅读） ----
+  // ---- 剧本名（剧本删掉了也不影响阅读） ----
   const scenario = useQuery({
     queryKey: ["scenario", state.scenarioId],
     queryFn: () => api.scenarios.get(state.scenarioId ?? ""),
@@ -154,8 +160,7 @@ function PlayPage({ id }: { id: string }) {
   const live = isLive(state);
   useDocumentTitle(shownTitle || t("play.story"), live);
 
-  // 写完一段（或出错）后让故事列表刷新：侧栏的状态和摘要跟着变
-  const head = headTurn(state);
+  // 写完一段（或出错）后让故事列表刷新：存档页的状态和摘要跟着变
   useEffect(() => {
     void queries.invalidateQueries({ queryKey: storiesKey });
   }, [head?.id, live, queries]);
@@ -163,17 +168,6 @@ function PlayPage({ id }: { id: string }) {
   // ---- 跟随新文字 ----
   const follow = useRef<Follow>({ following: true, lastY: 0 });
   const [away, setAway] = useState(false);
-  const bar = useRef<HTMLDivElement>(null);
-  const [barHeight, setBarHeight] = useState(80);
-  useLayoutEffect(() => {
-    const node = bar.current;
-    if (!node) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) setBarHeight(Math.round(entry.borderBoxSize[0]?.blockSize ?? node.offsetHeight));
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  });
   const distance = (): number =>
     document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
   useEffect(() => {
@@ -182,7 +176,7 @@ function PlayPage({ id }: { id: string }) {
       setAway(!follow.current.following);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
-    // 窗口变了（拖动宽度、展开世界）：位置没变也要重新看一眼是不是还在底部
+    // 窗口变了（拖动宽度）：位置没变也要重新看一眼是不是还在底部
     window.addEventListener("resize", onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
@@ -192,7 +186,7 @@ function PlayPage({ id }: { id: string }) {
   const pendingLength = state.pending?.narrative.length ?? 0;
   useLayoutEffect(() => {
     if (follow.current.following) window.scrollTo({ top: document.documentElement.scrollHeight });
-  }, [state.turns.length, pendingLength, state.phase, barHeight, writing, docked]);
+  }, [state.turns.length, pendingLength, state.phase, writing]);
   const jumpToLatest = useCallback(() => {
     follow.current = { following: true, lastY: window.scrollY };
     setAway(false);
@@ -200,14 +194,7 @@ function PlayPage({ id }: { id: string }) {
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduced ? "auto" : "smooth" });
   }, []);
 
-  // ---- 阅读区的位置 ----
-  const area = { width: Math.max(0, width) };
-  const column = readableColumn(area.width);
-  const frame = {
-    ...narrativeVars(reading),
-    "--dock": "0px",
-    "--bar": `${barHeight}px`,
-  } as CSSProperties;
+  const frame = narrativeVars(reading) as CSSProperties;
 
   const send = (text: string): void => {
     setWriting(false);
@@ -255,9 +242,9 @@ function PlayPage({ id }: { id: string }) {
     }
   };
 
-  // ---- 键盘：A–D、/、W、End ----
-  const keyState = useRef({ state, writing, moreOpen });
-  keyState.current = { state, writing, moreOpen };
+  // ---- 键盘：A–D、/、W、L、End ----
+  const keyState = useRef({ state, writing });
+  keyState.current = { state, writing };
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
@@ -290,97 +277,134 @@ function PlayPage({ id }: { id: string }) {
       } else if (event.key.toLowerCase() === "w") {
         event.preventDefault();
         toggleWorld();
+      } else if (event.key.toLowerCase() === "l") {
+        event.preventDefault();
+        toggleRecap();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [singleKeys, controls, jumpToLatest, toggleWorld]);
+  }, [singleKeys, controls, jumpToLatest, toggleWorld, toggleRecap]);
 
-  const top = (
-    <div className={styles.top}>
-      {!usesWheel(width) ? (
+  const sub = [scenario.data?.name, state.protagonist ? t("play.iAm", { name: state.protagonist }) : null]
+    .filter(Boolean)
+    .join(" · ");
+  const header = (
+    <header className={styles.head}>
+      {!wide ? (
         <IconButton
           icon="back"
           label={t("play.backToSaves")}
+          tone="plain"
           className={styles.back}
           onClick={() => navigate("/playthroughs")}
         />
       ) : null}
-      <span className={styles.topTitle}>{shownTitle}</span>
-    </div>
+      {head && head.seq > 0 ? <Pill tone="acc" label={t("play.turnChip", { n: head.seq })} className={styles.turnChip} /> : null}
+      <h1 className={styles.title}>{shownTitle}</h1>
+      {sub ? <span className={styles.sub}>{sub}</span> : null}
+      <div className={styles.tools} role="toolbar" aria-label={t("play.toolbar")}>
+        <HeaderTool
+          icon="world"
+          label={t("play.worldShort")}
+          kbd={wide ? "W" : undefined}
+          aria-keyshortcuts="W"
+          active={worldOpen}
+          onClick={toggleWorld}
+        />
+        {wide && state.turns.length > 5 ? (
+          <HeaderTool
+            icon="history"
+            label={t("play.recap.short")}
+            kbd="L"
+            aria-keyshortcuts="L"
+            active={recapAll}
+            onClick={toggleRecap}
+          />
+        ) : null}
+        <IconButton
+          ref={moreButton}
+          icon="more"
+          label={t("play.moreLabel")}
+          aria-haspopup="dialog"
+          aria-expanded={moreOpen}
+          tone="card"
+          on={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+        />
+      </div>
+    </header>
   );
 
-  if (state.phase === "loading" || state.phase === "load_failed") {
-    return (
-      <div className={styles.page} style={frame} data-narr-font={reading.font}>
-        {top}
-        <div className={styles.feed}>
-          {state.phase === "loading" ? (
-            <OpeningSkeleton />
-          ) : (
-            <LoadFailed
-              message={state.error ? describeTurnError(state.error) : t("play.loadFailed")}
-              onRetry={controls.reload}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
+  const loading = state.phase === "loading" || state.phase === "load_failed";
   const syncing = state.phase === "syncing";
+  const hints = [
+    { keys: ["A", "B", "C"], label: t("play.hints.pick") },
+    { keys: ["/"], label: t("play.hints.write") },
+    { keys: ["L"], label: t("play.hints.recap") },
+    { keys: ["W"], label: t("play.hints.world") },
+    { keys: ["End"], label: t("play.hints.latest") },
+    { keys: ["Q"], label: t("play.hints.wheel") },
+  ];
+
   return (
-    <div className={styles.page} style={frame} data-narr-font={reading.font}>
-      {top}
+    <div className={styles.page} style={frame} data-narr-font={reading.font} data-wide={wide || undefined}>
+      {header}
       {syncing ? (
         <div className={styles.syncing} role="alert">
           <Icon name="retry" size={16} />
           {t("play.syncing")}
         </div>
       ) : null}
-      <div className={styles.feed} style={syncing ? { opacity: 0.4 } : undefined}>
-        <StoryFeed
-          state={state}
-          onRollback={rollbackTo}
-          header={
-            <BookHeader
-              seed={state.scenarioId ?? id}
-              blobId={scenario.data?.cover_blob_id ?? null}
-              title={shownTitle}
-              card={scenario.data?.name ?? null}
-              protagonist={state.protagonist}
-              coverWidth={Math.max(0, column.width + 48 - 24 - 24)}
-            />
-          }
-          footer={
-            <TurnActions
+      <div className={styles.layout}>
+        <RecapColumn turns={state.turns} all={recapAll} onToggle={toggleRecap} />
+        <div className={styles.strip} style={syncing ? { opacity: 0.4 } : undefined}>
+          {loading ? (
+            state.phase === "loading" ? (
+              <OpeningSkeleton />
+            ) : (
+              <LoadFailed
+                message={state.error ? describeTurnError(state.error) : t("play.loadFailed")}
+                onRetry={controls.reload}
+              />
+            )
+          ) : (
+            <StoryFeed
               state={state}
-              controls={controls}
-              twoColumns={width >= desktop.wheel}
-              onOpenSettings={() => navigate("/models")}
-              onPicked={() => setWriting(false)}
+              onRollback={rollbackTo}
+              footer={
+                <TurnActions
+                  state={state}
+                  controls={controls}
+                  onOpenSettings={() => navigate("/models")}
+                  onPicked={() => setWriting(false)}
+                  writing={writing}
+                  draft={draft}
+                  onDraft={setDraft}
+                  onWrite={() => setWriting(true)}
+                  onCloseWrite={() => setWriting(false)}
+                  onSend={send}
+                />
+              }
             />
-          }
+          )}
+        </div>
+        <CastColumn view={world.query.data} onOpenWorld={() => setWorldOpen(true)} />
+      </div>
+      <div className={styles.jump} data-shown={away || undefined} aria-hidden={!away}>
+        <IconButton
+          icon="down"
+          label={live ? t("play.latestNew") : t("play.latest")}
+          aria-keyshortcuts="End"
+          tone="card"
+          diameter={48}
+          iconSize={20}
+          badge={live}
+          tabIndex={away ? 0 : -1}
+          onClick={jumpToLatest}
         />
       </div>
-      <BottomBar
-        barRef={bar}
-        state={state}
-        controls={controls}
-        writing={writing}
-        onWrite={() => setWriting(true)}
-        onCloseWrite={() => setWriting(false)}
-        draft={draft}
-        onDraft={setDraft}
-        onSend={send}
-        away={away}
-        onJumpToLatest={jumpToLatest}
-        onOpenWorld={toggleWorld}
-        onOpenMore={() => setMoreOpen((open) => !open)}
-        worldActive={docked}
-        moreActive={moreOpen}
-        moreRef={moreButton}
-      />
+      {wide ? <HintBar items={hints} label={t("play.hints.label")} /> : null}
       {worldOpen ? (
         <WorldPanel
           mode={worldMode(width)}

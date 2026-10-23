@@ -5,6 +5,7 @@
 
 import type { MouseEvent, ReactNode, SelectHTMLAttributes } from "react";
 
+import { Keycap } from "./comic.tsx";
 import { cx } from "./controls.tsx";
 import { Icon, type IconName } from "./Icon.tsx";
 import styles from "./PageHeader.module.css";
@@ -71,6 +72,7 @@ export function HeaderSearch({
 export function HeaderTool({
   icon,
   label,
+  kbd,
   onClick,
   active,
   className,
@@ -78,6 +80,8 @@ export function HeaderTool({
 }: {
   icon: IconName;
   label: string;
+  /** 文字后面的键帽（阅读页的“世界 W”） */
+  kbd?: string;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   active?: boolean;
   className?: string;
@@ -95,6 +99,7 @@ export function HeaderTool({
     >
       <Icon name={icon} size={18} strokeWidth={2.2} />
       {label}
+      {kbd ? <Keycap className={styles.toolKey}>{kbd}</Keycap> : null}
     </button>
   );
 }

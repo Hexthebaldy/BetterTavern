@@ -198,8 +198,8 @@ export function Links({
               y1={e.from.y}
               x2={e.to.x}
               y2={e.to.y}
-              stroke="var(--line2)"
-              strokeWidth={1.6}
+              stroke="var(--frame)"
+              strokeWidth={2}
               strokeLinecap="round"
             />
           ))}
@@ -215,8 +215,8 @@ export function Links({
             </text>
           ))}
           {graph.nodes.map((n) => {
-            const fill = n.role === "me" ? "var(--acc)" : n.role === "hub" ? "var(--ink)" : "var(--on-fill)";
-            const text = n.role === "me" ? "#FFFFFF" : n.role === "hub" ? "var(--bg)" : "var(--ink)";
+            const fill = n.role === "me" ? "var(--acc)" : n.role === "hub" ? "var(--ink)" : "var(--paper)";
+            const text = n.role === "me" ? "var(--on-acc)" : n.role === "hub" ? "var(--on-ink)" : "var(--ink)";
             return (
               <g key={n.id}>
                 <rect
@@ -224,8 +224,10 @@ export function Links({
                   y={n.y - NODE_HEIGHT / 2}
                   width={n.width}
                   height={NODE_HEIGHT}
-                  rx={NODE_HEIGHT / 2}
+                  rx={8}
                   fill={fill}
+                  stroke="var(--frame)"
+                  strokeWidth={2}
                 />
                 <text
                   x={n.x}

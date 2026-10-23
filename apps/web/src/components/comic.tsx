@@ -40,6 +40,7 @@ export function Panel({
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
+  role?: string;
   "aria-label"?: string;
   "aria-labelledby"?: string;
 }) {

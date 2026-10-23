@@ -1,20 +1,16 @@
-/* 世界状态面板（W06、W07、W10、W11）：数值取自 WebPlay.dc.html 的 .wp、.seg、.ent、.fact、.lnk，和 App 的 WorldParts */
+/*
+ * 世界状态面板（按 W 从右侧滑出）：内容和 App 的 WorldParts 一样（人物与地点、关系图、事实），
+ * 样子换成漫画分镜版：2.5 描边的纸色面板带 --x8 硬投影，标签页是描边的一条，每一项是描边的小格。
+ */
 
 .panel {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: var(--r-group);
-  background: var(--bg2);
+  border: var(--bw) solid var(--frame);
+  border-radius: 16px;
+  background: var(--paper);
   color: var(--ink);
-}
-.dock {
-  position: fixed;
-  z-index: 15;
-  top: var(--edge);
-  right: var(--edge);
-  bottom: var(--edge);
-  width: var(--world);
 }
 dialog.slideOver {
   position: fixed;
@@ -25,8 +21,10 @@ dialog.slideOver {
   max-width: none;
   max-height: none;
   padding: 0;
-  border: 0;
-  box-shadow: var(--shadow-float);
+  border: var(--bw) solid var(--frame);
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: var(--x8);
 }
 dialog.slideOver[open] {
   display: flex;
@@ -36,6 +34,7 @@ dialog.sheet {
   inset: 8px;
   width: auto;
   height: calc(100vh - 16px);
+  box-shadow: var(--x4);
 }
 @keyframes slide {
   from {
@@ -47,31 +46,36 @@ dialog.sheet {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 16px 12px 0 20px;
+  padding: 18px 14px 0 20px;
 }
 .headText {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 .title {
-  font-size: 24px;
-  line-height: 32px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 28px;
+  line-height: 34px;
+  letter-spacing: -0.02em;
 }
 .subtitle {
-  font-size: 12px;
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   line-height: 17px;
   color: var(--mut);
 }
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  margin: 14px 12px 0;
-  padding: 4px;
-  border-radius: 24px;
-  background: var(--inset);
+  margin: 14px 14px 0;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  overflow: hidden;
 }
 .tab {
   display: flex;
@@ -80,23 +84,30 @@ dialog.sheet {
   gap: 5px;
   height: 38px;
   border: 0;
-  border-radius: 19px;
-  background: transparent;
-  color: var(--ink2);
+  background: var(--paper);
+  color: var(--ink);
   font-size: 13.5px;
+  font-weight: 600;
   white-space: nowrap;
 }
+.tab + .tab {
+  border-left: var(--bw-sm) solid var(--frame);
+}
+.tab:focus-visible {
+  outline-offset: -4px;
+}
 .tabOn {
-  background: var(--raised);
-  color: var(--ink);
-  font-weight: 600;
-  box-shadow: var(--shadow-lift);
+  background: var(--ink);
+  color: var(--on-ink);
 }
 .count {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 400;
+  font-weight: 700;
   color: var(--mut);
+}
+.tabOn .count {
+  color: var(--sky);
 }
 .body {
   flex: 1;
@@ -108,47 +119,58 @@ dialog.sheet {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 12px 12px 0;
+  padding: 12px 14px 0;
 }
 .filters button {
-  height: 34px;
+  height: 32px;
   padding: 0 12px;
   font-size: 13px;
 }
 .list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 10px 14px;
 }
 .entity {
   display: flex;
   gap: 12px;
   width: 100%;
-  padding: 12px;
-  border: 0;
-  border-radius: 22px;
-  background: var(--fill);
+  padding: 10px 12px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 12px;
+  background: var(--paper);
   color: var(--ink);
   text-align: left;
-  transition: box-shadow var(--dur-fast) var(--ease);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 .entityMe {
-  background: var(--acc-bg);
+  background: var(--acc);
+  color: var(--on-acc);
+  box-shadow: var(--x3);
+}
+.entityMe .summary,
+.entityMe .kind,
+.entityMe .chevron {
+  color: var(--on-acc);
 }
 .entityIcon {
   width: 40px;
   height: 40px;
+  border: var(--bw-sm) solid var(--frame);
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
-  background: var(--on-fill);
+  background: var(--paper);
+  color: var(--ink);
 }
 .entityMe .entityIcon {
-  background: var(--acc);
-  color: #ffffff;
+  background: var(--ink);
+  color: var(--on-ink);
 }
 .entityBody {
   flex: 1;
@@ -181,12 +203,13 @@ dialog.sheet {
   display: inline-flex;
   align-items: center;
   height: 20px;
-  padding: 0 8px;
-  border-radius: 10px;
-  background: var(--acc);
-  color: #ffffff;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-family: var(--font-mono), var(--font-sans);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 700;
 }
 .summary {
   font-size: 13.5px;
@@ -218,20 +241,22 @@ dialog.sheet {
   align-items: center;
   gap: 4px;
   height: 26px;
-  padding: 0 9px;
-  border-radius: 13px;
-  background: var(--on-fill);
+  padding: 0 8px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--r-chip);
   font-size: 12.5px;
 }
 @media (hover: hover) and (pointer: fine) {
   button.entity:hover {
-    box-shadow: var(--shadow-lift);
+    transform: translate(-1px, -1px);
+    box-shadow: var(--x3);
   }
 }
 .graph {
-  margin: 12px 12px 0;
-  border-radius: var(--r-group);
-  background: var(--fill);
+  margin: 12px 14px 0;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 12px;
+  background: var(--ht-grey), var(--grey);
   overflow: hidden;
 }
 .graph svg {
@@ -244,8 +269,9 @@ dialog.sheet {
   gap: 8px;
   height: 44px;
   padding: 0 12px;
-  border-radius: 16px;
-  background: var(--fill);
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
   font-size: 14px;
 }
 .linkName {
@@ -262,11 +288,11 @@ dialog.sheet {
   display: flex;
   align-items: center;
   height: 24px;
-  padding: 0 9px;
-  border-radius: 12px;
-  background: var(--on-fill);
+  padding: 0 8px;
+  border-radius: var(--r-chip);
+  background: var(--ink);
+  color: var(--on-ink);
   font-size: 12px;
-  color: var(--mut);
   flex: none;
 }
 .fact {
@@ -274,10 +300,10 @@ dialog.sheet {
   align-items: flex-start;
   gap: 12px;
   width: 100%;
-  padding: 12px 14px;
-  border: 0;
-  border-radius: var(--r-card);
-  background: var(--fill);
+  padding: 10px 12px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
   color: var(--ink);
   font-size: 14px;
   line-height: 22px;
@@ -285,6 +311,7 @@ dialog.sheet {
 }
 .factSecret {
   background: var(--warn-bg);
+  border-color: var(--warn);
 }
 .factSecret .kind,
 .factIcon {
@@ -320,11 +347,14 @@ dialog.sheet {
 .revealPill {
   display: flex;
   align-items: center;
-  height: 32px;
+  height: 30px;
   padding: 0 12px;
-  border-radius: 16px;
-  background: var(--on-fill);
-  font-weight: 600;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 15px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: var(--x2);
 }
 .empty {
   padding: 24px;
@@ -333,7 +363,7 @@ dialog.sheet {
   color: var(--mut);
 }
 .issue {
-  margin: 12px 12px 0;
+  margin: 12px 14px 0;
 }
 .loading {
   display: flex;

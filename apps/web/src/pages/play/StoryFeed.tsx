@@ -1,13 +1,12 @@
 /**
- * 故事流（同 App 的 StoryFeed.tsx）：书名页、已完成的回合（memo 固定，不随流式文字重渲染）、正在生成的那一段，
- * 最后是行动区（选项、开始故事、失败时的重试，见 TurnActions.tsx），跟着正文一起滚动。
- *
- * “我的行动”和叙述是同一种字、浅一档的颜色，左边一道竖线，读起来是故事的一部分。叙述左右页边距 24，段落之间空 16，
- * 两端对齐；正文可以选中复制，用浏览器自己的右键菜单。流式光标是 3×20 的蓝色圆头竖条，不闪烁。
- * 已完成的回合用 content-visibility: auto：很长的故事也只排版看得见的部分，浏览器的“查找”照样能找到。
- * 写完结局的故事，最后一段下面居中一行“—END—”（叙述的字，浅一档），没有选项也没有别的按钮。
- * 鼠标移到更早的一段上，右上角出现“回到这里”（回退，docs/agent-runtime.md 第 8 节）；回退次数用完时那里写明已用完。
- * 没有鼠标的设备上它一直显示在这一段下面。
+ * 故事流，画成一条分镜（docs/design/comic 的 09，第一版只用现有的数据）：
+ * - 叙述：每一回合一格（白底墨点），这一回合的每一段放进一个旁白框（宋体）；
+ * - 玩家的行动（“我的行动”）：靠右的蓝色对话气泡，左上角写“你”；读屏时前面加“我的行动：”；
+ * - 正在生成的那一段末尾是蓝色光标（3×20 的圆头竖条，不闪烁），重连、等结果时是灰色；
+ * - 写完结局的故事，最后一格下面居中一行“—END—”，没有选项也没有别的按钮。
+ * 已完成的回合 memo 固定（不随流式文字重渲染），用 content-visibility: auto，很长的故事也只排版看得见的部分。
+ * 鼠标移到更早的一格上，右上角出现“回到这里”（回退，docs/agent-runtime.md 第 8 节）；回退次数用完时写明已用完。
+ * 没有鼠标的设备上它一直显示。设计稿里带说话人的台词气泡和拟声词小格要导演在输出里标出来，这一版不做。
  */
 
 import { memo, type CSSProperties, type ReactNode } from "react";
@@ -26,8 +25,8 @@ import {
 } from "@bettertavern/core/play/turnMachine";
 import { lineHeightFor, readingSize, type ReadingPrefs } from "@bettertavern/core/play/reading";
 
-import { Cover } from "../../components/Cover.tsx";
-import { cx, Pill } from "../../components/controls.tsx";
+import { Bubble, Caption, Panel } from "../../components/comic.tsx";
+import { cx } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
 import styles from "./play.module.css";
 
@@ -40,7 +39,7 @@ function paragraphs(text: string): string[] {
 
 /**
  * 正文的字号：没设置字号时跟随浏览器字号（rem，以 17.5 为基准），设置后用固定的 px。
- * 写成 CSS 变量放在阅读页上，叙述和“我的行动”都用它。宋体还是黑体不放在变量里，阅读页上标 data-narr-font：
+ * 写成 CSS 变量放在阅读页上，旁白框和“我的行动”都用它。宋体还是黑体不放在变量里，阅读页上标 data-narr-font：
  * 字体组按语言分（tokens.css），要在正文所在的元素上按它的 lang 取，在外层取会拿到界面语言的那一组。
  */
 export function narrativeVars(prefs: ReadingPrefs): CSSProperties {
@@ -52,35 +51,9 @@ export function narrativeVars(prefs: ReadingPrefs): CSSProperties {
   } as CSSProperties;
 }
 
-/** 书名页：往上翻到顶看到的第一屏（灰色圆角卡片，里面是封面、书名和两个小标签） */
-export function BookHeader({
-  seed,
-  blobId,
-  title,
-  card,
-  protagonist,
-  coverWidth,
-}: {
-  seed: string;
-  blobId: string | null;
-  title: string;
-  card: string | null;
-  protagonist: string;
-  coverWidth: number;
-}) {
-  const { t } = useTranslation();
-  return (
-    <header className={styles.book}>
-      <Cover seed={seed} blobId={blobId} width={coverWidth} height={112} surface="onFill" rounded={20} />
-      <h1 className={styles.bookTitle}>{title}</h1>
-      {card || protagonist ? (
-        <div className={styles.bookChips}>
-          {card ? <Pill label={card} className={styles.cardPill} /> : null}
-          {protagonist ? <Pill label={t("play.iAm", { name: protagonist })} tone="acc" /> : null}
-        </div>
-      ) : null}
-    </header>
-  );
+/** 回合在页面里的锚点（左栏回想点一下滚到这里） */
+export function turnAnchor(seq: number): string {
+  return `turn-${seq}`;
 }
 
 /**
@@ -89,14 +62,18 @@ export function BookHeader({
  */
 type StoryLang = { lang: string | undefined };
 
-/** “我的行动”：和叙述同样的字，颜色浅一档，左边一道竖线；读屏时前面加上“我的行动：” */
-function ActionNote({ text, lang }: { text: string } & StoryLang) {
+/** “我的行动”：靠右的蓝气泡 */
+function ActionBubble({ text, lang }: { text: string } & StoryLang) {
   const { t } = useTranslation();
   return (
-    <p className={styles.note} lang={lang}>
-      <span className={styles.srOnly}>{t("play.myActionPrefix")}</span>
-      {text}
-    </p>
+    <div className={styles.actionRow}>
+      <Bubble who={t("play.you")} tail="right" tone="blue" className={styles.action}>
+        <p className={styles.actionText} lang={lang}>
+          <span className={styles.srOnly}>{t("play.myActionPrefix")}</span>
+          {text}
+        </p>
+      </Bubble>
+    </div>
   );
 }
 
@@ -120,20 +97,20 @@ function Narrative({
   ) : null;
   if (parts.length === 0)
     return caretNode ? (
-      <p className={styles.narrative} lang={lang}>
+      <Caption as="p" className={styles.narrative} lang={lang}>
         {caretNode}
-      </p>
+      </Caption>
     ) : null;
   return (
     <>
       {parts.map((p, i) => {
         const last = i === parts.length - 1;
         return (
-          <p key={i} className={cx(styles.narrative, "narrative", dim && styles.dim)} lang={lang}>
+          <Caption key={i} as="p" className={cx(styles.narrative, "narrative", dim && styles.dim)} lang={lang}>
             {p}
             {last ? caretNode : null}
             {last && interrupted ? <span className={styles.cut}>{t("play.interrupted")}</span> : null}
-          </p>
+          </Caption>
         );
       })}
     </>
@@ -159,45 +136,49 @@ const TurnBlock = memo(function TurnBlock({
   const { t } = useTranslation();
   const note = actionNote(turn.action);
   return (
-    <section className={cx(styles.turn, styles.settled)}>
-      {note ? <ActionNote text={note} lang={lang} /> : null}
-      <Narrative text={turn.narrative} lang={lang} />
-      {rollback && onRollback ? (
-        <div className={styles.turnTools}>
-          {rollback === "available" ? (
-            <button type="button" className={styles.rollback} onClick={() => onRollback(turn.id)}>
-              <Icon name="back" size={14} />
-              {t("play.rollbackHere")}
-            </button>
-          ) : (
-            <span className={styles.rollbackUsedUp}>{t("play.rollbackUsedUp")}</span>
-          )}
-        </div>
+    <section className={cx(styles.turn, styles.settled)} id={turnAnchor(turn.seq)}>
+      {note ? <ActionBubble text={note} lang={lang} /> : null}
+      {turn.narrative.trim() ? (
+        <Panel tone="dots" className={styles.frame}>
+          <Narrative text={turn.narrative} lang={lang} />
+          {rollback && onRollback ? (
+            <div className={styles.turnTools}>
+              {rollback === "available" ? (
+                <button type="button" className={styles.rollback} onClick={() => onRollback(turn.id)}>
+                  <Icon name="back" size={14} strokeWidth={2.2} />
+                  {t("play.rollbackHere")}
+                </button>
+              ) : (
+                <span className={styles.rollbackUsedUp}>{t("play.rollbackUsedUp")}</span>
+              )}
+            </div>
+          ) : null}
+        </Panel>
       ) : null}
     </section>
   );
 });
 
-/** 第一次开场：先搭建世界，再写开场。当前一步是白色的圆角行 */
+/** 第一次开场：先搭建世界，再写开场。当前一步是蓝底的一行 */
 function OpeningSteps({ building }: { building: boolean }) {
   const { t } = useTranslation();
   const step = (label: string, state: "active" | "done" | "todo") => (
-    <div className={cx(styles.stepRow, state === "active" && styles.stepActive)}>
-      <span className={cx(styles.stepMark, styles[`mark-${state}`])}>
+    <div className={cx(styles.stepRow, state === "active" && styles.stepActive, state === "done" && styles.stepDone)}>
+      <span className={styles.stepMark}>
         {state === "active" ? <span className={styles.stepDot} /> : null}
-        {state === "done" ? <Icon name="check" size={14} strokeWidth={2.4} /> : null}
+        {state === "done" ? <Icon name="check" size={14} strokeWidth={2.6} /> : null}
       </span>
       {label}
     </div>
   );
   return (
-    <div aria-live="polite">
-      <div className={styles.steps}>
+    <Panel tone="dots" className={styles.frame} aria-label={t("play.opening")}>
+      <div aria-live="polite" className={styles.steps}>
         {step(building ? t("play.building") : t("play.buildWorld"), building ? "active" : "done")}
         {step(building ? t("play.writeOpening") : t("play.writingOpeningStep"), building ? "todo" : "active")}
+        <p className={styles.stepNote}>{t("play.slowNote")}</p>
       </div>
-      <p className={styles.stepNote}>{t("play.slowNote")}</p>
-    </div>
+    </Panel>
   );
 }
 
@@ -211,18 +192,21 @@ function PendingBlock({ pending, phase, lang }: { pending: PendingTurn; phase: P
       : phase === "reconnecting" || phase === "polling"
         ? "waiting"
         : "live";
-  if (opening && !failed && pending.narrative === "")
-    return <OpeningSteps building={pending.buildingWorld} />;
+  if (opening && !failed && pending.narrative === "") return <OpeningSteps building={pending.buildingWorld} />;
   return (
-    <section className={styles.turn}>
-      {note ? <ActionNote text={note} lang={lang} /> : null}
-      <Narrative
-        text={pending.narrative}
-        lang={lang}
-        dim={failed}
-        caret={caret}
-        interrupted={failed && pending.narrative.length > 0}
-      />
+    <section className={styles.turn} id={pending.seq !== null ? turnAnchor(pending.seq) : undefined}>
+      {note ? <ActionBubble text={note} lang={lang} /> : null}
+      {pending.narrative || caret ? (
+        <Panel tone="dots" className={cx(styles.frame, styles.frameLive)}>
+          <Narrative
+            text={pending.narrative}
+            lang={lang}
+            dim={failed}
+            caret={caret}
+            interrupted={failed && pending.narrative.length > 0}
+          />
+        </Panel>
+      ) : null}
     </section>
   );
 }
@@ -231,23 +215,19 @@ function PendingBlock({ pending, phase, lang }: { pending: PendingTurn; phase: P
 function OpeningMissing() {
   const { t } = useTranslation();
   return (
-    <div className={styles.missing}>
-      <span className={styles.missingIcon}>
-        <Icon name="untested" size={18} />
-      </span>
+    <Panel tone="grey" className={styles.missing}>
+      <Icon name="untested" size={18} />
       {t("play.noOpening")}
-    </div>
+    </Panel>
   );
 }
 
 export function StoryFeed({
   state,
-  header,
   footer,
   onRollback,
 }: {
   state: PlayState;
-  header?: ReactNode;
   /** 接在最后一段后面的行动区 */
   footer?: ReactNode;
   /** 点了某一段的“回到这里”（要稳定的函数，否则每段都会重画） */
@@ -258,7 +238,6 @@ export function StoryFeed({
   const lang = LANGUAGE_TAGS[state.language];
   return (
     <>
-      {header}
       {state.turns.map((turn) => (
         <TurnBlock
           key={turn.id}

@@ -89,6 +89,12 @@ button.tool:disabled {
   background: var(--ink);
   color: var(--on-ink);
 }
+.toolKey {
+  margin-right: -6px;
+}
+.toolOn .toolKey {
+  color: var(--sky);
+}
 .search {
   cursor: text;
 }
