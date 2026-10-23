@@ -1,8 +1,0 @@
-{
-  "description": "キャラクターカードの内容確認の結果",
-  "fields": {
-    "ContentVerdict.sexual": "露骨な性描写がある、または性がテーマのとき true",
-    "ContentVerdict.minors": "未成年が関わる性的な内容があるとき true",
-    "ContentVerdict.reason": "判断の根拠を一文で、100 文字以内"
-  }
-}

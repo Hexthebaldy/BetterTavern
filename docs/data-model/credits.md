@@ -79,7 +79,6 @@
   单价的单位是“元 / 百万 token”，数值上等于“微元 / token”。单价来自服务器配置（`PLATFORM_PRICE_INPUT`、`PLATFORM_PRICE_CACHED`、`PLATFORM_PRICE_OUTPUT`），
   默认按 DeepSeek 白天的价格（输入 2、缓存 0.04、输出 8），不区分时段（DeepSeek 夜间半价时实际成本更低）。
 - 金额是 0 的不记。
-- 运营方自己的检查（保存角色卡前的内容检查）用官方模型但不扣用户的点数。
 
 体验额度：用户邮箱验证通过（或部署不要求验证、注册完成）时，服务器有官方模型就给他配上官方模型那一行，再按邮箱的 HMAC 抢占 `credit_grants`，抢到了就记一笔 `trial`（默认 1500 点，`TRIAL_CREDITS`）。
 上线前就注册的老用户用管理命令 `bettertavern credits-backfill` 补发，规则相同。

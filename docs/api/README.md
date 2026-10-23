@@ -176,7 +176,6 @@
 | `WINDOW_TOO_SMALL` | 422 | 模型的有效窗口小于 16000 | `model_window`、`cap`、`max_tokens`、`effective_window` |
 | `CARD_INVALID` | 422 | 角色卡无法解析 |  |
 | `CARD_CHECK_FAILED` | 422 | 草稿保存进仓库前没通过检查 | `issues`（问题清单，见 [workbench.md](workbench.md#issueout)）、`field` |
-| `CONTENT_REJECTED` | 422 | 官方服务上，草稿保存进仓库前的内容检查认为卡里有色情内容（只在 `CONTENT_POLICY=sfw` 的服务器上检查） | `reasons`（`sexual`：露骨的性描写或以性为主题；`minors`：涉及未成年人的性内容） |
 | `IMAGE_INVALID` | 422 | 上传的不是 PNG、JPEG、WebP，或者解码失败、像素太多 | `field` |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | 同一个 `Idempotency-Key` 对应了不同的请求内容 |  |
 | `OPENING_EXISTS` | 422 | `parent_turn_id` 是当前头部（已经有开场）时又请求生成开场 |  |
@@ -189,7 +188,6 @@
 | `MAIL_UNAVAILABLE` | 503 | 服务端没配发信服务，或者这次邮件没发出去（`retryable` 为真时稍后再试） |  |
 | `PLATFORM_UNAVAILABLE` | 503 | 这台服务器没有官方模型（没配 `PLATFORM_API_KEY`），却要加官方模型，或者用到了官方模型那一行 |  |
 | `PLATFORM_BUSY` | 503 | 官方模型全站最近 24 小时的花费到了每日预算，暂停使用；`retryable` 为真，也可以换成自己的 Key |  |
-| `CONTENT_CHECK_UNAVAILABLE` | 503 | 保存进仓库前的内容检查没做成（模型出错），`retryable` 为真，稍后再存 |  |
 
 ### 回合失败码
 

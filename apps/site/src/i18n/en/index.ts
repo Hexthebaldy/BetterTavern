@@ -335,7 +335,7 @@ export const en: Copy = {
       },
       {
         q: "What can't I write?",
-        a: "The official service doesn't allow sexual content, or anything else the content rules forbid (see the content rules in the web app). Stories can be dark and can deal with violence, crime and complicated relationships. Character cards are checked automatically when you save them, and cards with sexual content can't go into your library.",
+        a: "The official service doesn't allow sexual content, or anything else the content rules forbid (see the content rules in the web app). Stories can be dark and can deal with violence, crime and complicated relationships.",
       },
       {
         q: "Can I use a model running on my own computer?",

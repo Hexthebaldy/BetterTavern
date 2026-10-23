@@ -23,7 +23,7 @@ BetterTavern is a tool for adults to write fiction. Stories can be dark and can 
 
 Only you can see your content, and we don't go looking through it. We only look at content when we get a report, see signs of abuse, you ask us for help, or the law requires it.
 
-Two things happen automatically to keep to these lines: the AI that writes your story is told not to write sexual content and to steer the story elsewhere when asked to cross the line; and before a character card is saved to your library, an AI checks it for sexual content, and cards that have it can't be saved. The check only decides whether the card can be saved; no person reads your card.
+To keep to these lines, the AI that writes your stories and character cards is told not to write sexual content and to steer the story elsewhere when asked to cross the line.
 
 If we find a violation, we may remove content, limit features, or suspend or close the account, depending on the case. For sexual content involving minors, we close the account right away and report it to the authorities as the law requires.
 

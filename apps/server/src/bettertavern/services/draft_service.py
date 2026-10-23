@@ -3,9 +3,8 @@
 - 草稿不在角色卡仓库里，点“保存”才正式进库；改仓库里已有的卡也是先开一份草稿。
 - 自动保存带草稿的版本号，对不上返回 409 DRAFT_CHANGED，客户端重读（agent 同时在写时就会这样）。
 - 保存回已有的卡带着开草稿时卡的版本号，对不上返回 409 CARD_CHANGED，让用户选覆盖还是另存成新卡。
-- 保存前用和客户端同一套规则检查（domain/scenario/check.py），有 error 就返回 422 和问题清单；
-  官方服务上还要过内容检查（content_check.py，模型判断有没有色情内容）。模型判断要几秒，
-  放在锁住草稿之前做，锁住以后确认草稿在这期间没被改过。
+- 保存前用和客户端同一套规则检查（domain/scenario/check.py），有 error 就返回 422 和问题清单。
+  只查格式，不审核内容：卡存在用户自己的仓库里，只有自己看得到。
 
 agent 模式（对话、问卷、方案、动手）在 workbench_service.py。卡片文字不进日志。
 """
@@ -35,7 +34,6 @@ from bettertavern.infra.db.repositories import workbench as workbench_repo
 from bettertavern.infra.db.sqlutil import is_uuid
 
 from .card_service import CardSummary, strip_nul, summary_of
-from .content_check import ContentChecker
 from .errors import AppError, Conflict, Invalid, NotFound
 from .quotas import Quotas, check_open_drafts, check_storage, lock_user
 from .scenario_service import ScenarioService, ScenarioView
@@ -211,12 +209,10 @@ class DraftService:
         engine: AsyncEngine,
         scenarios: ScenarioService,
         quotas: Quotas | None = None,
-        checker: ContentChecker | None = None,
     ) -> None:
         self._engine = engine
         self._scenarios = scenarios
         self._quotas = quotas or Quotas()
-        self._checker = checker
 
     # ---- 读 ----
 
@@ -533,26 +529,8 @@ class DraftService:
         new_scenario: bool = False,
         on_conflict: ConflictChoice | None = None,
     ) -> SaveResult:
-        checked_version: int | None = None
-        if self._checker is not None and self._checker.enabled:
-            async with self._engine.connect() as conn:
-                draft = await self._row(conn, user_id, draft_id)
-            await self._checker.check_card(
-                user_id,
-                card_of(draft),
-                display_name=draft.name or card_of(draft).name,
-                language=draft.language,
-            )
-            checked_version = draft.version
         async with self._engine.begin() as conn:
             row = await self._row(conn, user_id, draft_id, lock=True)
-            if checked_version is not None and row.version != checked_version:
-                # 检查的那一版已经不是现在的了（agent 或别的设备刚改过）：重新保存一次
-                raise Conflict(
-                    "This draft was changed somewhere else; reload it",
-                    code="DRAFT_CHANGED",
-                    version=row.version,
-                )
             display_name = row.name or card_of(row).name
             try:
                 card = apply_edit(card_of(row), CardEdit.of(card_of(row)))

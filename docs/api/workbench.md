@@ -241,7 +241,7 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 - 新卡（草稿还没对应的卡，或者对应的卡已经删了）就建一张。来源（`source`）按草稿怎么开始的定：导入的是卡片格式，其他是 `manual` 或 `agent`；
 - 改已有的卡，就带着开草稿时卡的版本号写回去。对不上（在别处改过）返回 409 `CARD_CHANGED`，让用户选覆盖（`on_conflict: "overwrite"`）还是另存成新卡（`"copy"`）；
 - 保存前用**正式模式**整理一遍（去掉空的备选开场白），再用和客户端同一套规则检查（`domain/scenario/check.py`）：有 `error` 就返回 422 `CARD_CHECK_FAILED` 和问题清单，`warning` 不挡保存；
-- 官方服务（`CONTENT_POLICY=sfw`）上，再让模型检查一遍内容（用官方模型，不扣用户的点数；服务器没有官方模型时用用户的导演）：有露骨的性描写、以性为主题，或者涉及未成年人的性内容时返回 422 `CONTENT_REJECTED`，检查本身出错时返回 503 `CONTENT_CHECK_UNAVAILABLE`。检查期间草稿被改过（agent 或别的设备）时返回 409 `DRAFT_CHANGED`，重新保存一次。自己部署的服务器默认不检查；
+- 只查格式，不审核内容：卡存在用户自己的仓库里，只有自己看得到；
 - 存成功以后版本号加 1、记一份版本历史；草稿留着（不再出现在草稿列表里），下次从仓库打开同一张卡时接着用它；
 - 带 `new_scenario: true` 时，顺便用这张卡建一个剧本（“保存并开始新故事”）。
 
@@ -253,10 +253,7 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 草稿不存在 |
 | 409 | `CARD_CHANGED` | 卡在别处改过，带卡当前的 `version` |
-| 409 | `DRAFT_CHANGED` | 内容检查期间草稿被改过，带草稿当前的 `version` |
 | 422 | `CARD_CHECK_FAILED` | 卡片没通过检查，带 `issues`（[`IssueOut`](#issueout) 的数组，只有 `error`）和第一个问题的 `field` |
-| 422 | `CONTENT_REJECTED` | 内容检查没通过，带 `reasons`（`sexual` / `minors`） |
-| 503 | `CONTENT_CHECK_UNAVAILABLE` | 内容检查没做成（`retryable` 为真） |
 
 #### `DraftSaveIn`
 

@@ -137,8 +137,6 @@ export const common: MessagesOtherOnly<typeof source> = {
       PLATFORM_BUSY: "公式モデルが混み合っています。しばらくしてからお試しいただくか、自分のモデルのキーに切り替えてください",
       PLATFORM_UNAVAILABLE: "このサーバーには公式モデルがありません",
       PLATFORM_ROUTE_FIXED: "公式モデルのキー、モデル名、エンドポイントは変更できません",
-      CONTENT_REJECTED: "このキャラクターカードには性的なコンテンツが含まれているため、公式サービスでは保存できません（コンテンツルールを参照）",
-      CONTENT_CHECK_UNAVAILABLE: "現在このキャラクターカードの内容を確認できません。しばらくしてから保存し直してください",
     },
     field: {
       email: "メールアドレスの形式が正しくありません",

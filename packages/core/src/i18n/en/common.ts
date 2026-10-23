@@ -141,8 +141,6 @@ export const common: Messages<typeof source> = {
       PLATFORM_BUSY: "The official model is too busy right now. Please try again later, or switch to your own model key",
       PLATFORM_UNAVAILABLE: "This server doesn't have an official model",
       PLATFORM_ROUTE_FIXED: "The official model's key, model name and endpoint can't be changed",
-      CONTENT_REJECTED: "This character card has sexual content, which can't be saved on the official service (see the content rules)",
-      CONTENT_CHECK_UNAVAILABLE: "We couldn't check this character card's content right now. Please try saving again later",
     },
     field: {
       email: "That email address isn't valid.",

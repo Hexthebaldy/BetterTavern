@@ -139,8 +139,6 @@ export const common = {
       PLATFORM_BUSY: "官方模型现在太忙了，请稍后再试，或者换成自己的模型 Key",
       PLATFORM_UNAVAILABLE: "这台服务器没有官方模型",
       PLATFORM_ROUTE_FIXED: "官方模型的 Key、模型名和端点不能修改",
-      CONTENT_REJECTED: "这张角色卡含有色情内容，官方服务上不能保存（见内容规则）",
-      CONTENT_CHECK_UNAVAILABLE: "暂时没法检查这张角色卡的内容，请稍后再保存",
     },
     /** 业务校验（VALIDATION_ERROR 带 field）按字段的说明 */
     field: {

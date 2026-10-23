@@ -29,7 +29,7 @@ x-server: &server
     MAIL_FROM: ${MAIL_FROM:-}
     ALERT_EMAIL: ${ALERT_EMAIL:-}
     REGISTRATION_OPEN: ${REGISTRATION_OPEN:-true}
-    # 官方服务不允许色情内容（内容规则）：提示词里加内容边界，角色卡存进仓库前检查
+    # 官方服务不允许色情内容（内容规则）：写故事、写卡的提示词里加内容边界；用户存的卡不审核
     CONTENT_POLICY: sfw
     # 官方模型（运营方的 DeepSeek Key）；不配就没有官方模型，用户只能用自己的 Key
     PLATFORM_API_KEY: ${PLATFORM_API_KEY:-}

@@ -24,7 +24,6 @@ We don't collect your real name, phone number, location or contacts, and we use 
 
 - To provide the Service: storing your content and calling your connected services when you ask;
 - To work out credits: taking credits for official-model usage and estimating how many more turns you have;
-- To check content: before a character card is saved to your library, an AI checks it for sexual content that breaks the [Content Rules](/rules); the result is only used to decide whether it can be saved;
 - To send necessary emails: sign-up verification codes and password reset codes;
 - For security and abuse prevention: rate limits, spotting unusual sign-ins and attacks;
 - To fix problems: when something goes wrong, we get an alert with only the type and number of errors, never your content.
@@ -35,7 +34,7 @@ We don't sell your information, use your content for advertising, or use your co
 
 Only with the providers needed to run the Service:
 
-- **The official model**: when you use the official model to write stories or cards, and when a character card is checked before saving, your input, character cards and story context are sent to DeepSeek for processing. DeepSeek's servers are in China.
+- **The official model**: when you use the official model to write stories or cards, your input, character cards and story context are sent to DeepSeek for processing. DeepSeek's servers are in China.
 - **Your connected services**: when you write stories or cards, your input, character cards and story context go to the model provider you chose; search terms, the addresses of pages to read and image descriptions go to the matching service you connected. See their own privacy policies for how they handle it.
 - **Servers and network**: the Service's server is in Singapore (Vultr). The website runs through Cloudflare's network for speed and protection, so Cloudflare processes your IP address and traffic.
 - **Email**: verification emails are sent through Resend, which processes your email address and the message.

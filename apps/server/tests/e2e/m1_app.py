@@ -121,9 +121,6 @@ class Story:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
         if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:
             return JsonReply(completion('{"options": ["修复的选项一", "修复的选项二"]}'))
-        if "<card>" in prompt:
-            # 官方服务保存角色卡前的内容检查
-            return JsonReply(completion('{"sexual": false, "minors": false, "reason": ""}'))
         return JsonReply({"error": {"message": "unexpected request"}}, status=400)
 
 

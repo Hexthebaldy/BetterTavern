@@ -99,8 +99,8 @@ class Settings(BaseSettings):
     max_open_drafts: int = Field(default=50, ge=1)
     max_image_bytes_per_user: int = Field(default=200 * 1024 * 1024, ge=1024 * 1024)
 
-    # 内容边界：sfw 时，写故事和写卡的提示词里加上“不写露骨的性描写”，保存角色卡前先检查内容
-    # （官方服务 bettertavern.com 用；自己部署的默认 open，不限制）
+    # 内容边界：sfw 时，写故事和写卡的提示词里加上“不写露骨的性描写”，只管模型写什么，
+    # 不审核用户存的卡（官方服务 bettertavern.com 用；自己部署的默认 open，不限制）
     content_policy: Literal["open", "sfw"] = "open"
 
     # 官方模型：服务器用运营方自己的 Key 调模型，用户不用配置（官方服务用）。

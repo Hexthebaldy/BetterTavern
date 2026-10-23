@@ -25,7 +25,6 @@ from bettertavern.runtime.workbench_runner import WorkbenchRunner, WorkbenchRunn
 
 from .auth_service import AccountPolicy, AuthService
 from .card_service import CardService
-from .content_check import ContentChecker
 from .cover_service import CoverService
 from .credits import CreditPolicy, CreditService, grant_key
 from .draft_service import DraftService
@@ -140,9 +139,7 @@ def build_services(
         routes=routes,
         scenarios=scenarios,
         cards=CardService(engine),
-        drafts=DraftService(
-            engine, scenarios, quotas, checker=ContentChecker(hub, prompts, routes)
-        ),
+        drafts=DraftService(engine, scenarios, quotas),
         workbench=WorkbenchService(engine, quotas=quotas, credits=credits),
         tool_routes=tool_routes,
         covers=CoverService(engine, tool_routes, http, quotas),

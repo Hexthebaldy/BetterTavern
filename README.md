@@ -212,7 +212,7 @@ cd apps/mobile && npm start
 | `WORKER_CONCURRENCY` | `4` | worker 同时处理几个后台任务 |
 | `ENABLE_PROBE_ENDPOINTS` | 开发环境打开，生产环境关闭 | “设置 → 连接测试”用的接口 |
 | `PLATFORM_API_KEY` |  | 官方模型：用运营方自己的 Key 给用户直接用、按用量扣点数。不配就没有，用户只用自己的 Key（见 [docs/ops.md](docs/ops.md) 第 9 节） |
-| `CONTENT_POLICY` | `open` | `sfw` 时提示词里加内容边界，角色卡存进仓库前检查有没有色情内容（官方服务用） |
+| `CONTENT_POLICY` | `open` | `sfw` 时写故事、写卡的提示词里加内容边界（官方服务用）；用户存的角色卡不审核 |
 
 ## 7 常见问题
 

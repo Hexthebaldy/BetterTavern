@@ -576,27 +576,6 @@ class RouteService:
         )
 
     # ---- 官方模型 ------------------------------------------------------------------------
-    def platform_route(self, task: RouteTask) -> ResolvedRoute | None:
-        """直接用官方模型（不经过用户的那一行），运营方自己的检查用，比如保存角色卡前的内容检查。
-
-        不带单价：这类调用不扣用户的点数。服务器没配官方模型时返回 None。
-        """
-        platform = self._platform
-        if platform is None:
-            return None
-        params = inp.parse_params({})
-        caps = self._hub.capabilities(platform.provider, platform.model)
-        return ResolvedRoute(
-            route_id="platform",
-            task=task,
-            provider=platform.provider,
-            model=platform.model,
-            credential=platform.credential(),
-            caps=caps,
-            params=params,
-            window=window_for(caps, params, task),
-        )
-
     async def ensure_platform(self, user_id: str) -> RouteView | None:
         """给用户配上官方模型的那一行（已经有就不动）；用户还没有导演时，让它当导演。
 

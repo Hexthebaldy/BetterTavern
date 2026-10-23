@@ -2,7 +2,7 @@
 
 真实 Postgres + 跑在 uvicorn 里的 api + 假模型服务。
 
-注册以后就有官方模型（导演）和体验额度；保存角色卡前做内容检查；开局用运营方的 Key，扣点数；
+注册以后就有官方模型（导演）和体验额度；保存角色卡不审核内容；开局用运营方的 Key，扣点数；
 官方模型不能改连接，删了可以加回来。
 
     BT_TEST_DATABASE_URL=postgresql://bettertavern:bettertavern@localhost:5432/bettertavern \\
@@ -71,7 +71,7 @@ async def test_new_user_plays_on_the_official_model(running: Running) -> None:
         )
         assert credits["turns_left"] == 1500 // credits["turn_points"]
 
-        # 保存角色卡前先检查内容，再开局
+        # 保存角色卡（不审核内容），再开局
         saved = await import_scenario(client, auth)
         scenario = saved["scenario"]
         assert isinstance(scenario, dict)
