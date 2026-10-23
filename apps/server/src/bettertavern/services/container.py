@@ -24,11 +24,14 @@ from bettertavern.runtime.workbench_runner import WorkbenchRunner, WorkbenchRunn
 
 from .auth_service import AccountPolicy, AuthService
 from .card_service import CardService
+from .content_check import ContentChecker
 from .cover_service import CoverService
+from .credits import CreditPolicy, CreditService, grant_key
 from .draft_service import DraftService
 from .maintenance import Maintenance
 from .memory_store import PgMemoryStore
 from .outline_store import PgOutlineStore
+from .platform import PlatformModel
 from .playthrough_service import PlaythroughService
 from .quotas import Quotas
 from .recall_store import PgRecallStore
@@ -61,6 +64,7 @@ class Services:
     playthroughs: PlaythroughService
     turns: TurnService
     maintenance: Maintenance
+    credits: CreditService
     mailer: MailSender | None = None
 
     async def aclose(self, *, grace: float) -> None:
@@ -94,12 +98,17 @@ def build_services(
     account_policy: AccountPolicy | None = None,
     mailer: MailSender | None = None,
     quotas: Quotas | None = None,
+    platform: PlatformModel | None = None,
+    credit_policy: CreditPolicy | None = None,
 ) -> Services:
     prompts = prompts or PromptBook()
     account_policy = account_policy or AccountPolicy()
     quotas = quotas or Quotas()
     signer = AccessTokenSigner(secrets.auth_secret, ttl_s=access_ttl_s)
-    routes = RouteService(engine, secrets.keyring, hub, policy)
+    if platform is not None:
+        platform.register(hub)
+    routes = RouteService(engine, secrets.keyring, hub, policy, platform)
+    credits = CreditService(engine, routes, credit_policy, email_key=grant_key(secrets.auth_secret))
     store = PgTurnStore(engine)
     runner = TurnRunner(
         store=store,
@@ -125,12 +134,15 @@ def build_services(
             policy=account_policy,
             mailer=mailer,
             code_key=email_code_key(secrets.auth_secret),
+            on_verified=credits.on_verified,
         ),
         routes=routes,
         scenarios=scenarios,
         cards=CardService(engine),
-        drafts=DraftService(engine, scenarios, quotas),
-        workbench=WorkbenchService(engine, quotas=quotas),
+        drafts=DraftService(
+            engine, scenarios, quotas, checker=ContentChecker(hub, prompts, routes)
+        ),
+        workbench=WorkbenchService(engine, quotas=quotas, credits=credits),
         tool_routes=tool_routes,
         covers=CoverService(engine, tool_routes, http, quotas),
         http=http,
@@ -141,6 +153,7 @@ def build_services(
             lease_ttl_s=runner_config.lease_ttl_s,
             instance_id=instance_id,
             rollback_limit=rollback_limit,
+            credits=credits,
         ),
         turns=TurnService(
             engine,
@@ -149,8 +162,10 @@ def build_services(
             buffers,
             lease_ttl_s=runner_config.lease_ttl_s,
             instance_id=instance_id,
+            credits=credits,
         ),
         maintenance=Maintenance(engine, purge_unverified=account_policy.verification_required),
+        credits=credits,
         mailer=mailer,
     )
 
@@ -163,9 +178,10 @@ def build_state_runner(
     policy: EndpointPolicy,
     config: StateRunnerConfig,
     prompts: PromptBook | None = None,
+    platform: PlatformModel | None = None,
 ) -> StateRunner:
     """worker 进程用：后台整理世界状态。"""
-    routes = RouteService(engine, secrets.keyring, hub, policy)
+    routes = RouteService(engine, secrets.keyring, hub, policy, platform)
     return StateRunner(
         store=PgStateStore(engine),
         routes=routes,
@@ -183,9 +199,10 @@ def build_memory_runner(
     policy: EndpointPolicy,
     config: MemoryRunnerConfig,
     prompts: PromptBook | None = None,
+    platform: PlatformModel | None = None,
 ) -> MemoryRunner:
     """worker 进程用：后台章节整理。"""
-    routes = RouteService(engine, secrets.keyring, hub, policy)
+    routes = RouteService(engine, secrets.keyring, hub, policy, platform)
     return MemoryRunner(
         store=PgMemoryStore(engine),
         routes=routes,
@@ -203,9 +220,10 @@ def build_outline_runner(
     policy: EndpointPolicy,
     config: OutlineRunnerConfig | None = None,
     prompts: PromptBook | None = None,
+    platform: PlatformModel | None = None,
 ) -> OutlineRunner:
     """worker 进程用：后台大纲修订。"""
-    routes = RouteService(engine, secrets.keyring, hub, policy)
+    routes = RouteService(engine, secrets.keyring, hub, policy, platform)
     return OutlineRunner(
         store=PgOutlineStore(engine),
         routes=routes,
@@ -225,9 +243,10 @@ def build_workbench_runner(
     prompts: PromptBook | None = None,
     http: httpx.AsyncClient | None = None,
     quotas: Quotas | None = None,
+    platform: PlatformModel | None = None,
 ) -> WorkbenchRunner:
     """worker 进程用：工作台的 agent（联网和出图走 http，不给时新建一个，由调用方负责关闭）。"""
-    routes = RouteService(engine, secrets.keyring, hub, policy)
+    routes = RouteService(engine, secrets.keyring, hub, policy, platform)
     client = http or build_http_client(policy)
     web_store = PgWebStore(engine, quotas)
     return WorkbenchRunner(

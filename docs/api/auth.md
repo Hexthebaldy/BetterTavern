@@ -4,7 +4,7 @@
 >
 > 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
-注册、邮箱验证码、登录、令牌刷新与退出、找回密码，以及当前账户、修改密码。鉴权方式和令牌的规则见 [README.md 的“鉴权”](README.md#鉴权)；
+注册、邮箱验证码、登录、令牌刷新与退出、找回密码，以及当前账户、修改密码、官方模型的点数。鉴权方式和令牌的规则见 [README.md 的“鉴权”](README.md#鉴权)；
 相关的表见 [数据模型：账户与令牌](../data-model/accounts.md)。
 
 ## 邮箱验证
@@ -241,6 +241,13 @@ Set-Cookie: bt_refresh=rt_…; HttpOnly; Max-Age=2591999; Path=/v1/auth; SameSit
 | --- | --- | --- | --- |
 | `password` | string | 是 | 当前密码 |
 
+### `GET /v1/me/credits`
+
+官方模型的点数余额，以及按最近用量估计还能写多少回合。设置页的“官方模型”卡片用。规则见 [数据模型：点数](../data-model/credits.md)。
+
+- 鉴权：需要
+- 成功：`200`，返回 [`CreditsOut`](#creditsout)。
+
 ### `POST /v1/me/password`
 
 修改密码，需要输入当前密码。其他设备上的登录都退出，这台设备换一组新令牌（客户端要换上响应里的令牌）。
@@ -266,6 +273,16 @@ Set-Cookie: bt_refresh=rt_…; HttpOnly; Max-Age=2591999; Path=/v1/auth; SameSit
 | `new_password` | string | 是 | 新密码，8 到 128 个字符 |
 
 ## 响应对象
+
+### `CreditsOut`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `balance` | integer | 余额，单位是点（1 点 = 0.001 元），向下取整；后台整理扣过头时可能是负数 |
+| `turn_points` | integer | 估计每回合花多少点（含后台整理）：最近 7 天有 5 个以上回合时按自己的记录算，不然用服务器的默认值（`PLATFORM_TURN_POINTS`，默认 40） |
+| `turns_left` | integer | 估计还能写多少回合：`balance ÷ turn_points` 向下取整，最小 0 |
+| `platform` | boolean | 这台服务器有没有官方模型；没有时客户端不显示官方模型的卡片 |
+| `uses_platform` | boolean | 用户现在的导演是不是官方模型 |
 
 ### `UserOut`
 

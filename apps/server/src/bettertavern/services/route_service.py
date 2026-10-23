@@ -4,7 +4,9 @@
 - 自定义端点创建和修改时做 SSRF 校验（请求时 SafeTransport 还会再校验一次）；
 - 保存时用服务商的模型列表确定上下文窗口（列表缓存见 route_models.py）；
   运行中服务商报超长并写明上限时记进 learned_window，只会往小调；
-- 搭建世界、补选项等其他 task 都用导演这一行的模型。
+- 搭建世界、补选项等其他 task 都用导演这一行的模型；
+- 官方模型（source = platform）那一行不存 Key，用服务器配置的（services/platform.py），带着单价，
+  用量按点数扣；它的 Key、模型名、端点不能改，也不能测试和拉模型列表（花的是运营方的钱）。
 
 窗口校验的算法只在 domain/memory/thresholds.py 的 effective_window() 里，保存与每次调用前共用。
 """
@@ -41,7 +43,8 @@ from bettertavern.runtime.routing import ResolvedRoute, window_for
 
 from . import route_inputs as inp
 from .errors import AppError, Invalid, NotFound
-from .route_codec import RouteCodec
+from .platform import PlatformModel
+from .route_codec import RouteCodec, platform_unavailable
 from .route_inputs import RouteInput, RoutePatch
 from .route_models import ListedModel, ModelLister
 from .route_views import ProviderInfo, RouteView, build_views, too_small
@@ -61,15 +64,47 @@ def _now() -> datetime:
     return datetime.now().astimezone()
 
 
+def _platform_fixed() -> AppError:
+    return AppError(
+        "The official model's key, model and endpoint can't be changed",
+        code="PLATFORM_ROUTE_FIXED",
+        status=409,
+    )
+
+
+def _touches_connection(patch: RoutePatch) -> bool:
+    """这次修改动了 Key、模型名、端点、请求附加内容、窗口或能力。"""
+    values = (
+        patch.model,
+        patch.api_key,
+        patch.base_url,
+        patch.extra_headers,
+        patch.extra_body,
+        patch.manual_window,
+        patch.caps_override,
+    )
+    return any(v is not None for v in values) or patch.clear_base_url or patch.clear_manual_window
+
+
 class RouteService:
     def __init__(
-        self, engine: AsyncEngine, keyring: Keyring, hub: ProviderHub, policy: EndpointPolicy
+        self,
+        engine: AsyncEngine,
+        keyring: Keyring,
+        hub: ProviderHub,
+        policy: EndpointPolicy,
+        platform: PlatformModel | None = None,
     ) -> None:
         self._engine = engine
         self._hub = hub
         self._policy = policy
-        self._codec = RouteCodec(keyring, hub)
+        self._codec = RouteCodec(keyring, hub, platform)
         self._lister = ModelLister(hub)
+        self._platform = platform
+
+    @property
+    def platform(self) -> PlatformModel | None:
+        return self._platform
 
     # ---- 服务商与端点 ----------------------------------------------------------------------
     def providers(self) -> list[ProviderInfo]:
@@ -178,6 +213,8 @@ class RouteService:
         if copy_key_from is None:
             raise Invalid("Enter an API key", field="api_key")
         source = await self._row(user_id, copy_key_from)
+        if source.platform:
+            raise Invalid("The official model's key can't be reused", field="copy_key_from")
         if source.provider != provider:
             raise Invalid("You can only reuse a key from the same provider", field="copy_key_from")
         return self._codec.key(source), self._codec.headers(source), source.base_url
@@ -210,6 +247,8 @@ class RouteService:
     async def list_models(self, user_id: str, route_id: str) -> list[ListedModel]:
         """用这个模型已存的 Key 重新拉列表（换模型名时用），顺便更新这个模型的窗口。"""
         row = await self._row(user_id, route_id)
+        if row.platform:
+            raise _platform_fixed()
         models = await self._fetch_models(self._codec.credential(row), route_id=row.id)
         window = self._lister.window_of(row.provider, models, row.model)
         async with self._engine.begin() as conn:
@@ -383,6 +422,9 @@ class RouteService:
 
     async def update(self, user_id: str, route_id: str, patch: RoutePatch) -> RouteView:
         current = await self._row(user_id, route_id)
+        if current.platform and _touches_connection(patch):
+            # 官方模型只能改名字、写法设置和用途（导演、后台、工作台）
+            raise _platform_fixed()
         changed: list[str] = []
         row, new_key, reset = await self._apply(user_id, current, patch, changed)
         if reset:
@@ -464,6 +506,8 @@ class RouteService:
     # ---- 测试 --------------------------------------------------------------------------
     async def probe(self, user_id: str, route_id: str) -> ProbeReport:
         row = await self._row(user_id, route_id)
+        if row.platform:
+            raise _platform_fixed()
         cred = self._codec.credential(row)
         started = time.perf_counter()
         report = await probe_model(
@@ -514,6 +558,11 @@ class RouteService:
     def _resolved(self, row: repo.RouteRow, task: RouteTask) -> ResolvedRoute:
         params = inp.parse_params(row.params)
         caps = self._codec.caps(row)
+        prices = None
+        if row.platform:
+            if self._platform is None:
+                raise platform_unavailable()
+            prices = self._platform.prices
         return ResolvedRoute(
             route_id=row.id,
             task=task,
@@ -523,7 +572,87 @@ class RouteService:
             caps=caps,
             params=params,
             window=window_for(caps, params, task),
+            prices=prices,
         )
+
+    # ---- 官方模型 ------------------------------------------------------------------------
+    def platform_route(self, task: RouteTask) -> ResolvedRoute | None:
+        """直接用官方模型（不经过用户的那一行），运营方自己的检查用，比如保存角色卡前的内容检查。
+
+        不带单价：这类调用不扣用户的点数。服务器没配官方模型时返回 None。
+        """
+        platform = self._platform
+        if platform is None:
+            return None
+        params = inp.parse_params({})
+        caps = self._hub.capabilities(platform.provider, platform.model)
+        return ResolvedRoute(
+            route_id="platform",
+            task=task,
+            provider=platform.provider,
+            model=platform.model,
+            credential=platform.credential(),
+            caps=caps,
+            params=params,
+            window=window_for(caps, params, task),
+        )
+
+    async def ensure_platform(self, user_id: str) -> RouteView | None:
+        """给用户配上官方模型的那一行（已经有就不动）；用户还没有导演时，让它当导演。
+
+        服务器没配官方模型时什么都不做，返回 None。注册验证邮箱后、管理命令补发时调用。
+        """
+        platform = self._platform
+        if platform is None:
+            return None
+        async with self._engine.begin() as conn:
+            row = await repo.get_platform(conn, user_id)
+            if row is None:
+                now = _now()
+                row = await repo.insert_route(
+                    conn,
+                    repo.RouteRow(
+                        id=str(uuid.uuid4()),
+                        user_id=user_id,
+                        label="",
+                        provider=platform.provider,
+                        base_url=None,
+                        api_key_enc=None,
+                        key_id=None,
+                        key_last4="",
+                        extra_headers_enc=None,
+                        extra_body={},
+                        model=platform.model,
+                        listed_window=None,
+                        manual_window=None,
+                        learned_window=None,
+                        params={},
+                        caps_override={},
+                        probe={},
+                        status="ok",
+                        last_ok_at=now,
+                        is_director=False,
+                        is_background=False,
+                        created_at=now,
+                        updated_at=now,
+                        source="platform",
+                    ),
+                )
+                if await repo.get_director(conn, user_id) is None:
+                    await repo.set_director(conn, user_id, row.id)
+                log.info("route.platform_added", route_id=row.id, model=platform.model)
+        return await self.get(user_id, row.id)
+
+    async def sync_platform(self) -> int:
+        """api 启动时调用：运营方换了官方模型时，把用户们的官方模型那一行跟着换掉。"""
+        platform = self._platform
+        if platform is None:
+            return 0
+        async with self._engine.begin() as conn:
+            count = await repo.sync_platform(conn, platform.provider, platform.model)
+        if count:
+            log.info("route.platform_synced", rows=count, model=platform.model)
+        return count
 
     async def note_window(self, user_id: str, route_id: str, window: int) -> bool:
         """服务商报超长时写明了上限：记下来，以后都按它算。只会往小调。"""

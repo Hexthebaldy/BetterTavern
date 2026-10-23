@@ -259,6 +259,7 @@ class WorkbenchRunner:
             status="failed" if failure is not None else ("cancelled" if stopped else "ok"),
             provider=route.provider if route is not None else None,
             model=route.model if route is not None else None,
+            prices=route.prices if route is not None else None,
             usage=steps.total_usage(),
             ttft_ms=stats.ttft_ms if stats is not None else None,
             latency_ms=elapsed,

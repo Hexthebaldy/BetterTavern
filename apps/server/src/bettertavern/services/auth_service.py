@@ -21,7 +21,7 @@ import re
 import secrets
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -132,6 +132,7 @@ class AuthService:
         policy: AccountPolicy | None = None,
         mailer: MailSender | None = None,
         code_key: bytes = b"dev-email-code-key",
+        on_verified: Callable[[str, str], Awaitable[None]] | None = None,
     ) -> None:
         self._engine = engine
         self._signer = signer
@@ -140,6 +141,9 @@ class AuthService:
         self._policy = policy or AccountPolicy()
         self._mailer = mailer
         self._code_key = code_key
+        # 邮箱验证通过（或者不要求验证、注册完）以后：
+        # 配上官方模型、发体验额度（services/credits.py）
+        self._on_verified = on_verified
         # 同一个邮箱发信的频率（单实例，进程内计数）
         self._per_minute = RateLimiter(1, 60.0)
         self._per_hour = RateLimiter(5, 3600.0)
@@ -147,6 +151,15 @@ class AuthService:
     @property
     def policy(self) -> AccountPolicy:
         return self._policy
+
+    async def _verified(self, user_id: str, email: str) -> None:
+        """出了错只记日志：发不了体验额度不能挡住注册和登录。"""
+        if self._on_verified is None:
+            return
+        try:
+            await self._on_verified(user_id, normalize_email(email))
+        except Exception:
+            log.exception("auth.on_verified_failed")
 
     def _now(self) -> datetime:
         return datetime.fromtimestamp(self._clock(), UTC)
@@ -230,6 +243,8 @@ class AuthService:
                 tokens = await self._issue(conn, row.id, str(uuid.uuid4()), user_agent)
         bind_user(row.id)
         log.info("auth.registered", verification=verify)
+        if not verify:
+            await self._verified(row.id, row.email)
         if verify:
             # 账号已经建好；邮件没发出去时用户可以在验证页“重新发送”
             await self._send_code_quietly(row, "verify", locale)
@@ -471,6 +486,7 @@ class AuthService:
             log.info("auth.code_rejected", purpose="verify", outcome=outcome)
             raise self._code_failed(outcome, left)
         log.info("auth.email_verified")
+        await self._verified(user.id, user.email)
         async with self._engine.connect() as conn:
             fresh = await repo.get_user(conn, user.id)
         return _view(fresh or user), tokens
@@ -500,6 +516,7 @@ class AuthService:
             log.info("auth.code_rejected", purpose="reset", outcome=outcome)
             raise self._code_failed(outcome, left)
         log.info("account.password_reset")
+        await self._verified(user.id, user.email)
         async with self._engine.connect() as conn:
             fresh = await repo.get_user(conn, user.id)
         return _view(fresh or user), tokens

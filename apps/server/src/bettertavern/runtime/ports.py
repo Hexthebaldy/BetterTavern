@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
+from bettertavern.domain.billing import TokenPrices
 from bettertavern.domain.memory.outline import Beat, Outline, OutlineSlice
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.scenario.card import CharacterCard
@@ -117,6 +118,8 @@ class AgentRunRecord:
     result: Mapping[str, Any] = field(default_factory=dict)
     # 这次运行里的每一步（调模型、用工具），写进 agent_steps
     steps: tuple[AgentStep, ...] = ()
+    # 用的是官方模型时的单价（route.prices）：写进 agent_runs 时按用量扣用户的点数
+    prices: TokenPrices | None = None
 
 
 @dataclass(frozen=True)

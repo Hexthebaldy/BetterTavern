@@ -1,0 +1,8 @@
+{
+  "description": "角色卡的内容检查结果",
+  "fields": {
+    "ContentVerdict.sexual": "有露骨的性描写，或者以性为主题时为 true",
+    "ContentVerdict.minors": "有涉及未成年人的性内容时为 true",
+    "ContentVerdict.reason": "一句话说明判断的依据，不超过 100 字"
+  }
+}

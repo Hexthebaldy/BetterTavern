@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import httpx
 from pydantic import SecretStr
@@ -120,6 +121,9 @@ class Story:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
         if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:
             return JsonReply(completion('{"options": ["修复的选项一", "修复的选项二"]}'))
+        if "<card>" in prompt:
+            # 官方服务保存角色卡前的内容检查
+            return JsonReply(completion('{"sexual": false, "minors": false, "reason": ""}'))
         return JsonReply({"error": {"message": "unexpected request"}}, status=400)
 
 
@@ -131,8 +135,11 @@ class Running:
 
 
 @asynccontextmanager
-async def serve(fake_llm: RunningFakeLLM, tmp_path: Path) -> AsyncIterator[Running]:
-    """在临时 schema 里起一个完整的 api（假模型服务回复 Story 的内容），用完拆掉"""
+async def serve(fake_llm: RunningFakeLLM, tmp_path: Path, **extra: Any) -> AsyncIterator[Running]:
+    """在临时 schema 里起一个完整的 api（假模型服务回复 Story 的内容），用完拆掉。
+
+    extra：额外的配置，比如官方模型。
+    """
     url = database_url()
     assert url is not None, "需要 BT_TEST_DATABASE_URL"
     story = Story()
@@ -149,6 +156,7 @@ async def serve(fake_llm: RunningFakeLLM, tmp_path: Path) -> AsyncIterator[Runni
             rate_limit_auth_per_min=1000,
             rate_limit_turns_per_min=1000,
             shutdown_grace_s=2.0,
+            **extra,
         )
         services = build_app_services(
             settings, EventBufferRegistry(), engine=engine_for(url, schema)

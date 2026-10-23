@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -121,3 +121,5 @@ class RouteOut(Out):
     window: WindowOut
     created_at: datetime
     updated_at: datetime
+    # user：用户自己的 Key；platform：官方模型（Key 在服务器上，按用量扣点数）
+    source: Literal["user", "platform"]

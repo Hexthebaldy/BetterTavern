@@ -5,14 +5,18 @@ from __future__ import annotations
 import structlog
 
 from bettertavern import __version__
+from bettertavern.domain.billing import TokenPrices
 from bettertavern.infra.crypto.keyring import AppSecrets, load_secrets
 from bettertavern.infra.mail import MailSender
 from bettertavern.infra.mail.memory import LogSender
 from bettertavern.infra.mail.resend import ResendSender
 from bettertavern.infra.observability.alerts import AlertMailer
-from bettertavern.providers import EndpointPolicy, ProviderHub
+from bettertavern.providers import EndpointPolicy, ProviderHub, Secret
 from bettertavern.providers.limiter import CredentialLimiter, LimiterConfig
+from bettertavern.runtime.prompts import PromptBook
 from bettertavern.services.auth_service import AccountPolicy
+from bettertavern.services.credits import CreditPolicy
+from bettertavern.services.platform import PlatformModel
 from bettertavern.services.quotas import Quotas
 from bettertavern.settings import Settings
 
@@ -65,6 +69,10 @@ def mail_sender(settings: Settings) -> MailSender | None:
     return LogSender()
 
 
+def prompt_book(settings: Settings) -> PromptBook:
+    return PromptBook(content_policy=settings.content_policy)
+
+
 def account_policy(settings: Settings) -> AccountPolicy:
     return AccountPolicy(
         verification_required=settings.email_verification_required,
@@ -90,4 +98,30 @@ def alert_mailer(settings: Settings, mailer: MailSender | None, process: str) ->
         process=process,
         version=__version__,
         interval_s=settings.alert_interval_s,
+    )
+
+
+def platform_model(settings: Settings) -> PlatformModel | None:
+    """配了 PLATFORM_API_KEY 才有官方模型。"""
+    if settings.platform_api_key is None:
+        return None
+    return PlatformModel(
+        provider=settings.platform_provider,
+        model=settings.platform_model,
+        api_key=Secret(settings.platform_api_key.get_secret_value()),
+        base_url=settings.platform_base_url,
+        prices=TokenPrices(
+            input=settings.platform_price_input,
+            cached=settings.platform_price_cached,
+            output=settings.platform_price_output,
+        ),
+        concurrency=settings.platform_concurrency,
+    )
+
+
+def credit_policy(settings: Settings) -> CreditPolicy:
+    return CreditPolicy(
+        trial_points=settings.trial_credits,
+        daily_budget_micro=round(settings.platform_daily_budget * 1_000_000),
+        default_turn_points=settings.platform_turn_points,
     )

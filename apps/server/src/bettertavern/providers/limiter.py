@@ -57,11 +57,20 @@ class CredentialLimiter:
         self._config = config or LimiterConfig()
         self._clock = clock
         self._pools: dict[str, _CredentialPool] = {}
+        self._overrides: dict[str, LimiterConfig] = {}
+
+    def configure(self, credential_id: str, config: LimiterConfig) -> None:
+        """给某一个凭据单独设上限（官方模型的 Key 所有用户共用，要比默认的大得多）。"""
+        self._overrides[credential_id] = config
+        pool = self._pools.get(credential_id)
+        if pool is not None:
+            pool.config = config
 
     def _pool(self, credential_id: str) -> _CredentialPool:
         pool = self._pools.get(credential_id)
         if pool is None:
-            pool = self._pools[credential_id] = _CredentialPool(self._config)
+            config = self._overrides.get(credential_id, self._config)
+            pool = self._pools[credential_id] = _CredentialPool(config)
         return pool
 
     def note_rate_limited(self, credential_id: str, retry_after: float | None) -> None:

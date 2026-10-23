@@ -60,6 +60,8 @@ class RouteView:
     window: WindowInfo
     created_at: datetime
     updated_at: datetime
+    # user：用户自己的 Key；platform：官方模型（不用配置，按用量扣点数）
+    source: str = "user"
 
 
 def too_small(check: WindowCheck) -> AppError:
@@ -115,6 +117,7 @@ def _view(codec: RouteCodec, row: RouteRow, shares_key_with: list[str]) -> Route
         ),
         created_at=row.created_at,
         updated_at=row.updated_at,
+        source=row.source,
     )
 
 

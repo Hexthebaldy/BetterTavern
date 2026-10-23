@@ -3,6 +3,8 @@
 密钥列只存密文，解密在服务层、请求前进行。
 每个用户最多一行 is_director、一行 is_background、一行 is_workbench
 （部分唯一索引保证）。
+source 是 platform 的那一行是官方模型：不存 Key（密钥列为空），调用时用服务器配置里的 Key；
+每个用户最多一行。
 """
 
 from __future__ import annotations
@@ -30,8 +32,8 @@ class RouteRow:
     label: str
     provider: str
     base_url: str | None
-    api_key_enc: str
-    key_id: str
+    api_key_enc: str | None  # 官方模型那一行是 None
+    key_id: str | None
     key_last4: str
     extra_headers_enc: str | None
     extra_body: dict[str, Any]
@@ -49,6 +51,11 @@ class RouteRow:
     created_at: datetime
     updated_at: datetime
     is_workbench: bool = False  # 工作台用的模型（每个用户最多一行）
+    source: str = "user"  # user：用户自己的 Key；platform：官方模型
+
+    @property
+    def platform(self) -> bool:
+        return self.source == "platform"
 
     @classmethod
     def from_row(cls, row: Row) -> RouteRow:
@@ -77,13 +84,14 @@ class RouteRow:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             is_workbench=bool(row.get("is_workbench", False)),
+            source=row.get("source") or "user",
         )
 
 
 _COLS = """id, user_id, label, provider, base_url, api_key_enc, key_id, key_last4,
     extra_headers_enc, extra_body, model, listed_window, manual_window, learned_window, params,
     caps_override, probe, status, last_ok_at, is_director, is_background, created_at, updated_at,
-    is_workbench"""
+    is_workbench, source"""
 
 
 def _params(route: RouteRow) -> dict[str, Any]:
@@ -107,6 +115,7 @@ def _params(route: RouteRow) -> dict[str, Any]:
         "probe": dumps(route.probe),
         "status": route.status,
         "last_ok_at": route.last_ok_at,
+        "source": route.source,
     }
 
 
@@ -117,11 +126,11 @@ async def insert_route(conn: AsyncConnection, route: RouteRow) -> RouteRow:
         f"""
         INSERT INTO model_routes (id, user_id, label, provider, base_url, api_key_enc, key_id,
             key_last4, extra_headers_enc, extra_body, model, listed_window, manual_window,
-            learned_window, params, caps_override, probe, status, last_ok_at)
+            learned_window, params, caps_override, probe, status, last_ok_at, source)
         VALUES (:id, :user_id, :label, :provider, :base_url, :api_key_enc, :key_id, :key_last4,
             :extra_headers_enc, CAST(:extra_body AS jsonb), :model, :listed_window,
             :manual_window, :learned_window, CAST(:params AS jsonb),
-            CAST(:caps_override AS jsonb), CAST(:probe AS jsonb), :status, :last_ok_at)
+            CAST(:caps_override AS jsonb), CAST(:probe AS jsonb), :status, :last_ok_at, :source)
         RETURNING {_COLS}
         """,
         _params(route),
@@ -146,7 +155,7 @@ async def update_route(conn: AsyncConnection, route: RouteRow) -> RouteRow:
         WHERE id = :id AND user_id = :user_id
         RETURNING {_COLS}
         """,
-        {k: v for k, v in _params(route).items() if k != "provider"},
+        {k: v for k, v in _params(route).items() if k not in ("provider", "source")},
     )
     assert row is not None
     return RouteRow.from_row(row)
@@ -304,3 +313,29 @@ async def delete_route(conn: AsyncConnection, user_id: str, route_id: str) -> bo
         {"id": route_id, "u": user_id},
     )
     return count == 1
+
+
+async def get_platform(conn: AsyncConnection, user_id: str) -> RouteRow | None:
+    row = await fetch_one(
+        conn,
+        f"SELECT {_COLS} FROM model_routes WHERE user_id = :u AND source = 'platform'",
+        {"u": user_id},
+    )
+    return None if row is None else RouteRow.from_row(row)
+
+
+async def sync_platform(conn: AsyncConnection, provider: str, model: str) -> int:
+    """运营方换了官方模型：把所有用户的官方模型那一行改成新的服务商和模型名，返回改了几行。
+
+    窗口是按旧模型记的，一起清掉。
+    """
+    return await execute(
+        conn,
+        """
+        UPDATE model_routes
+        SET provider = :p, model = :m, listed_window = NULL, learned_window = NULL,
+            probe = '{}', updated_at = now()
+        WHERE source = 'platform' AND (provider <> :p OR model <> :m)
+        """,
+        {"p": provider, "m": model},
+    )

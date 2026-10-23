@@ -190,3 +190,34 @@ def test_unknown_language_falls_back_to_default() -> None:
 def test_prompt_directories_exist_for_every_language() -> None:
     for language in PROMPT_LANGUAGES:
         assert Path(PROMPTS_ROOT / language).is_dir()
+
+
+BOUNDARY = {"zh": "## 内容边界", "en": "## Content boundary", "ja": "## 内容の線引き"}
+
+
+@pytest.mark.parametrize("language", PROMPT_LANGUAGES)
+def test_content_boundary_only_on_the_hosted_service(language: str) -> None:
+    # 官方服务（CONTENT_POLICY=sfw）：导演的系统提示词里有内容边界；
+    # 自己部署的（open）逐字和原来一样，没有
+    hosted = ContextAssembler(PromptLibrary(language, content_policy="sfw"))
+    own = ContextAssembler(PromptLibrary(language))
+    hosted_system = hosted.assemble(context(history=2), 64_000).messages[0].content
+    own_system = own.assemble(context(history=2), 64_000).messages[0].content
+    assert hosted_system.startswith(own_system)
+    assert BOUNDARY[language] in hosted_system and BOUNDARY[language] not in own_system
+    # 补选项（前置在最前面）和工作台写卡（写卡专用的那一段）也带上
+    library = PromptLibrary(language, content_policy="sfw")
+    repair = library.render("options_repair", narrative="rain", existing=["wait"], count=2).text
+    assert repair.startswith(BOUNDARY[language])
+    assert (
+        PromptBook(content_policy="sfw")
+        .get(language)
+        .render("options_repair", narrative="rain", existing=["wait"], count=2)
+        .text
+        == repair
+    )
+    card_values = {"mode": "create", "can_search": True, "can_generate": False, "image_budget": 0}
+    card = library.render("card_maker.system", **card_values).text
+    assert card.endswith(
+        PromptLibrary(language).render("_content_boundary_card", **card_values).text
+    )

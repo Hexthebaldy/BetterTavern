@@ -30,6 +30,7 @@ from bettertavern.runtime.events.buffer import EventBufferRegistry, StreamEvent
 from bettertavern.runtime.ports import TurnHeader
 from bettertavern.runtime.runner import TurnRunnerPool
 
+from .credits import CreditService
 from .errors import AppError, Conflict, Invalid, NotFound
 from .route_service import RouteService
 from .views import TurnView
@@ -96,9 +97,11 @@ class TurnService:
         instance_id: str,
         poll_interval: float = 1.0,
         clock: Callable[[], float] = time.monotonic,
+        credits: CreditService | None = None,
     ) -> None:
         self._engine = engine
         self._routes = routes
+        self._credits = credits
         self._runners = runners
         self._buffers = buffers
         self._lease_ttl = lease_ttl_s
@@ -138,12 +141,15 @@ class TurnService:
         if found_pt is None:
             raise NotFound("Playthrough not found")
         ensure_not_ended(found_pt)
-        if await self._routes.resolve(user_id, RouteTask.DIRECTOR, playthrough_id) is None:
+        director = await self._routes.resolve(user_id, RouteTask.DIRECTOR, playthrough_id)
+        if director is None:
             raise AppError(
                 "No director model is set up yet. Add a key and choose a model in Settings",
                 code="ROUTE_MISSING",
                 status=409,
             )
+        if self._credits is not None:
+            await self._credits.check_route(user_id, director)
         async with self._engine.begin() as conn:
             pt = await repo.get_playthrough(conn, user_id, playthrough_id, lock=True)
             if pt is None:

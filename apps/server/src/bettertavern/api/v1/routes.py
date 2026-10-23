@@ -1,4 +1,4 @@
-"""服务商、模型列表、模型路由（玩家配好的模型）与测试。"""
+"""服务商、模型列表、模型路由（玩家配好的模型，和官方模型）与测试。"""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from bettertavern.api.schemas.routes import (
     RouteOut,
     RoutePatchIn,
 )
+from bettertavern.services.route_codec import platform_unavailable
 from bettertavern.services.route_inputs import RouteInput, RoutePatch
 
 router = APIRouter(prefix="/v1", tags=["models"])
@@ -69,6 +70,15 @@ async def create_route(body: RouteIn, user_id: UserId, services: ServicesDep) ->
             workbench=body.workbench,
         ),
     )
+    return RouteOut.model_validate(view)
+
+
+@router.post("/model-routes/platform")
+async def add_platform_route(user_id: UserId, services: ServicesDep) -> RouteOut:
+    """把官方模型加回来（删掉过的用户用）；已经有了就原样返回。没有导演时让它当导演。"""
+    view = await services.routes.ensure_platform(user_id)
+    if view is None:
+        raise platform_unavailable()
     return RouteOut.model_validate(view)
 
 

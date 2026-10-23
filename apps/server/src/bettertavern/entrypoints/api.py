@@ -23,6 +23,7 @@ from bettertavern.api.probe_app import create_probe_app
 from bettertavern.api.request_context import RequestContext
 from bettertavern.api.v1.auth import router as auth_router
 from bettertavern.api.v1.cards import router as cards_router
+from bettertavern.api.v1.credits import router as credits_router
 from bettertavern.api.v1.health import router as health_router
 from bettertavern.api.v1.playthroughs import router as playthroughs_router
 from bettertavern.api.v1.routes import router as routes_router
@@ -52,8 +53,11 @@ from .bootstrap import (
     account_policy,
     alert_mailer,
     app_secrets,
+    credit_policy,
     endpoint_policy,
     mail_sender,
+    platform_model,
+    prompt_book,
     provider_hub,
     quotas,
 )
@@ -105,9 +109,12 @@ def build_app_services(
         instance_id=instance_id(),
         rollback_limit=settings.rollback_limit,
         http=build_http_client(policy, proxy=settings.outbound_proxy),
+        prompts=prompt_book(settings),
         account_policy=account_policy(settings),
         mailer=mailer if mailer is not None else mail_sender(settings),
         quotas=quotas(settings),
+        platform=platform_model(settings),
+        credit_policy=credit_policy(settings),
     )
 
 
@@ -138,6 +145,11 @@ def create_app(
         if alerts is not None:
             alerts.install()
             background.append(asyncio.create_task(alerts.run()))
+        try:
+            await services.routes.sync_platform()
+        except Exception:
+            # 数据库暂时连不上不影响启动；下次启动再同步
+            log.warning("app.platform_sync_failed", exc_info=True)
         log.info("app.started", version=__version__, env=settings.env, instance=instance_id())
         try:
             yield
@@ -198,6 +210,7 @@ def create_app(
     app.add_middleware(RequestContext)
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(credits_router)
     app.include_router(routes_router)
     app.include_router(cards_router)
     app.include_router(scenarios_router)

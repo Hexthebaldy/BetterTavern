@@ -11,7 +11,8 @@
 带 tools 的非流式请求是后台整理世界状态的 agent：每次直接调用 commit，只写一句摘要、不改世界状态。
 recall 打开时（--recall），导演收到召回工具会先查一次“火漆”，拿到结果再写；
 提示词里有 <chapter-turns> 的是章节整理，回一段固定的章节摘要和玩家画像（要并梗概时也回梗概）；
-有 <outline-source> 的是大纲修订：还没有大纲时回一版三拍的大纲，之后都回“不改”。
+有 <outline-source> 的是大纲修订：还没有大纲时回一版三拍的大纲，之后都回“不改”；
+有 <card> 的是官方服务保存角色卡前的内容检查，一律回“没问题”。
 自定义端点默认被当成不能调用工具：要让后台整理跑起来，先在设置里测试一下这个模型。
 """
 
@@ -215,6 +216,8 @@ class StoryScript:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
         if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:
             return JsonReply(completion('{"options": ["看看四周", "继续等待"]}'))
+        if "<card>" in prompt:
+            return JsonReply(completion('{"sexual": false, "minors": false, "reason": ""}'))
         error = {"error": {"message": "fake story server: unexpected request"}}
         return JsonReply(error, status=400)
 

@@ -10,6 +10,10 @@
 添加模型的典型流程：`GET /v1/providers` 选服务商 → `POST /v1/providers/{provider}/models` 用刚填的 Key 拉模型列表 →
 `POST /v1/model-routes` 连同 Key、模型名一次保存，可以顺便设为导演。
 
+官方模型：服务器配置了运营方的 Key（`PLATFORM_API_KEY`，官方服务 bettertavern.com 上有）时，用户邮箱验证通过后自动多一个 `source` 为 `platform` 的模型，
+没有导演时它就是导演。它不用填 Key，按用量扣点数（余额见 [`GET /v1/me/credits`](auth.md#get-v1mecredits)）。
+它的 Key、端点、模型名、窗口和能力都不能改，也不能测试、拉模型列表、复用它的 Key（409 `PLATFORM_ROUTE_FIXED`）；可以改显示名、写法设置和用途，也可以删掉，删了用 `POST /v1/model-routes/platform` 加回来。
+
 ## 接口
 
 ### `GET /v1/providers`
@@ -32,7 +36,7 @@
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | `copy_key_from` 指向的模型不存在 |
 | 409 | `CREDENTIAL_UNREADABLE` | `copy_key_from` 指向的模型的 Key 无法解密 |
-| 422 | `VALIDATION_ERROR` | 不支持的服务商（`field: "provider"`）；没填 Key 也没指定复用（`field: "api_key"`）；复用的是别的服务商的 Key（`field: "copy_key_from"`）；需要接口地址却没填（`field: "base_url"`） |
+| 422 | `VALIDATION_ERROR` | 不支持的服务商（`field: "provider"`）；没填 Key 也没指定复用（`field: "api_key"`）；复用的是别的服务商的 Key 或者官方模型的 Key（`field: "copy_key_from"`）；需要接口地址却没填（`field: "base_url"`） |
 | 422 | `ENDPOINT_NOT_ALLOWED` | 接口地址没有通过 SSRF 校验，带 `reason` |
 | 424 | `CREDENTIAL_INVALID` | 服务商拒绝了这个 Key |
 | 429 | `RATE_LIMITED` | 每分钟超过 5 次 |
@@ -69,7 +73,7 @@
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | `copy_key_from` 指向的模型不存在 |
 | 409 | `CREDENTIAL_UNREADABLE` | `copy_key_from` 指向的模型的 Key 无法解密 |
-| 422 | `VALIDATION_ERROR` | 字段为空或超过长度限制（带 `errors`）；不支持的服务商（`field: "provider"`）；模型名只有空白（`field: "model"`）；没填 Key 也没指定复用（`field: "api_key"`）；复用的是别的服务商的 Key（`field: "copy_key_from"`）；需要接口地址却没填（`field: "base_url"`）；手填窗口超出范围（`field: "manual_window"`）；参数超出范围（`field` 形如 `"params.temperature"`）；能力覆盖不合法或写了 `context_window`（`field: "caps_override"`）；自定义请求头或请求体不合法（`field: "extra_headers"` / `"extra_body"`） |
+| 422 | `VALIDATION_ERROR` | 字段为空或超过长度限制（带 `errors`）；不支持的服务商（`field: "provider"`）；模型名只有空白（`field: "model"`）；没填 Key 也没指定复用（`field: "api_key"`）；复用的是别的服务商的 Key 或者官方模型的 Key（`field: "copy_key_from"`）；需要接口地址却没填（`field: "base_url"`）；手填窗口超出范围（`field: "manual_window"`）；参数超出范围（`field` 形如 `"params.temperature"`）；能力覆盖不合法或写了 `context_window`（`field: "caps_override"`）；自定义请求头或请求体不合法（`field: "extra_headers"` / `"extra_body"`） |
 | 422 | `ENDPOINT_NOT_ALLOWED` | 接口地址没有通过 SSRF 校验，带 `reason`。只允许公网的 https 地址；服务端开了 `ALLOW_PRIVATE_ENDPOINTS` 时，也允许 http 和内网地址 |
 | 422 | `WINDOW_TOO_SMALL` | 有效窗口小于 16000，带 `model_window`、`cap`、`max_tokens`、`effective_window` |
 
@@ -104,6 +108,18 @@
 
 各用途的默认值见 [数据模型：`model_routes.params`](../data-model/models.md#model_routesparams)。
 
+### `POST /v1/model-routes/platform`
+
+把官方模型加回来（删掉过的用户在设置页点“使用官方模型”）。已经有了就原样返回，不会加第二个；用户这时没有导演的话，让它当导演。
+体验额度不在这里发，删了再加回来余额不变。没有请求体。
+
+- 鉴权：需要
+- 成功：`200`，返回 [`RouteOut`](#routeout)（`source` 为 `platform`）。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 503 | `PLATFORM_UNAVAILABLE` | 这台服务器没有官方模型（没配 `PLATFORM_API_KEY`） |
+
 ### `GET /v1/model-routes/{route_id}`
 
 单个模型，包括最近一次测试的结果。
@@ -128,6 +144,7 @@
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 模型不存在 |
 | 409 | `CREDENTIAL_UNREADABLE` | 要重新拉列表或一起换 Key 时，Key 无法解密 |
+| 409 | `PLATFORM_ROUTE_FIXED` | 这是官方模型，却改了 Key、端点、请求头、请求体、模型名、手填窗口或能力覆盖 |
 | 422 | `VALIDATION_ERROR` | 同添加模型；另外，需要接口地址的服务商不能把 `base_url` 清空 |
 | 422 | `ENDPOINT_NOT_ALLOWED` | 新的接口地址没有通过校验，带 `reason` |
 | 422 | `WINDOW_TOO_SMALL` | 改完之后有效窗口小于 16000 |
@@ -174,6 +191,7 @@
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 模型不存在 |
 | 409 | `CREDENTIAL_UNREADABLE` | Key 无法解密（服务端换了主密钥却没有保留旧的），需要重新填写 Key |
+| 409 | `PLATFORM_ROUTE_FIXED` | 这是官方模型，不用测试 |
 | 429 | `RATE_LIMITED` | 每分钟超过 5 次 |
 
 ### `GET /v1/model-routes/{route_id}/models`
@@ -187,6 +205,7 @@
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 模型不存在 |
 | 409 | `CREDENTIAL_UNREADABLE` | Key 无法解密 |
+| 409 | `PLATFORM_ROUTE_FIXED` | 这是官方模型，模型名不能换 |
 | 424 | `CREDENTIAL_INVALID` | 服务商拒绝了这个 Key，状态同时变为 `invalid` |
 | 502 | `PROVIDER_ERROR` | 服务商的其他错误，带 `error_class` |
 
@@ -236,6 +255,7 @@
 | `window` | [`WindowOut`](#windowout) | 按当前设置算出的窗口 |
 | `created_at` | string（时间） | 添加时间 |
 | `updated_at` | string（时间） | 最近修改时间 |
+| `source` | string | `user`：用户自己的 Key；`platform`：官方模型（`key_last4` 为空串，`base_url` 为 null，按用量扣点数） |
 
 ### `WindowOut`
 

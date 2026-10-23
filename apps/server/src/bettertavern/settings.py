@@ -99,6 +99,30 @@ class Settings(BaseSettings):
     max_open_drafts: int = Field(default=50, ge=1)
     max_image_bytes_per_user: int = Field(default=200 * 1024 * 1024, ge=1024 * 1024)
 
+    # 内容边界：sfw 时，写故事和写卡的提示词里加上“不写露骨的性描写”，保存角色卡前先检查内容
+    # （官方服务 bettertavern.com 用；自己部署的默认 open，不限制）
+    content_policy: Literal["open", "sfw"] = "open"
+
+    # 官方模型：服务器用运营方自己的 Key 调模型，用户不用配置（官方服务用）。
+    # 不设 PLATFORM_API_KEY 就没有
+    platform_api_key: SecretStr | None = None
+    platform_provider: str = "deepseek"
+    platform_model: str = "deepseek-flash"
+    platform_base_url: str | None = None
+    # 单价：每百万 token 多少元（输入没命中缓存、命中缓存、输出）。
+    # 默认是 DeepSeek 的高峰价，宁可多算
+    platform_price_input: float = Field(default=2.0, ge=0)
+    platform_price_cached: float = Field(default=0.04, ge=0)
+    platform_price_output: float = Field(default=8.0, ge=0)
+    # 官方 Key 所有用户共用，同时最多几个请求
+    platform_concurrency: int = Field(default=32, ge=2)
+    # 新用户验证邮箱后送的体验点数（1 点 = 0.001 元的模型费用）
+    trial_credits: int = Field(default=1500, ge=0)
+    # 全站最近 24 小时在官方模型上最多花多少元，超过就暂停官方模型（并发报错提醒）
+    platform_daily_budget: float = Field(default=50.0, gt=0)
+    # 没有自己的记录时，估计每回合花多少点（给用户看“大约还能写多少回合”）
+    platform_turn_points: int = Field(default=40, ge=1)
+
     # 账号
     # 能不能注册新账号（出问题时先关掉）
     registration_open: bool = True
@@ -115,7 +139,9 @@ class Settings(BaseSettings):
     # 网页端的 Cookie 登录也只接受同源和这里列出的来源
     cors_origins: str = ""
 
-    @field_validator("resend_api_key", "alert_email", mode="before")
+    @field_validator(
+        "resend_api_key", "alert_email", "platform_api_key", "platform_base_url", mode="before"
+    )
     @classmethod
     def _blank_is_unset(cls, value: object) -> object:
         # compose 里没填的变量以空字符串传进来，当作没配置

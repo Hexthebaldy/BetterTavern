@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from bettertavern.infra.db.sqlutil import Row, as_json, execute, fetch_one
+from bettertavern.infra.db.sqlutil import Row, as_json, execute, fetch_all, fetch_one
 
 
 @dataclass(frozen=True, slots=True)
@@ -330,3 +330,13 @@ async def lock_user_quota(conn: AsyncConnection, user_id: str) -> None:
     await execute(
         conn, "SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))", {"k": f"quota:{user_id}"}
     )
+
+
+async def verified_emails(conn: AsyncConnection) -> list[tuple[str, str]]:
+    """所有验证过邮箱的账号：（用户 id，规范化的邮箱）。补发体验额度的管理命令用。"""
+    rows = await fetch_all(
+        conn,
+        "SELECT id, email_norm FROM users WHERE email_verified_at IS NOT NULL ORDER BY created_at",
+        {},
+    )
+    return [(str(r["id"]), str(r["email_norm"])) for r in rows]

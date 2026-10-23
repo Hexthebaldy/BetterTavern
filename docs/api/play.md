@@ -35,6 +35,9 @@
 | 404 | `NOT_FOUND` | 剧本不存在 |
 | 409 | `ROUTE_MISSING` | 还没有设置导演模型 |
 | 409 | `CREDENTIAL_UNREADABLE` | 导演模型的 Key 无法解密 |
+| 402 | `CREDITS_EXHAUSTED` | 导演是官方模型，点数用完了 |
+| 503 | `PLATFORM_BUSY` | 导演是官方模型，全站今天的预算用完了（`retryable` 为真） |
+| 503 | `PLATFORM_UNAVAILABLE` | 导演是官方模型，但这台服务器没有官方模型 |
 | 429 | `RATE_LIMITED` | 每分钟超过 30 次（和提交行动合计） |
 | 503 | `UNAVAILABLE` | 服务正在重启，带 `Retry-After: 5` |
 
@@ -185,7 +188,7 @@
 - 重试一个失败的回合：用同样的 `parent_turn_id` 和同样的行动再提交一次，但要换一个新的 `Idempotency-Key`（用原来的值会原样返回那个失败的回合）。
   新回合的 `seq` 相同，`attempt` 加 1。
 
-检查的顺序：服务是否在重启 → 限流 → 路径和参数的格式 → 幂等键重放 → 游玩的归属 → 故事是否已完结 → 导演模型 → 锁住游玩
+检查的顺序：服务是否在重启 → 限流 → 路径和参数的格式 → 幂等键重放 → 游玩的归属 → 故事是否已完结 → 导演模型 → 点数（导演是官方模型时） → 锁住游玩
 → 故事是否已完结（再看一次，防止另一台设备刚好写完结局）→ 是否有正在生成的回合（租约已过期的，先把它标为失败）
 → `parent_turn_id` 是不是当前头部 → 行动本身。
 
@@ -194,6 +197,9 @@
 | 404 | `NOT_FOUND` | 游玩不存在 |
 | 409 | `ROUTE_MISSING` | 还没有设置导演模型 |
 | 409 | `CREDENTIAL_UNREADABLE` | 导演模型的 Key 无法解密 |
+| 402 | `CREDITS_EXHAUSTED` | 导演是官方模型，点数用完了 |
+| 503 | `PLATFORM_BUSY` | 导演是官方模型，全站今天的预算用完了（`retryable` 为真） |
+| 503 | `PLATFORM_UNAVAILABLE` | 导演是官方模型，但这台服务器没有官方模型 |
 | 409 | `TURN_IN_PROGRESS` | 上一轮还在生成，带 `active_turn_id`；客户端可以直接订阅它的事件流 |
 | 409 | `STALE_PARENT` | `parent_turn_id` 不是当前头部（故事在别处更新过），带最新的 `head_turn_id`。已经有开场时提交 `opening` 并且 `parent_turn_id` 为 null，得到的也是这个码 |
 | 409 | `OPENING_PENDING` | 开场还没完成，就提交了 `option`、`text` 或 `ending` 行动 |

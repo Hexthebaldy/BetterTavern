@@ -152,6 +152,8 @@ docker compose up -d api worker
 | 硬盘 | `df -h /`，数据库多大：`docker compose exec postgres psql -U bettertavern -c "select pg_size_pretty(pg_database_size('bettertavern'))"` |
 | 网站的访问日志 | `sudo tail -f /var/log/nginx/access.log` |
 
+| 官方模型最近 24 小时花了多少元 | `docker compose exec postgres psql -U bettertavern -c "select -sum(amount_micro)/1e6 from credit_ledger where kind='charge' and created_at > now() - interval '24 hours'"` |
+
 服务报错时，每 15 分钟会把这段时间的报错合成一封邮件发到 support@bettertavern.com，邮件里只有事件名和次数，具体情况在日志里按事件名搜。
 
 ## 7 出了问题时
@@ -165,6 +167,8 @@ docker compose up -d api worker
 | Resend 的 key 泄露 | 在 Resend 新建一个只能发信、只限 bettertavern.com 的 key，换进 `.env`，`docker compose up -d api worker`，再删掉旧的 |
 | 令牌密钥 `AUTH_SECRET` 泄露 | 换一个新的（`docker compose run --rm migrate bettertavern keygen` 输出的第二行），所有人都要重新登录 |
 | 主密钥 `MASTER_KEYS` 要换 | 新的写在最前面、旧的留在后面（逗号隔开），重启以后新存的 Key 用新密钥加密，旧的照样能解 |
+| 报错提醒里有 `credits.daily_budget_reached` | 官方模型最近 24 小时的花费到了 `PLATFORM_DAILY_BUDGET`，已经自动暂停（用户看到“官方模型现在太忙了”，用自己 Key 的不受影响）。先看是不是有人刷（第 9 节的查询），正常增长就调高预算：`.env` 里改 `PLATFORM_DAILY_BUDGET`，`docker compose up -d api` |
+| 官方模型的 Key 泄露、DeepSeek 余额异常 | 在 DeepSeek 后台删掉这把 Key、新建一把，按第 9 节换进 `.env`，`docker compose up -d api worker` |
 
 ## 8 定期要做的
 
@@ -172,3 +176,54 @@ docker compose up -d api worker
 - **系统更新**：Ubuntu 自动装安全更新。偶尔 `sudo apt upgrade` 后 `sudo reboot`，容器会自己起来。
 - **硬盘**：每次部署会清掉不用的镜像。旧版本网页的静态文件不会自动删，每次几 MB，很久以后可以清一次 `web/assets` 里一个月前的文件。
 - **源站证书**：有效期 15 年，不用管。
+
+## 9 官方模型和点数
+
+官方模型是运营方自己的 DeepSeek Key：用户注册、验证邮箱以后不用配置就能写，按用量扣点数（1 点 = 0.001 元，新用户送 1500 点）。
+规则见 [数据模型：点数](data-model/credits.md)；内容规则（`CONTENT_POLICY=sfw`）在 `deploy/compose.prod.yml` 里写死了。
+
+**配上或更换 Key**（在服务器上；Key 不显示在屏幕上，也不进命令历史）：
+
+```bash
+cd /srv/bettertavern
+sed -i '/^PLATFORM_API_KEY=/d' .env
+read -rsp "DeepSeek 的 API key：" key && echo "PLATFORM_API_KEY=$key" >> .env && unset key && echo
+docker compose up -d api worker
+```
+
+建议在 DeepSeek 后台给官方服务单独建一把 Key，余额充多少就是最坏情况下能花掉多少。
+
+**第一次配上以后补发**：配 Key 之前注册的账号没有官方模型和体验额度，跑一次（重复跑不会重复发，同一个邮箱只发一次）：
+
+```bash
+docker compose run --rm migrate bettertavern credits-backfill
+```
+
+**花费**：除了第 6 节的“最近 24 小时花了多少”，按用户看谁花得最多：
+
+```bash
+docker compose exec postgres psql -U bettertavern -c "select user_id, -sum(amount_micro)/1e6 as yuan, count(*) as runs from credit_ledger where kind='charge' and created_at > now() - interval '24 hours' group by user_id order by yuan desc limit 10"
+```
+
+和 DeepSeek 后台的账单对一下：账本按白天的价格算，夜间半价时实际花得比账本少。
+
+**给某个用户加点数**（例如补偿；`<用户 ID>` 换成实际的，`1000` 是点数）。余额和账本要在同一个事务里改：
+
+```bash
+docker compose exec -T postgres psql -U bettertavern -v ON_ERROR_STOP=1 <<'SQL'
+begin;
+with u as (update users set credit_micro = credit_micro + 1000 * 1000 where id = '<用户 ID>' returning id, credit_micro)
+insert into credit_ledger (user_id, kind, amount_micro, balance_micro, note)
+select id, 'adjust', 1000 * 1000, credit_micro, 'support' from u;
+commit;
+SQL
+```
+
+**几个开关**（都在 `.env` 里，改完 `docker compose up -d api worker`）：
+
+| 配置 | 默认 | 说明 |
+| --- | --- | --- |
+| `PLATFORM_API_KEY` | 空 | 不配就没有官方模型 |
+| `PLATFORM_DAILY_BUDGET` | 50 | 全站最近 24 小时最多花多少元，到了就暂停官方模型并发报错提醒 |
+| `TRIAL_CREDITS` | 1500 | 新用户送多少点 |
+| `PLATFORM_MODEL`、`PLATFORM_PRICE_*` | `deepseek-flash`，2 / 0.04 / 8 | 换模型或 DeepSeek 调价时改（单价是元 / 百万 token）；换了模型，api 启动时会把所有用户的官方模型改成新的 |

@@ -875,7 +875,11 @@ apps/server/
 
 ### 内容与合规
 
-- 内容策略：默认不加额外过滤，只处理厂商返回的拦截（`content_policy_blocked`，第 8 节）。预留 `ContentPolicy` 钩子，对玩家输入和模型输出各有一个检查点，默认空实现。以后如果有人运营面向公众的服务，可以在这里接入过滤；内容分级和年龄声明由运营方决定，代码里只提供钩子。
+- 内容策略（`CONTENT_POLICY`）：默认 `open`，不加额外过滤，只处理厂商返回的拦截（`content_policy_blocked`，第 8 节）。
+  官方服务设成 `sfw`：所有写故事、写卡的提示词末尾（或开头）加一段内容边界（`runtime/prompts/<lang>/_content_boundary*.j2`：不写露骨的性描写、不写涉及未成年人的性内容，越界的要求不照写也不说教），
+  角色卡存进仓库前用模型检查一遍（`runtime/agents/content_check.py`，有色情内容返回 422 `CONTENT_REJECTED`，检查出错返回 503，不放过）。
+  `open` 时提示词逐字和原来一样（前缀缓存不受影响）。
+- 官方模型和点数（`PLATFORM_API_KEY`）：运营方的 Key 给用户直接用，每个用户一行 `source = platform` 的模型路由，按用量扣点数，见 [数据模型：点数](data-model/credits.md)。
 - 应用商店：含 AI 生成内容和用户导入内容的 App，通常要求有举报入口、年龄分级和内容过滤能力。这是上架前要逐条核对商店规则的事，列入[README.md 第 3 节](README.md)风险。
 - 角色卡版权：导入的角色卡归用户所有，不上传到公共库；v1 没有社区分享。
 

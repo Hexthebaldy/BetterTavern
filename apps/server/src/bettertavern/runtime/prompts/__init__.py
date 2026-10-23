@@ -10,6 +10,10 @@
 世界状态 agent 修改出错时的说明（state_keeper.json）、导演召回工具出错时的说明（recall.json）。
 一局用哪种语言由 playthroughs.language 决定，runtime 从 PromptBook 里按它取
 （docs/i18n.md 第 4 节）。
+
+内容边界（content_policy）：服务器设了 CONTENT_POLICY=sfw（官方服务）时，写故事和写卡的提示词里
+拼进 _content_boundary*.j2（不写露骨的性描写）；自己部署的默认是 open，不加。
+整个进程里不变，不影响前缀缓存。
 """
 
 from __future__ import annotations
@@ -19,11 +23,13 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import jinja2
 
 from bettertavern.domain.story.language import DEFAULT_LANGUAGE, PROMPT_LANGUAGES
+
+ContentPolicy = Literal["open", "sfw"]
 
 PROMPTS_ROOT = Path(__file__).parent
 _VERSION = re.compile(r"\{#\s*version:\s*([\w.-]+)\s*#\}")
@@ -41,7 +47,12 @@ class RenderedPrompt:
 
 
 class PromptLibrary:
-    def __init__(self, language: str = DEFAULT_LANGUAGE, root: Path = PROMPTS_ROOT) -> None:
+    def __init__(
+        self,
+        language: str = DEFAULT_LANGUAGE,
+        root: Path = PROMPTS_ROOT,
+        content_policy: ContentPolicy = "open",
+    ) -> None:
         directory = root / language
         if not directory.is_dir():
             raise FileNotFoundError(f"No prompt directory for {language}: {directory}")
@@ -55,6 +66,7 @@ class PromptLibrary:
             lstrip_blocks=True,
             keep_trailing_newline=False,
         )
+        self._env.globals["content_policy"] = content_policy
         self._versions: dict[str, str] = {}
         self._data: dict[str, Any] = {}
 
@@ -84,9 +96,15 @@ class PromptBook:
     """每种语言一套提示词；按一局的语言（playthroughs.language）取，不认识的语言用默认语言。"""
 
     def __init__(
-        self, languages: tuple[str, ...] = PROMPT_LANGUAGES, root: Path = PROMPTS_ROOT
+        self,
+        languages: tuple[str, ...] = PROMPT_LANGUAGES,
+        root: Path = PROMPTS_ROOT,
+        content_policy: ContentPolicy = "open",
     ) -> None:
-        self._libraries = {language: PromptLibrary(language, root) for language in languages}
+        self.content_policy: ContentPolicy = content_policy
+        self._libraries = {
+            language: PromptLibrary(language, root, content_policy) for language in languages
+        }
 
     @property
     def languages(self) -> tuple[str, ...]:

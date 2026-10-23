@@ -1,0 +1,8 @@
+{
+  "description": "The content check result for a character card",
+  "fields": {
+    "ContentVerdict.sexual": "true if there's explicit sexual content, or sex is the theme",
+    "ContentVerdict.minors": "true if there's sexual content involving minors",
+    "ContentVerdict.reason": "One sentence on what the decision is based on, at most 100 characters"
+  }
+}

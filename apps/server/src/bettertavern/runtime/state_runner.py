@@ -131,6 +131,7 @@ class StateRunner:
                 status="ok",
                 provider=route.provider,
                 model=route.model,
+                prices=route.prices,
                 usage=steps.total_usage(),
                 latency_ms=self._elapsed_ms(started),
                 result={
@@ -176,6 +177,7 @@ class StateRunner:
             status="failed",
             provider=route.provider if route is not None else None,
             model=route.model if route is not None else None,
+            prices=route.prices if route is not None else None,
             usage=steps.total_usage(),
             latency_ms=self._elapsed_ms(started),
             error_class=error_class,

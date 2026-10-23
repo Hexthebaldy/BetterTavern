@@ -45,6 +45,8 @@ from .bootstrap import (
     app_secrets,
     endpoint_policy,
     mail_sender,
+    platform_model,
+    prompt_book,
     provider_hub,
     quotas,
 )
@@ -77,34 +79,46 @@ async def run_worker(settings: Settings) -> None:
     engine = create_engine(settings.database_url)
     policy = endpoint_policy(settings)
     hub = provider_hub(settings, policy)
+    secrets = app_secrets(settings)
+    prompts = prompt_book(settings)
+    # 官方模型：后台整理用的也可能是它（用量照样扣点数）
+    platform = platform_model(settings)
+    if platform is not None:
+        platform.register(hub)
     state = build_state_runner(
         engine=engine,
-        secrets=app_secrets(settings),
+        secrets=secrets,
         hub=hub,
         policy=policy,
         config=StateRunnerConfig(turn_timeout_s=settings.state_turn_timeout_s),
+        prompts=prompts,
+        platform=platform,
     )
     memory = build_memory_runner(
         engine=engine,
-        secrets=app_secrets(settings),
+        secrets=secrets,
         hub=hub,
         policy=policy,
         config=MemoryRunnerConfig(
             rule=ChapterRule(settings.chapter_soft_tokens, settings.chapter_hard_tokens),
             timeout_s=settings.chapter_timeout_s,
         ),
+        prompts=prompts,
+        platform=platform,
     )
     outline = build_outline_runner(
-        engine=engine, secrets=app_secrets(settings), hub=hub, policy=policy
+        engine=engine, secrets=secrets, hub=hub, policy=policy, prompts=prompts, platform=platform
     )
     web_client = build_http_client(policy, proxy=settings.outbound_proxy)
     workbench = build_workbench_runner(
         engine=engine,
-        secrets=app_secrets(settings),
+        secrets=secrets,
         hub=hub,
         policy=policy,
         http=web_client,
         quotas=quotas(settings),
+        prompts=prompts,
+        platform=platform,
     )
     queue = PgJobQueue(engine, lock_timeout=settings.job_lock_timeout_s)
     listener = PgNotifyListener(engine, queue.channel)

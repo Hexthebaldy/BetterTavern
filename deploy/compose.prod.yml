@@ -3,7 +3,7 @@
 # 和 docker-compose.yml（自己部署全套、本机构建）的区别：镜像来自 GHCR、按 1 GB 内存调小了 Postgres、日志限量。
 #
 # 同目录的 .env 放私密的配置（只在服务器上，不进仓库），格式见 docs/ops.md 的“第一次部署”：
-#   BT_IMAGE、POSTGRES_PASSWORD、MASTER_KEYS、AUTH_SECRET、RESEND_API_KEY、MAIL_FROM、ALERT_EMAIL
+#   BT_IMAGE、POSTGRES_PASSWORD、MASTER_KEYS、AUTH_SECRET、RESEND_API_KEY、MAIL_FROM、ALERT_EMAIL、PLATFORM_API_KEY
 # BT_IMAGE 由部署脚本改写，别的手动维护。
 #
 # 常用命令（在 /srv/bettertavern 下）：
@@ -28,6 +28,17 @@ x-server: &server
     MAIL_FROM: ${MAIL_FROM:-}
     ALERT_EMAIL: ${ALERT_EMAIL:-}
     REGISTRATION_OPEN: ${REGISTRATION_OPEN:-true}
+    # 官方服务不允许色情内容（内容规则）：提示词里加内容边界，角色卡存进仓库前检查
+    CONTENT_POLICY: sfw
+    # 官方模型（运营方的 DeepSeek Key）；不配就没有官方模型，用户只能用自己的 Key
+    PLATFORM_API_KEY: ${PLATFORM_API_KEY:-}
+    PLATFORM_MODEL: ${PLATFORM_MODEL:-deepseek-flash}
+    # 单价（元 / 百万 token）：DeepSeek 调价时在 .env 里改
+    PLATFORM_PRICE_INPUT: ${PLATFORM_PRICE_INPUT:-2.0}
+    PLATFORM_PRICE_CACHED: ${PLATFORM_PRICE_CACHED:-0.04}
+    PLATFORM_PRICE_OUTPUT: ${PLATFORM_PRICE_OUTPUT:-8.0}
+    TRIAL_CREDITS: ${TRIAL_CREDITS:-1500}
+    PLATFORM_DAILY_BUDGET: ${PLATFORM_DAILY_BUDGET:-50}
     LOG_FORMAT: json
     ENABLE_PROBE_ENDPOINTS: "false"
     ALLOW_PRIVATE_ENDPOINTS: "false"

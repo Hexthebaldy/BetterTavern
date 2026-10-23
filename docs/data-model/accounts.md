@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
 账户、登录用的刷新令牌、邮箱验证码。对应的接口见 [api/auth.md](../api/auth.md)；各领域共用的约定、表之间的关系、删除规则见 [README.md](README.md)。
 
@@ -24,6 +24,7 @@
 | `created_at` | timestamptz | 否 | `now()` | 注册时间。没验证的账号又注册了一次时改成那一次的时间（一天没验证就删，从这里算） |
 | `updated_at` | timestamptz | 否 | `now()` | 更新密码哈希、验证邮箱时写入 |
 | `email_verified_at` | timestamptz | 是 |  | 邮箱验证通过的时间；空表示还没验证。不要求验证邮箱的部署注册时直接写入；迁移 0021 之前的账号取注册时间 |
+| `credit_micro` | bigint | 否 | `0` | 官方模型的点数余额，单位微元（1 点 = 1000 微元），可能短暂为负；每次增减都记在 `credit_ledger`，见 [credits.md](credits.md) |
 
 约束与索引：
 - `email_norm` 唯一（`users_email_norm_key`）。

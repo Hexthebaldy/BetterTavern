@@ -1,4 +1,9 @@
-{# version: 3 #}
+{# version: 4 #}
+{% if content_policy == "sfw" %}
+{% include "_content_boundary.j2" %}
+
+
+{% endif %}
 你要把一张角色卡改编成一部第一人称互动小说的开局设定。
 
 背景：角色卡原本是为“和角色聊天”写的，它站在第三人称描述角色“{{ card_name }}”，并假设用户在和这个角色对话。在这部互动小说里，玩家扮演主角“我”（{{ protagonist_name }}），“{{ card_name }}”是故事里的关键人物。{% if others %}这是一部群像故事：“{{ card_name }}”之外，{% for other in others %}“{{ other.name }}”{% if not loop.last %}、{% endif %}{% endfor %}也是关键人物，他们的资料都在下面；把他们放进同一个世界，交代彼此的关系。{% endif %}

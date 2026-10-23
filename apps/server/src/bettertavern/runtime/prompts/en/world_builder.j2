@@ -1,4 +1,9 @@
-{# version: 2 #}
+{# version: 3 #}
+{% if content_policy == "sfw" %}
+{% include "_content_boundary.j2" %}
+
+
+{% endif %}
 You are adapting a character card into the opening setup of an interactive story told in the first person.
 
 Background: the character card was written for "chatting with a character". It describes the character "{{ card_name }}" in the third person and assumes the user is talking with that character. In this interactive story, the player plays the protagonist, "I" ({{ protagonist_name }}), and "{{ card_name }}" is a key character in the story.{% if others %} This is an ensemble story: besides "{{ card_name }}", {% for other in others %}"{{ other.name }}"{% if not loop.last %}, {% endif %}{% endfor %} {{ "is" if others | length == 1 else "are" }} also key characters; their material is all below. Put them in the same world and make their relationships clear.{% endif %}

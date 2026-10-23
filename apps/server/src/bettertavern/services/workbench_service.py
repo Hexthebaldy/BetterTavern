@@ -19,6 +19,7 @@ from typing import Any, Literal
 import structlog
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.scenario.card import CharacterCard
 from bettertavern.domain.story.language import parse_language
 from bettertavern.domain.workbench.changes import apply_hunks
@@ -33,6 +34,7 @@ from bettertavern.infra.db.sqlutil import is_uuid
 from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.runtime.events.buffer import StreamEvent
 
+from .credits import CreditService
 from .draft_service import DraftView, draft_view, empty_card
 from .errors import AppError, Conflict, Invalid, NotFound
 from .quotas import Quotas, check_open_drafts, check_running_agents, lock_user
@@ -77,14 +79,21 @@ class WorkbenchService:
         engine: AsyncEngine,
         hub: WorkbenchEventHub | None = None,
         quotas: Quotas | None = None,
+        credits: CreditService | None = None,
     ) -> None:
         self._engine = engine
+        self._credits = credits
         self._quotas = quotas or Quotas()
         self._queue = PgJobQueue(engine)
         self._hub = hub or WorkbenchEventHub(engine)
 
     async def aclose(self) -> None:
         await self._hub.aclose()
+
+    async def _check_credits(self, user_id: str) -> None:
+        """工作台用官方模型时，开新一轮之前要有点数。"""
+        if self._credits is not None:
+            await self._credits.check_task(user_id, RouteTask.WORKBENCH)
 
     async def _draft(
         self, conn: AsyncConnection, user_id: str, draft_id: str, *, lock: bool = False
@@ -134,6 +143,7 @@ class WorkbenchService:
     async def start(self, user_id: str, *, text: str, language: str) -> DraftView:
         """从聊天框开始：新建草稿，记下用户的第一句话，开第一轮。"""
         text = _clean_text(text)
+        await self._check_credits(user_id)
         async with self._engine.begin() as conn:
             await lock_user(conn, user_id)
             await check_open_drafts(conn, user_id, self._quotas)
@@ -157,6 +167,7 @@ class WorkbenchService:
         self, user_id: str, draft_id: str, kind: MessageKind, payload: dict[str, Any]
     ) -> MessageView:
         """用户说一句话、交问卷、回复方案；都会开新一轮。"""
+        await self._check_credits(user_id)
         async with self._engine.begin() as conn:
             await lock_user(conn, user_id)
             draft = await self._draft(conn, user_id, draft_id, lock=True)
@@ -205,6 +216,7 @@ class WorkbenchService:
 
     async def continue_(self, user_id: str, draft_id: str) -> DraftView:
         """让 agent 接着做（从手动切回来，或者上一轮被停下、出错以后）。"""
+        await self._check_credits(user_id)
         async with self._engine.begin() as conn:
             await lock_user(conn, user_id)
             draft = await self._draft(conn, user_id, draft_id, lock=True)

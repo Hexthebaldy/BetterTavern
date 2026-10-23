@@ -25,6 +25,7 @@ from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.runtime.ports import Preferences
 from bettertavern.runtime.runner import TurnRunnerPool
 
+from .credits import CreditService
 from .errors import AppError, Conflict, Invalid, NotFound
 from .outline_jobs import enqueue_outline
 from .route_service import RouteService
@@ -94,9 +95,11 @@ class PlaythroughService:
         lease_ttl_s: float,
         instance_id: str,
         rollback_limit: int = 1,
+        credits: CreditService | None = None,
     ) -> None:
         self._engine = engine
         self._routes = routes
+        self._credits = credits
         self._runners = runners
         self._lease_ttl = lease_ttl_s
         self._instance = instance_id
@@ -121,12 +124,15 @@ class PlaythroughService:
         """没填的主角和偏好用剧本的设置（scenarios.setup）补上；开场白的选择也取自设置，记进这一局。"""
         if not is_uuid(data.scenario_id):
             raise NotFound("Scenario not found")
-        if await self._routes.resolve(user_id, RouteTask.DIRECTOR) is None:
+        director = await self._routes.resolve(user_id, RouteTask.DIRECTOR)
+        if director is None:
             raise AppError(
                 "No director model is set up yet. Add a key and choose a model in Settings",
                 code="ROUTE_MISSING",
                 status=409,
             )
+        if self._credits is not None:
+            await self._credits.check_route(user_id, director)
         async with self._engine.begin() as conn:
             scenario = await library_repo.get_scenario(conn, user_id, data.scenario_id)
             if scenario is None:

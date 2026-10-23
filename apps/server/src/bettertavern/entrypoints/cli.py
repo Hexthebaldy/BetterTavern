@@ -1,4 +1,4 @@
-"""命令行入口：bettertavern serve / worker / migrate / keygen。"""
+"""命令行入口：bettertavern serve / worker / migrate / keygen / credits-backfill。"""
 
 from __future__ import annotations
 
@@ -113,6 +113,35 @@ def _keygen(args: argparse.Namespace) -> None:
     print(f"AUTH_SECRET={new_auth_secret()}")
 
 
+def _credits_backfill(args: argparse.Namespace) -> None:
+    """给已经验证过邮箱的老账号配上官方模型、补发体验额度（每个邮箱一次，重复运行不会多发）。"""
+    from bettertavern.entrypoints.api import build_app_services
+    from bettertavern.entrypoints.logging_setup import setup_logging
+    from bettertavern.infra.db.repositories.accounts import verified_emails
+    from bettertavern.runtime.events.buffer import EventBufferRegistry
+    from bettertavern.settings import Settings
+
+    settings = Settings()
+    setup_logging(settings, "cli", to_file=False)
+
+    async def run() -> None:
+        services = build_app_services(settings, EventBufferRegistry())
+        try:
+            if services.routes.platform is None:
+                print("PLATFORM_API_KEY isn't set: no official model, nothing to do")
+                return
+            async with services.engine.connect() as conn:
+                users = await verified_emails(conn)
+            for user_id, email_norm in users:
+                await services.credits.on_verified(user_id, email_norm)
+            print(f"Checked {len(users)} verified accounts")
+        finally:
+            await services.aclose(grace=1.0)
+            await services.engine.dispose()
+
+    asyncio.run(run())
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="bettertavern", description="BetterTavern server")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -146,6 +175,12 @@ def main(argv: list[str] | None = None) -> None:
     keygen = sub.add_parser("keygen", help="Generate the master key and the token signing secret")
     keygen.add_argument("--kid", help="Master key id, random by default")
     keygen.set_defaults(func=_keygen)
+
+    backfill = sub.add_parser(
+        "credits-backfill",
+        help="Give verified accounts the official model and their trial credits (once per email)",
+    )
+    backfill.set_defaults(func=_credits_backfill)
 
     args = parser.parse_args(argv)
     args.func(args)

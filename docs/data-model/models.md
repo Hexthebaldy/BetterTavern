@@ -2,10 +2,12 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
 玩家配好的模型：一行就是一个能用来写故事的模型，包括服务商、API Key、端点、模型名、上下文窗口和写法设置。其中一行是导演。
 对应的接口见 [api/models.md](../api/models.md)。
+
+迁移 `0022` 加了官方模型：`source` 为 `platform` 的那一行不存 Key，调用时用服务器配置的运营方 Key，按用量扣点数（[credits.md](credits.md)）。
 
 迁移 `0003` 把原来的 `credentials`（密钥与端点）并进了这张表：之前 Key 存在 `credentials`，`model_routes` 只记“哪个 task 用哪个凭据的哪个模型”，
 模型名只存在路由上，换一次导演就要重新选模型。现在一个 Key 用在几个模型上时，每行各存一份密文，换 Key 时可以一起换。
@@ -21,8 +23,8 @@
 | `label` | text | 否 | `''` | 显示名，最多 60 字；为空时界面显示模型名 |
 | `provider` | text | 否 |  | 服务商：`deepseek`、`openai`、`xai`（Grok）、`gemini`、`huggingface`、`custom_openai`。没有 CHECK，合法值由服务商注册表（`providers/profiles/`）决定，新增厂商不用改表 |
 | `base_url` | text | 是 |  | 自定义的接口地址（去掉末尾的 `/`）；为空表示使用服务商的默认地址，`custom_openai` 必须填写。写入前做 SSRF 校验 |
-| `api_key_enc` | text | 否 |  | 加密后的 API Key，加密格式见本节末尾 |
-| `key_id` | text | 否 |  | 加密 `api_key_enc` 时用的主密钥编号（`MASTER_KEYS` 里的 kid），留给以后的重新加密工具定位用。只改 Key 时 `extra_headers_enc` 不会重新加密，所以它可能还在用旧的 kid |
+| `api_key_enc` | text | 是 |  | 加密后的 API Key，加密格式见本节末尾；官方模型那一行为空 |
+| `key_id` | text | 是 |  | 加密 `api_key_enc` 时用的主密钥编号（`MASTER_KEYS` 里的 kid），留给以后的重新加密工具定位用。只改 Key 时 `extra_headers_enc` 不会重新加密，所以它可能还在用旧的 kid；官方模型那一行为空 |
 | `key_last4` | text | 否 | `''` | Key 的后四位，用于显示；Key 短于 8 个字符时为空 |
 | `extra_headers_enc` | text | 是 |  | 加密后的自定义请求头（一个 JSON 对象）；没有自定义请求头时为空 |
 | `extra_body` | jsonb | 否 | `'{}'` | 合并进每个请求体的自定义字段，明文存储，最大 8 KB，结构见下文“JSON 列” |
@@ -40,9 +42,12 @@
 | `is_workbench` | boolean | 否 | `false` | 是不是工作台用的模型（工作台的 agent `card_maker` 用它）。每个用户最多一行为真；没有时工作台用导演那一行 |
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `updated_at` | timestamptz | 否 | `now()` |  |
+| `source` | text | 否 | `'user'` | `user`：用户自己的 Key；`platform`：官方模型，见下文“官方模型” |
 
 约束与索引：
-- `status` 的 CHECK；三个窗口列的 CHECK（大于 0）。
+- `status` 的 CHECK；三个窗口列的 CHECK（大于 0）；`source` 只能是 `user` 或 `platform`。
+- `model_routes_key_ck`：`source` 是 `user` 时 `api_key_enc`、`key_id` 都不能为空。
+- `model_routes_platform_uq (user_id) WHERE source = 'platform'`：每个用户最多一行官方模型。
 - `model_routes_user_idx (user_id, created_at)`：列表按添加时间升序排列。
 - `model_routes_director_uq (user_id) WHERE is_director`：每个用户最多一个导演。换导演时先把旧的置为假，再把新的置为真（唯一索引逐行检查，不能在一条语句里互换）。
 - `model_routes_background_uq (user_id) WHERE is_background`：每个用户最多一个后台模型，换的做法和导演一样。
@@ -52,6 +57,13 @@
 世界状态 agent（`state_keeper`）用 `is_background` 为真的那一行，没有时也用导演那一行。能力表说这个模型不能调用工具（`tools` 为假）时，世界状态整理直接失败，原因记为 `tools_unsupported`。
 工作台的 agent（`card_maker`）用 `is_workbench` 为真的那一行，没有时用导演那一行；同样必须能调用工具，否则这一轮直接失败（对话里记一条 `TOOLS_UNSUPPORTED`）。
 没有导演时，开局和提交行动返回 409 `ROUTE_MISSING`。
+
+官方模型（`source = 'platform'`，`services/platform.py`）：
+- 服务器配置了 `PLATFORM_API_KEY` 时才有。用户邮箱验证通过时自动加上这一行（`status` 为 `ok`）；用户这时还没有导演的话，它就是导演。删了以后可以从设置页重新加（`POST /v1/model-routes/platform`）。
+- `provider`、`model` 是服务器配置的 `PLATFORM_PROVIDER`、`PLATFORM_MODEL`；运营方换了模型，api 启动时把所有官方模型行改成新的，并清空 `listed_window`、`learned_window`、`probe`。
+- Key、端点、请求头、请求附加内容、模型名、窗口和能力都不能改（409 `PLATFORM_ROUTE_FIXED`），也不能测试、拉模型列表或者被别的行复用 Key；只能改显示名、写法设置和用途（导演、后台、工作台）。
+- 服务器没配官方模型时（比如自己部署、又从官方服务导出了数据），用到这一行返回 503 `PLATFORM_UNAVAILABLE`。
+- 调用这一行时 `ResolvedRoute.prices` 带上单价，运行记录写入时按用量扣点数。
 
 加密方式（`infra/crypto/envelope.py`）：
 - 使用 AES-256-GCM 信封加密。每个密文有一个随机生成的数据密钥，数据密钥再用主密钥加密。

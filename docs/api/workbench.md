@@ -32,6 +32,8 @@
 | 404 | `NOT_FOUND` | `edit_card` 时卡不存在 |
 | 409 | `TOO_MANY_DRAFTS` | `manual`、`agent` 时没保存的草稿已经到上限，带 `limit` |
 | 409 | `TOO_MANY_RUNS` | `agent` 时同时在写的 agent 已经到上限，带 `limit` |
+| 402 | `CREDITS_EXHAUSTED` | `agent` 时工作台用的是官方模型，点数用完了 |
+| 503 | `PLATFORM_BUSY` | `agent` 时工作台用的是官方模型，全站今天的预算用完了（`retryable` 为真） |
 | 422 | `VALIDATION_ERROR` | `edit_card` 没带 `card_id`（`field: "card_id"`）；`agent` 没带 `text`（`field: "text"`） |
 | 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 
@@ -239,6 +241,7 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 - 新卡（草稿还没对应的卡，或者对应的卡已经删了）就建一张。来源（`source`）按草稿怎么开始的定：导入的是卡片格式，其他是 `manual` 或 `agent`；
 - 改已有的卡，就带着开草稿时卡的版本号写回去。对不上（在别处改过）返回 409 `CARD_CHANGED`，让用户选覆盖（`on_conflict: "overwrite"`）还是另存成新卡（`"copy"`）；
 - 保存前用**正式模式**整理一遍（去掉空的备选开场白），再用和客户端同一套规则检查（`domain/scenario/check.py`）：有 `error` 就返回 422 `CARD_CHECK_FAILED` 和问题清单，`warning` 不挡保存；
+- 官方服务（`CONTENT_POLICY=sfw`）上，再让模型检查一遍内容（用官方模型，不扣用户的点数；服务器没有官方模型时用用户的导演）：有露骨的性描写、以性为主题，或者涉及未成年人的性内容时返回 422 `CONTENT_REJECTED`，检查本身出错时返回 503 `CONTENT_CHECK_UNAVAILABLE`。检查期间草稿被改过（agent 或别的设备）时返回 409 `DRAFT_CHANGED`，重新保存一次。自己部署的服务器默认不检查；
 - 存成功以后版本号加 1、记一份版本历史；草稿留着（不再出现在草稿列表里），下次从仓库打开同一张卡时接着用它；
 - 带 `new_scenario: true` 时，顺便用这张卡建一个剧本（“保存并开始新故事”）。
 
@@ -250,7 +253,10 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 草稿不存在 |
 | 409 | `CARD_CHANGED` | 卡在别处改过，带卡当前的 `version` |
+| 409 | `DRAFT_CHANGED` | 内容检查期间草稿被改过，带草稿当前的 `version` |
 | 422 | `CARD_CHECK_FAILED` | 卡片没通过检查，带 `issues`（[`IssueOut`](#issueout) 的数组，只有 `error`）和第一个问题的 `field` |
+| 422 | `CONTENT_REJECTED` | 内容检查没通过，带 `reasons`（`sexual` / `minors`） |
+| 503 | `CONTENT_CHECK_UNAVAILABLE` | 内容检查没做成（`retryable` 为真） |
 
 #### `DraftSaveIn`
 
@@ -301,6 +307,8 @@ agent 模式的对话记录，按序号排；以及此刻最新的推送事件�
 | 409 | `DRAFT_BUSY` | agent 还在跑（先停止，或者等它做完） |
 | 409 | `NOT_AWAITING` | 草稿不在等问卷的回答（`answers`）或方案的回复（`plan_reply`） |
 | 409 | `TOO_MANY_RUNS` | 同时在写的 agent 已经到上限（别的草稿还在写），带 `limit` |
+| 402 | `CREDITS_EXHAUSTED` | 工作台用的是官方模型，点数用完了 |
+| 503 | `PLATFORM_BUSY` | 工作台用的是官方模型，全站今天的预算用完了（`retryable` 为真） |
 | 422 | `VALIDATION_ERROR` | 说的话为空或超过 8000 字（`field: "text"`）；回答里有不认识的题或类型不对（`field: "answers"`）；退回方案没写原因（`field: "text"`） |
 | 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 
@@ -365,6 +373,8 @@ agent 模式的对话记录，按序号排；以及此刻最新的推送事件�
 | 404 | `NOT_FOUND` | 草稿不存在 |
 | 409 | `DRAFT_BUSY` | agent 还在跑 |
 | 409 | `TOO_MANY_RUNS` | 同时在写的 agent 已经到上限，带 `limit` |
+| 402 | `CREDITS_EXHAUSTED` | 工作台用的是官方模型，点数用完了 |
+| 503 | `PLATFORM_BUSY` | 工作台用的是官方模型，全站今天的预算用完了（`retryable` 为真） |
 | 429 | `RATE_LIMITED` | 工作台的操作每分钟超过 20 次（同一个用户，和导入、上传、出图、发消息、接着写共用一个计数） |
 
 ### `GET /v1/workbench/drafts/{draft_id}/events`

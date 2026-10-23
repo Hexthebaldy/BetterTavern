@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass
 
+from bettertavern.domain.billing import TokenPrices
 from bettertavern.domain.memory.thresholds import WindowCheck, effective_window
 from bettertavern.domain.routing import RouteParams, RouteTask
 from bettertavern.providers import Capabilities, ReasoningConfig, ResolvedCredential
@@ -28,6 +29,8 @@ class ResolvedRoute:
     caps: Capabilities
     params: RouteParams
     window: WindowCheck
+    # 官方模型（运营方的 Key）的单价；用户自己的 Key 是 None，不扣点数
+    prices: TokenPrices | None = None
 
     @property
     def max_tokens(self) -> int:
