@@ -13,12 +13,11 @@ import {
   type ProbeReport,
 } from "@bettertavern/core/probe/probeSession";
 
-import { Button, cx, Pill } from "../../components/controls.tsx";
+import { Button, cx, Pill, Segmented } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { Diagnostics } from "./Diagnostics.tsx";
 import { BodyHead, SectionHeader } from "./parts.tsx";
-import { Segmented } from "./Segmented.tsx";
 import styles from "./settings.module.css";
 
 type Duration = "30" | "60" | "120" | "300";

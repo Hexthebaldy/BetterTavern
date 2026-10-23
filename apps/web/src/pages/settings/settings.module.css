@@ -458,32 +458,6 @@
 }
 
 /* 分段 */
-.segmented {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 26px;
-  background: var(--inset);
-}
-.segment {
-  flex: 1;
-  height: 44px;
-  border: 0;
-  border-radius: 22px;
-  background: transparent;
-  color: var(--mut);
-  font-size: 14.5px;
-}
-.segmentOn {
-  background: var(--raised);
-  color: var(--ink);
-  font-weight: 600;
-  box-shadow: var(--shadow-lift);
-}
-.segment:disabled {
-  opacity: 0.32;
-}
-
 /* ---- 模型详情 ---- */
 .modelHead {
   display: flex;

@@ -1,42 +1,53 @@
 /*
- * 共用控件的样式：按钮、图标按钮、输入框、提示条、胶囊、加载点。
- * 数值取自 docs/design/ui/web/source/*.dc.html 的 .btn、.ib、.inp、.fld；状态规则见 web README 的“鼠标”一节：
- * 悬停只在有鼠标时生效，按下缩小，键盘焦点是全局的 :focus-visible 蓝环（tokens.css）。
+ * 共用控件的样式（漫画分镜版，docs/design/comic）：按钮、图标按钮、输入框、开关、提示条、标签、加载点。
+ * 数值取自 docs/design/comic/source 的 .gbtn、.gkey、.chipk / .chipb / .chipw、.rad2、.stpr：
+ * 2.5px 墨色描边，硬投影（--x* 墨色、--b* 蓝色），胶囊按钮。悬停只在有鼠标时生效：往左上抬一点、投影变长；
+ * 按下往投影的方向挪、投影变短。键盘焦点是全局的 :focus-visible 蓝环（tokens.css）。
  */
 
-/* ---- 按钮 ---- */
+/* ---- 按钮：主按钮墨底配蓝投影，次要按钮白底配墨投影，蓝按钮蓝底配墨投影 ---- */
 .button {
+  --sh: var(--x4);
+  --sh-up: var(--x5);
+  --sh-down: var(--x2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 20px;
-  border: 0;
-  border-radius: 22px;
+  gap: 10px;
+  height: 48px;
+  padding: 0 22px;
+  border: var(--bw) solid var(--frame);
+  border-radius: 24px;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 20px;
-  font-weight: 500;
+  font-weight: 700;
   white-space: nowrap;
   flex: none;
   text-decoration: none;
+  box-shadow: var(--sh);
   transition:
     background-color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 .lg {
-  height: 52px;
-  border-radius: 26px;
-  font-size: 16px;
+  height: 54px;
+  border-radius: 27px;
+  font-size: 17px;
   line-height: 22px;
-  padding: 0 24px;
+  padding: 0 26px;
 }
 .sm {
-  height: 36px;
-  border-radius: 18px;
+  --sh: var(--x3);
+  --sh-up: var(--x4);
+  --sh-down: var(--x1);
+  height: 38px;
+  border-width: var(--bw-sm);
+  border-radius: 19px;
   font-size: 14px;
-  padding: 0 14px;
+  padding: 0 16px;
+  gap: 8px;
 }
 .between {
   justify-content: space-between;
@@ -63,23 +74,38 @@
   border-radius: 18px;
   margin-right: -16px;
 }
-.secondary .arrow {
-  background: var(--bg3);
+.secondary .arrow,
+.danger .arrow {
+  background: var(--grey);
 }
 .primary {
-  background: var(--pri);
-  color: var(--on-pri);
+  --sh: var(--b4);
+  --sh-up: var(--b5);
+  --sh-down: var(--b2);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.primary.sm {
+  --sh: var(--b3);
+  --sh-up: var(--b4);
+  --sh-down: var(--b1);
 }
 .secondary {
-  background: var(--fill);
+  background: var(--paper);
   color: var(--ink);
 }
+.blue {
+  background: var(--acc);
+  color: var(--on-acc);
+}
 .text {
+  border-color: transparent;
   background: transparent;
   color: var(--acc);
+  box-shadow: none;
 }
 .danger {
-  background: var(--err-bg);
+  background: var(--paper);
   color: var(--err);
 }
 .dangerSolid {
@@ -91,25 +117,27 @@
   opacity: 0.32;
   cursor: default;
 }
-.button:not(:disabled):active {
+.button:not(:disabled):not(.text):active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--sh-down);
+}
+.text:not(:disabled):active {
   transform: scale(var(--press));
 }
 .button[aria-busy="true"] {
   opacity: 1;
 }
 @media (hover: hover) and (pointer: fine) {
-  .primary:not(:disabled):hover {
-    background: var(--pri-hover);
-  }
-  .secondary:not(:disabled):hover {
-    background: var(--hover);
+  .button:not(:disabled):not(.text):not(:active):hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--sh-up);
   }
   .text:not(:disabled):hover {
-    background: var(--fill);
+    background: var(--grey);
   }
 }
 
-/* ---- 图标按钮：40 的圆，热区靠外边距补到 44 ---- */
+/* ---- 图标按钮：40 的圆，2px 描边；plain 没有边，on 是墨底 ---- */
 .iconButton {
   position: relative;
   display: inline-flex;
@@ -117,52 +145,52 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border: 0;
+  border: var(--bw-sm) solid var(--frame);
   border-radius: 999px;
   padding: 0;
   flex: none;
   color: var(--ink);
-  background: var(--fill);
+  background: var(--paper);
   transition:
     background-color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 .iconButton:not(:disabled):active {
-  transform: scale(0.97);
+  transform: translate(1px, 1px);
 }
 .plain {
+  border-color: transparent;
   background: transparent;
-  color: var(--mut);
+  color: var(--ink);
 }
 .card {
-  background: var(--card);
-  box-shadow: var(--shadow-button);
+  box-shadow: var(--x2);
+}
+.card:not(:disabled):active {
+  box-shadow: var(--x1);
 }
 .on {
   background: var(--ink);
-  color: var(--bg);
+  color: var(--on-ink);
 }
 @media (hover: hover) and (pointer: fine) {
   .iconButton:not(:disabled):not(.on):hover {
-    background: var(--hover);
-  }
-  .plain:not(:disabled):hover {
-    background: var(--fill);
-    color: var(--ink);
+    background: var(--grey);
   }
 }
 .badge {
   position: absolute;
-  right: 7px;
-  top: 7px;
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
+  right: 4px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 5px;
   background: var(--acc);
-  box-shadow: 0 0 0 2px var(--bg);
+  box-shadow: 0 0 0 2px var(--frame);
 }
 
-/* ---- 输入框 ---- */
+/* ---- 输入框：白底 2px 墨边，圆角 10；聚焦时蓝色硬投影 ---- */
 .field {
   display: flex;
   flex-direction: column;
@@ -173,14 +201,14 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding-left: 4px;
+  padding-left: 2px;
 }
 .label {
   flex: 1;
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 18px;
-  font-weight: 500;
-  color: var(--ink2);
+  font-weight: 700;
+  color: var(--ink);
 }
 .optional {
   font-weight: 400;
@@ -190,6 +218,7 @@
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 16px;
+  font-weight: 500;
   color: var(--mut);
 }
 .inputBox {
@@ -198,38 +227,46 @@
 .input {
   display: block;
   width: 100%;
-  height: 52px;
-  border: 0;
-  border-radius: var(--r-input);
-  background: var(--fill);
-  padding: 0 16px;
+  height: 48px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+  padding: 0 14px;
   font: inherit;
   font-size: 15px;
   color: var(--ink);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.input:focus {
+  box-shadow: var(--b3);
 }
 .input::placeholder {
   color: var(--mut);
 }
 .input.hasTrailing {
-  padding-right: 56px;
+  padding-right: 52px;
 }
 .input.invalid {
+  border-color: var(--err);
   background: var(--err-bg);
-  box-shadow: inset 0 0 0 1.5px var(--err);
 }
 .input.invalid:focus {
-  box-shadow: inset 0 0 0 2px var(--err);
+  box-shadow: 3px 3px 0 var(--err);
 }
 .trailing {
   position: absolute;
-  right: 6px;
-  top: 6px;
+  right: 4px;
+  top: 4px;
+}
+.trailing button {
+  border-color: transparent;
+  background: transparent;
 }
 .message {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  padding-left: 4px;
+  padding-left: 2px;
   font-size: 13px;
   line-height: 18px;
   color: var(--err);
@@ -243,7 +280,7 @@
 }
 
 .textarea {
-  padding: 14px 16px 30px;
+  padding: 12px 14px 30px;
   line-height: 22px;
   resize: none;
 }
@@ -253,16 +290,17 @@
   bottom: 10px;
 }
 
-/* ---- 开关 ---- */
+/* ---- 开关：2px 描边的胶囊，墨色圆钮；打开是蓝底、白钮 ---- */
 .toggle {
   appearance: none;
   -webkit-appearance: none;
   position: relative;
   width: 52px;
-  height: 32px;
+  height: 30px;
   margin: 0;
-  border-radius: 16px;
-  background: var(--bg3);
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 15px;
+  background: var(--paper);
   flex: none;
   transition: background-color var(--dur) var(--ease);
 }
@@ -271,50 +309,57 @@
   position: absolute;
   left: 3px;
   top: 3px;
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
-  background: #ffffff;
-  box-shadow: var(--shadow-knob);
-  transition: left var(--dur) var(--ease);
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--ink);
+  transition:
+    left var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
 }
 .toggle:checked {
   background: var(--acc);
 }
 .toggle:checked::after {
-  left: 23px;
+  left: 25px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 
-/* ---- 标签、勾选 ---- */
+/* ---- 可点的标签（名字建议、文风）、勾选 ---- */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 20px;
-  background: var(--fill);
+  height: 36px;
+  padding: 0 14px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 18px;
+  background: var(--paper);
   color: var(--ink);
   font-size: 14px;
   line-height: 18px;
+  font-weight: 600;
   transition:
     background-color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 .chip:active {
-  transform: scale(0.97);
+  transform: translate(1px, 1px);
 }
 .chipOn {
   background: var(--ink);
-  color: var(--bg);
+  color: var(--on-ink);
+  box-shadow: var(--b2);
 }
 .chipAccent {
   color: var(--acc);
 }
 @media (hover: hover) and (pointer: fine) {
   .chip:not(.chipOn):hover {
-    background: var(--hover);
+    background: var(--grey);
   }
 }
 .checkRow {
@@ -337,72 +382,72 @@
 .box {
   width: 22px;
   height: 22px;
-  border-radius: 7px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-chip);
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--card);
-  box-shadow: inset 0 0 0 1.75px var(--line2);
-  color: #ffffff;
+  background: var(--paper);
+  color: var(--on-acc);
   transition: background-color var(--dur-fast) var(--ease);
 }
 .boxOn {
   background: var(--acc);
-  box-shadow: none;
 }
 .boxPlus {
-  background: var(--acc-bg);
-  box-shadow: none;
+  border-style: dashed;
   color: var(--acc);
 }
 
-/* ---- 提示条 ---- */
+/* ---- 提示条：2.5px 描边的格子，底色按语气（错误、提醒、说明）；浮起来时带墨色硬投影 ---- */
 .notice {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 16px;
-  border-radius: var(--r-card);
+  padding: 12px 14px;
+  border: var(--bw) solid var(--frame);
+  border-radius: var(--r-frame);
   font-size: 14px;
   line-height: 21px;
   color: var(--ink);
 }
 .notice.floating {
-  box-shadow: var(--shadow-float);
+  box-shadow: var(--x4);
 }
 .noticeText {
   flex: 1;
   min-width: 0;
 }
 .withAction {
-  padding: 6px 6px 6px 16px;
+  padding: 6px 6px 6px 14px;
 }
 .noticeAction {
-  height: 40px;
+  height: 38px;
   padding: 0 14px;
-  border: 0;
-  border-radius: 20px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 19px;
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 700;
   color: #ffffff;
   background: var(--err);
+  box-shadow: var(--x2);
 }
 .tone-warn .noticeAction {
   background: var(--warn);
 }
 .tone-info .noticeAction {
   background: var(--acc);
+  color: var(--on-acc);
 }
 .noticeAction:active {
-  transform: scale(0.97);
+  transform: translate(1px, 1px);
+  box-shadow: var(--x1);
 }
 .noticeClose {
-  width: 36px;
-  height: 36px;
-  margin: -6px -6px -6px 0;
-  background: var(--close-on-tint);
-  color: var(--ink);
+  width: 34px;
+  height: 34px;
+  margin: -4px -4px -4px 0;
 }
 .tone-error {
   background: var(--err-bg);
@@ -417,27 +462,30 @@
   color: var(--warn);
 }
 .tone-info {
-  background: var(--acc-bg);
+  background: var(--paper);
 }
 .tone-info > svg {
   color: var(--acc);
 }
 
-/* ---- 胶囊 ---- */
+/* ---- 标签：高 24，等宽粗体，圆角 6；墨底、蓝底、白底描边三种，状态用描边的颜色 ---- */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   height: 24px;
-  padding: 0 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 0 8px;
+  border-radius: var(--r-chip);
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   white-space: nowrap;
   align-self: flex-start;
+  flex: none;
 }
 .pill.lead {
-  padding-left: 8px;
+  padding-left: 7px;
 }
 .pillDot {
   width: 6px;
@@ -445,31 +493,34 @@
   border-radius: 3px;
   background: currentColor;
 }
+.pill-ink {
+  background: var(--ink);
+  color: var(--on-ink);
+}
 .pill-acc {
-  background: var(--acc-bg);
-  color: var(--acc);
+  background: var(--acc);
+  color: var(--on-acc);
 }
 .pill-warn {
-  background: var(--warn-bg);
+  background: var(--paper);
   color: var(--warn);
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 .pill-ok {
-  background: var(--ok-bg);
+  background: var(--paper);
   color: var(--ok);
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 .pill-err {
-  background: var(--err-bg);
+  background: var(--paper);
   color: var(--err);
+  box-shadow: inset 0 0 0 2px currentColor;
 }
-.pill-grey {
-  background: var(--fill);
-  color: var(--ink);
-  font-weight: 400;
-}
+.pill-grey,
 .pill-card {
-  background: var(--card);
+  background: var(--paper);
   color: var(--ink);
-  font-weight: 400;
+  box-shadow: inset 0 0 0 2px var(--frame);
 }
 
 /* ---- 加载中的三个点 ---- */
@@ -503,5 +554,50 @@
   .dots span {
     animation: none;
     opacity: 0.6;
+  }
+}
+
+/* ---- 分段控件：2px 描边的一条，格子之间是竖线，选中的那格墨底 ---- */
+.segmented {
+  display: flex;
+  height: 40px;
+  box-sizing: border-box;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  overflow: hidden;
+  background: var(--paper);
+}
+.segment {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.segment + .segment {
+  border-left: var(--bw-sm) solid var(--frame);
+}
+.segment:focus-visible {
+  outline-offset: -4px;
+}
+.segmentOn {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.segmentMono {
+  font-family: var(--font-mono);
+}
+.segment:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+@media (hover: hover) and (pointer: fine) {
+  .segment:not(.segmentOn):not(:disabled):hover {
+    background: var(--grey);
   }
 }

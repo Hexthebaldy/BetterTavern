@@ -8,11 +8,10 @@ import type { ModelRoutePatch } from "@bettertavern/core/api/endpoints";
 import type { ModelRoute, Provider } from "@bettertavern/core/api/types";
 import { manualWindowChoice, manualWindowChoices } from "@bettertavern/core/settings/labels";
 
-import { Button, Checkbox, Field, Notice } from "../../components/controls.tsx";
+import { Button, Checkbox, Field, Notice, Segmented } from "../../components/controls.tsx";
 import { Dialog } from "../../overlay/Dialog.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { KeyField } from "./parts.tsx";
-import { Segmented } from "./Segmented.tsx";
 import styles from "./settings.module.css";
 
 function Frame({

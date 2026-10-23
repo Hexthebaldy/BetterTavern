@@ -11,11 +11,10 @@ import { describeError } from "@bettertavern/core/api/client";
 import type { ModelInfo, ModelRoute, Provider } from "@bettertavern/core/api/types";
 import { manualWindowChoices, needsManualWindow } from "@bettertavern/core/settings/labels";
 
-import { Button, Checkbox, cx, Field, Notice } from "../../components/controls.tsx";
+import { Button, Checkbox, cx, Field, Notice, Segmented } from "../../components/controls.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { ModelPicker } from "./ModelPicker.tsx";
 import { KeyField, ProviderMark, SectionHeader } from "./parts.tsx";
-import { Segmented } from "./Segmented.tsx";
 import styles from "./settings.module.css";
 
 function ProviderTile({

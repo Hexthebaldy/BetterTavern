@@ -1,0 +1,212 @@
+/*
+ * 漫画分镜版的部件（comic.tsx）：格子、气泡、旁白框、键帽、人物位、底部提示条。
+ * 数值取自 docs/design/comic/source 的 .fr、.bub、.cap-box、.gkey、.port、.hints。
+ */
+
+/* ---- 格子：2.5px 墨边，圆角 10；五种底 ---- */
+.panel {
+  position: relative;
+  box-sizing: border-box;
+  border: var(--bw) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+  color: var(--ink);
+}
+.big {
+  border-radius: var(--r-panel);
+}
+.hot {
+  box-shadow: var(--x8);
+}
+.tone-white {
+  background: var(--paper);
+}
+.tone-ink {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.tone-blue {
+  background: var(--ht-acc), var(--acc);
+  color: var(--on-acc);
+}
+.tone-dots {
+  background: var(--ht-ink), var(--paper);
+}
+.tone-grey {
+  background: var(--ht-grey), var(--grey);
+}
+
+/* ---- 对话气泡：白底（玩家是蓝底），2.5px 描边，圆角 22；尾巴默认在左下 ---- */
+.bubble {
+  --bub-bg: var(--paper);
+  position: relative;
+  display: inline-block;
+  box-sizing: border-box;
+  border: var(--bw) solid var(--frame);
+  border-radius: 22px;
+  background: var(--bub-bg);
+  padding: 10px 16px;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 26px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.bubbleBlue {
+  --bub-bg: var(--acc);
+  color: var(--on-acc);
+}
+.bubbleSmall {
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 22px;
+}
+.tail {
+  position: absolute;
+  bottom: -17px;
+  left: 26px;
+  width: 26px;
+  height: 20px;
+  overflow: visible;
+}
+.tail path {
+  fill: var(--bub-bg);
+  stroke: var(--frame);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.tail rect {
+  fill: var(--bub-bg);
+}
+.tailRight .tail {
+  left: auto;
+  right: 26px;
+  transform: scaleX(-1);
+}
+.tailUp .tail {
+  bottom: auto;
+  top: -17px;
+  transform: scaleY(-1);
+}
+.who {
+  position: absolute;
+  top: -13px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.tailUp .who {
+  left: auto;
+  right: 14px;
+}
+
+/* ---- 旁白框：宋体，2.5px 描边，圆角 6，白底 ---- */
+.caption {
+  position: relative;
+  box-sizing: border-box;
+  border: var(--bw) solid var(--frame);
+  border-radius: 6px;
+  background: var(--paper);
+  padding: 10px 14px;
+  font-family: var(--font-serif);
+  font-size: 15.5px;
+  line-height: 27px;
+  color: var(--ink);
+}
+
+/* ---- 键帽：高 26，2px 描边，等宽粗体 ---- */
+.keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border: var(--bw-sm) solid currentColor;
+  border-radius: var(--r-key);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  flex: none;
+}
+.keycapSolid {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--frame);
+  box-shadow: 0 2px 0 var(--frame);
+}
+
+/* ---- 人物位：网点底上的一个大字（宋体 900），底边压出格子一点 ---- */
+.portrait {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  container-type: size;
+  flex: none;
+  user-select: none;
+}
+.glyph {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: min(96cqh, 92cqw);
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin-bottom: -0.04em;
+}
+.dark .glyph {
+  color: var(--paper);
+}
+.tone-blue.portrait .glyph {
+  color: var(--on-acc);
+}
+.portraitImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---- 底部提示条：48 高的墨条，键帽是浅蓝 ---- */
+.hintBar {
+  position: fixed;
+  z-index: 15;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 0 32px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hint .keycap {
+  color: var(--sky);
+}

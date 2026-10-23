@@ -166,6 +166,86 @@
   --raised: var(--card);
 }
 
+/*
+ * ---------- 漫画分镜版：描边、硬投影、网点（docs/design/comic，变量取自落地页 landing.css 的“粗线版”） ----------
+ * 只有墨、纸、蓝三种颜色。描边和投影都跟着墨走，网点跟着底色走；夜间模式墨和纸对调，蓝换成 #8597FF（见下面夜间的一段）。
+ * 硬投影是一像素一层叠出来的（转角处连着），--x* 是墨色，--b* 是蓝色；数字是往右下错开几像素。
+ */
+:root {
+  --frame: var(--ink); /* 格子、按钮、气泡、键帽的描边 */
+  --shade: var(--ink); /* 硬投影的颜色 */
+  --paper: var(--bg); /* 白格子、气泡、旁白框的底 */
+  --on-ink: var(--bg); /* 墨底上的字 */
+  --on-acc: #ffffff; /* 蓝底上的字 */
+  --deep: #1b34a6; /* 深蓝：蓝按钮按下 */
+  --sky: #93a8ff; /* 墨底上的蓝字、键帽 */
+  --grey: var(--bg2);
+  --grey2: var(--bg3); /* 次要的分隔线 */
+  --bw: 2.5px; /* 描边 */
+  --bw-sm: 2px; /* 小号按钮、键帽、标签的描边 */
+  --x1: 1px 1px 0 var(--shade);
+  --x2: var(--x1), 2px 2px 0 var(--shade);
+  --x3: var(--x2), 3px 3px 0 var(--shade);
+  --x4: var(--x3), 4px 4px 0 var(--shade);
+  --x5: var(--x4), 5px 5px 0 var(--shade);
+  --x6: var(--x5), 6px 6px 0 var(--shade);
+  --x7: var(--x6), 7px 7px 0 var(--shade);
+  --x8: var(--x7), 8px 8px 0 var(--shade);
+  --x9: var(--x8), 9px 9px 0 var(--shade);
+  --x10: var(--x9), 10px 10px 0 var(--shade);
+  --b1: 1px 1px 0 var(--acc);
+  --b2: var(--b1), 2px 2px 0 var(--acc);
+  --b3: var(--b2), 3px 3px 0 var(--acc);
+  --b4: var(--b3), 4px 4px 0 var(--acc);
+  --b5: var(--b4), 5px 5px 0 var(--acc);
+  --b6: var(--b5), 6px 6px 0 var(--acc);
+  --b7: var(--b6), 7px 7px 0 var(--acc);
+  --b8: var(--b7), 8px 8px 0 var(--acc);
+  --b9: var(--b8), 9px 9px 0 var(--acc);
+  --b10: var(--b9), 10px 10px 0 var(--acc);
+  /* 三种网点：蓝底白点（12px，点半径 1.4）、白底墨点（11px）、灰底墨点（11px） */
+  --dot-acc: rgba(255, 255, 255, 0.22);
+  --dot-ink: rgba(26, 26, 26, 0.14);
+  --dot-grey: rgba(26, 26, 26, 0.1);
+  --ht-acc: radial-gradient(var(--dot-acc) 1.4px, transparent 1.9px) 0 0 / 12px 12px;
+  --ht-ink: radial-gradient(var(--dot-ink) 1.3px, transparent 1.8px) 0 0 / 11px 11px;
+  --ht-grey: radial-gradient(var(--dot-grey) 1.3px, transparent 1.8px) 0 0 / 11px 11px;
+  /* 圆角：格子 10，大面板 22，键帽 7，小标签 6，按钮是胶囊 */
+  --r-frame: 10px;
+  --r-panel: 22px;
+  --r-key: 7px;
+  --r-chip: 6px;
+}
+[data-scheme="dark"] {
+  --on-acc: #111113;
+  --deep: #5b70e8;
+  --sky: #2f55f4;
+  --dot-acc: rgba(17, 17, 19, 0.22);
+  --dot-ink: rgba(242, 242, 240, 0.14);
+  --dot-grey: rgba(242, 242, 240, 0.1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme]) {
+    --on-acc: #111113;
+    --deep: #5b70e8;
+    --sky: #2f55f4;
+    --dot-acc: rgba(17, 17, 19, 0.22);
+    --dot-ink: rgba(242, 242, 240, 0.14);
+    --dot-grey: rgba(242, 242, 240, 0.1);
+  }
+}
+/* 网点底的工具类：蓝底白点、白底墨点、灰底墨点 */
+.ht-acc {
+  background: var(--ht-acc), var(--acc);
+  color: var(--on-acc);
+}
+.ht-ink {
+  background: var(--ht-ink), var(--paper);
+}
+.ht-grey {
+  background: var(--ht-grey), var(--grey);
+}
+
 /* ---------- 圆角：容器越大圆角越大；嵌套时内层 = 外层 − 内边距；按钮、标签、分段控件全圆 ---------- */
 :root {
   --r-tag: 10px;
@@ -188,12 +268,15 @@
 :lang(zh),
 :lang(en) {
   --font-sans: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
-  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  /* 标题：宋体 900（自己托管的思源宋体，theme/fonts.ts）；正文的宋体用系统字体 */
+  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  --font-serif: "Source Han Serif SC", "Songti SC", "STSong", serif;
 }
 :lang(ja) {
   --font-sans:
     "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui,
     sans-serif;
+  --font-display: "Noto Serif JP", "Source Han Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --font-serif: "Noto Serif JP", "Source Han Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
 }
 :root {
@@ -269,18 +352,18 @@ nav,
   outline: 2px solid var(--acc);
   outline-offset: 2px;
 }
-/* 输入框聚焦是 2px 内描边，和手机一样（鼠标点进去也显示） */
+/* 输入框聚焦：外面一圈 2px 蓝（鼠标点进去也显示）。带描边的输入框（controls.module.css）换成蓝色硬投影 */
 input:focus,
 textarea:focus,
 [contenteditable]:focus {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--acc);
+  box-shadow: 0 0 0 2px var(--acc);
 }
 
 /* 滚动条：细的浮层样式，只在内容区自己的滚动容器上 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--line2) transparent;
+  scrollbar-color: var(--mut) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;

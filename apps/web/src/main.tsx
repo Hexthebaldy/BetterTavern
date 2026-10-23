@@ -1,5 +1,6 @@
 /** 入口：界面文字的语言 → 数据缓存 → 界面偏好 → 主题 → 登录状态 → 路由 */
 
+import "./theme/fonts.ts";
 import "./theme/tokens.css";
 import "./theme/base.css";
 

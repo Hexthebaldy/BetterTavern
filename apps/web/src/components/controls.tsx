@@ -1,6 +1,7 @@
 /**
- * 共用控件：按钮、图标按钮、输入框、开关、提示条、胶囊、加载点。外观和状态与 App 的 primitives、controls、feedback 对应，
- * 悬停、按下、键盘焦点写在 controls.module.css 里，页面不再单独写。
+ * 共用控件：按钮、图标按钮、输入框、开关、提示条、标签、加载点。行为与 App 的 primitives、controls、feedback 对应，
+ * 外观是漫画分镜版（粗描边、硬投影，见 docs/design/comic）；悬停、按下、键盘焦点写在 controls.module.css 里，页面不再单独写。
+ * 漫画版新加的部件（格子、气泡、旁白框、键帽、人物位、提示条）在 comic.tsx。
  */
 
 import {
@@ -34,7 +35,8 @@ export function Dots({ label }: { label?: string }) {
 
 // ---- 按钮 -------------------------------------------------------------------------------
 
-export type ButtonVariant = "primary" | "secondary" | "text" | "danger" | "dangerSolid";
+/** primary 墨底配蓝投影，secondary 白底配墨投影，blue 蓝底配墨投影 */
+export type ButtonVariant = "primary" | "secondary" | "blue" | "text" | "danger" | "dangerSolid";
 
 type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
   label: string;
@@ -50,7 +52,7 @@ type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
   ref?: Ref<HTMLButtonElement>;
 };
 
-/** 胶囊按钮：默认高 44，lg 52、sm 36。busy 时显示三个点，不响应点击 */
+/** 胶囊按钮：默认高 48，lg 54、sm 38。busy 时显示三个点，不响应点击 */
 export function Button({
   label,
   variant = "primary",
@@ -87,7 +89,7 @@ export function Button({
         <Dots label={t("common.busy", { label })} />
       ) : (
         <>
-          {icon ? <Icon name={icon} size={20} /> : null}
+          {icon ? <Icon name={icon} size={size === "sm" ? 17 : 19} strokeWidth={2.2} /> : null}
           <span>{label}</span>
           {arrow ? (
             <span className={styles.arrow}>
@@ -118,7 +120,7 @@ type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">
   ref?: Ref<HTMLButtonElement>;
 };
 
-/** 圆形图标按钮：默认 40 的灰色圆；plain 透明底，card 白底加投影。悬停 500ms 出提示，有快捷键时带键帽 */
+/** 圆形图标按钮：默认 40 的白圆加 2px 描边；plain 没有边，card 带硬投影，on 是墨底。悬停 500ms 出提示，有快捷键时带键帽 */
 export function IconButton({
   icon,
   label,
@@ -169,7 +171,7 @@ type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
   ref?: Ref<HTMLInputElement>;
 };
 
-/** 输入框：灰底无边，聚焦一圈 2px 蓝色内描边；出错时浅红底、红圈，下面一行红字 */
+/** 输入框：白底 2px 墨边，聚焦时蓝色硬投影；出错时浅红底、红边，下面一行红字 */
 export function Field({
   label,
   optional,
@@ -321,7 +323,7 @@ export function TextArea({
   );
 }
 
-/** 开关：52×32 的胶囊，打开是强调色。外面包一个 label 写文字，点文字也能切换 */
+/** 开关：52×30 的描边胶囊，打开是蓝底。外面包一个 label 写文字，点文字也能切换 */
 export function Toggle({
   checked,
   onChange,
@@ -343,9 +345,49 @@ export function Toggle({
   );
 }
 
+/**
+ * 分段控件（工作窗口上限、上下文窗口、测试时长、阅读字号）：2px 描边的一条，格子之间是竖线，选中的那格墨底。
+ * 是一组单选（radiogroup），每格是 radio。
+ */
+export function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  mono,
+  disabled,
+  className,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (value: T) => void;
+  mono?: boolean;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cx(styles.segmented, className)} role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          disabled={disabled}
+          className={cx(styles.segment, value === o.value && styles.segmentOn, mono && styles.segmentMono)}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ---- 标签、勾选 -----------------------------------------------------------------------------
 
-/** 胶囊标签：可点的选项（名字建议、文风）。选中是墨色底；check 时是多选，前面带一个勾 */
+/** 可点的标签（名字建议、文风）：描边胶囊，选中是墨底；check 时是多选，前面带一个勾 */
 export function Chip({
   label,
   selected = false,
@@ -378,7 +420,7 @@ export function Chip({
   );
 }
 
-/** 22 的圆角勾选框加文字；plus 是“其他…”入口（浅蓝底的加号） */
+/** 22 的描边方框加文字，勾上是蓝底；plus 是“其他…”入口（虚线框里一个加号） */
 export function Checkbox({
   label,
   checked,
@@ -411,7 +453,7 @@ export function Checkbox({
 
 export type Tone = "error" | "warn" | "info";
 
-/** 提示条：圆角 20 的色卡；三角 = 错误 / 警告，圆圈 i = 信息。floating 时带投影 */
+/** 提示条：描边的格子，底色按语气；三角 = 错误 / 警告，圆圈 i = 信息。floating 时带硬投影 */
 export function Notice({
   tone = "error",
   message,
@@ -465,10 +507,10 @@ export function Notice({
   );
 }
 
-/** card：灰卡上的白底胶囊（灰底的 grey 在灰卡上看不见） */
-export type PillTone = "acc" | "warn" | "ok" | "err" | "grey" | "card";
+/** ink 墨底、acc 蓝底；grey 和 card 都是白底描边；warn、ok、err 是带颜色的描边 */
+export type PillTone = "ink" | "acc" | "warn" | "ok" | "err" | "grey" | "card";
 
-/** 胶囊标签：状态、“我”、“导演”。dot 是前面的小圆点（“正在写下一段”） */
+/** 标签：状态、“我”、“导演”、编号。等宽粗体，圆角 6。dot 是前面的小圆点（“正在写下一段”） */
 export function Pill({
   label,
   tone = "grey",

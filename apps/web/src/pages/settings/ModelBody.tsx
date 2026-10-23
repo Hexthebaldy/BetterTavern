@@ -28,7 +28,7 @@ import {
 } from "@bettertavern/core/settings/window";
 import { formatTokens } from "@bettertavern/core/utils/format";
 
-import { Button, cx, Dots, IconButton, Notice, Pill } from "../../components/controls.tsx";
+import { Button, cx, Dots, IconButton, Notice, Pill, Segmented } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
 import { useCredits, useModelRoute, useProviders, useRouteUpdater } from "../../data/models.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -38,7 +38,6 @@ import { MemoryBlocks } from "./MemoryBlocks.tsx";
 import { EditDialog, ReplaceKeyDialog, WindowDialog } from "./ModelDialogs.tsx";
 import { SectionHeader } from "./parts.tsx";
 import { ProbeResults } from "./ProbeResults.tsx";
-import { Segmented } from "./Segmented.tsx";
 import styles from "./settings.module.css";
 import { StatusPill } from "./StatusPill.tsx";
 
