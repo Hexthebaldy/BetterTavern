@@ -1,0 +1,80 @@
+/*
+ * 漫画格子：6 列 × 3 行，间距 14。高度是窗口减去上面 112（页头）和下面 56（页码）；没有页码的页面下面留 40。
+ * 每行至少 200。窄于 900 时变成一列。
+ */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(200px, 1fr));
+  gap: 14px;
+  height: max(calc(100vh - 112px - 56px), 628px);
+}
+/* 不翻页的页面（工作台、模型、设置）：三行先分掉窗口的高度，内容放不下时这一行跟着长高，整页滚动 */
+.unpaged {
+  height: auto;
+  grid-template-rows: repeat(3, minmax(max(200px, calc((100vh - 112px - 40px - 28px) / 3)), auto));
+  padding-bottom: 40px;
+}
+
+.pager {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  height: 56px;
+}
+.summary {
+  font-size: 13px;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.number {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.turns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+}
+.turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.turn:active kbd {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+@media (max-width: 899px) {
+  .grid,
+  .unpaged {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    gap: 12px;
+  }
+  .grid > * {
+    min-height: 168px;
+  }
+  .pager {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .summary {
+    display: none;
+  }
+}

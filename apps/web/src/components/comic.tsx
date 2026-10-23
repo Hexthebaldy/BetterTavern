@@ -101,20 +101,26 @@ export function Bubble({
   );
 }
 
+/**
+ * 旁白框。clamp 时只显示前几行（行数由外面的 CSS 变量 --lines 定，默认 3）：截断放在里面一层，
+ * 不然框的内边距里会露出下一行的上半截。
+ */
 export function Caption({
   className,
   lang,
   as: Tag = "div",
+  clamp,
   children,
 }: {
   className?: string;
   lang?: string;
   as?: ElementType;
+  clamp?: boolean;
   children: ReactNode;
 }) {
   return (
     <Tag className={cx(styles.caption, className)} lang={lang}>
-      {children}
+      {clamp ? <span className={styles.clamp}>{children}</span> : children}
     </Tag>
   );
 }
@@ -142,6 +148,7 @@ export function Portrait({
   seed,
   blobId,
   tone,
+  glyph,
   size,
   radius,
   className,
@@ -150,6 +157,8 @@ export function Portrait({
   seed: string;
   blobId?: string | null;
   tone?: PanelTone;
+  /** 不按名字取，直接给定大字（模型页的“导”“整”“工”） */
+  glyph?: string;
   size?: number;
   radius?: number;
   className?: string;
@@ -179,7 +188,7 @@ export function Portrait({
           />
         ) : null
       ) : (
-        <span className={styles.glyph}>{portraitGlyph(name)}</span>
+        <span className={styles.glyph}>{glyph ?? portraitGlyph(name)}</span>
       )}
     </span>
   );

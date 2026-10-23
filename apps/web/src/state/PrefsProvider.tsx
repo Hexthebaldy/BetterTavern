@@ -12,17 +12,14 @@ import type { ThemeSetting } from "@bettertavern/design/themes";
 import { localStore } from "../storage/local.ts";
 import type { WheelSpot } from "../theme/wheel.ts";
 import { useLanguageSync } from "./language.ts";
-import { parsePrefs, PREFS_KEY, type LibraryView, type WebPrefs } from "./prefs.ts";
+import { parsePrefs, PREFS_KEY, type WebPrefs } from "./prefs.ts";
 
 type PrefsValue = WebPrefs & {
   setReading: (reading: ReadingPrefs) => void;
   setTheme: (theme: ThemeSetting) => void;
   setLanguage: (language: LanguageSetting) => void;
-  setLibraryView: (view: LibraryView) => void;
-  setWorldDocked: (open: boolean) => void;
   setWheel: (spot: WheelSpot) => void;
   setSingleKeys: (enabled: boolean) => void;
-  dismissMovedHint: () => void;
 };
 
 const PrefsContext = createContext<PrefsValue | null>(null);
@@ -50,11 +47,8 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
       setReading: (reading) => set({ reading }),
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
-      setLibraryView: (libraryView) => set({ libraryView }),
-      setWorldDocked: (worldDocked) => set({ worldDocked }),
       setWheel: (wheel) => set({ wheel }),
       setSingleKeys: (singleKeys) => set({ singleKeys }),
-      dismissMovedHint: () => set({ movedHintDismissed: true }),
     };
   }, [prefs]);
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>;

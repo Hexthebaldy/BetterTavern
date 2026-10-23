@@ -1,5 +1,6 @@
 /**
- * 外部服务（/tools，侧栏“连接”里的一项）：工作台的 agent 查资料、读网页、生成封面时用的服务，分三种，宽屏时三栏并排：
+ * 外部服务（/settings/tools，设置的子页面；旧地址 /tools 跳过来）：工作台的 agent 查资料、读网页、生成封面时用的服务，
+ * 分三种，宽屏时三栏并排（每栏一个描边的格子）：
  * - 网页搜索：Tavily、Brave、博查要 Key，SearXNG 填自己架的地址；
  * - 读网页：默认由服务器自己读，不用配；可选 Jina，读不出来的网页换它再读；
  * - 生成封面：按接口协议接（OpenAI Images、对话接口出图、Gemini），填地址、模型名和 Key。
@@ -15,7 +16,11 @@ import { describeError } from "@bettertavern/core/api/client";
 import type { ToolKind, ToolProvider, ToolRoute } from "@bettertavern/core/api/types";
 import { i18n } from "@bettertavern/core/i18n/index";
 
+import { Link } from "react-router";
+
+import { Panel } from "../../components/comic.tsx";
 import { Button, Chip, cx, Field, Notice, Pill } from "../../components/controls.tsx";
+import { Icon } from "../../components/Icon.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { toolRoutesKey, useToolProviders, useToolRoutes } from "../../data/tools.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -24,7 +29,6 @@ import { useOverlay } from "../../overlay/OverlayProvider.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import pages from "../pages.module.css";
 import { KeyField } from "../settings/parts.tsx";
-import styles from "../settings/settings.module.css";
 import { StatusPill } from "../settings/StatusPill.tsx";
 import tools from "./tools.module.css";
 
@@ -215,9 +219,9 @@ function RouteRow({ route, onChanged }: { route: ToolRoute; onChanged: () => voi
     .filter(Boolean)
     .join(" · ");
   return (
-    <div className={tools.row}>
+    <div className={cx(tools.row, route.is_default && tools.rowDefault)}>
       <div className={tools.rowHead}>
-        <span className={styles.rowText}>
+        <span className={tools.rowText}>
           <span className={tools.name}>{name}</span>
           {meta ? <span className={tools.meta}>{meta}</span> : null}
         </span>
@@ -253,7 +257,11 @@ export function ToolsPage() {
 
   return (
     <div className={cx(pages.page, tools.page)}>
-      <PageHeader title={t("nav.tools")} />
+      <PageHeader title={t("nav.tools")} sub={t("settings.toolsSub")} />
+      <Link to="/settings" className={tools.back}>
+        <Icon name="arrowLeft" size={16} strokeWidth={2.2} />
+        {t("nav.settings")}
+      </Link>
       <p className={tools.lead}>{t("tools.intro")}</p>
       {routes.error || providers.error ? (
         <Notice
@@ -264,13 +272,14 @@ export function ToolsPage() {
             void routes.refetch();
             void providers.refetch();
           }}
+          className={tools.notice}
         />
       ) : null}
       <div className={tools.columns}>
         {KINDS.map((kind) => {
           const list = (routes.data ?? []).filter((r) => r.kind === kind);
           return (
-            <section key={kind} className={tools.column} aria-labelledby={`tools-${kind}`}>
+            <Panel as="section" key={kind} className={tools.column} aria-labelledby={`tools-${kind}`}>
               <div className={tools.columnHead}>
                 <h2 id={`tools-${kind}`} className={tools.columnTitle}>
                   {t(`tools.kinds.${kind}`)}
@@ -294,7 +303,7 @@ export function ToolsPage() {
               ) : routes.data ? (
                 <p className={tools.none}>{t("tools.none")}</p>
               ) : null}
-            </section>
+            </Panel>
           );
         })}
       </div>

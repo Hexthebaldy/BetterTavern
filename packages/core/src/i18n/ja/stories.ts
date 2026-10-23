@@ -13,6 +13,13 @@ export const stories: MessagesOtherOnly<typeof source> = {
     deleteMessage: "削除すると、このセーブの物語と世界の状態は元に戻せません。",
     offline: "サーバー <mono>{{server}}</mono> に接続できず、一覧を読み込めませんでした",
     offlineShort: "サーバーに接続できず、一覧を読み込めませんでした",
+    resume: "続きから",
+    turnN: "第 {{n}} ターン",
+    openingTurn: "オープニング",
+    newStory: "新しい物語 ＋",
+    newStoryNote: "シナリオを選んで主人公に名前をつければ、最初の場面がすぐに書かれます",
+    pageSummary_other: "全 {{count}} 件のセーブ · このページ {{n}} 件",
+    pickScenario: "シナリオを選ぶ",
     status: {
       ended: "完結",
       writingOpening: "冒頭を執筆中",

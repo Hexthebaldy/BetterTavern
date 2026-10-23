@@ -24,6 +24,13 @@ export const workbench = {
       deleteDraftMessage: "草稿里的对话和图片一起删掉；仓库里的角色卡不受影响。",
       untitled: "新角色",
       loadFailed: "工作台没加载出来",
+      sub: "和 agent 一起写角色卡",
+      agentNote: "说一句，它先问几个问题，再给方案，你点头它才动手",
+      dropHere: "拖进来就导入",
+      manualLong: "空白表单，自己写：名字、描述、开场白、世界书",
+      manualHint: "（还没写）这个人第一次见到你时，会说什么？",
+      draftChip: "草稿",
+      answer: "去回答",
     },
     import: {
       notCard: "{{name}} 不是角色卡",

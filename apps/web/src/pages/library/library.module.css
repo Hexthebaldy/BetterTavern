@@ -1,328 +1,421 @@
-/* “剧本”“角色”两页：网格卡片数值同 App 的 LibraryParts（卡片内边距 8、圆角 26，封面 96:76、圆角 18）；表格是网页端自己的 */
+/*
+ * 剧本（04）和角色（05）两页。数值取自 docs/design/comic/source/ComicLib.dc.html：
+ * 剧本的大格封面高 330（窗口矮时按比例），剧本名 52/58；宽格封面在左（宽 180），窄格封面在上（高 84）；
+ * 角色卡 4 × 2，间距 16，圆角 12，名牌是墨底的宋体 900 20。
+ */
 
 .banner {
   margin-bottom: 16px;
 }
-.problemTitle {
-  display: block;
-  font-weight: 500;
-}
-.loading {
-  display: flex;
-  justify-content: center;
+.noMatch {
   padding: 48px 0;
-}
-
-/* ---- 页头控件 ---- */
-.seg {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 22px;
-  background: var(--inset);
-}
-.segButton {
-  width: 38px;
-  height: 38px;
-  border: 0;
-  border-radius: 19px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
+  text-align: center;
+  font-size: 15px;
   color: var(--mut);
 }
-.segOn {
-  background: var(--raised);
-  color: var(--ink);
-  box-shadow: var(--shadow-lift);
+.fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
-@media (hover: hover) and (pointer: fine) {
-  .segButton:not(.segOn):hover {
-    color: var(--ink);
-  }
+
+/* ---- 剧本：最近添加的那一个 ---- */
+.hero {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  min-height: 0;
 }
-.add {
-  width: 44px;
-  height: 44px;
-  background: var(--ink);
-  color: var(--bg);
+.heroCover {
+  position: relative;
+  flex: 0 1 330px;
+  min-height: 120px;
+  border-bottom: var(--bw) solid var(--frame);
+  border-radius: 7.5px 7.5px 0 0;
+  overflow: hidden;
 }
-.addPill {
-  padding-left: 14px;
-  padding-right: 18px;
-  gap: 6px;
+.coverTag {
+  position: absolute;
+  left: 18px;
+  top: 18px;
 }
-.search {
+.heroBody {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 24px 22px;
+  min-height: 0;
+}
+.metaRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 240px;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 20px;
-  background: var(--fill);
-  color: var(--mut);
-  transition: box-shadow var(--dur-fast) var(--ease);
 }
-.search:focus-within {
-  box-shadow: inset 0 0 0 2px var(--acc);
-}
-.search input {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 14px;
-}
-/* 外面一圈已经有聚焦描边，输入框自己不再画 */
-.search input:focus {
-  box-shadow: none;
-}
-.sort {
-  height: 40px;
-  padding: 0 32px 0 14px;
-  border: 0;
-  border-radius: 20px;
-  background: var(--fill)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%236e6d68' stroke-width='1.6' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E")
-    no-repeat right 12px center;
-  color: var(--ink);
-  font: inherit;
-  font-size: 14px;
-  appearance: none;
-  cursor: pointer;
-}
-@media (max-width: 1099px) {
-  .search {
-    width: 180px;
-  }
-}
-
-/* ---- 网格与列表 ---- */
-.grid {
-  display: grid;
-  gap: 16px;
-}
-.cell {
-  position: relative;
-  min-width: 0;
-}
-.tile {
-  display: flex;
-  flex-direction: column;
-  padding: 8px;
-  border-radius: 26px;
-  background: var(--fill);
-  min-width: 0;
-  height: 100%;
-  transition:
-    background-color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
-}
-.tileMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 10px 8px 6px;
-}
-.name {
-  font-size: 16px;
-  line-height: 22px;
+.meta,
+.metaFoot,
+.genre {
+  font-family: var(--font-mono), var(--font-sans);
   font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--mut);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.summary {
-  font-size: 12.5px;
-  line-height: 18px;
-  color: var(--mut);
-  min-height: 36px;
+.genre {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.genreSmall {
+  font-size: 11px;
+}
+.heroTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(36px, 3.6vw, 52px);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
-.tile:active {
-  transform: scale(var(--press));
+.heroTitle:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 6px;
 }
-@media (hover: hover) and (pointer: fine) {
-  a.tile:hover {
-    background: var(--hover);
-  }
-}
-.tileMore {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease);
-}
-.cell:hover .tileMore,
-.cell:focus-within .tileMore {
-  opacity: 1;
-}
-@media (hover: none) {
-  .tileMore {
-    opacity: 1;
-  }
-}
-
-/* ---- 空状态 ---- */
-.emptyWrap {
-  max-width: var(--readable);
-  margin: 8px auto 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.emptyBody {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px 20px;
-  border-radius: 26px;
-  background: var(--fill);
-}
-.emptyTitle {
-  font-size: 22px;
-  line-height: 30px;
-  font-weight: 700;
-}
-.note {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  font-size: 14px;
-  line-height: 22px;
-  color: var(--ink2);
-}
-.note > span:last-child {
-  padding-top: 5px;
-}
-.noteIcon {
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--card);
-  color: var(--ink2);
+.heroText {
+  --lines: 2;
+  font-size: 15.5px;
+  line-height: 27px;
   flex: none;
 }
-
-/* ---- 卡片上的小字 ---- */
-.meta {
-  font-size: 11.5px;
-  line-height: 16px;
+.castRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 2px;
+}
+.castFace {
+  border: var(--bw-sm) solid var(--frame);
+}
+.castName {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.castNote {
+  font-size: 13px;
   color: var(--mut);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.noMatch {
-  padding: 48px 0;
-  text-align: center;
-  color: var(--mut);
-  font-size: 14px;
+.castNote + .castNote {
+  margin-left: 4px;
 }
-
-/* ---- 表格 ---- */
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 14px;
-}
-.table th:nth-child(1) {
-  width: 30%;
-}
-.scenariosTable th:nth-child(2) {
-  width: 26%;
-}
-.cardsTable th:nth-child(2) {
-  width: 22%;
-}
-.cardsTable th:nth-child(3),
-.cardsTable th:nth-child(4) {
-  width: 14%;
-}
-.table th:nth-last-child(2) {
-  width: 120px;
-}
-.table th:last-child {
-  width: 52px;
-}
-.table th {
-  height: 36px;
-  padding: 0 12px;
-  text-align: left;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--mut);
-  border-bottom: 1px solid var(--line);
-}
-.tr {
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease);
-}
-.tr td {
-  height: 56px;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-}
-.nameCell {
+.heroFoot {
+  margin-top: auto;
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 0;
-  font-weight: 500;
+  padding-top: 4px;
 }
-.nameText,
-.clip {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.enterHint {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--mut);
   white-space: nowrap;
 }
-.dim {
-  color: var(--ink2);
-  font-size: 13.5px;
-}
-.moreCell {
-  text-align: right;
-}
-.tableMore {
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease);
-}
-.tr:hover .tableMore,
-.tr:focus-within .tableMore {
-  opacity: 1;
+
+/* ---- 剧本：宽格（封面在左）、窄格（封面在上） ---- */
+.tile {
+  display: flex;
+  overflow: hidden;
+  color: inherit;
+  min-width: 0;
+  min-height: 0;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 @media (hover: hover) and (pointer: fine) {
-  .tr:hover {
-    background: var(--fill);
+  .tile:hover,
+  .newCell:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--x4);
   }
+}
+.tile:active,
+.newCell:active {
+  transform: translate(1px, 1px);
+}
+.wide {
+  flex-direction: row;
+}
+.narrow {
+  flex-direction: column;
+}
+.coverLeft {
+  position: relative;
+  flex: 0 0 min(180px, 42%);
+  border-right: var(--bw) solid var(--frame);
+}
+.coverTop {
+  position: relative;
+  flex: 0 0 84px;
+  border-bottom: var(--bw) solid var(--frame);
+}
+.tileBody {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 12px;
+}
+.narrow .tileBody {
+  gap: 4px;
+  padding: 10px 14px 12px;
+}
+.tileTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 26px;
+  line-height: 32px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tileTitleSmall {
+  font-size: 21px;
+  line-height: 27px;
+}
+.tileText {
+  font-size: 13.5px;
+  line-height: 21px;
+  color: var(--ink2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tileTextSmall {
+  font-size: 13px;
+  line-height: 20px;
+  -webkit-line-clamp: 2;
+}
+.metaFoot {
+  margin-top: auto;
+}
+
+/* ---- 新建剧本 ---- */
+.newCell {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 20px;
+  overflow: hidden;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.newTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(20px, 2.2vw, 30px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.newNote {
+  font-size: 13.5px;
+  line-height: 21px;
+}
+
+/* ---- 什么都没有 ---- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 40px 56px;
+}
+.emptyTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 48px;
+  line-height: 56px;
+  letter-spacing: -0.02em;
+}
+.emptyText {
+  max-width: 520px;
+  font-size: 15.5px;
+  line-height: 26px;
+  color: var(--ink2);
+}
+
+/* ---- 角色：4 × 2 张卡 ---- */
+.cast {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(260px, 1fr));
+  gap: 16px;
+  height: max(calc(100vh - 112px - 56px), 536px);
+}
+.castCell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+.castCard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: var(--bw) solid var(--frame);
+  border-radius: 12px;
+  background: var(--paper);
+  color: inherit;
+  transition:
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.castCell:hover .castCard,
+.castCell:focus-within .castCard {
+  box-shadow: var(--b8);
+}
+.castCard:active {
+  transform: translate(1px, 1px);
+}
+.castPortrait {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-bottom: var(--bw) solid var(--frame);
+  border-radius: 9.5px 9.5px 0 0;
+  overflow: hidden;
+}
+.namePlate {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  max-width: calc(100% - 24px);
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.draftChip {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+}
+.castFoot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px 12px;
+  min-width: 0;
+}
+.castIdentity {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.castMeta {
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* “用这张开局”：指着或键盘焦点在这张卡上时出现在右下角，压出卡片一半 */
+.castStart {
+  position: absolute;
+  right: 12px;
+  bottom: -18px;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+.castCell:hover .castStart,
+.castCell:focus-within .castStart {
+  opacity: 1;
+  pointer-events: auto;
 }
 @media (hover: none) {
-  .tableMore {
+  .castStart {
     opacity: 1;
+    pointer-events: auto;
   }
 }
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+
+/* 窗口窄一些时（900–1199），格子小了：窄格不写简介，大格不写 Enter 的提示 */
+@media (max-width: 1199px) {
+  .narrow .tileText,
+  .enterHint {
+    display: none;
+  }
+  .coverTop {
+    flex-basis: 64px;
+  }
+  .newNote {
+    font-size: 12.5px;
+    line-height: 18px;
+  }
+  .heroFoot {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 899px) {
+  .hero {
+    min-height: 520px;
+  }
+  .heroFoot {
+    flex-wrap: wrap;
+  }
+  .enterHint {
+    display: none;
+  }
+  .cast {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-rows: 300px;
+    height: auto;
+    row-gap: 28px;
+  }
+  .empty {
+    padding: 28px;
+  }
+  .emptyTitle {
+    font-size: 34px;
+    line-height: 42px;
+  }
 }

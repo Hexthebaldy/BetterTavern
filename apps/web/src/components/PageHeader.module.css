@@ -1,32 +1,161 @@
+/* 一级页的页头：一行 48 高，下面空 28 到格子（页面离窗口顶 36，格子从 112 开始） */
+
 .header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  margin-bottom: 20px;
+  gap: 14px;
+  min-height: 48px;
+  margin-bottom: 28px;
 }
 .title {
-  font-size: 32px;
-  line-height: 40px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 40px;
+  line-height: 48px;
   letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
-  min-width: 32px;
-  padding: 0 10px;
-  border-radius: 16px;
-  background: var(--fill);
+  height: 26px;
+  min-width: 26px;
+  padding: 0 8px;
+  border-radius: var(--r-chip);
+  background: var(--ink);
+  color: var(--on-ink);
   font-family: var(--font-mono);
   font-size: 13px;
-  color: var(--ink2);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex: none;
+}
+.sub {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mut);
+  white-space: nowrap;
 }
 .actions {
   margin-left: auto;
   display: flex;
   align-items: center;
+  gap: 14px;
+  flex: none;
+}
+.actions:empty {
+  display: none;
+}
+
+/* 工具：描边方块，墨色硬投影；按下往投影的方向挪 */
+.tool {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  height: 40px;
+  padding: 0 14px 0 12px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--x3);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex: none;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+button.tool:not(:disabled):active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--x1);
+}
+button.tool:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+@media (hover: hover) and (pointer: fine) {
+  button.tool:not(:disabled):not(:active):hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--x4);
+  }
+}
+.toolOn {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.search {
+  cursor: text;
+}
+.search:focus-within {
+  box-shadow: var(--b3);
+}
+.search input {
+  width: 150px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+}
+.search input:focus {
+  box-shadow: none;
+}
+.search input::placeholder {
+  color: var(--ink2);
+}
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+.select {
+  position: relative;
+  padding-right: 10px;
+}
+.select:focus-within {
+  box-shadow: var(--b3);
+}
+.select select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  max-width: 160px;
+  cursor: pointer;
+  padding-right: 2px;
+}
+.select select:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+@media (max-width: 899px) {
+  .header {
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .title {
+    font-size: 32px;
+    line-height: 40px;
+  }
+  .actions {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .search {
+    flex: 1;
+  }
+  .search input {
+    width: 100%;
+  }
 }

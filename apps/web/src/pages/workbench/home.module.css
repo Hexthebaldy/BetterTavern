@@ -1,0 +1,391 @@
+/*
+ * 工作台首页（docs/design/comic 的 06）。数值取自 source/ComicLib.dc.html 的 .wbin、.exs、.stp、.rcn：
+ * 大标题 50/58；气泡形状的输入框高 64、圆角 32、带 --x4 投影，尾巴在左下 40；示例是旁白框；
+ * 五步进度是 26 高的描边小块，做完的灰、正在做的蓝底带墨色错位。
+ */
+
+.notice {
+  margin-bottom: 16px;
+}
+.label {
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  color: var(--mut);
+}
+
+/* ---- 一句话开始 ---- */
+.agent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 30px 34px;
+  min-height: 0;
+  overflow: hidden;
+}
+.agentHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.prompt {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(36px, 3.5vw, 50px);
+  line-height: 1.16;
+  letter-spacing: -0.02em;
+}
+.composer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 0 10px 0 22px;
+  border: var(--bw) solid var(--frame);
+  border-radius: 32px;
+  background: var(--paper);
+  box-shadow: var(--x4);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.composer:focus-within {
+  box-shadow: var(--b4);
+}
+.composerInput {
+  flex: 1;
+  min-width: 0;
+  max-height: 120px;
+  padding: 19px 0;
+  border: 0;
+  background: transparent;
+  resize: none;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 22px;
+  color: var(--ink);
+  field-sizing: content;
+}
+.composerInput:focus {
+  box-shadow: none;
+}
+.composerInput::placeholder {
+  color: var(--mut);
+}
+.send {
+  flex: none;
+}
+.tail {
+  position: absolute;
+  bottom: -17px;
+  left: 40px;
+  width: 26px;
+  height: 20px;
+  overflow: visible;
+}
+.tail path {
+  fill: var(--paper);
+  stroke: var(--frame);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.tail rect {
+  fill: var(--paper);
+}
+.examples {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  min-height: 0;
+}
+.example {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: var(--bw) solid var(--frame);
+  border-radius: 6px;
+  background: var(--paper);
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  line-height: 22px;
+  color: var(--ink);
+  text-align: left;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.example svg {
+  color: var(--acc);
+}
+@media (hover: hover) and (pointer: fine) {
+  .example:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--x3);
+  }
+}
+
+/* ---- 导入、手动新建 ---- */
+.cellHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+.cellTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-align: left;
+}
+.importCell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  min-height: 0;
+}
+.importNote {
+  font-size: 13.5px;
+  line-height: 20px;
+  color: var(--sky);
+}
+.drop {
+  flex: 1;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--bw) dashed var(--sky);
+  border-radius: var(--r-frame);
+  background: transparent;
+  color: var(--on-ink);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .drop:hover {
+    background: rgba(147, 168, 255, 0.12);
+  }
+}
+.manualCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px 20px;
+  color: var(--ink);
+  text-align: left;
+  min-height: 0;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .manualCell:not(:disabled):hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--x4);
+  }
+}
+.manualCell:disabled {
+  opacity: 0.6;
+}
+.manualNote {
+  font-size: 13.5px;
+  line-height: 20px;
+  color: var(--ink2);
+}
+.manualHint {
+  margin-top: auto;
+  align-self: stretch;
+  font-size: 14px;
+  line-height: 22px;
+  padding: 8px 12px;
+  color: var(--mut);
+}
+
+/* ---- 草稿 ---- */
+.draftCell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+.draft {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  padding: 16px 18px;
+  color: inherit;
+  overflow: hidden;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .draft:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--x4);
+  }
+}
+.draftName {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 26px;
+  line-height: 32px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.steps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 0;
+}
+.stepWrap {
+  display: flex;
+  align-items: center;
+}
+.stepLine {
+  width: 8px;
+  height: 2px;
+  margin: 0 6px;
+  background: var(--ink);
+}
+.step {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-key);
+  background: var(--paper);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stepDone {
+  background: var(--grey2);
+  border-color: var(--grey2);
+  color: var(--mut);
+}
+.stepOn {
+  background: var(--acc);
+  color: var(--on-acc);
+  box-shadow: 2px 2px 0 var(--shade);
+}
+.draftTime {
+  margin-top: auto;
+  align-self: flex-end;
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--mut);
+}
+.answer {
+  color: var(--ink);
+}
+.draftDelete {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.draftCell:hover .draftDelete,
+.draftCell:focus-within .draftDelete {
+  opacity: 1;
+}
+@media (hover: none) {
+  .draftDelete {
+    opacity: 1;
+  }
+}
+.noDrafts {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px 22px;
+}
+.noDraftsText {
+  font-size: 14px;
+  color: var(--mut);
+}
+
+/* ---- 最近保存的角色卡 ---- */
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+.recent > .label {
+  margin-bottom: 4px;
+}
+.recentRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1.5px solid var(--grey2);
+  color: inherit;
+  min-width: 0;
+}
+.recentList {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.recentRow:last-child {
+  border-bottom: 0;
+}
+.recentName {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recentRow:hover .recentName {
+  text-decoration: underline;
+}
+.recentTime {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--mut);
+  white-space: nowrap;
+}
+.more {
+  margin-top: auto;
+  align-self: flex-end;
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+.more:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 899px) {
+  .agent {
+    padding: 22px;
+  }
+}

@@ -1,6 +1,6 @@
 /**
- * 存在浏览器里的界面偏好（localStorage 的 bt.prefs，键名和 App 相同）：阅读设置、剧本库视图、外观、界面语言、
- * 阅读页世界停靠开着还是收着、剧本页上“挪到了工作台”的提示关掉没有，以及网页端才有的导航轮盘的位置、单键快捷键开关。
+ * 存在浏览器里的界面偏好（localStorage 的 bt.prefs，键名和 App 相同）：阅读设置、外观、界面语言，
+ * 以及网页端才有的导航轮盘的位置、单键快捷键开关。
  * 读到的内容不对就用默认值。
  */
 
@@ -14,33 +14,23 @@ export const PREFS_KEY = "bt.prefs";
 /** index.html 里的脚本在页面脚本加载前读它，先设好深浅，深色下打开不闪白 */
 export const SCHEME_KEY = "bt.scheme";
 
-export type LibraryView = "grid" | "list";
-
 export type WebPrefs = {
   reading: ReadingPrefs;
-  libraryView: LibraryView;
   theme: ThemeSetting;
   /** 界面语言：跟随系统（浏览器）、中文、English、日本語 */
   language: LanguageSetting;
-  /** 阅读页够宽时世界状态停靠在右侧：开着还是收着（所有故事共用） */
-  worldDocked: boolean;
   /** 导航轮盘停在哪（窗口 ≥ 900 时；贴哪一边、圆心在窗口里的比例） */
   wheel: WheelSpot;
   /** 单键快捷键（A–D、/、W、L、Q、?）；用读屏或语音输入的人可以关掉 */
   singleKeys: boolean;
-  /** 剧本页顶上“新建和导入挪到了工作台”的提示已经关掉 */
-  movedHintDismissed: boolean;
 };
 
 export const DEFAULT_PREFS: WebPrefs = {
   reading: DEFAULT_READING,
-  libraryView: "grid",
   theme: "system",
   language: "system",
-  worldDocked: false,
   wheel: DEFAULT_SPOT,
   singleKeys: true,
-  movedHintDismissed: false,
 };
 
 export function parsePrefs(raw: unknown): WebPrefs {
@@ -48,13 +38,10 @@ export function parsePrefs(raw: unknown): WebPrefs {
   const r = raw as Record<string, unknown>;
   return {
     reading: parseReadingPrefs(r.reading),
-    libraryView: r.libraryView === "list" ? "list" : "grid",
     theme: parseThemeSetting(r.theme),
     language: parseLanguageSetting(r.language),
-    worldDocked: r.worldDocked === true,
     wheel: parseWheelSpot(r.wheel),
     singleKeys: r.singleKeys !== false,
-    movedHintDismissed: r.movedHintDismissed === true,
   };
 }
 

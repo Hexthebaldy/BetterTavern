@@ -1,9 +1,9 @@
 /**
  * 路由。登录、注册、协议之外的页面都在外壳（侧栏 / Tab 栏）里。阅读页、剧本详情、角色卡、工作台、模型、外部服务、
  * 设置按需加载（首屏只带存档、剧本和角色）。
- * 网页端按大屏重排后，地址和 App 不再完全一样：剧本和角色分成 /scenarios、/characters；模型、外部服务从设置里拿出来，
- * 是 /models、/tools；账户在侧栏的小窗里。旧地址（/library、/settings/models、/settings/model/:id、/settings/tools、
- * /settings/account）都跳到新地址。
+ * 网页端按大屏重排后，地址和 App 不再完全一样：剧本和角色分成 /scenarios、/characters；模型从设置里拿出来是 /models；
+ * 外部服务是设置的子页面 /settings/tools；账户在设置页的“账户”一格。旧地址（/library、/tools、/settings/models、
+ * /settings/model/:id、/settings/account）都跳到新地址。
  */
 
 import { createBrowserRouter, Navigate, useParams } from "react-router";
@@ -92,16 +92,16 @@ export const router = createBrowserRouter([
       { path: "/models", lazy: async () => ({ Component: (await models()).ModelsPage }) },
       { path: "/models/:id", lazy: async () => ({ Component: (await models()).ModelsPage }) },
       {
-        path: "/tools",
+        path: "/settings/tools",
         lazy: async () => ({ Component: (await import("../pages/tools/ToolsPage.tsx")).ToolsPage }),
       },
+      { path: "/tools", element: <Navigate to="/settings/tools" replace /> },
       {
         path: "/settings",
         lazy: async () => ({ Component: (await import("../pages/settings/SettingsPage.tsx")).SettingsPage }),
       },
       { path: "/settings/models", element: <Navigate to="/models" replace /> },
       { path: "/settings/model/:id", element: <ModelRedirect /> },
-      { path: "/settings/tools", element: <Navigate to="/tools" replace /> },
       { path: "/settings/account", element: <Navigate to="/settings" replace /> },
       {
         path: "/dev/probe",

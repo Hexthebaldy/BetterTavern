@@ -8,7 +8,7 @@ describe("parsePrefs", () => {
     assert.deepEqual(parsePrefs(null), DEFAULT_PREFS);
     assert.deepEqual(parsePrefs("oops"), DEFAULT_PREFS);
     assert.deepEqual(
-      parsePrefs({ theme: "sepia", libraryView: "table", singleKeys: "no", language: "fr" }),
+      parsePrefs({ theme: "sepia", singleKeys: "no", language: "fr", wheel: "left" }),
       DEFAULT_PREFS,
     );
   });
@@ -16,23 +16,20 @@ describe("parsePrefs", () => {
   it("读出存过的设置", () => {
     const prefs = parsePrefs({
       reading: { font: "sans", size: 20.5 },
-      libraryView: "list",
       theme: "night",
       language: "en",
-      worldDocked: true,
       wheel: { dock: "right", x: 0, y: 0.25 },
       singleKeys: false,
-      movedHintDismissed: true,
+      // 以前的版本存过的字段，读的时候丢掉
+      libraryView: "list",
+      worldDocked: true,
     });
     assert.deepEqual(prefs, {
       reading: { font: "sans", size: 20.5 },
-      libraryView: "list",
       theme: "night",
       language: "en",
-      worldDocked: true,
       wheel: { dock: "right", x: 0, y: 0.25 },
       singleKeys: false,
-      movedHintDismissed: true,
     });
   });
 

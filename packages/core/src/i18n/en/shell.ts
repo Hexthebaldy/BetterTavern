@@ -59,6 +59,11 @@ export const shell: Messages<typeof source> = {
       close: "Close menus, dialogs and slide-out panels",
     },
   },
+  grid: {
+    pages: "Pages",
+    prev: "Previous",
+    next: "Next",
+  },
   splash: {
     restoring: "Signing you back in",
   },

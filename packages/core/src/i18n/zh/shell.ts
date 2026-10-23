@@ -55,6 +55,11 @@ export const shell = {
       close: "关闭菜单、对话框和滑出的面板",
     },
   },
+  grid: {
+    pages: "翻页",
+    prev: "上一页",
+    next: "下一页",
+  },
   splash: {
     restoring: "正在恢复登录状态",
   },

@@ -52,6 +52,11 @@ type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
   ref?: Ref<HTMLButtonElement>;
 };
 
+/** 按钮的类名：整块都是链接的格子里，要画成按钮样子的那一块（不能在链接里放真的按钮）用它 */
+export function buttonClass(variant: ButtonVariant = "primary", size: "sm" | "md" | "lg" = "md"): string {
+  return cx(styles.button, styles[variant], size !== "md" && styles[size]);
+}
+
 /** 胶囊按钮：默认高 48，lg 54、sm 38。busy 时显示三个点，不响应点击 */
 export function Button({
   label,

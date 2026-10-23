@@ -57,6 +57,11 @@ export const shell: MessagesOtherOnly<typeof source> = {
       close: "メニュー、ダイアログ、スライドしたパネルを閉じる",
     },
   },
+  grid: {
+    pages: "ページ",
+    prev: "前へ",
+    next: "次へ",
+  },
   splash: {
     restoring: "ログイン状態を復元しています",
   },

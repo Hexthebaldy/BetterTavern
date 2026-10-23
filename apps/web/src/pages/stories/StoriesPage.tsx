@@ -1,36 +1,41 @@
 /**
- * 存档（W03）：三列网格，最近一个存档放大成主卡占两列两行；600–899 两列，主卡占满一行；手机一列，没有主卡。
- * 没有下拉刷新：回到标签页时自动刷新。空状态、加载失败的文案同 App 的 app/(tabs)/playthroughs.tsx。
+ * 存档（docs/design/comic 的 01）：漫画格子，一页排满，翻页（theme/grid.ts 的 savesPage）。
+ * 第一页最近玩的那个占左上的大格：剧本名、最近一段的摘录（旁白框）、“继续”、回合数，右边是主角色的人物位；
+ * 正在生成的存档是墨底格，写“● 正在写”；“新的故事 ＋”是一格蓝网点（键 N，去剧本页挑一个）。其他存档是白格。
+ * 每一格就是指向阅读页的链接；右键和悬停出现的“…”打开同一个菜单（在新标签页打开、重命名、删除）。
+ * 没有下拉刷新：回到标签页时自动刷新。
  */
 
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 
-import { Button, Notice } from "../../components/controls.tsx";
+import { buttonClass, Notice } from "../../components/controls.tsx";
+import { ComicGrid, Pager, slotStyle, usePager } from "../../components/ComicGrid.tsx";
+import { Panel } from "../../components/comic.tsx";
+import { Icon } from "../../components/Icon.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
-import { useAvatars } from "../../data/scenarios.ts";
+import { useScenarios } from "../../data/scenarios.ts";
 import { useStories } from "../../data/stories.ts";
 import { useStoryActions } from "../../data/storyActions.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
-import { useWindowWidth } from "../../hooks/useWindowSize.ts";
 import { byRecent } from "../../shell/recent.ts";
+import { usePrefs } from "../../state/PrefsProvider.tsx";
+import { acceptsSingleKey } from "../../theme/layout.ts";
+import { savesPage, savesPages } from "../../theme/grid.ts";
 import pages from "../pages.module.css";
-import { StoryCard, StoryHero } from "./StoryCards.tsx";
+import { NewStoryCell, SaveCell, type MainCast } from "./StoryCells.tsx";
 import styles from "./stories.module.css";
 
 function Skeleton() {
   return (
-    <div className={styles.grid} aria-hidden="true">
-      {[0.8, 0.5].map((opacity, i) => (
-        <div key={i} className={styles.skeleton} style={{ opacity }}>
-          <span className={styles.skeletonCover} />
-          <span className={styles.skeletonLine} style={{ width: i === 0 ? "45%" : "35%" }} />
-          <span className={styles.skeletonLine} style={{ width: "90%", height: 10 }} />
-        </div>
+    <ComicGrid>
+      {savesPage(6, 0).map((cell, i) => (
+        <Panel key={i} tone="grey" className={styles.skeleton} style={slotStyle(cell.slot)} />
       ))}
-    </div>
+    </ComicGrid>
   );
 }
 
@@ -38,63 +43,75 @@ function Empty() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   return (
-    <div className={styles.empty}>
-      <svg
-        width="100%"
-        height={150}
-        viewBox="0 0 294 150"
-        preserveAspectRatio="xMidYMid meet"
-        aria-hidden="true"
-      >
-        <rect width={294} height={150} rx={24} fill="var(--card)" />
-        <path
-          d="M147 40c-14-10-34-14-60-14v84c26 0 46 4 60 14 14-10 34-14 60-14V26c-26 0-46 4-60 14z"
-          fill="none"
-          stroke="var(--ink)"
-          strokeWidth={2}
-          strokeLinejoin="round"
-        />
-        <path d="M147 40v84" stroke="var(--ink)" strokeWidth={2} />
-        <path
-          d="M104 56h28M104 70h22M162 56h28M162 70h20"
-          stroke="var(--line2)"
-          strokeWidth={5}
-          strokeLinecap="round"
-        />
-        <circle cx={214} cy={40} r={10} fill="var(--acc)" />
-      </svg>
-      <h2 className={styles.emptyTitle}>{t("stories.emptyTitle")}</h2>
-      <p className={styles.emptyText}>{t("stories.emptyText")}</p>
-      <Button
-        label={t("stories.emptyAction")}
-        trailingIcon="arrowRight"
-        between
-        onClick={() => navigate("/scenarios")}
-      />
-    </div>
+    <ComicGrid>
+      <Panel tone="dots" hot className={styles.empty} style={{ gridColumn: "1 / span 4", gridRow: "1 / span 3" }}>
+        <h2 className={styles.emptyTitle}>{t("stories.emptyTitle")}</h2>
+        <p className={styles.emptyText}>{t("stories.emptyText")}</p>
+        <button type="button" className={buttonClass("primary")} onClick={() => navigate("/scenarios")}>
+          <Icon name="play" size={19} strokeWidth={2.2} />
+          {t("stories.pickScenario")}
+        </button>
+      </Panel>
+      <NewStoryCell slot={{ col: 5, row: 1, w: 2, h: 3 }} />
+    </ComicGrid>
   );
 }
 
 export function StoriesPage() {
   const { t } = useTranslation();
   useDocumentTitle(t("nav.saves"));
+  const navigate = useNavigate();
   const stories = useStories();
-  const avatarOf = useAvatars();
+  const scenarios = useScenarios();
   const actions = useStoryActions();
-  const width = useWindowWidth();
+  const { singleKeys } = usePrefs();
   const list = stories.data ? byRecent(stories.data) : null;
-  const onMenu = actions.menu;
+  const total = list?.length ?? 0;
+  const pageCount = savesPages(total);
+  const [page, setPage] = usePager(pageCount, String(total));
   const failure = stories.error
     ? stories.error instanceof ApiError && stories.error.isNetwork
       ? t("stories.offlineShort")
       : describeError(stories.error)
     : null;
-  const [first, ...others] = list ?? [];
-  const withHero = width >= 600 && first !== undefined;
+
+  // 主角色：剧本的第一张卡（名字、头像）
+  const castOf = (scenarioId: string | null): MainCast | null => {
+    const scenario = scenarios.data?.find((s) => s.id === scenarioId);
+    const card = scenario?.cards[0];
+    return card ? { id: card.card_id, name: card.name, blobId: card.cover_blob_id } : null;
+  };
+
+  // N：新的故事（去剧本页挑一个）
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const typing =
+        !!target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+      const single = acceptsSingleKey({
+        enabled: singleKeys,
+        typing,
+        composing: event.isComposing,
+        meta: event.metaKey,
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+      });
+      if (single && event.key.toLowerCase() === "n") {
+        event.preventDefault();
+        navigate("/scenarios");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [singleKeys, navigate]);
+
+  const cells = list ? savesPage(total, page) : [];
+  const shown = cells.filter((c) => c.item !== null).length;
 
   return (
     <div className={pages.page}>
-      <PageHeader title={t("nav.saves")} count={list?.length ?? null} />
+      <PageHeader title={t("nav.saves")} count={list ? total : null} />
       {failure ? (
         <Notice
           icon="offline"
@@ -108,15 +125,35 @@ export function StoriesPage() {
         stories.isPending ? (
           <Skeleton />
         ) : null
-      ) : list.length === 0 ? (
+      ) : total === 0 ? (
         <Empty />
       ) : (
-        <div className={styles.grid}>
-          {withHero ? <StoryHero story={first} avatar={avatarOf(first.scenario_id)} onMenu={onMenu} /> : null}
-          {(withHero ? others : list).map((story) => (
-            <StoryCard key={story.id} story={story} avatar={avatarOf(story.scenario_id)} onMenu={onMenu} />
-          ))}
-        </div>
+        <>
+          <ComicGrid label={t("nav.saves")}>
+            {cells.map((cell) => {
+              if (cell.item === null) return <NewStoryCell key="new" slot={cell.slot} />;
+              const story = list[cell.item];
+              if (!story) return null;
+              return (
+                <SaveCell
+                  key={story.id}
+                  story={story}
+                  number={cell.item + 1}
+                  kind={cell.kind}
+                  slot={cell.slot}
+                  cast={castOf(story.scenario_id)}
+                  onMenu={actions.menu}
+                />
+              );
+            })}
+          </ComicGrid>
+          <Pager
+            page={page}
+            pages={pageCount}
+            onPage={setPage}
+            summary={t("stories.pageSummary", { count: total, n: shown })}
+          />
+        </>
       )}
     </div>
   );

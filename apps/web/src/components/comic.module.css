@@ -131,6 +131,13 @@
   color: var(--ink);
 }
 
+.clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--lines, 3);
+  overflow: hidden;
+}
+
 /* ---- 键帽：高 26，2px 描边，等宽粗体 ---- */
 .keycap {
   display: inline-flex;

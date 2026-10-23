@@ -24,6 +24,13 @@ export const workbench: Messages<typeof source> = {
       deleteDraftMessage: "Its conversation and images go too. Cards in your library aren't affected.",
       untitled: "New character",
       loadFailed: "The workbench didn't load",
+      sub: "Write character cards with the agent",
+      agentNote: "Say one line — it asks a few questions, proposes a plan, and only builds once you agree",
+      dropHere: "Drop a file here to import",
+      manualLong: "A blank form you fill in: name, description, greeting, lorebook",
+      manualHint: "(Not written yet) What does this person say the first time they meet you?",
+      draftChip: "Draft",
+      answer: "Answer",
     },
     import: {
       notCard: "{{name}} isn't a character card",

@@ -160,38 +160,6 @@
   flex-direction: column;
   gap: 16px;
 }
-.themes {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.themeOption {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 72px;
-  padding: 12px 16px;
-  border: 0;
-  border-radius: var(--r-card);
-  background: var(--fill);
-  color: var(--ink);
-  text-align: left;
-  transition: background-color var(--dur-fast) var(--ease);
-}
-.themeOn {
-  background: var(--acc-bg);
-  box-shadow: inset 0 0 0 2px var(--acc);
-}
-@media (hover: hover) and (pointer: fine) {
-  .themeOption:not(.themeOn):hover {
-    background: var(--hover);
-  }
-}
-.themeLabel {
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 500;
-}
 .radio {
   width: 22px;
   height: 22px;
@@ -201,35 +169,6 @@
 }
 .radioOn {
   box-shadow: inset 0 0 0 7px var(--acc);
-}
-.swatch {
-  display: flex;
-  width: 56px;
-  height: 40px;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px var(--line2);
-  flex: none;
-}
-.swatchPart {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 7px 6px 0;
-}
-.swatchBar {
-  height: 8px;
-  border-radius: 4px;
-}
-.swatchDots {
-  display: flex;
-  gap: 4px;
-}
-.swatchDots span {
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
 }
 
 /* ---- 服务商标记、Key ---- */

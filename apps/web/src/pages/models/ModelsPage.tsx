@@ -1,10 +1,11 @@
 /**
- * 模型（/models；/models/:id 打开这个模型的详情）。照电脑上的习惯排，不照搬手机的“列表 → 详情”：
- * - 页头：标题和数量；右边是官方模型的余额和“添加模型”（打开对话框，里面是 AddModelForm）；
- * - “分工”：导演、后台整理、工作台各用哪个模型，三个下拉框直接换（不用点进每个模型拨开关）；
- * - 模型表格：名字、服务商、Key、上下文、状态、用途。官方模型永远在第一行，标记是 BetterTavern 的 Logo，
- *   服务商和 Key 两格空着（都是服务器提供的）；
- * - 点一行打开详情（ModelBody）：在窗口正中的对话框里，够宽时分两栏；关上回到 /models。
+ * 模型（/models；/models/:id 打开这个模型的详情，docs/design/comic 的 07）：漫画格子，不翻页。
+ * - 左上“分工”：导演、后台整理、工作台三行，每行一个大字占位、说明和一个选模型的下拉框（直接换，不用点进每个模型）；
+ * - 右上一格蓝网点：官方模型剩多少点、大约能写多少回合（服务器没有官方模型时这一格不画，“我的模型”占满右边）；
+ * - 右下“我的模型”：状态点、名字、用途标签、服务商、Key 尾号、工作窗口、测试结果；点一行打开详情（窗口正中的对话框）。
+ *   官方模型永远在第一行，服务商和 Key 不写（都是服务器提供的）；
+ * - 左下“添加模型”三步，“添加”打开对话框（AddModelForm）；
+ * - 页头右边是“连接测试”。外部服务不在这一页（在设置里）。
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,7 +17,6 @@ import { describeError } from "@bettertavern/core/api/client";
 import type { Credits, ModelRoute } from "@bettertavern/core/api/types";
 import {
   creditsLine,
-  keyText,
   modelStatusLabel,
   modelTitle,
   providerName,
@@ -24,9 +24,11 @@ import {
 } from "@bettertavern/core/settings/labels";
 import { formatTokens } from "@bettertavern/core/utils/format";
 
+import { Bubble, Panel, Portrait } from "../../components/comic.tsx";
+import { ComicGrid } from "../../components/ComicGrid.tsx";
 import { Button, cx, IconButton, Notice, Pill } from "../../components/controls.tsx";
-import { Logo } from "../../components/Logo.tsx";
-import { PageHeader } from "../../components/PageHeader.tsx";
+import { Icon } from "../../components/Icon.tsx";
+import { HeaderTool, PageHeader } from "../../components/PageHeader.tsx";
 import { creditsKey, routesKey, useCredits, useModelRoutes, useProviders } from "../../data/models.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { Dialog } from "../../overlay/Dialog.tsx";
@@ -36,11 +38,11 @@ import { useApp } from "../../state/AppProvider.tsx";
 import pages from "../pages.module.css";
 import { AddModelForm } from "../settings/AddModelForm.tsx";
 import { ModelBody } from "../settings/ModelBody.tsx";
-import { ProviderMark } from "../settings/parts.tsx";
-import { StatusPill } from "../settings/StatusPill.tsx";
 import styles from "./models.module.css";
 
 type Role = "director" | "background" | "workbench";
+
+const ROLE_TONES = { director: "blue", background: "dots", workbench: "grey" } as const;
 
 export function ModelsPage() {
   const { id } = useParams();
@@ -56,14 +58,10 @@ export function ModelsPage() {
   const list = platformFirst(routes.data ?? []);
 
   return (
-    <div className={cx(pages.page, styles.page)}>
-      <PageHeader title={t("nav.models")} count={routes.data ? list.length : null}>
-        {platform && credits.data && credits.data.balance > 0 ? (
-          <span className={styles.balance}>{creditsLine(credits.data)}</span>
-        ) : null}
-        <Button label={t("models.add")} icon="plus" onClick={() => setAdding(true)} disabled={!providers.data} />
+    <div className={pages.page}>
+      <PageHeader title={t("nav.models")} sub={t("models.sub")}>
+        <HeaderTool icon="probe" label={t("settings.probe")} onClick={() => navigate("/dev/probe")} />
       </PageHeader>
-      <p className={styles.lead}>{platform ? t("models.introPlatform") : t("models.intro")}</p>
       {routes.error || providers.error ? (
         <Notice
           icon="offline"
@@ -73,20 +71,59 @@ export function ModelsPage() {
             void routes.refetch();
             void providers.refetch();
           }}
+          className={styles.notice}
         />
       ) : null}
-      {platform && credits.data && routes.data ? (
-        <CreditsNotice credits={credits.data} missing={!list.some((r) => r.source === "platform")} />
-      ) : null}
-      {routes.data ? <Roles routes={list} /> : null}
-      {routes.data && list.length === 0 ? (
-        <div className={styles.empty}>
-          <p>{t("settings.noneAdded")}</p>
-          <Button label={t("models.add")} icon="plus" variant="secondary" onClick={() => setAdding(true)} />
-        </div>
-      ) : (
-        <ModelTable routes={list} selected={id ?? null} />
-      )}
+      <ComicGrid paged={false}>
+        <Panel hot className={styles.roles} style={{ gridColumn: "1 / span 3", gridRow: "1 / span 2" }}>
+          <Roles routes={list} loaded={!!routes.data} />
+        </Panel>
+        {platform && credits.data ? (
+          <CreditsCell credits={credits.data} missing={!!routes.data && !list.some((r) => r.source === "platform")} />
+        ) : null}
+        <Panel
+          className={styles.mine}
+          style={{ gridColumn: "4 / span 3", gridRow: platform ? "2 / span 2" : "1 / span 3" }}
+        >
+          <div className={styles.mineHead}>
+            <span className={styles.label}>
+              {t("models.mine")}
+              {routes.data ? ` · ${list.length}` : null}
+            </span>
+            <span className={styles.hint}>{t("models.mineHint")}</span>
+          </div>
+          {routes.data && list.length === 0 ? (
+            <div className={styles.empty}>
+              <p>{t("settings.noneAdded")}</p>
+              <Button label={t("models.add")} icon="plus" variant="blue" size="sm" onClick={() => setAdding(true)} />
+            </div>
+          ) : (
+            <ModelList routes={list} selected={id ?? null} />
+          )}
+          <span className={styles.footnote}>{t("models.keyOnce")}</span>
+        </Panel>
+        <Panel tone="dots" className={styles.add} style={{ gridColumn: "1 / span 3", gridRow: "3" }}>
+          <div className={styles.addHead}>
+            <h2 className={styles.cellTitle}>{t("models.add")}</h2>
+            <Button
+              label={t("models.addShort")}
+              icon="plus"
+              variant="blue"
+              size="sm"
+              onClick={() => setAdding(true)}
+              disabled={!providers.data}
+            />
+          </div>
+          <ol className={styles.steps}>
+            {(["one", "two", "three"] as const).map((step, i) => (
+              <li key={step} className={styles.step}>
+                <b>{String(i + 1).padStart(2, "0")}</b>
+                {t(`models.addSteps.${step}`)}
+              </li>
+            ))}
+          </ol>
+        </Panel>
+      </ComicGrid>
       {id ? (
         <Dialog
           key={id}
@@ -110,12 +147,7 @@ export function ModelsPage() {
         </Dialog>
       ) : null}
       {adding && providers.data && routes.data ? (
-        <Dialog
-          label={t("models.add")}
-          onClose={() => setAdding(false)}
-          width={780}
-          className={styles.addDialog}
-        >
+        <Dialog label={t("models.add")} onClose={() => setAdding(false)} width={780} className={styles.addDialog}>
           <h2 className={overlay.dialogTitle}>{t("models.add")}</h2>
           <AddModelForm
             providers={providers.data}
@@ -133,14 +165,13 @@ export function ModelsPage() {
   );
 }
 
-/** 官方模型的余额；用完了是黄色的提示；官方模型那一行被删掉了时带“使用官方模型”按钮 */
-function CreditsNotice({ credits, missing }: { credits: Credits; missing: boolean }) {
-  const { t } = useTranslation();
+/** 官方模型的点数：蓝网点一格。用完了写明；官方模型那一行被删掉了时带“使用官方模型”按钮 */
+function CreditsCell({ credits, missing }: { credits: Credits; missing: boolean }) {
+  const { t, i18n } = useTranslation();
   const { api } = useApp();
   const { toast } = useOverlay();
   const queries = useQueryClient();
   const [error, setError] = useState<unknown>(null);
-  if (credits.balance > 0 && !missing && !error) return null;
   const add = async (): Promise<void> => {
     setError(null);
     try {
@@ -152,31 +183,36 @@ function CreditsNotice({ credits, missing }: { credits: Credits; missing: boolea
       setError(e);
     }
   };
+  const empty = credits.balance <= 0;
   return (
-    <div className={styles.notices}>
-      <Notice
-        tone={credits.balance > 0 ? "info" : "warn"}
-        message={creditsLine(credits)}
-        actionLabel={missing ? t("models.officialUse") : undefined}
-        onAction={missing ? () => void add() : undefined}
-      />
-      {error ? <Notice message={describeError(error)} /> : null}
-    </div>
+    <Panel tone="blue" className={styles.credits} style={{ gridColumn: "4 / span 3", gridRow: "1" }}>
+      <div className={styles.creditsHead}>
+        <Pill tone="ink" label={t("models.officialName")} />
+        <span className={styles.creditsLabel}>{t("models.officialTagline")}</span>
+      </div>
+      {empty ? (
+        <p className={styles.creditsEmpty}>{creditsLine(credits)}</p>
+      ) : (
+        <div className={styles.balance}>
+          <span className={styles.balanceNumber}>{credits.balance.toLocaleString(i18n.language)}</span>
+          <span className={styles.balanceUnit}>{t("models.points")}</span>
+          <span className={styles.turns}>{t("models.turnsLeft", { count: credits.turns_left })}</span>
+        </div>
+      )}
+      <div className={styles.creditsFoot}>
+        <span>{t("models.creditsRate")}</span>
+        {missing ? (
+          <Button label={t("models.officialUse")} variant="secondary" size="sm" onClick={() => void add()} />
+        ) : null}
+      </div>
+      {error ? <Notice message={describeError(error)} className={styles.creditsError} /> : null}
+    </Panel>
   );
 }
 
 /** 官方模型永远排第一，其余按添加的先后 */
 function platformFirst(routes: ModelRoute[]): ModelRoute[] {
   return [...routes].sort((a, b) => Number(b.source === "platform") - Number(a.source === "platform"));
-}
-
-/** 官方模型的标记：白底圆里是 BetterTavern 的 Logo（Logo 的线条是墨色，所以底不跟着导演变黑） */
-function OfficialMark() {
-  return (
-    <span className={styles.officialMark} aria-hidden="true">
-      <Logo size={20} label={null} />
-    </span>
-  );
 }
 
 /** 一个模型在下拉框里的名字：显示名，后面跟着模型名（显示名就是模型名时不重复） */
@@ -186,7 +222,7 @@ function optionLabel(route: ModelRoute): string {
 }
 
 /** 分工：导演、后台整理、工作台各用哪个模型。后台和工作台可以“跟导演一样”，只能选能调用工具的模型 */
-function Roles({ routes }: { routes: ModelRoute[] }) {
+function Roles({ routes, loaded }: { routes: ModelRoute[]; loaded: boolean }) {
   const { t } = useTranslation();
   const { api } = useApp();
   const { toast } = useOverlay();
@@ -214,115 +250,115 @@ function Roles({ routes }: { routes: ModelRoute[] }) {
     }
   };
 
-  const select = (role: Role) => {
+  const row = (role: Role) => {
     const needsTools = role !== "director";
     const value = current[role]?.id ?? "";
     return (
-      <label className={styles.role}>
-        <span className={styles.roleName}>{t(`models.roles.${role}`)}</span>
-        <span className={styles.roleNote}>{t(`models.roles.${role}Note`)}</span>
-        <select
-          className={styles.roleSelect}
-          value={value}
-          disabled={busy !== null || routes.length === 0}
-          onChange={(e) => void change(role, e.target.value)}
-        >
-          {role === "director" ? (
-            value ? null : (
-              <option value="" disabled>
-                {t("settings.notSet")}
+      <label className={cx(styles.role, role === "director" && styles.roleOn)}>
+        <Portrait
+          name={t(`models.roles.${role}`)}
+          glyph={t(`models.roles.${role}Glyph`)}
+          seed={role}
+          tone={ROLE_TONES[role]}
+          radius={8}
+          className={styles.roleFace}
+        />
+        <span className={styles.roleText}>
+          <span className={styles.roleName}>{t(`models.roles.${role}`)}</span>
+          <span className={styles.roleNote}>{t(`models.roles.${role}Note`)}</span>
+        </span>
+        <span className={styles.selectBox}>
+          <select
+            className={styles.select}
+            value={value}
+            disabled={busy !== null || routes.length === 0}
+            onChange={(e) => void change(role, e.target.value)}
+          >
+            {role === "director" ? (
+              value ? null : (
+                <option value="" disabled>
+                  {t("settings.notSet")}
+                </option>
+              )
+            ) : (
+              <option value="">{t("models.roles.sameAsDirector")}</option>
+            )}
+            {routes.map((r) => (
+              <option key={r.id} value={r.id} disabled={needsTools && !r.supports_tools && r.id !== value}>
+                {needsTools && !r.supports_tools ? t("models.roles.noTools", { name: optionLabel(r) }) : optionLabel(r)}
               </option>
-            )
-          ) : (
-            <option value="">{t("models.roles.sameAsDirector")}</option>
-          )}
-          {routes.map((r) => (
-            <option key={r.id} value={r.id} disabled={needsTools && !r.supports_tools && r.id !== value}>
-              {needsTools && !r.supports_tools
-                ? t("models.roles.noTools", { name: optionLabel(r) })
-                : optionLabel(r)}
-            </option>
-          ))}
-        </select>
+            ))}
+          </select>
+          <Icon name="down" size={16} strokeWidth={2.2} />
+        </span>
       </label>
     );
   };
 
   return (
-    <section className={styles.roles} aria-label={t("models.roles.title")}>
-      {select("director")}
-      {select("background")}
-      {select("workbench")}
-      {routes.length > 0 && !current.director ? (
+    <section className={styles.rolesBody} aria-label={t("models.roles.title")}>
+      <div className={styles.rolesHead}>
+        <h2 className={styles.cellTitle}>{t("models.roles.title")}</h2>
+        <span className={styles.hint}>{t("models.roles.lead")}</span>
+      </div>
+      <Bubble who={t("models.roles.director")} tail="right" small className={styles.directorLine}>
+        {t("models.roles.directorLine")}
+      </Bubble>
+      {row("director")}
+      {row("background")}
+      {row("workbench")}
+      {loaded && routes.length > 0 && !current.director ? (
         <p className={styles.rolesWarn}>{t("settings.cantStart")}</p>
       ) : null}
     </section>
   );
 }
 
-function ModelTable({ routes, selected }: { routes: ModelRoute[]; selected: string | null }) {
+function ModelList({ routes, selected }: { routes: ModelRoute[]; selected: string | null }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const providers = useProviders();
   const path = (route: ModelRoute): string =>
     route.id === selected ? "/models" : `/models/${encodeURIComponent(route.id)}`;
   return (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          <th scope="col">{t("models.columns.name")}</th>
-          <th scope="col">{t("models.provider")}</th>
-          <th scope="col">Key</th>
-          <th scope="col">{t("models.context")}</th>
-          <th scope="col">{t("models.columns.status")}</th>
-          <th scope="col">{t("models.columns.roles")}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {routes.map((route) => {
-          const title = modelTitle(route);
-          const official = route.source === "platform";
-          return (
-            <tr
-              key={route.id}
-              className={cx(styles.tr, route.id === selected && styles.trOn)}
-              aria-selected={route.id === selected}
-              onClick={(event) => {
-                if ((event.target as HTMLElement).closest("a")) return;
-                navigate(path(route));
-              }}
+    <ul className={styles.list}>
+      {routes.map((route) => {
+        const title = modelTitle(route);
+        const official = route.source === "platform";
+        const kind = statusKind(route.status);
+        const sub = [
+          official ? t("models.officialKey") : providerName(route.provider, providers.data),
+          official ? null : t("settings.keyTail", { last4: route.key_last4 }),
+          t("settings.workingWindow", { size: formatTokens(route.window.model_window) }),
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        const status = [modelStatusLabel(route.status), route.supports_tools ? null : t("models.noToolsShort")]
+          .filter(Boolean)
+          .join(" · ");
+        return (
+          <li key={route.id}>
+            <Link
+              to={path(route)}
+              className={cx(styles.row, route.id === selected && styles.rowOn)}
+              aria-current={route.id === selected ? "true" : undefined}
             >
-              <td>
-                <Link to={path(route)} className={styles.nameCell}>
-                  {official ? (
-                    <OfficialMark />
-                  ) : (
-                    <ProviderMark provider={route.provider} size={32} tone={route.is_director ? "ink" : "card"} />
-                  )}
-                  <span className={styles.nameText}>
-                    <span className={cx(styles.name, title === route.model && styles.mono)}>{title}</span>
-                    {title !== route.model ? <span className={styles.sub}>{route.model}</span> : null}
-                  </span>
-                </Link>
-              </td>
-              <td className={styles.dim}>{official ? null : providerName(route.provider, providers.data)}</td>
-              <td className={cx(styles.dim, styles.mono)}>{official ? null : keyText(route)}</td>
-              <td className={cx(styles.dim, styles.mono)}>{formatTokens(route.window.model_window)}</td>
-              <td>
-                <StatusPill kind={statusKind(route.status)} label={modelStatusLabel(route.status)} />
-              </td>
-              <td>
-                <span className={styles.pills}>
-                  {route.is_director ? <Pill label={t("models.directorPill")} tone="acc" /> : null}
-                  {route.is_background ? <Pill label={t("models.backgroundPill")} /> : null}
-                  {route.is_workbench ? <Pill label={t("models.workbenchPill")} /> : null}
-                  {route.source === "platform" ? <Pill label={t("models.officialPill")} /> : null}
+              <span className={cx(styles.dot, kind !== "ok" && styles.dotOff, kind === "invalid" && styles.dotBad)} />
+              <span className={styles.rowText}>
+                <span className={styles.rowTitle}>
+                  <span className={styles.rowName}>{title}</span>
+                  {official ? <Pill tone="card" label={t("models.officialPill")} /> : null}
+                  {route.is_director ? <Pill tone="acc" label={t("models.directorPill")} /> : null}
+                  {route.is_background ? <Pill tone="ink" label={t("models.backgroundPill")} /> : null}
+                  {route.is_workbench ? <Pill tone="ink" label={t("models.workbenchPill")} /> : null}
                 </span>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                <span className={styles.rowSub}>{sub}</span>
+              </span>
+              <span className={cx(styles.rowStatus, kind === "invalid" && styles.rowBad)}>{status}</span>
+              <Icon name="chevronRight" size={18} strokeWidth={2.2} />
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

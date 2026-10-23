@@ -291,7 +291,7 @@
 :root {
   --edge: 12px; /* 浮起的面板离窗口边 */
   --gutter: 40px;
-  --content-max: 1200px;
+  --content-max: 1600px;
   --readable: 640px;
   --action-panel: 672px;
   --world: 400px;

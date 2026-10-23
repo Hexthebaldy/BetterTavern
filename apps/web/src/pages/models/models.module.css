@@ -1,184 +1,348 @@
-/* 模型页（/models）：分工、模型表格、右边的详情面板。白底页面上的灰块用 --fill；详情面板是整片灰底白卡（.surface-raised） */
+/*
+ * 模型（docs/design/comic 的 07）。数值取自 source/ComicCfg.dc.html 的 .mrl、.msel、.mrow2、.mpill、.mdot、.addst：
+ * 分工每行是 2.5 描边的格子（导演那行加 --x4），大字占位 84 见方；“我的模型”每行 62 高，行间 1.5 的灰线；
+ * 官方点数是等宽粗体 64/70。
+ */
 
-.page {
-  max-width: none;
+.notice {
+  margin-bottom: 16px;
 }
-.lead {
-  max-width: 760px;
-  margin: -8px 0 20px;
-  font-size: 14px;
-  line-height: 22px;
+.label {
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+.hint {
+  font-size: 12.5px;
+  line-height: 18px;
   color: var(--mut);
 }
-.balance {
-  font-size: 13.5px;
-  color: var(--ink2);
-  margin-right: 4px;
-}
-.notices {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+.cellTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(24px, 2.2vw, 30px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 /* ---- 分工 ---- */
 .roles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
+  padding: 22px 24px;
+  min-height: 0;
+  container-type: inline-size;
+}
+.rolesBody {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rolesHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-right: 200px;
+}
+.directorLine {
+  position: absolute;
+  right: 2px;
+  top: -8px;
+  white-space: nowrap;
 }
 .role {
   display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px 12px 12px;
+  border: var(--bw) solid var(--frame);
+  border-radius: 12px;
+  background: var(--paper);
+  cursor: pointer;
+}
+.roleOn {
+  box-shadow: var(--x4);
+}
+.roleFace {
+  width: 84px;
+  height: 84px;
+  border: var(--bw-sm) solid var(--frame);
+}
+.roleText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 14px 16px 16px;
-  border-radius: var(--r-card);
-  background: var(--fill);
-  min-width: 0;
 }
 .roleName {
-  font-size: 14px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 24px;
+  line-height: 30px;
 }
 .roleNote {
-  font-size: 12.5px;
-  line-height: 18px;
+  font-size: 13.5px;
+  line-height: 20px;
   color: var(--mut);
-  margin-bottom: 10px;
 }
-.roleSelect {
-  width: 100%;
+.selectBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: none;
+  max-width: 46%;
+}
+.selectBox svg {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+}
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 100%;
   height: 40px;
   padding: 0 32px 0 12px;
-  border: 0;
-  border-radius: 12px;
-  background: var(--card)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%236e6d68' stroke-width='1.6' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E")
-    no-repeat right 12px center;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
   color: var(--ink);
   font: inherit;
   font-size: 14px;
-  appearance: none;
-  cursor: pointer;
+  font-weight: 600;
   text-overflow: ellipsis;
+  cursor: pointer;
+  field-sizing: content;
 }
-.roleSelect:disabled {
-  cursor: default;
+.select:focus {
+  box-shadow: var(--b3);
+}
+.select:disabled {
   opacity: 0.6;
+  cursor: default;
 }
 .rolesWarn {
-  grid-column: 1 / -1;
   font-size: 13px;
   color: var(--warn);
 }
 
-/* ---- 表格 ---- */
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 14px;
+/* ---- 官方模型的点数 ---- */
+.credits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 24px;
+  min-height: 0;
+  overflow: hidden;
 }
-.table th {
-  height: 36px;
-  padding: 0 12px;
-  text-align: left;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--mut);
-  border-bottom: 1px solid var(--line);
+.creditsHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.table th:nth-child(1) {
-  width: 32%;
+.creditsLabel {
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
 }
-.table th:nth-child(4) {
-  width: 90px;
+.balance {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
 }
-.table th:nth-child(5) {
-  width: 120px;
+.balanceNumber {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: clamp(44px, 4.4vw, 64px);
+  line-height: 1.1;
 }
-.tr {
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease);
+.balanceUnit {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 24px;
 }
-.tr td {
-  height: 60px;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
+.turns {
+  font-size: 15px;
+  margin-left: 8px;
 }
-.trOn {
-  background: var(--acc-bg);
+.creditsEmpty {
+  margin-top: 6px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 700;
 }
-@media (hover: hover) and (pointer: fine) {
-  .tr:not(.trOn):hover {
-    background: var(--fill);
-  }
+.creditsFoot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
 }
-.nameCell {
+.creditsError {
+  color: var(--ink);
+}
+
+/* ---- 我的模型 ---- */
+.mine {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 22px;
+  min-height: 0;
+  container-type: inline-size;
+}
+.mineHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.list {
+  margin: 0 -8px;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+.row {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 0;
+  min-height: 62px;
+  margin: 0 8px;
+  border-bottom: 1.5px solid var(--grey2);
+  color: inherit;
 }
-.nameText {
+.list li:last-child .row {
+  border-bottom: 0;
+}
+.row:focus-visible {
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover .rowName {
+    text-decoration: underline;
+  }
+}
+.rowOn .rowName {
+  text-decoration: underline;
+}
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 6px;
+  background: var(--acc);
+  box-shadow: 0 0 0 2px var(--frame);
+  flex: none;
+  margin-left: 2px;
+}
+.dotOff {
+  background: var(--paper);
+}
+.dotBad {
+  background: var(--err);
+}
+.rowText {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
+}
+.rowTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
-.name {
-  font-weight: 500;
+.rowName {
+  font-size: 15px;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sub {
-  font-family: var(--font-mono);
-  font-size: 12px;
+.rowSub {
+  font-size: 12.5px;
+  line-height: 18px;
   color: var(--mut);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mono {
-  font-family: var(--font-mono);
-}
-.dim {
-  color: var(--ink2);
-  font-size: 13.5px;
+.rowStatus {
+  font-size: 12.5px;
+  color: var(--mut);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.rowBad {
+  color: var(--err);
+}
+.footnote {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 12.5px;
+  line-height: 19px;
+  color: var(--mut);
 }
 .empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
-  padding: 24px;
-  border-radius: var(--r-card);
-  background: var(--fill);
+  padding: 16px 0;
   color: var(--mut);
 }
 
-/* 官方模型的标记：白底圆里是 BetterTavern 的 Logo */
-.officialMark {
-  width: 32px;
-  height: 32px;
-  flex: none;
+/* ---- 添加模型 ---- */
+.add {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 22px;
+  min-height: 0;
+  overflow: hidden;
+}
+.addHead {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line2);
+  justify-content: space-between;
+  gap: 12px;
+}
+.steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-height: 0;
+}
+.step {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+  font-size: 13.5px;
+  line-height: 20px;
+  overflow: hidden;
+}
+.step b {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--acc);
 }
 
 /* 模型详情：窗口正中的对话框，够宽时分两栏（ModelBody 的容器查询认 pane） */
@@ -198,4 +362,40 @@
 /* 添加模型的对话框：够宽时表单分两栏（AddModelForm 的容器查询认 pane） */
 .addDialog {
   container: pane / inline-size;
+}
+
+/* 格子窄的时候（窗口 900–1199，或者手机）：大字小一号，下拉框换到下一行，导演那句台词不画 */
+@container (max-width: 520px) {
+  .rolesHead {
+    padding-right: 0;
+  }
+  .directorLine {
+    display: none;
+  }
+  .role {
+    flex-wrap: wrap;
+  }
+  .roleFace {
+    width: 56px;
+    height: 56px;
+  }
+  .selectBox {
+    max-width: none;
+    width: 100%;
+  }
+  .select {
+    width: 100%;
+    field-sizing: fixed;
+  }
+}
+@container (max-width: 440px) {
+  .rowStatus {
+    display: none;
+  }
+}
+@media (max-width: 1199px) {
+  .steps {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

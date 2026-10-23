@@ -1,19 +1,37 @@
-/* 外部服务（/tools）：三种服务宽屏时三栏并排，每栏里配好的服务一张卡，添加用居中对话框 */
+/*
+ * 外部服务（/settings/tools，设置的子页面）：三种服务三栏并排，每栏是一个描边的格子，配好的服务一行一块白格，
+ * 添加用居中对话框。窄于 1100 时一栏一栏往下排。
+ */
 
 .page {
-  max-width: none;
+  padding-bottom: 48px;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -16px 0 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--mut);
+}
+.back:hover {
+  color: var(--ink);
 }
 .lead {
   max-width: 760px;
   margin: -8px 0 24px;
   font-size: 14px;
   line-height: 22px;
-  color: var(--mut);
+  color: var(--ink2);
+}
+.notice {
+  margin-bottom: 16px;
 }
 .columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+  gap: 14px;
   align-items: start;
 }
 @media (min-width: 1100px) {
@@ -21,15 +39,11 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-/* 每一栏是灰底，里面的服务卡是白的 */
 .column {
-  --fill: var(--card);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border-radius: var(--r-group);
-  background: var(--bg2);
+  gap: 10px;
+  padding: 16px 18px 18px;
 }
 .columnHead {
   display: flex;
@@ -38,8 +52,11 @@
   gap: 8px;
 }
 .columnTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 24px;
+  line-height: 30px;
+  letter-spacing: -0.02em;
 }
 .columnNote {
   font-size: 13px;
@@ -50,25 +67,36 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 .row {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 16px;
-  border-radius: 24px;
-  background: var(--fill);
+  padding: 12px 14px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+}
+.rowDefault {
+  box-shadow: var(--x3);
 }
 .rowHead {
   display: flex;
   align-items: flex-start;
   gap: 10px;
 }
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .name {
   font-size: 15.5px;
   line-height: 22px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .meta {
   font-family: var(--font-mono);
@@ -84,10 +112,12 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 .none {
-  padding: 4px 12px 8px;
+  padding: 10px 12px;
+  border: var(--bw-sm) dashed var(--grey2);
+  border-radius: var(--r-frame);
   font-size: 13.5px;
   color: var(--mut);
 }
@@ -97,17 +127,19 @@
   gap: 14px;
 }
 .dialogTitle {
-  font-size: 18px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 24px;
+  line-height: 30px;
 }
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 .dialogButtons {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
   padding-top: 4px;
 }

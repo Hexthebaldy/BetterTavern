@@ -24,6 +24,13 @@ export const workbench: MessagesOtherOnly<typeof source> = {
       deleteDraftMessage: "下書きの会話と画像も削除されます。置き場のカードは変わりません。",
       untitled: "新しいキャラクター",
       loadFailed: "ワークベンチを読み込めませんでした",
+      sub: "エージェントと一緒にキャラクターカードを書く",
+      agentNote: "一言伝えると、いくつか質問して案を出し、了承してから書き始めます",
+      dropHere: "ここにドロップしてインポート",
+      manualLong: "空のフォームに自分で書く：名前、説明、最初のメッセージ、ワールドブック",
+      manualHint: "（未記入）この人は初めて会ったとき、何と言う？",
+      draftChip: "下書き",
+      answer: "回答する",
     },
     import: {
       notCard: "{{name}} はキャラクターカードではありません",
