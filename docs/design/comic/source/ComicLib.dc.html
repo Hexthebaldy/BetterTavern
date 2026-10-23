@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>漫画分镜 · 剧本 · 角色 · 工作台</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--ok:#13875A;--okBg:#E9F6EF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--narr:#222222;--pri:#1A1A1A;--onPri:#FFFFFF;--priHv:#33332F;--card:#FFFFFF;--sheet:#FFFFFF;--scrim:rgba(20,20,20,.38);--arrowBg:rgba(255,255,255,.14);--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10);--lift:0 1px 3px rgba(20,20,20,.12);--chrome:#ECECE8;--url:rgba(255,255,255,.85);--frame:#E2E2DE;--fade:rgba(255,255,255,0);--hv:#EBEBE7;--cardHv:#FFFFFF}
+.D{--bg:#111113;--bg2:#1C1C1F;--bg3:#27272B;--ink:#F2F2F0;--ink2:#D3D3CF;--mut:#9C9C97;--line:#2A2A2F;--line2:#3A3A40;--acc:#8597FF;--accBg:#1F2546;--ok:#43C98C;--okBg:#11281D;--warn:#F0B257;--warnBg:#2C2213;--err:#FF7466;--errBg:#2F1715;--narr:#E2E2DE;--pri:#F2F2F0;--onPri:#111113;--priHv:#FFFFFF;--card:#2A2A2F;--sheet:#1F1F23;--scrim:rgba(0,0,0,.6);--arrowBg:rgba(0,0,0,.08);--sh:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.5);--lift:0 1px 3px rgba(0,0,0,.35);--chrome:#202023;--url:rgba(255,255,255,.07);--frame:#2A2A2F;--fade:rgba(17,17,19,0);--hv:#27272B;--cardHv:#313136}
+.L,.D{--fill:var(--bg2);--onFill:var(--card);--inset:var(--bg2);--raised:var(--card)}
+.L .panel{--fill:var(--card);--onFill:var(--bg2);--inset:var(--bg3);--raised:var(--card)}
+.D .panel{--fill:var(--card);--onFill:var(--bg2);--inset:var(--bg);--raised:var(--bg3)}
+.L .sheet{--fill:var(--bg2);--onFill:var(--sheet);--inset:var(--bg2);--raised:var(--card);--hv:#EBEBE7}
+.D .sheet{--fill:var(--bg3);--onFill:var(--sheet);--inset:var(--bg);--raised:var(--bg3);--hv:#2E2E33}
+.bd0{box-sizing:border-box;padding:40px;display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif;background:#FFFFFF}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;gap:10px;height:30px;padding:0 14px;border-radius:15px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:#6E6D68}
+.tag b{font-family:"Noto Sans SC",sans-serif;font-weight:500;color:#1A1A1A}
+.win{border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px var(--frame),0 18px 50px rgba(20,20,20,.08);flex:none;background:var(--bg)}
+.chrome{height:44px;background:var(--chrome);position:relative;display:flex;align-items:center;gap:8px;padding:0 18px}
+.chrome i{display:block;width:12px;height:12px;border-radius:6px}
+.url{position:absolute;left:50%;top:8px;transform:translateX(-50%);width:460px;height:28px;border-radius:14px;background:var(--url);display:flex;align-items:center;justify-content:center;gap:6px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--mut)}
+.url b{font-weight:500;color:var(--ink2)}
+.vp{position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased}
+.vp *{box-sizing:border-box}
+.ab{position:absolute!important}
+.fx{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+.f1{flex:1;min-width:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.serif{font-family:"Noto Serif SC","Songti SC",serif}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.mut{color:var(--mut)}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big{font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.h1{font-size:26px;line-height:34px;font-weight:700;letter-spacing:-.01em;margin:0}
+.h2{font-size:20px;line-height:28px;font-weight:700;margin:0}
+.h3{font-size:17px;line-height:24px;font-weight:700;margin:0}
+.sec{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;font-size:17px;line-height:24px;font-weight:700}
+.sec .m{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:400;color:var(--mut)}
+.cnt{font-family:"IBM Plex Mono",monospace;font-size:13px;height:32px;min-width:32px;padding:0 10px;border-radius:16px;background:var(--bg2);display:inline-flex;align-items:center;justify-content:center;color:var(--ink2)}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;border:0;border-radius:22px;font-family:inherit;font-size:15px;line-height:20px;font-weight:500;white-space:nowrap;flex:none}
+.btn.lg{height:52px;border-radius:26px;font-size:16px;padding:0 24px}
+.btn.sm{height:36px;border-radius:18px;font-size:14px;padding:0 14px}
+.btn.between{justify-content:space-between}
+.bp{background:var(--pri);color:var(--onPri)}
+.bp.hv{background:var(--priHv)}
+.bs{background:var(--fill);color:var(--ink)}
+.bs.hv{background:var(--hv)}
+.bq{background:transparent;color:var(--ink)}
+.bx{background:var(--errBg);color:var(--err)}
+.bw{background:var(--warn);color:#FFFFFF}
+.D .bw{color:#111113}
+.dis{opacity:.32}
+.arr{width:32px;height:32px;border-radius:16px;background:var(--arrowBg);display:flex;align-items:center;justify-content:center;margin-right:-14px}
+.lg .arr{width:36px;height:36px;border-radius:18px;margin-right:-16px}
+.ib{width:40px;height:40px;border-radius:20px;background:var(--fill);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;flex:none;position:relative}
+.ib.on{background:var(--ink);color:var(--bg)}
+.ib.ghost{background:transparent;color:var(--mut)}
+.ib.hv{background:var(--hv)}
+.ib .bdg{position:absolute;right:7px;top:7px;width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 2px var(--fill)}
+.ring{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--acc)}
+.iring{box-shadow:inset 0 0 0 2px var(--acc)}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:7px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line2),0 1px 0 var(--line2);font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1;color:var(--mut);flex:none;font-weight:500}
+.kbd.lg{height:26px;min-width:26px;font-size:12px;border-radius:8px;padding:0 8px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:14px;background:var(--fill);font-size:12.5px;color:var(--ink2);white-space:nowrap;flex:none}
+.pill.s{height:24px;padding:0 9px;border-radius:12px;font-size:12px}
+.pill.acc{background:var(--accBg);color:var(--acc);font-weight:500}
+.pill.accS{background:var(--acc);color:#FFFFFF;font-weight:600}
+.D .pill.accS{color:#111113}
+.pill.ok{background:var(--okBg);color:var(--ok)}
+.pill.warn{background:var(--warnBg);color:var(--warn)}
+.pill.err{background:var(--errBg);color:var(--err)}
+.pill.card{background:var(--card)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:3px;background:currentColor;flex:none}
+.stat{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap}
+.stat.ok{color:var(--ok)}.stat.warn{color:var(--warn)}.stat.err{color:var(--err)}
+/* fields */
+.fld{display:flex;flex-direction:column;gap:8px}
+.lab{font-size:13px;line-height:18px;color:var(--ink2);font-weight:500;padding-left:4px}
+.hint{font-size:12.5px;line-height:18px;color:var(--mut);padding-left:4px}
+.inp{display:flex;align-items:center;gap:10px;width:100%;height:52px;border-radius:14px;background:var(--fill);padding:0 8px 0 16px;font-size:15px;color:var(--ink)}
+.inp.ph{color:var(--mut)}
+.inp.foc{box-shadow:inset 0 0 0 2px var(--acc)}
+.caret{display:inline-block;width:2px;height:20px;background:var(--acc);margin-left:1px;vertical-align:-4px;border-radius:1px}
+.chk{width:22px;height:22px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:inset 0 0 0 1.75px var(--line2)}
+.chk.on{background:var(--ink);box-shadow:none;color:var(--bg)}
+.rad{width:22px;height:22px;border-radius:11px;flex:none;box-shadow:inset 0 0 0 1.75px var(--line2)}
+.rad.on{box-shadow:inset 0 0 0 6.5px var(--acc)}
+.tgl{width:52px;height:32px;border-radius:16px;background:var(--bg3);position:relative;flex:none}
+.tgl::after{content:"";position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:13px;background:#FFFFFF;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.tgl.on{background:var(--acc)}
+.tgl.on::after{left:23px}
+.segc{display:flex;gap:4px;padding:4px;border-radius:26px;background:var(--inset)}
+.segc>span{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:22px;font-size:14.5px;color:var(--mut)}
+.segc>span.on{background:var(--raised);color:var(--ink);font-weight:600;box-shadow:var(--lift)}
+.D .segc>span.on{box-shadow:none}
+/* sidebar */
+.sb{position:absolute;z-index:4;left:12px;top:12px;bottom:12px;width:268px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;padding:12px}
+.sbh{display:flex;align-items:center;gap:10px;height:44px;padding:0 0 0 8px;flex:none}
+.sbh .nm{flex:1;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.ni{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:22px;font-size:15px;color:var(--ink2);flex:none}
+.ni.on{background:var(--ink);color:var(--bg);font-weight:500}
+.ni.hv{background:var(--bg3)}
+.sbl{display:flex;align-items:center;justify-content:space-between;padding:0 10px;margin:22px 0 4px;font-size:12.5px;color:var(--mut);flex:none}
+.grp{padding:10px 10px 4px;font-size:11.5px;color:var(--mut);font-family:"IBM Plex Mono",monospace;letter-spacing:.04em}
+.sr{position:relative;display:flex;align-items:center;gap:10px;height:54px;padding:0 8px;border-radius:18px;flex:none}
+.sr.on{background:var(--card);box-shadow:var(--lift)}
+.D .sr.on{box-shadow:none}
+.sr.hv{background:var(--bg3)}
+.sr .tt{font-size:14px;line-height:20px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr .st{font-size:11.5px;line-height:16px;color:var(--mut);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.sr .st.lv{color:var(--acc)}
+.sr .st.warn{color:var(--warn)}
+.sba{display:flex;align-items:center;gap:10px;padding:8px;border-radius:20px;margin-top:auto;flex:none}
+.av{width:32px;height:32px;border-radius:16px;background:var(--accBg);color:var(--acc);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:none}
+/* rail */
+.rail{position:absolute;z-index:4;left:12px;top:12px;bottom:12px;width:76px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;align-items:center;padding:16px 0 12px;gap:4px}
+.rn{width:60px;height:60px;border-radius:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink2);font-size:11px;line-height:14px}
+.rn.on{background:var(--ink);color:var(--bg);font-weight:500}
+.rsep{width:28px;height:1px;background:var(--line2);margin:8px 0}
+.rcv{width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;position:relative}
+.rcv.on{background:var(--card);box-shadow:var(--lift)}
+.rcv .ld{position:absolute;right:5px;top:5px;width:9px;height:9px;border-radius:5px;background:var(--acc);box-shadow:0 0 0 2px var(--bg2)}
+/* overlays */
+.menu{position:absolute;z-index:9;padding:6px;border-radius:24px;background:var(--sheet);box-shadow:var(--sh)}
+.mi{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-radius:18px;font-size:15px;color:var(--ink)}
+.mi.hv{background:var(--hv)}
+.mi.err{color:var(--err)}
+.mi .kbd{margin-left:auto}
+.msep{height:1px;background:var(--line);margin:4px 10px}
+.scrim{position:absolute;inset:0;z-index:8;background:var(--scrim)}
+.dlg{position:absolute;z-index:9;background:var(--sheet);border-radius:32px;box-shadow:var(--sh);display:flex;flex-direction:column}
+.tip{position:absolute;z-index:9;display:flex;align-items:center;gap:8px;height:32px;padding:0 6px 0 12px;border-radius:16px;background:var(--ink);color:var(--bg);font-size:12.5px;white-space:nowrap;box-shadow:var(--sh)}
+.tip .kbd{background:rgba(255,255,255,.16);box-shadow:none;color:inherit;height:20px;min-width:20px;border-radius:6px}
+.D .tip .kbd{background:rgba(0,0,0,.1)}
+.toast{position:absolute;z-index:9;display:flex;align-items:center;gap:10px;height:52px;padding:0 6px 0 18px;border-radius:26px;background:var(--ink);color:var(--bg);font-size:14px;box-shadow:var(--sh)}
+.cursor{position:absolute;z-index:20;width:20px;height:24px;pointer-events:none}
+/* covers */
+.cv path,.cv circle.o{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.cv .bgr{fill:var(--onFill)}
+.cv .dt{fill:var(--acc)}
+.cv .soft{stroke:var(--line2)}
+/* reading */
+.rtop{position:absolute;z-index:3;top:0;height:76px;display:flex;align-items:flex-start;justify-content:center;padding-top:24px;background:linear-gradient(var(--bg) 55%,var(--fade))}
+.rtop .t{font-size:15px;line-height:22px;font-weight:600}
+.feed{position:absolute;z-index:1}
+.narr{font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--narr);margin:0 0 16px;text-align:justify;letter-spacing:.175px}
+.note{margin:4px 0 20px;padding-left:14px;border-left:3px solid var(--line2);font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--ink2);letter-spacing:.175px}
+.scur{display:inline-block;width:3px;height:20px;border-radius:1.5px;background:var(--acc);vertical-align:-3px;margin-left:2px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{display:flex;align-items:center;gap:12px;min-height:76px;padding:10px 14px 10px 12px;border-radius:24px;background:var(--fill);font-size:15px;line-height:22px;color:var(--ink)}
+.opt.hv{background:var(--hv)}
+.opt.on{background:var(--accBg);box-shadow:inset 0 0 0 2px var(--acc)}
+.key{width:32px;height:32px;border-radius:16px;background:var(--onFill);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;flex:none}
+.opt.on .key{background:var(--acc);color:var(--bg)}
+.book{border-radius:32px;background:var(--bg2);padding:12px 12px 18px;display:flex;flex-direction:column;gap:12px;margin-bottom:28px}
+.abar{position:absolute;z-index:5;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:8px 0 14px}
+.abar .in{margin:0 auto;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 4px}
+.tb{width:44px;height:44px;border-radius:22px;background:var(--fill);color:var(--ink);display:flex;align-items:center;justify-content:center;flex:none;position:relative}
+.tb.on{background:var(--ink);color:var(--bg)}
+.tb.hv{background:var(--hv)}
+.tb .bdg{position:absolute;right:8px;top:8px;width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 2px var(--fill)}
+.wpill{flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:44px;padding:0 11px 0 16px;border-radius:22px;background:var(--fill);color:var(--mut);font-size:15px}
+.lst{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding-left:8px;font-size:15px;color:var(--ink)}
+.ldot{width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 4px var(--accBg);flex:none}
+.stopb{display:flex;align-items:center;gap:8px;height:44px;padding:0 18px 0 14px;border-radius:22px;background:var(--fill);font-size:15px;flex:none}
+.ta{border-radius:24px;background:var(--fill);padding:14px 16px;font-size:16px;line-height:25px;height:124px;color:var(--ink)}
+.ta.foc{box-shadow:inset 0 0 0 2px var(--acc)}
+/* world panel */
+.wp{position:absolute;z-index:4;top:12px;bottom:12px;width:400px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;overflow:hidden}
+.wph{display:flex;align-items:flex-start;gap:12px;padding:16px 12px 0 20px}
+.wph .t{font-size:24px;line-height:32px;font-weight:700}
+.wph .s{font-size:12px;line-height:17px;color:var(--mut)}
+.seg{display:grid;gap:4px;padding:4px;border-radius:24px;background:var(--inset)}
+.sg{display:flex;align-items:center;justify-content:center;gap:5px;height:38px;border-radius:19px;font-size:13.5px;color:var(--ink2)}
+.sg.on{background:var(--raised);color:var(--ink);font-weight:600;box-shadow:var(--lift)}
+.D .sg.on{box-shadow:none}
+.n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--mut);font-weight:400}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:16px;background:var(--fill);font-size:13px;color:var(--ink);flex:none}
+.chip.on{background:var(--ink);color:var(--bg)}
+.ent{display:flex;gap:12px;padding:12px;border-radius:22px;background:var(--fill)}
+.ent.me{background:var(--accBg)}
+.ent.hv{box-shadow:var(--lift)}
+.eic{width:40px;height:40px;border-radius:20px;background:var(--onFill);display:flex;align-items:center;justify-content:center;flex:none}
+.ent.me .eic{background:var(--acc);color:#FFFFFF}
+.D .ent.me .eic{color:#111113}
+.en{font-size:15.5px;line-height:22px;font-weight:700}
+.kd{font-size:12px;line-height:17px;color:var(--mut)}
+.es{font-size:13.5px;line-height:21px;color:var(--ink2)}
+.rchip{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 9px;border-radius:13px;background:var(--onFill);font-size:12.5px;color:var(--ink)}
+.rchip .k{font-size:12px;color:var(--mut)}
+.fact{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:20px;background:var(--fill)}
+.fact.sec{background:var(--warnBg)}
+.fdot{width:6px;height:6px;border-radius:3px;background:var(--ink);margin-top:8px;flex:none}
+.lnk{display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:16px;background:var(--fill);font-size:14px}
+.lnk .m{height:24px;padding:0 9px;border-radius:12px;background:var(--onFill);font-size:12px;color:var(--mut);display:flex;align-items:center}
+/* story cards */
+.sc{position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:24px;background:var(--bg2);min-width:0;overflow:hidden}
+.sc.hv{background:var(--bg3)}
+.sc .tt{font-size:17px;line-height:24px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--mut);white-space:nowrap}
+.live{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;background:var(--accBg);font-size:12.5px;color:var(--acc);font-weight:500;white-space:nowrap;flex:none}
+.ex{font-size:14px;line-height:21px;color:var(--ink2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* library tiles */
+.tile{display:flex;flex-direction:column;padding:8px;border-radius:26px;background:var(--bg2);min-width:0;position:relative}
+.tile.hv{background:var(--bg3)}
+.tile .meta{padding:10px 8px 6px;display:flex;flex-direction:column;gap:3px}
+.tile .nm{font-size:16px;line-height:22px;font-weight:700}
+.tile .sm{font-size:12.5px;line-height:18px;color:var(--mut);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:36px}
+.tcv{display:block;width:100%;height:auto}
+.tcv path,.tcv circle.o{fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tcv .bgr{fill:var(--card)}
+.tcv .dt{fill:var(--acc)}
+.tcv .soft{stroke:var(--line2)}
+/* settings */
+.grpl{padding:0 16px;margin:22px 0 8px;font-size:13px;color:var(--mut)}
+.group{border-radius:28px;background:var(--bg2);padding:6px;display:flex;flex-direction:column;gap:2px}
+.lr{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 12px;border-radius:22px}
+.lr.on{background:var(--card);box-shadow:inset 0 0 0 2px var(--acc)}
+.lr.hv{background:var(--bg3)}
+.lr .t{font-size:15.5px;line-height:22px}
+.lr .s{font-size:12.5px;line-height:18px;color:var(--mut)}
+.rico{width:36px;height:36px;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;flex:none}
+.pm{width:40px;height:40px;border-radius:20px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;flex:none;color:var(--ink)}
+.pm.ink{background:var(--ink);color:var(--bg)}
+.pm.acc{background:var(--acc);color:#FFFFFF}
+.pane{position:absolute;z-index:2;top:12px;bottom:12px;right:12px;border-radius:32px;background:var(--bg2);overflow:hidden}
+.wc{border-radius:28px;background:var(--card)}
+.back{display:inline-flex;align-items:center;gap:4px;height:36px;padding:0 14px 0 8px;border-radius:18px;background:var(--card);font-size:13.5px;color:var(--ink)}
+
+.bd0{flex-wrap:wrap}
+.G{--ink:#1A1A1A;--paper:#FFFFFF;--acc:#2F55F4;--deep:#1B34A6;--sky:#93A8FF;--grey:#F5F5F2;--grey2:#EBEBE7;--mut:#6E6D68;--line:#DCDCD6;
+  --x2:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A;--x3:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A;--x4:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A;--x6:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A,5px 5px 0 #1A1A1A,6px 6px 0 #1A1A1A;--x8:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A,5px 5px 0 #1A1A1A,6px 6px 0 #1A1A1A,7px 7px 0 #1A1A1A,8px 8px 0 #1A1A1A;
+  --b3:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4,3px 3px 0 #2F55F4;--b4:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4,3px 3px 0 #2F55F4,4px 4px 0 #2F55F4;--b6:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4,3px 3px 0 #2F55F4,4px 4px 0 #2F55F4,5px 5px 0 #2F55F4,6px 6px 0 #2F55F4;--b8:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4,3px 3px 0 #2F55F4,4px 4px 0 #2F55F4,5px 5px 0 #2F55F4,6px 6px 0 #2F55F4,7px 7px 0 #2F55F4,8px 8px 0 #2F55F4;
+  --fill:#F5F5F2;--onFill:#FFFFFF;--line2:#DCDCD6;--card:#FFFFFF}
+.vp.G{background:#FFFFFF;color:var(--ink);font-family:"Noto Sans SC",sans-serif;font-size:15px;line-height:24px}
+.G .i{width:20px;height:20px}
+.ser{font-family:"Noto Serif SC","Songti SC",serif}
+.disp{font-family:"Noto Serif SC","Songti SC",serif;font-weight:900;letter-spacing:-.02em}
+.lbl{font-family:"IBM Plex Mono",monospace;font-weight:700;letter-spacing:.08em;font-size:12px;line-height:16px}
+.mut{color:var(--mut)}
+.chipb,.chipk,.chipw{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:6px;font-family:"IBM Plex Mono",monospace;font-weight:700;letter-spacing:.08em;font-size:11.5px;flex:none;white-space:nowrap}
+.chipb{background:var(--acc);color:#FFFFFF}
+.chipk{background:var(--ink);color:#FFFFFF}
+.chipw{background:#FFFFFF;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.pnl{position:relative;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:22px;background:#FFFFFF;box-shadow:var(--x6)}
+.pnl.b{box-shadow:var(--b6)}
+.pnl.flat{box-shadow:none}
+.ht{background-color:var(--acc);background-image:radial-gradient(rgba(255,255,255,.22) 1.4px,transparent 1.9px);background-size:12px 12px}
+.htk{background-color:#FFFFFF;background-image:radial-gradient(rgba(26,26,26,.14) 1.3px,transparent 1.8px);background-size:11px 11px}
+.htg{background-color:var(--grey);background-image:radial-gradient(rgba(26,26,26,.10) 1.3px,transparent 1.8px);background-size:11px 11px}
+.inkb{background:var(--ink);color:#FFFFFF}
+.gbtn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:48px;padding:0 22px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:24px;background:#FFFFFF;color:var(--ink);font-size:16px;font-weight:700;white-space:nowrap;box-shadow:var(--x4);flex:none}
+.gbtn.p{background:var(--ink);color:#FFFFFF;box-shadow:var(--b4)}
+.gbtn.b{background:var(--acc);color:#FFFFFF;box-shadow:var(--x4)}
+.gbtn.sm{height:38px;padding:0 16px;font-size:14px;border-width:2px;box-shadow:var(--x3)}
+.gbtn.sm.p{box-shadow:var(--b3)}
+.gbtn .i{width:18px;height:18px}
+.gkey{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;box-sizing:border-box;border:2px solid currentColor;border-radius:7px;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:700;line-height:1;flex:none}
+.gkey.f{background:#FFFFFF;color:var(--ink);border-color:var(--ink);box-shadow:0 2px 0 var(--ink)}
+.hints{position:absolute;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;gap:26px;padding:0 32px;background:var(--ink);color:#FFFFFF;font-size:13.5px}
+.hints span{display:flex;align-items:center;gap:8px}
+.hints .gkey{color:var(--sky)}
+/* 漫画的旁白框和对话气泡 */
+.cap-box{position:relative;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:6px;background:#FFFFFF;padding:10px 14px;font-family:"Noto Serif SC",serif;font-size:15.5px;line-height:27px;color:var(--ink)}
+.bub{position:relative;display:inline-block;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:22px;background:#FFFFFF;padding:10px 16px;font-family:"Noto Serif SC",serif;font-size:16px;line-height:26px;color:var(--ink)}
+.bub .tail{position:absolute;bottom:-17px;left:26px;width:26px;height:20px;overflow:visible}
+.bub.r .tail{left:auto;right:26px;transform:scaleX(-1)}
+.bub.b{background:var(--acc);color:#FFFFFF}
+.bub .who{position:absolute;top:-13px;left:14px;height:22px;padding:0 8px;border-radius:5px;background:var(--ink);color:#FFFFFF;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:11px;letter-spacing:.06em;display:flex;align-items:center}
+/* 立绘位：大字号的姓 + 网点 */
+.port{position:relative;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;box-sizing:border-box}
+.port .g{font-family:"Noto Serif SC",serif;font-weight:900;line-height:.86;color:var(--ink);letter-spacing:-.04em;user-select:none}
+.port.dk .g{color:#FFFFFF}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.clamp4{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.gtoast{position:absolute;z-index:20;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:18px;background:#FFFFFF;box-shadow:var(--x6);overflow:hidden}
+.gtoast .gth{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;color:#FFFFFF;border-bottom:2.5px solid var(--ink)}
+.gtoast .gtr{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:14px}
+.gtoast .gtr + .gtr{border-top:1.5px solid var(--grey2)}
+.newb{display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:5px;background:var(--acc);color:#FFFFFF;font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em}
+
+.intro{box-sizing:border-box;width:380px;height:944px;padding:36px 32px;border:2.5px solid #1A1A1A;border-radius:24px;background:#FFFFFF;box-shadow:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A,5px 5px 0 #1A1A1A,6px 6px 0 #1A1A1A,7px 7px 0 #1A1A1A,8px 8px 0 #1A1A1A;display:flex;flex-direction:column;gap:18px;font-family:"Noto Sans SC",sans-serif}
+.intro h2{margin:0;font-size:44px;line-height:52px;color:#1A1A1A}
+.intro ul{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:14px;font-size:15px;line-height:25px;color:#3D3C38}
+.intro li::marker{color:#2F55F4}
+
+.gnav{position:absolute;left:0;right:0;top:0;height:68px;display:flex;align-items:center;gap:6px;padding:0 32px;border-bottom:2.5px solid var(--ink);background:#FFFFFF}
+.gnav .nm{font-size:19px;font-weight:800;letter-spacing:-.01em;margin:0 28px 0 10px}
+.gnav .it{display:flex;align-items:center;height:40px;padding:0 16px;border-radius:10px;font-size:15.5px;font-weight:600}
+.gnav .it.on{background:var(--acc);color:#FFFFFF;box-shadow:3px 3px 0 var(--ink)}
+.sq{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px 0 10px;box-sizing:border-box;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF;box-shadow:var(--x3);font-size:14px;font-weight:600}
+.gav{width:40px;height:40px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:20px;background:var(--acc);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:var(--x2)}
+.page{position:absolute;left:40px;right:40px;top:96px;bottom:56px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:14px}
+.fr{position:relative;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:10px;background-color:#FFFFFF;overflow:hidden;padding:16px 18px}
+.fr.hot{box-shadow:var(--x8);overflow:visible}
+.fr .ttl{font-family:"Noto Serif SC",serif;font-weight:900;letter-spacing:-.02em}
+.fr .gtm{position:absolute;right:14px;bottom:12px;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:11.5px;letter-spacing:.06em}
+.pgno{position:absolute;left:0;right:0;bottom:18px;display:flex;align-items:center;justify-content:center;gap:20px;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px;letter-spacing:.12em}
+.pgno .side{position:absolute;right:40px;display:flex;align-items:center;gap:10px;letter-spacing:.04em}
+.pgno .left{position:absolute;left:40px;letter-spacing:.04em;color:var(--mut);font-weight:500;font-family:"Noto Sans SC",sans-serif;font-size:13px}
+.fr.ht,.fr2.ht{background-color:var(--acc)}
+.fr.inkb,.fr2.inkb{background-color:var(--ink);color:#FFFFFF}
+/* 人物介绍 */
+.cast{position:absolute;left:40px;right:40px;top:178px;bottom:56px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:16px}
+.cf{position:relative;display:flex;flex-direction:column;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF;overflow:visible}
+.cf .pt{position:relative;flex:1;min-height:0;border-bottom:2.5px solid var(--ink);border-radius:9px 9px 0 0;overflow:hidden}
+.cf .ft{display:flex;flex-direction:column;gap:2px;padding:10px 14px 12px}
+.cf .nmb{position:absolute;left:12px;bottom:10px;display:inline-flex;align-items:center;height:34px;padding:0 12px;border-radius:8px;background:var(--ink);color:#FFFFFF;font-family:"Noto Serif SC",serif;font-weight:900;font-size:20px}
+.cf.on{box-shadow:var(--b8)}
+.cf .bub{position:absolute;right:12px;top:14px;max-width:72%;font-size:14px;line-height:22px;padding:8px 12px}
+/* 分镜阅读 */
+.rhead{position:absolute;left:0;right:0;top:68px;height:56px;display:flex;align-items:center;gap:12px;padding:0 40px;border-bottom:2px solid var(--grey2)}
+.strip{position:absolute;left:300px;width:720px;top:140px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:14px}
+.fr2{position:relative;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:10px;background-color:#FFFFFF;padding:14px}
+.castl{position:absolute;right:40px;top:140px;width:300px;display:flex;flex-direction:column;gap:10px}
+.cm{display:flex;align-items:center;gap:12px;padding:8px 10px;box-sizing:border-box;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF}
+.chs{position:absolute;left:300px;width:720px;top:628px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ch{position:relative;display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:18px;background:#FFFFFF;font-size:14.5px;line-height:22px;font-weight:600;box-shadow:var(--x3)}
+.ch.on{background:var(--ink);color:#FFFFFF;box-shadow:var(--b4)}
+.ch.on .gkey{color:var(--sky)}
+.ch .gkey{align-self:flex-start}
+.fct{display:flex;gap:10px;align-items:baseline;padding:9px 12px;border:2px solid var(--ink);border-radius:10px;font-size:13px;line-height:20px;background:#FFFFFF}
+.fct b{flex:none;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;padding:1px 6px;border-radius:4px;background:var(--ink);color:#FFFFFF}
+.nxl{position:absolute;left:300px;top:598px;display:flex;align-items:center;gap:10px}
+.wbx{position:absolute;left:300px;width:720px;top:760px;height:54px;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:0 8px 0 18px;border:2.5px dashed var(--ink);border-radius:16px;background:#FFFFFF;font-size:15px;color:var(--mut)}
+.turns{position:absolute;left:40px;top:140px;width:220px;display:flex;flex-direction:column;gap:8px}
+.tn{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;box-sizing:border-box;border:2px solid var(--grey2);border-radius:10px;font-size:12.5px;line-height:19px;color:var(--mut)}
+.tn b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink);flex:none}
+.tn.on{border-color:var(--ink);color:var(--ink);box-shadow:var(--x3)}
+.caret2{display:inline-block;width:3px;height:20px;margin-left:3px;vertical-align:-4px;border-radius:2px;background:var(--acc)}
+
+/* 轮盘 */
+.whub{position:absolute;z-index:31;box-sizing:border-box;width:72px;height:72px;border:2.5px solid var(--ink);border-radius:36px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:var(--x4)}
+.whub.open{background:var(--ink);box-shadow:none}
+.whub.lift{transform:scale(1.12);box-shadow:var(--x8)}
+.wdots{position:absolute;z-index:30;overflow:visible;pointer-events:none}
+.wring{position:absolute;z-index:30;overflow:visible}
+.wfl{position:absolute;z-index:31;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;white-space:nowrap}
+.wfl .i{width:24px;height:24px;stroke-width:2.2}
+.wfl b{font-size:15.5px;line-height:20px;font-weight:800}
+.wfl span{font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:10.5px;line-height:13px;letter-spacing:.04em;color:var(--mut)}
+.wfl.cur,.wfl.hov{color:#FFFFFF}
+.wfl.cur span{color:var(--sky)}
+.wfl.hov span{color:#FFFFFF}
+.wnum{position:absolute;z-index:32;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;width:22px;height:22px;box-sizing:border-box;border:2px solid var(--ink);border-radius:6px;background:#FFFFFF;color:var(--ink);font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:11px;line-height:1}
+.wnum.hov{background:var(--ink);color:#FFFFFF}
+.wbub{position:absolute;z-index:33}
+.vp .cursor,.wfr .cursor{z-index:40}
+.wdrag{position:absolute;z-index:34;height:24px;padding:0 8px;border-radius:6px;background:var(--ink);color:#FFFFFF;display:flex;align-items:center;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:11px;letter-spacing:.06em}
+/* 页头：没有顶栏；页面左边留 112 宽，给收起的轮盘 */
+.chd{position:absolute;left:112px;right:40px;top:36px;height:48px;display:flex;align-items:center;gap:14px;z-index:5}
+.chd .ttl1{font-family:"Noto Serif SC",serif;font-weight:900;letter-spacing:-.02em;font-size:40px;line-height:48px}
+.page{left:112px;top:112px}
+.cast{left:112px;top:112px}
+.pgno .left{left:112px}
+.turns{left:112px;top:120px;width:200px}
+.strip{left:336px;width:700px;top:120px}
+.castl{top:120px}
+.nxl{left:336px;top:578px}
+.chs{left:336px;width:700px;top:608px}
+.wbx{left:336px;width:700px;top:740px}
+.bub.up .tail{bottom:auto;top:-17px;transform:scaleY(-1)}
+.bub.up .who{left:auto;right:14px}
+.chl{display:flex;align-items:center;gap:14px}
+.chl.gone{opacity:0}
+.rhd{display:flex;align-items:center;gap:12px}
+/* 剧本 */
+.scw{display:flex;padding:0}
+.scw .cvl{flex:none;border-right:2.5px solid var(--ink);line-height:0;overflow:hidden}
+.scw .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:14px 16px 12px}
+.scn{display:flex;flex-direction:column;padding:0}
+.scn .cvt{flex:none;border-bottom:2.5px solid var(--ink);line-height:0;overflow:hidden}
+.scn .bd{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px;padding:10px 14px 12px}
+.meta{font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:11px;letter-spacing:.05em;color:var(--mut)}
+/* 工作台 */
+.wbin{position:relative;display:flex;align-items:center;gap:12px;box-sizing:border-box;height:64px;padding:0 10px 0 22px;border:2.5px solid var(--ink);border-radius:32px;background:#FFFFFF;box-shadow:var(--x4);font-family:"Noto Serif SC",serif;font-size:17px;color:var(--mut)}
+.wbin .tail{position:absolute;bottom:-17px;left:40px;width:26px;height:20px;overflow:visible}
+.exs{display:flex;flex-direction:column;gap:8px}
+.exs .cap-box{display:flex;align-items:center;gap:10px;font-size:14.5px;line-height:22px;padding:8px 12px}
+.exs .cap-box .i{width:16px;height:16px;color:var(--acc);flex:none}
+.stp{display:flex;align-items:center;gap:6px}
+.stp span{display:flex;align-items:center;height:26px;padding:0 9px;box-sizing:border-box;border:2px solid var(--ink);border-radius:7px;font-size:12px;font-weight:600;background:#FFFFFF}
+.stp span.ok{background:var(--grey2);border-color:var(--grey2);color:var(--mut)}
+.stp span.on{background:var(--acc);color:#FFFFFF;box-shadow:2px 2px 0 var(--ink)}
+.stp i{width:8px;height:2px;background:var(--ink);font-style:normal}
+.rcn{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1.5px solid var(--grey2)}
+.rcn:last-of-type{border-bottom:0}
+.rcn b{font-family:"Noto Serif SC",serif;font-weight:900;font-size:16px}
+/* 模型 */
+.mrl{position:relative;display:flex;align-items:center;gap:16px;padding:12px 16px 12px 12px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF}
+.mrl.on{box-shadow:var(--x4)}
+.mrl .nm{font-family:"Noto Serif SC",serif;font-weight:900;font-size:24px;line-height:30px}
+.msel{display:flex;align-items:center;gap:8px;height:40px;padding:0 10px 0 12px;box-sizing:border-box;border:2px solid var(--ink);border-radius:10px;background:#FFFFFF;font-size:14px;font-weight:600;white-space:nowrap}
+.msel .i{width:16px;height:16px}
+.mrow{display:flex;align-items:center;gap:10px;height:46px;border-bottom:1.5px solid var(--grey2);font-size:14px}
+.mrow:last-child{border-bottom:0}
+.mrow b{font-weight:700}
+.mpill{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:10.5px;letter-spacing:.06em;background:var(--ink);color:#FFFFFF;flex:none}
+.mpill.b{background:var(--acc)}
+.mpill.w{background:#FFFFFF;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.mdot{width:9px;height:9px;border-radius:5px;background:var(--acc);flex:none;box-shadow:0 0 0 2px var(--ink)}
+.mdot.off{background:#FFFFFF}
+/* 设置 */
+.sapp{display:flex;gap:14px}
+.sopt{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.sopt .pv{position:relative;height:104px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:10px;overflow:hidden;display:flex}
+.sopt .pv > div{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.sopt .pv i{display:block;height:5px;border-radius:3px;background:currentColor;opacity:.5}
+.sopt .pv b{font-family:"Noto Serif SC",serif;font-weight:900;font-size:16px;line-height:20px}
+.sopt.on .pv{box-shadow:var(--b4)}
+.sopt .nm{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700}
+.sopt .nt{font-size:12.5px;line-height:18px;color:var(--mut)}
+.rad2{width:18px;height:18px;box-sizing:border-box;border:2px solid var(--ink);border-radius:9px;background:#FFFFFF;flex:none}
+.rad2.on{border-width:6px;border-color:var(--acc);box-shadow:0 0 0 2px var(--ink)}
+.lrow{display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;box-sizing:border-box;border:2px solid var(--grey2);border-radius:10px;font-size:14.5px}
+.lrow.on{border-color:var(--ink);box-shadow:var(--x3);font-weight:700}
+.stpr{display:flex;align-items:center;gap:0;height:38px;box-sizing:border-box;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+.stpr span{display:flex;align-items:center;justify-content:center;min-width:40px;height:100%;padding:0 8px;font-weight:700;font-size:14px}
+.stpr span + span{border-left:2px solid var(--ink)}
+.stpr .v{font-family:"IBM Plex Mono",monospace;background:var(--grey)}
+.seg2{display:flex;height:38px;box-sizing:border-box;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+.seg2 span{flex:none;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;padding:0 14px;white-space:nowrap}
+.seg2 span + span{border-left:2px solid var(--ink)}
+.seg2 span.on{background:var(--ink);color:#FFFFFF}
+.kys{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px}
+.xrow{display:flex;align-items:center;gap:10px;height:38px;border-bottom:1.5px solid var(--grey2);font-size:13.5px}
+.xrow:last-of-type{border-bottom:0}
+.xrow b{width:64px;flex:none;font-weight:700}
+.mrow2{display:flex;align-items:center;gap:12px;min-height:62px;border-bottom:1.5px solid var(--grey2)}
+.mrow2:last-of-type{border-bottom:0}
+.mrow2 .t{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700}
+.mrow2 .s{font-size:12.5px;line-height:18px;color:var(--mut)}
+.addst{display:flex;gap:10px}
+.addst span{flex:1;display:flex;flex-direction:column;gap:4px;padding:10px 12px;box-sizing:border-box;border:2px solid var(--ink);border-radius:10px;background:#FFFFFF;font-size:13.5px;line-height:20px}
+.addst b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--acc)}
+.kys span{display:flex;align-items:center;gap:8px;font-size:14px}
+.okc{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;box-sizing:border-box;border:2px solid var(--ink);border-radius:8px;font-size:12.5px;font-weight:600;background:#FFFFFF;color:var(--ink)}
+.okc .i{width:14px;height:14px;stroke-width:2.6;color:var(--acc)}
+/* 轮盘细节 */
+.wspec{position:relative;box-sizing:border-box;width:1440px;height:944px;padding:40px 44px;border:2.5px solid var(--ink);border-radius:24px;background:#FFFFFF;box-shadow:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A,5px 5px 0 #1A1A1A,6px 6px 0 #1A1A1A,7px 7px 0 #1A1A1A,8px 8px 0 #1A1A1A;font-family:"Noto Sans SC",sans-serif;color:var(--ink);overflow:hidden}
+.wspec h2{margin:0;font-family:"Noto Serif SC",serif;font-weight:900;font-size:44px;line-height:52px;letter-spacing:-.02em}
+.wspec .lead{margin:10px 0 0;max-width:1100px;font-size:16px;line-height:27px;color:#3D3C38}
+.wfr{position:relative;flex:none;width:420px;height:460px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:10px;overflow:hidden}
+.wfr .no{position:absolute;right:12px;bottom:10px;z-index:40;font-family:"Noto Serif SC",serif;font-weight:900;font-size:22px}
+.wfcap{display:flex;flex-direction:column;gap:4px;margin-top:12px}
+.wfcap b{font-size:16px}
+.wfcap span{font-size:13.5px;line-height:21px;color:#3D3C38}
+.wrules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 28px;margin-top:26px}
+.wrules div{display:flex;flex-direction:column;gap:4px;padding-top:12px;border-top:2.5px solid var(--ink)}
+.wrules b{font-size:15px}
+.wrules span{font-size:13.5px;line-height:21px;color:#3D3C38}
+</style>
+</helmet>
+<div class="bd0" style="width: 4900px; height: 1066px">
+<div class="cell"><div class="tag"><b>方向</b> 先看这里</div><div class="intro G"><div class="chipb" style="align-self: flex-start">漫画分镜</div><h2 class="disp">剧本 · 角色 · 工作台</h2><ul><li>剧本页像一排漫画封面：最近添加的占左边整列，封面用 App 的几何封面，以后可以换成你给的图。</li><li>角色页是“登场人物”：一人一格，大字是名字，气泡里是一句台词；选中的格子可以直接开局。</li><li>工作台首页是一格大对话框：说一句想要的角色，agent 先问再写；导入和手动新建各占一格。</li><li>没写完的草稿放在最下面一排，标出 agent 写到哪一步、是不是在等你回答。</li></ul></div></div><div class="cell"><div class="tag"><b>2-1</b> 剧本：一页封面，最近添加的占大格</div><div class="win L" style="width: 1440px"><div class="chrome"><i style="background: #FF5F57"></i><i style="background: #FEBC2E"></i><i style="background: #28C840"></i><div class="url"><svg class="i" style="width: 12px; height: 12px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>bettertavern.com<b>/scenarios</b></div></div><section class="vp G" style="width: 1440px; height: 900px"><div class="chd"><div class="chl"><span class="ttl1">剧本</span><span class="chipk">24</span></div><span style="flex: 1"></span><span class="sq"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>名字、题材<span class="gkey">⌘K</span></span><span class="sq"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>全部题材</span><span class="gbtn  sm" style=""><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>导入</span></div><div class="page"><div class="fr hot" style="grid-column: 1 / 4; grid-row: 1 / 4; padding: 0; display: flex; flex-direction: column"><div style="position: relative; height: 330px; flex: none; border-bottom: 2.5px solid var(--ink); line-height: 0; overflow: hidden"><svg width="632" height="330" viewBox="0 0 632 330" aria-hidden="true" style="flex: none; display: block; border-radius: 0px; background: var(--fill)"><path d="M0 102.3H632M0 145.2H395" fill="none" stroke="var(--line2)" stroke-width="1.4400000000000002" stroke-linecap="round"/><path d="M27.5 240.9H604.5M219.75 240.9A96.25 96.25 0 0 1 412.25 240.9" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="478.5475" cy="140.9375" r="22.34375" fill="var(--acc)"/></svg><span class="chipk" style="position: absolute; left: 18px; top: 18px; line-height: normal">最近添加</span><div style="position: absolute; right: 22px; top: 40px; line-height: normal"><div class="bub" style=""><span class="who">沈知微</span>客人问得太多了。<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div></div><div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 20px 24px 22px"><div class="fx" style="gap: 8px"><span class="chipw">古风 · 悬疑</span><span class="meta">1 张卡 · 3 个存档</span></div><span class="ttl" style="font-size: 52px; line-height: 58px">雨夜渡口</span><div class="cap-box" style="font-size: 15.5px; line-height: 27px">青石渡入夜后只剩最后一班船。带着一封寄给“渡口沈掌柜”的信，在下雨的傍晚走进茶馆。</div><div class="fx" style="gap: 10px; margin-top: 2px"><div class="port ht dk" style="width: 36px; height: 36px; border-radius: 8px; border: 2px solid var(--ink)"><span class="g" style="font-size: 32px">沈</span></div><span style="font-size: 14px; font-weight: 700">沈知微</span><span class="mut" style="font-size: 13px">渡口茶馆的掌柜</span><span class="mut" style="font-size: 13px; margin-left: 14px">默认主角 · 林川</span></div><div style="margin-top: auto; display: flex; align-items: center; gap: 12px"><span class="gbtn p " style=""><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4a1 1 0 001.5.9l10-6.2a1 1 0 000-1.7l-10-6.2A1 1 0 008 5.8z"/></svg>开局</span><span class="gbtn  " style=""><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg>看设定</span><span style="flex: 1"></span><span class="mut" style="font-size: 13px; display: flex; align-items: center; gap: 6px"><span class="gkey">Enter</span>开局</span></div></div></div><div class="fr scw " style="grid-column: 4 / 6; grid-row: 1 / 2"><div class="cvl" style="width: 180px"><svg width="180" height="227" viewBox="0 0 180 227" aria-hidden="true" style="flex: none; display: block; border-radius: 0px; background: var(--fill)"><path d="M0 70.37H180M0 99.88H112.5" fill="none" stroke="var(--line2)" stroke-width="1.4400000000000002" stroke-linecap="round"/><path d="M18.916666666666668 165.71H161.08333333333334M23.791666666666657 165.71A66.20833333333334 66.20833333333334 0 0 1 156.20833333333334 165.71" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="143.22291666666666" cy="96.94791666666667" r="15.369791666666668" fill="var(--acc)"/></svg></div><div class="bd"><span class="lbl mut">科幻 · 治愈</span><span class="ttl" style="font-size: 26px; line-height: 32px">第七号观测站</span><span class="clamp3" style="font-size: 13.5px; line-height: 21px; color: #3D3C38">补给船三年没来了，值守系统还在每天写日志，等一个会回话的人。</span><span class="meta" style="margin-top: auto">1 张卡 · 1 个存档</span></div></div><div class="fr scn" style="grid-column: 6 / 7; grid-row: 1 / 2"><div class="cvt" style="height: 84px"><svg width="198" height="84" viewBox="0 0 198 84" aria-hidden="true" style="flex: none; display: block; border-radius: 0px; background: var(--fill)"><path d="M0 52.5q10.5 -5.25 21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0M0 63q10.5 -5.25 21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0M0 73.5q10.5 -5.25 21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0t21 0" fill="none" stroke="var(--ink)" stroke-width="1.575" stroke-linecap="round" stroke-linejoin="round"/><circle cx="133.95000000000002" cy="22.89" r="6.825" fill="var(--acc)"/></svg></div><div class="bd"><span class="ttl ell" style="font-size: 21px; line-height: 27px">长生当</span><span class="lbl mut" style="font-size: 11px">民国 · 志怪</span><span class="clamp2" style="font-size: 13px; line-height: 20px; color: #3D3C38">城南的当铺什么都收，包括没过完的日子。</span><span class="meta" style="margin-top: auto">1 张卡 · 2 个存档</span></div></div><div class="fr scn" style="grid-column: 4 / 5; grid-row: 2 / 3"><div class="cvt" style="height: 84px"><svg width="198" height="84" viewBox="0 0 198 84" aria-hidden="true" style="flex: none; display: block; border-radius: 0px; background: var(--fill)"><path d="M0 26.04H198M0 36.96H123.75" fill="none" stroke="var(--line2)" stroke-width="1.26" stroke-linecap="round"/><path d="M7 61.32H191M74.5 61.32A24.5 24.5 0 0 1 123.5 61.32" fill="none" stroke="var(--ink)" stroke-width="1.575" stroke-linecap="round" stroke-linejoin="round"/><circle cx="148.915" cy="35.875" r="5.6875" fill="var(--acc)"/></svg></div><div class="bd"><span class="ttl ell" style="font-size: 21px; line-height: 27px">白鹭镇异闻</span><span class="lbl mut" style="font-size: 11px">民国 · 群像</span><span class="clamp2" style="font-size: 13px; line-height: 20px; color: #3D3C38">二十年前镇上走丢了一个孩子，今晚说书人要讲的就是这件事。</span><span class="meta" style="margin-top: auto">4 张卡 · 1 个存档</span></div></div><div class="fr scw " style="grid-column: 5 / 7; grid-row: 2 / 3"><div class="cvl" style="width: 180px"><svg width="180" height="227" viewBox="0 0 180 227" aria-hidden="true" style="flex: none; display: block; border-radius: 0px; background: var(--fill)"><circle cx="90" cy="104.42" r="61.290000000000006" fill="none" stroke="var(--ink)" stroke-width="1.8"/><path d="M90 104.42V62.1299M90 104.42l28.193400000000004 18.9999M-4.386600000000016 227V188.41M184.38660000000002 227V188.41" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="90" cy="104.42" r="8.5125" fill="var(--acc)"/></svg></div><div class="bd"><span class="lbl mut">古典 · 同人</span><span class="ttl" style="font-size: 26px; line-height: 32px">大观园的元宵</span><span class="clamp3" style="font-size: 13.5px; line-height: 21px; color: #3D3C38">元宵夜，灯谜挂满了潇湘馆的回廊。</span><span class="meta" style="margin-top: auto">1 张卡 · 2 个存档</span></div></div><div class="fr scw " style="grid-column: 4 / 6; grid-row: 3 / 4"><div class="cvl" style="width: 180px"><svg width="180" height="227" viewBox="0 0 180 227" aria-hidden="true" style="flex: none; display: block; border-radius: 0px; background: var(--fill)"><path d="M4.875 188.41L37.97916666666667 112.74333333333333L71.08333333333333 188.41ZM66.35416666666667 188.41L104.18750000000001 84.36833333333333L142.02083333333331 188.41ZM127.83333333333333 188.41L151.47916666666669 131.66L175.125 188.41Z" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M0 188.41H180" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="104.18750000000001" cy="155.30583333333334" r="10.640625" fill="var(--acc)"/></svg></div><div class="bd"><span class="lbl mut">末日 · 电台</span><span class="ttl" style="font-size: 26px; line-height: 32px">末日电台</span><span class="clamp3" style="font-size: 13.5px; line-height: 21px; color: #3D3C38">凌晨三点，第九区的频道里还有人在说话。</span><span class="meta" style="margin-top: auto">1 张卡 · 1 个存档</span></div></div><div class="fr ht" style="grid-column: 6 / 7; grid-row: 3 / 4; color: #FFFFFF; display: flex; flex-direction: column; justify-content: space-between; padding: 18px 20px"><span class="ttl" style="font-size: 30px; line-height: 36px">新建剧本 ＋</span><span style="font-size: 13.5px; line-height: 21px">从角色卡仓库里选一张，或者选几张做群像</span></div></div><div class="pgno"><span class="left">共 24 个剧本 · 这一页 6 个</span><span>— 01 —</span><span class="side">下一页 <span class="gkey f">→</span></span></div><div class="whub" style="left: 16px; top: 414px"><svg width="36" height="36" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true" style="flex: none"><g style="fill: none; stroke: var(--ink); stroke-linejoin: miter"><path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" style="stroke-width: 3.84"/><path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" style="stroke-width: 3.84"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" style="stroke-width: 4.16"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" style="fill: var(--acc)"/></svg></div></section></div></div><div class="cell"><div class="tag"><b>2-2</b> 角色：登场人物，一人一格</div><div class="win L" style="width: 1440px"><div class="chrome"><i style="background: #FF5F57"></i><i style="background: #FEBC2E"></i><i style="background: #28C840"></i><div class="url"><svg class="i" style="width: 12px; height: 12px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>bettertavern.com<b>/characters</b></div></div><section class="vp G" style="width: 1440px; height: 900px"><div class="chd"><div class="chl"><span class="ttl1">角色</span><span class="chipk">12</span><span class="mut" style="font-size: 14px">登场人物 · 角色卡仓库</span></div><span style="flex: 1"></span><span class="sq"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>名字、标签<span class="gkey">⌘K</span></span><span class="gbtn b sm" style=""><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1-5.1-1.9 5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>去工作台写一张</span></div><div class="cast"><div class="cf on"><div class="pt"><div class="port ht dk" style="width: 400px; height: 400px; border-radius: 0px; width: 100%; height: 100%"><span class="g" style="font-size: 250px">沈</span></div><span class="nmb">沈知微</span><div class="bub" style="">客人问得太多了。<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><div class="ft"><span style="font-size: 13.5px; font-weight: 600">渡口茶馆的掌柜</span><span class="lbl mut">古风 · 悬疑 · 世界书 7</span></div><span style="position: absolute; right: 12px; bottom: -18px"><span class="gbtn p sm" style=""><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4a1 1 0 001.5.9l10-6.2a1 1 0 000-1.7l-10-6.2A1 1 0 008 5.8z"/></svg>用这张开局</span></span></div><div class="cf"><div class="pt"><div class="port htk" style="width: 400px; height: 400px; border-radius: 0px; width: 100%; height: 100%"><span class="g" style="font-size: 250px">温</span></div><span class="nmb">温九</span><div class="bub" style="">当什么？<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><div class="ft"><span style="font-size: 13.5px; font-weight: 600">长生当的掌柜</span><span class="lbl mut">民国 · 志怪 · 世界书 7</span></div></div><div class="cf"><div class="pt"><div class="port inkb dk" style="width: 400px; height: 400px; border-radius: 0px; width: 100%; height: 100%"><span class="g" style="font-size: 250px">澄</span></div><span class="nmb">阿澄</span><div class="bub" style="">你要留下来吗？<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><div class="ft"><span style="font-size: 13.5px; font-weight: 600">第七号观测站的值守系统</span><span class="lbl mut">科幻 · 治愈 · 世界书 5</span></div></div><div class="cf"><div class="pt"><div class="port htg" style="width: 400px; height: 400px; border-radius: 0px; width: 100%; height: 100%"><span class="g" style="font-size: 250px">黛</span></div><span class="nmb">林黛玉</span><div class="bub" style="">你猜得着，我便不恼你了。<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><div class="ft"><span style="font-size: 13.5px; font-weight: 600">大观园 · 潇湘馆</span><span class="lbl mut">古典 · 同人 · 世界书 9</span></div></div><div class="cf"><div class="pt"><div class="port htk" style="width: 400px; height: 400px; border-radius: 0px; width: 100%; height: 100%"><span class="g" style="font-size: 250px">陈</span></div><span class="nmb">说书人老陈</span><div class="bub" style="">今晚讲的，是那个走丢的孩子。<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><div class="ft"><span style="font-size: 13.5px; font-weight: 600">白鹭镇茶馆的说书人</span><span class="lbl mut">民国 · 群像 · 世界书 12</span></div></div><div class="cf"><div class="pt"><div class="port ht dk" style="width: 400px; height: 400px; border-radius: 0px; width: 100%; height: 100%"><span class="g" style="font-size: 250px">猫</span></div><span class="nmb">玄猫</span><div class="bub" style="">第三张牌，你不能翻。<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><div class="ft"><span style="font-size: 13.5px; font-weight: 600">会算命的猫</span><span class="lbl mut">奇幻 · 轻松 · 世界书 3</span></div></div><div class="cf"><div class="pt"><div class="port htg" style="width: 400px; height: 400px; border-radius: 0px; width: 100%; height: 100%"><span class="g" style="font-size: 250px">播</span></div><span class="nmb">夜班主播</span><div class="bub" style="">这里是第九区，还有人在听吗？<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><div class="ft"><span style="font-size: 13.5px; font-weight: 600">末日电台的主播</span><span class="lbl mut">末日 · 电台 · 世界书 6</span></div></div><div class="cf"><div class="pt"><div class="port inkb dk" style="width: 400px; height: 400px; border-radius: 0px; width: 100%; height: 100%"><span class="g" style="font-size: 250px">晚</span></div><span class="nmb">苏晚</span><div class="bub" style="">雪停之前，信会到的。<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><div class="ft"><span style="font-size: 13.5px; font-weight: 600">雪夜里的收信人</span><span class="lbl mut">古风 · 冬天 · 世界书 5</span></div></div></div><div class="pgno"><span class="left">点一下看台词和设定，双击用这张卡开局</span><span>— 01 —</span><span class="side">下一页 <span class="gkey f">→</span></span></div><div class="whub" style="left: 16px; top: 414px"><svg width="36" height="36" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true" style="flex: none"><g style="fill: none; stroke: var(--ink); stroke-linejoin: miter"><path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" style="stroke-width: 3.84"/><path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" style="stroke-width: 3.84"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" style="stroke-width: 4.16"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" style="fill: var(--acc)"/></svg></div></section></div></div><div class="cell"><div class="tag"><b>2-3</b> 工作台：说一句，agent 来写</div><div class="win L" style="width: 1440px"><div class="chrome"><i style="background: #FF5F57"></i><i style="background: #FEBC2E"></i><i style="background: #28C840"></i><div class="url"><svg class="i" style="width: 12px; height: 12px; color: var(--mut)" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>bettertavern.com<b>/workbench</b></div></div><section class="vp G" style="width: 1440px; height: 900px"><div class="chd"><div class="chl"><span class="ttl1">工作台</span><span class="mut" style="font-size: 14px">和 agent 一起写角色卡</span></div><span style="flex: 1"></span><span class="sq"><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg>草稿 2</span></div><div class="page" style="bottom: 40px"><div class="fr hot htk" style="grid-column: 1 / 5; grid-row: 1 / 3; display: flex; flex-direction: column; gap: 18px; padding: 30px 34px"><div class="fx" style="gap: 8px"><span class="chipk">AGENT</span><span class="lbl mut">说一句，它先问几个问题，再给方案，你点头它才动手</span></div><span class="ttl" style="font-size: 50px; line-height: 58px">想做一个什么样的角色？</span><div class="wbin"><span style="flex: 1">说一句就行，比如“民国当铺的掌柜，冷淡但讲规矩”</span><span class="gbtn p sm" style=""><svg class="i" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>开始</span><svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div><div class="exs" style="margin-top: 14px"><span class="lbl mut">试试这些</span><div class="cap-box" style="align-self: flex-start"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1-5.1-1.9 5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>民国背景、开在城南的当铺掌柜，带点志怪悬疑</div><div class="cap-box" style="align-self: flex-start"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1-5.1-1.9 5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>《红楼梦》里的林黛玉，我扮演宝玉陪她过元宵</div><div class="cap-box" style="align-self: flex-start"><svg class="i" style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1-5.1-1.9 5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>赛博朋克地下诊所的女医生，嘴毒心软</div></div></div><div class="fr inkb" style="grid-column: 5 / 7; grid-row: 1 / 2; display: flex; flex-direction: column; gap: 10px; padding: 18px 20px"><div class="fx" style="justify-content: space-between"><span class="ttl" style="font-size: 28px; line-height: 34px">导入角色卡</span><svg class="i" style="width: 26px; height: 26px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg></div><span style="font-size: 13.5px; color: var(--sky)">PNG（卡面图片里带数据）或 JSON，最大 16 MB，一次一张</span><div style="flex: 1; display: flex; align-items: center; justify-content: center; border: 2.5px dashed var(--sky); border-radius: 10px; font-size: 14px; color: #FFFFFF">拖进来就导入</div></div><div class="fr" style="grid-column: 5 / 7; grid-row: 2 / 3; display: flex; flex-direction: column; gap: 10px; padding: 18px 20px"><div class="fx" style="justify-content: space-between"><span class="ttl" style="font-size: 28px; line-height: 34px">手动新建</span><svg class="i" style="width: 26px; height: 26px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></div><span style="font-size: 13.5px; color: #3D3C38">空白表单，自己写：名字、描述、开场白、世界书</span><div class="cap-box" style="margin-top: auto; font-size: 14px; line-height: 22px; padding: 8px 12px; color: var(--mut)">（还没写）这个人第一次见到你时，会说什么？</div></div><div class="fr" style="grid-column: 1 / 3; grid-row: 3 / 4; display: flex; flex-direction: column; gap: 10px"><div class="fx" style="gap: 8px"><span class="chipb">● 正在写</span><span class="lbl mut">草稿</span></div><span class="ttl" style="font-size: 26px; line-height: 32px">夜班主播</span><div class="stp"><span class="ok">资料</span><i></i><span class="ok">需求</span><i></i><span class="ok">方案</span><i></i><span class="on">动手</span><i></i><span>检查</span></div><span class="mut" style="font-size: 13px">正在写世界书 · 第 3 / 6 条</span><span class="gtm mut">10 分钟前</span></div><div class="fr" style="grid-column: 3 / 5; grid-row: 3 / 4; display: flex; flex-direction: column; gap: 10px"><div class="fx" style="gap: 8px"><span class="chipk">等你回答 2 个问题</span><span class="lbl mut">草稿</span></div><span class="ttl" style="font-size: 26px; line-height: 32px">玄猫</span><div style="margin-top: 4px"><div class="bub" style="font-size: 14.5px; line-height: 22px; padding: 8px 14px"><span class="who">agent</span>它算命准不准？要不要留一点破绽？<svg class="tail" viewBox="0 0 26 20" aria-hidden="true"><path d="M1 0 L9 18 L23 0" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="2.5" stroke-linejoin="round"/><rect x="2.4" y="-1.5" width="19.5" height="3.2" fill="#FFFFFF"/></svg></div></div><span class="gtm">去回答 →</span></div><div class="fr" style="grid-column: 5 / 7; grid-row: 3 / 4; display: flex; flex-direction: column; gap: 4px"><span class="lbl mut" style="margin-bottom: 4px">最近保存的角色卡</span><div class="rcn"><div class="port htg" style="width: 34px; height: 34px; border-radius: 8px; "><span class="g" style="font-size: 30px">晚</span></div><b>苏晚</b><span class="mut" style="font-size: 12.5px; margin-left: auto">昨天</span></div><div class="rcn"><div class="port htk" style="width: 34px; height: 34px; border-radius: 8px; "><span class="g" style="font-size: 30px">九</span></div><b>温九</b><span class="mut" style="font-size: 12.5px; margin-left: auto">周二</span></div><div class="rcn"><div class="port ht dk" style="width: 34px; height: 34px; border-radius: 8px; "><span class="g" style="font-size: 30px">澄</span></div><b>阿澄</b><span class="mut" style="font-size: 12.5px; margin-left: auto">10月9日</span></div><span class="gtm">全部角色卡 →</span></div></div><div class="whub" style="left: 16px; top: 414px"><svg width="36" height="36" viewBox="9.35 2.66 99.55 99.55" aria-hidden="true" style="flex: none"><g style="fill: none; stroke: var(--ink); stroke-linejoin: miter"><path d="M57.00 18.84 L100.00 93.32 L14.00 93.32Z" style="stroke-width: 3.84"/><path d="M66.04 13.95 L104.39 90.92 L18.56 85.65Z" style="stroke-width: 3.84"/><path d="M60.00 33.67 L88.00 82.17 L32.00 82.17Z" style="stroke-width: 4.16"/></g><path d="M60.00 50.99 L73.00 73.51 L47.00 73.51Z" style="fill: var(--acc)"/></svg></div></section></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":4900,"height":1066}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
