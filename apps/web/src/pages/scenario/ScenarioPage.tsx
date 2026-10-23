@@ -196,7 +196,7 @@ export function ScenarioPage() {
         blobId={scenario.cover_blob_id}
         width={coverWidth}
         height={wide ? 236 : Math.round(coverWidth * 0.82)}
-        rounded={34}
+        rounded={0}
       />
       <div className={styles.coverBar}>
         <IconButton

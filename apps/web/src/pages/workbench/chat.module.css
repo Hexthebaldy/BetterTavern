@@ -32,8 +32,11 @@
 }
 .bubble {
   padding: 9px 16px;
-  border-radius: 20px;
-  background: var(--fill);
+  border-radius: 18px 18px 4px 18px;
+  background: var(--acc);
+  color: var(--on-acc);
+  border: var(--bw) solid var(--frame);
+  box-shadow: var(--x2);
   font-size: 14.5px;
   line-height: 22px;
   white-space: pre-wrap;
@@ -46,14 +49,15 @@
 }
 .avatar {
   flex: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
+  width: 30px;
+  height: 30px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--paper);
+  color: var(--ink);
 }
 .agentBody {
   flex: 1;
@@ -138,8 +142,10 @@
 
 /* ---- 灰底的卡片（问卷、方案、改动、进度） ---- */
 .card {
-  border-radius: 22px;
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw) solid var(--frame);
+  box-shadow: var(--x4);
   padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
@@ -156,7 +162,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--ink);
 }
 .cardMeta {
@@ -207,8 +213,8 @@
   min-height: 32px;
   padding: 4px 12px;
   border-radius: var(--r-pill);
-  border: 1px solid var(--line);
-  background: var(--on-fill);
+  border: var(--bw-sm) solid var(--frame);
+  background: var(--paper);
   color: var(--ink);
   font: inherit;
   font-size: 13px;
@@ -221,20 +227,23 @@
 }
 .choiceOn {
   background: var(--ink);
-  border-color: var(--ink);
-  color: var(--bg);
+  border-color: var(--frame);
+  color: var(--on-ink);
+  box-shadow: var(--b2);
 }
 .badge {
   padding: 1px 6px;
-  border-radius: 6px;
-  background: var(--acc-bg);
-  color: var(--acc);
+  border-radius: 5px;
+  background: var(--acc);
+  color: var(--on-acc);
+  font-family: var(--font-mono), var(--font-sans);
   font-size: 10.5px;
+  font-weight: 700;
   line-height: 15px;
 }
 .choiceOn .badge {
-  background: color-mix(in srgb, var(--bg) 22%, transparent);
-  color: var(--bg);
+  background: var(--sky);
+  color: var(--ink);
 }
 .otherInput {
   min-width: 180px;
@@ -253,7 +262,8 @@
 .planName {
   font-size: 20px;
   line-height: 28px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
 }
 .planPitch {
   font-size: 14px;
@@ -296,8 +306,9 @@
 
 /* ---- 改动对比 ---- */
 .hunk {
-  border-radius: 16px;
-  background: var(--on-fill);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
   padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
@@ -363,7 +374,8 @@
   padding: 0;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--inset);
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
   cursor: pointer;
 }
 .imageTile img {
@@ -474,9 +486,9 @@
 .suggestion {
   padding: 5px 12px;
   border-radius: var(--r-pill);
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink2);
+  border: var(--bw-sm) solid var(--frame);
+  background: var(--paper);
+  color: var(--ink);
   font: inherit;
   font-size: 12.5px;
   cursor: pointer;
@@ -492,11 +504,13 @@
   align-items: flex-end;
   gap: 8px;
   padding: 6px 6px 6px 16px;
-  border-radius: 24px;
-  background: var(--fill);
+  border-radius: 16px;
+  background: var(--paper);
+  border: var(--bw) solid var(--frame);
+  box-shadow: var(--x3);
 }
 .composer:focus-within {
-  box-shadow: 0 0 0 2px var(--acc);
+  box-shadow: var(--b4);
 }
 /* 外层整块已经有聚焦环：去掉全局给输入框加的内描边，不然框里还套一个长方形 */
 .composerInput:focus {
@@ -521,11 +535,13 @@
 }
 .send {
   background: var(--ink);
-  color: var(--bg);
+  color: var(--on-ink);
+  box-shadow: var(--b2);
 }
 .send:disabled {
-  background: var(--inset);
+  background: var(--paper);
   color: var(--mut);
+  box-shadow: none;
 }
 .statusRow {
   display: flex;

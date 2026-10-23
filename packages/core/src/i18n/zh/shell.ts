@@ -32,7 +32,7 @@ export const shell = {
   notFound: {
     title: "找不到页面",
     heading: "找不到这个页面",
-    text: "地址可能写错了，或者内容已经删掉。<link>回到存档</link>",
+    text: "地址可能写错了，或者内容已经删掉。<home>回到存档</home>",
   },
   shortcuts: {
     title: "键盘快捷键",

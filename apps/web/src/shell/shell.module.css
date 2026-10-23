@@ -41,6 +41,28 @@
   gap: 12px;
   padding: 10px 10px 12px;
 }
+.accountText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.accountName {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.accountEmail {
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--mut);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .accountItem {
   display: flex;
   align-items: center;

@@ -1,15 +1,20 @@
-/* 角色卡详情（同 App 的 app/card/[id].tsx）：单栏，最宽 640，居中 */
+/* 角色卡详情（同 App 的 app/card/[id].tsx）：单栏，最宽 640，居中；漫画分镜版的格子和宋体标题 */
 
 .page {
   max-width: calc(var(--readable) + 24px);
   margin: 0 auto;
-  padding: 12px 12px 64px;
+  padding: 36px 12px 64px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 .cover {
   position: relative;
+  border: var(--bw) solid var(--frame);
+  border-radius: var(--r-panel);
+  overflow: hidden;
+  box-shadow: var(--x8);
+  margin-bottom: 8px;
 }
 .coverBar {
   position: absolute;
@@ -28,10 +33,11 @@
   color: var(--mut);
 }
 .hero {
-  font-size: 34px;
-  line-height: 40px;
+  font-family: var(--font-display);
+  font-size: 44px;
+  line-height: 52px;
   font-weight: 900;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 .tags {
@@ -46,22 +52,26 @@
   padding: 0 12px;
 }
 .section {
-  padding: 20px 12px 0;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 20px 4px 0;
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   color: var(--mut);
 }
 .panel {
   padding: 14px 16px;
-  border-radius: var(--r-group);
-  background: var(--bg2);
+  border: var(--bw) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 .text {
-  font-size: 14.5px;
-  line-height: 24px;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 26px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--ink2);
@@ -85,6 +95,7 @@
   color: var(--acc);
   font: inherit;
   font-size: 13.5px;
+  font-weight: 700;
   cursor: pointer;
 }
 .linkRow {
@@ -98,7 +109,10 @@
   font-size: 14.5px;
 }
 .linkRow + .linkRow {
-  border-top: 1px solid var(--line);
+  border-top: 1.5px solid var(--grey2);
+}
+.linkRow:hover {
+  text-decoration: underline;
 }
 .source {
   display: flex;
@@ -108,7 +122,7 @@
   font-size: 13.5px;
 }
 .source + .source {
-  border-top: 1px solid var(--line);
+  border-top: 1.5px solid var(--grey2);
 }
 .source a {
   color: var(--acc);
@@ -124,7 +138,7 @@
   padding: 6px 0;
 }
 .revision + .revision {
-  border-top: 1px solid var(--line);
+  border-top: 1.5px solid var(--grey2);
 }
 .revisionBody {
   flex: 1;
@@ -135,7 +149,7 @@
 }
 .revisionTitle {
   font-size: 14.5px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .danger {
   display: flex;

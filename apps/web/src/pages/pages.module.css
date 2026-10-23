@@ -23,10 +23,29 @@
 }
 .lead {
   margin-top: 12px;
-  color: var(--mut);
+  color: var(--ink2);
 }
 .lead a {
   color: var(--acc);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.notFound {
+  max-width: 720px;
+  margin-top: 48px;
+  padding: 40px 48px 44px;
+}
+.code {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 96px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--acc);
+  text-shadow: 4px 4px 0 var(--shade);
 }
 .splash {
   min-height: 100vh;

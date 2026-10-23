@@ -304,6 +304,10 @@
   gap: 10px;
   padding: 14px;
 }
+/* 正在写的那一格：蓝色硬投影 */
+.frameLive {
+  box-shadow: var(--b4);
+}
 .narrative {
   margin: 0;
   font-size: var(--narr-size);

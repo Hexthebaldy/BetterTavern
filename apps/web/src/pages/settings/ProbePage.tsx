@@ -7,17 +7,17 @@ import { cx } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
 import pages from "../pages.module.css";
 import { ProbeBody } from "./ProbeBody.tsx";
-import styles from "./settingsPage.module.css";
+import styles from "./probe.module.css";
 
 export function ProbePage() {
   const { t } = useTranslation();
   return (
-    <div className={cx(pages.page, styles.probe)}>
+    <div className={cx(pages.page, styles.page)}>
       <Link to="/settings" className={styles.back}>
         <Icon name="back" size={18} />
         {t("nav.settings")}
       </Link>
-      <div className={styles.probeBody}>
+      <div className={styles.body}>
         <ProbeBody />
       </div>
     </div>

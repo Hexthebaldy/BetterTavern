@@ -65,8 +65,9 @@
 .report,
 .cell,
 .switchRow {
-  background: var(--fill);
-  --inner: var(--on-fill);
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
+  --inner: var(--grey);
 }
 .formCard > *,
 .pickerCard > *,
@@ -88,7 +89,8 @@
 .bodyTitle {
   font-size: 28px;
   line-height: 36px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
@@ -152,7 +154,8 @@
 .dialogTitle {
   font-size: 20px;
   line-height: 28px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
   text-align: center;
 }
 .dialogBody {
@@ -161,14 +164,18 @@
   gap: 16px;
 }
 .radio {
-  width: 22px;
-  height: 22px;
-  border-radius: 11px;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 10px;
+  background: var(--paper);
   flex: none;
-  box-shadow: inset 0 0 0 1.75px var(--line2);
 }
 .radioOn {
-  box-shadow: inset 0 0 0 7px var(--acc);
+  border-width: 6px;
+  border-color: var(--acc);
+  box-shadow: 0 0 0 2px var(--frame);
 }
 
 /* ---- 服务商标记、Key ---- */
@@ -177,9 +184,10 @@
   align-items: center;
   justify-content: center;
   flex: none;
+  border: var(--bw-sm) solid var(--frame);
   border-radius: 999px;
   font-family: var(--font-mono);
-  font-weight: 500;
+  font-weight: 700;
 }
 .mark-card {
   background: var(--card);
@@ -225,7 +233,7 @@
   flex-direction: column;
   gap: 22px;
   padding: 16px 12px;
-  border-radius: 30px;
+  border-radius: 16px;
 }
 .formGroup {
   display: flex;
@@ -254,8 +262,8 @@
   min-height: 112px;
   padding: 14px;
   border: 0;
-  border-radius: 22px;
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
   color: var(--ink);
   font-size: 13.5px;
   line-height: 18px;
@@ -266,15 +274,16 @@
 }
 .providerOn {
   background: var(--acc-bg);
-  box-shadow: inset 0 0 0 2px var(--acc);
+  box-shadow: var(--b3);
 }
 .choice {
   display: flex;
   align-items: center;
   min-height: 52px;
   padding: 4px 16px;
-  border-radius: 16px;
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .saveRow {
   display: flex;
@@ -297,7 +306,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 8px;
-  border-radius: 30px;
+  border-radius: 16px;
 }
 .search {
   position: relative;
@@ -316,22 +325,22 @@
   flex: 1;
   min-width: 0;
   height: 44px;
-  border: 0;
-  border-radius: 22px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
   padding: 0 12px 0 42px;
-  background: var(--fill);
+  background: var(--paper);
   font-family: var(--font-mono);
   font-size: 14px;
 }
 .refresh {
   width: 44px;
   height: 44px;
-  border: 0;
+  border: var(--bw-sm) solid var(--frame);
   border-radius: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--fill);
+  background: var(--paper);
   color: var(--ink);
   flex: none;
 }
@@ -349,14 +358,14 @@
   min-height: 52px;
   padding: 0 14px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 12px;
   background: transparent;
   color: var(--ink);
   text-align: left;
 }
 .modelOptionOn {
-  background: var(--fill);
-  box-shadow: inset 0 0 0 2px var(--acc);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 2px var(--frame), var(--b3);
 }
 @media (hover: hover) and (pointer: fine) {
   .modelOption:not(.modelOptionOn):hover {
@@ -379,9 +388,10 @@
   display: flex;
   align-items: center;
   height: 24px;
-  padding: 0 9px;
-  border-radius: 12px;
-  background: var(--fill);
+  padding: 0 8px;
+  border-radius: var(--r-chip);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--frame);
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--ink2);
@@ -422,7 +432,7 @@
   gap: 2px;
   min-width: 0;
   padding: 14px 16px;
-  border-radius: 22px;
+  border-radius: 12px;
 }
 .cellKey {
   font-size: 12px;
@@ -451,8 +461,8 @@
   flex: 1;
   min-height: 60px;
   border: 0;
-  border-radius: 30px;
-  background: var(--fill);
+  border-radius: 16px;
+  background: var(--paper);
   color: var(--ink);
   display: flex;
   flex-direction: column;
@@ -478,29 +488,31 @@
   gap: 14px;
   min-height: 76px;
   padding: 12px 16px;
-  border-radius: 26px;
+  border-radius: 12px;
   font-size: 16px;
   cursor: pointer;
 }
 .switchIcon {
   width: 40px;
   height: 40px;
+  border: var(--bw-sm) solid var(--frame);
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
-  background: var(--fill);
+  background: var(--paper);
 }
 .toggle {
   appearance: none;
   -webkit-appearance: none;
   position: relative;
   width: 52px;
-  height: 32px;
+  height: 30px;
   margin: 0;
-  border-radius: 16px;
-  background: var(--bg3);
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 15px;
+  background: var(--paper);
   flex: none;
   transition: background-color var(--dur) var(--ease);
 }
@@ -509,18 +521,22 @@
   position: absolute;
   left: 3px;
   top: 3px;
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
-  background: #ffffff;
-  box-shadow: var(--shadow-knob);
-  transition: left var(--dur) var(--ease);
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--ink);
+  transition:
+    left var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
 }
 .toggle:checked {
   background: var(--acc);
 }
 .toggle:checked::after {
-  left: 23px;
+  left: 25px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .bottom {
   display: flex;
@@ -544,7 +560,7 @@
   flex-direction: column;
   gap: 14px;
   padding: 18px 16px;
-  border-radius: 30px;
+  border-radius: 16px;
 }
 .memoryTitle {
   display: flex;
@@ -562,12 +578,13 @@
   grid-template-columns: repeat(16, minmax(0, 1fr));
   gap: 4px;
   padding: 14px;
-  border-radius: 22px;
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .block {
   aspect-ratio: 1;
-  border-radius: 999px;
+  border-radius: 3px;
 }
 .block-story {
   background: var(--ink);
@@ -611,14 +628,14 @@
   flex-direction: column;
   gap: 2px;
   padding: 6px;
-  border-radius: 30px;
+  border-radius: 16px;
 }
 .check {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: 22px;
+  border-radius: 12px;
   font-size: 15px;
   line-height: 22px;
 }
@@ -646,11 +663,12 @@
   color: var(--mut);
 }
 .track {
-  height: 6px;
+  height: 10px;
   margin-top: 6px;
-  border-radius: 3px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 5px;
   overflow: hidden;
-  background: var(--fill);
+  background: var(--paper);
 }
 .trackFill {
   display: block;
@@ -685,8 +703,9 @@
   gap: 12px;
   height: 52px;
   padding: 0 16px;
-  border-radius: 16px;
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .probeButtons {
   display: flex;
@@ -706,7 +725,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 14px 16px;
-  border-radius: 24px;
+  border-radius: 12px;
 }
 .tileValue {
   font-family: var(--font-mono);
@@ -732,7 +751,7 @@
   color: var(--acc);
 }
 .report {
-  border-radius: 30px;
+  border-radius: 16px;
   overflow: hidden;
 }
 .verdict {
@@ -765,6 +784,7 @@
 .verdictTitle {
   font-size: 24px;
   line-height: 30px;
+  font-family: var(--font-display);
   font-weight: 900;
 }
 .reportRow {
@@ -798,8 +818,9 @@
 .axis {
   position: relative;
   height: 12px;
+  border: var(--bw-sm) solid var(--frame);
   border-radius: 6px;
-  background: var(--fill);
+  background: var(--paper);
 }
 .axisRange {
   position: absolute;

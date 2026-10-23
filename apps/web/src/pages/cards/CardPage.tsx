@@ -140,7 +140,7 @@ export function CardPage() {
   return (
     <div className={styles.page}>
       <div className={styles.cover}>
-        <Cover seed={card.id} blobId={card.cover_blob_id} width={coverWidth} height={Math.round(coverWidth * 0.62)} rounded={34} />
+        <Cover seed={card.id} blobId={card.cover_blob_id} width={coverWidth} height={Math.round(coverWidth * 0.62)} rounded={0} />
         <div className={styles.coverBar}>
           <IconButton icon="back" label={t("cards.back")} tone="card" diameter={44} onClick={back} />
         </div>

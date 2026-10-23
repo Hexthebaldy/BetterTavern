@@ -34,7 +34,8 @@
   padding-top: 20px;
   font-size: 20px;
   line-height: 26px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
 }
 .sectionRow {
   display: flex;
@@ -66,8 +67,9 @@
   gap: 8px;
 }
 .entry {
-  border-radius: var(--r-card);
-  background: var(--bg2);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
   overflow: hidden;
 }
 .entryHead {

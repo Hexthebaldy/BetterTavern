@@ -1,15 +1,18 @@
-/* 浮层：对话框、菜单、提示浮条。数值取自 docs/design/ui/web/source 的 .dlg、.menu、.mi、.toast，和 App 的 dialog.tsx */
+/*
+ * 浮层：对话框、菜单、提示浮条、提示（tooltip）、快捷键一览。漫画分镜版（docs/design/comic）：
+ * 2.5 描边的纸色格子，硬投影（对话框 --x8，菜单和浮条 --x4），圆角 16；遮罩是墨色半透明。
+ */
 
 /* ---- 对话框 ---- */
 .dialog {
   width: min(var(--dialog), calc(100vw - 32px));
   max-height: calc(100vh - 48px);
   padding: 0;
-  border: 0;
-  border-radius: var(--r-sheet);
-  background: var(--sheet);
+  border: var(--bw) solid var(--frame);
+  border-radius: 16px;
+  background: var(--paper);
   color: var(--ink);
-  box-shadow: var(--shadow-float);
+  box-shadow: var(--x8);
   overflow: auto;
 }
 .dialog::backdrop {
@@ -25,7 +28,7 @@
   }
 }
 .dialogInner {
-  padding: 26px 18px 18px;
+  padding: 24px 20px 20px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -43,12 +46,14 @@
 .dialogIcon {
   width: 56px;
   height: 56px;
+  border: var(--bw) solid var(--frame);
   border-radius: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--fill);
+  background: var(--paper);
   color: var(--ink);
+  box-shadow: var(--x3);
 }
 .dialogIcon.danger {
   background: var(--err-bg);
@@ -59,9 +64,11 @@
   color: var(--warn);
 }
 .dialogTitle {
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
 }
 .dialogMessage {
   font-size: 14px;
@@ -70,21 +77,25 @@
 }
 .dialogButtons {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  padding-top: 4px;
 }
 .dialogButtons > * {
   flex: 1;
 }
 .promptInput {
   align-self: stretch;
-  height: 52px;
+  height: 48px;
   margin-top: 4px;
-  border: 0;
-  border-radius: var(--r-input);
-  padding: 0 16px;
-  background: var(--fill);
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  padding: 0 14px;
+  background: var(--paper);
   font-size: 16px;
   text-align: left;
+}
+.promptInput:focus {
+  box-shadow: var(--b3);
 }
 
 /* ---- 菜单 ---- */
@@ -97,9 +108,10 @@
   position: fixed;
   width: var(--context-menu);
   padding: 6px;
-  border-radius: var(--r-option);
-  background: var(--sheet);
-  box-shadow: var(--shadow-float);
+  border: var(--bw) solid var(--frame);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: var(--x4);
   animation: pop var(--dur) var(--ease);
 }
 @keyframes pop {
@@ -113,12 +125,13 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  height: 44px;
+  height: 42px;
   padding: 0 12px;
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--r-frame);
   background: transparent;
   font-size: 15px;
+  font-weight: 600;
   color: var(--ink);
   text-align: left;
 }
@@ -132,13 +145,13 @@
   flex: 1;
 }
 .menuRule {
-  height: 1px;
-  background: var(--line);
+  height: 1.5px;
+  background: var(--grey2);
   margin: 4px 10px;
 }
 @media (hover: hover) and (pointer: fine) {
   .menuItem:hover {
-    background: var(--hover);
+    background: var(--grey);
   }
 }
 .kbd {
@@ -148,10 +161,11 @@
   min-width: 24px;
   height: 24px;
   padding: 0 6px;
-  border-radius: 7px;
-  box-shadow: inset 0 0 0 1px var(--line2);
+  border: var(--bw-sm) solid currentColor;
+  border-radius: var(--r-key);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 700;
   color: var(--mut);
 }
 
@@ -169,12 +183,14 @@
   align-items: center;
   gap: 10px;
   padding: 6px 6px 6px 18px;
-  border-radius: 26px;
+  border: var(--bw) solid var(--frame);
+  border-radius: 14px;
   background: var(--ink);
-  color: var(--bg);
-  box-shadow: var(--shadow-float);
+  color: var(--on-ink);
+  box-shadow: var(--b4);
   font-size: 14px;
   line-height: 20px;
+  font-weight: 600;
   animation: toastIn var(--dur) var(--ease);
 }
 :global([data-nav="tabbar"]) .toast {
@@ -191,14 +207,14 @@
   padding: 10px 12px 10px 0;
 }
 .toastAction {
-  height: 40px;
+  height: 38px;
   padding: 0 14px;
-  border: 0;
-  border-radius: 20px;
-  background: var(--arrow-bg);
-  color: inherit;
+  border: var(--bw-sm) solid var(--sky);
+  border-radius: 19px;
+  background: transparent;
+  color: var(--sky);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 /* ---- 提示（tooltip） ---- */
@@ -208,12 +224,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 16px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
   background: var(--ink);
-  color: var(--bg);
-  box-shadow: var(--shadow-float);
+  color: var(--on-ink);
+  box-shadow: var(--b2);
   font-size: 12.5px;
   white-space: nowrap;
   pointer-events: none;
@@ -234,13 +250,12 @@
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.16);
+  border: 1.5px solid var(--sky);
+  border-radius: 5px;
+  color: var(--sky);
   font-family: var(--font-mono);
   font-size: 11px;
-}
-:global([data-scheme="dark"]) .tipKbd {
-  background: rgba(0, 0, 0, 0.1);
+  font-weight: 700;
 }
 
 /* ---- 键盘快捷键（W12） ---- */
@@ -252,17 +267,19 @@
 }
 .shortcutsTitle {
   flex: 1;
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 900;
 }
 .singleRow {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 12px 14px;
-  border-radius: 24px;
-  background: var(--fill);
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 12px;
+  background: var(--paper);
   cursor: pointer;
 }
 .singleText {
@@ -285,10 +302,11 @@
   -webkit-appearance: none;
   position: relative;
   width: 52px;
-  height: 32px;
+  height: 30px;
   margin: 0;
-  border-radius: 16px;
-  background: var(--bg3);
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 15px;
+  background: var(--paper);
   flex: none;
   transition: background-color var(--dur) var(--ease);
 }
@@ -297,18 +315,22 @@
   position: absolute;
   left: 3px;
   top: 3px;
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
-  background: #ffffff;
-  box-shadow: var(--shadow-knob);
-  transition: left var(--dur) var(--ease);
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--ink);
+  transition:
+    left var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
 }
 .toggle:checked {
   background: var(--acc);
 }
 .toggle:checked::after {
-  left: 23px;
+  left: 25px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .shortcutGroup {
   display: flex;
@@ -316,25 +338,30 @@
   gap: 6px;
 }
 .groupTitle {
-  padding: 0 6px;
-  font-size: 13px;
+  padding: 0 2px;
+  font-family: var(--font-mono), var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
   color: var(--mut);
 }
 .shortcutList {
   display: flex;
   flex-direction: column;
-  padding: 4px;
-  border-radius: 24px;
-  background: var(--inset);
+  padding: 2px 14px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 12px;
+  background: var(--paper);
 }
 .shortcutRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 44px;
-  padding: 0 14px;
-  border-radius: 16px;
   font-size: 14.5px;
+}
+.shortcutRow + .shortcutRow {
+  border-top: 1.5px solid var(--grey2);
 }
 .keys {
   display: flex;
@@ -352,10 +379,12 @@
   justify-content: center;
   min-width: 28px;
   height: 28px;
-  padding: 0 8px;
-  border-radius: 8px;
-  background: var(--raised);
-  box-shadow: inset 0 0 0 1px var(--line2);
+  padding: 0 7px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-key);
+  background: var(--paper);
+  box-shadow: 0 2px 0 var(--frame);
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 12px;
+  font-weight: 700;
 }

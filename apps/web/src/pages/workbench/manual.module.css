@@ -82,9 +82,10 @@
 .coverThumb {
   width: 84px;
   aspect-ratio: 2 / 3;
-  border-radius: 14px;
+  border-radius: 12px;
   object-fit: cover;
-  background: var(--fill);
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
   flex: none;
 }
 .coverBody {

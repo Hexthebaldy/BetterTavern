@@ -1,6 +1,7 @@
 /**
  * 登录、注册的版式（W01、W02，同平板宽屏 T01）：
- * - ≥ 900：左右分栏。左侧插画区宽 47.3%，离窗口 16，圆角 32，灰底，有 Logo、插画和一句介绍；右侧表单宽 400，在右半边居中。
+ * - ≥ 900：左右分栏。左侧插画区宽 47.3%，离窗口 16，是一大格灰网点（2.5 描边、圆角 22、--x8 硬投影），有 Logo、插画和一句介绍；
+ *   右侧表单宽 400，在右半边居中。
  * - 600–899：表单宽 440 居中；< 600：整宽。窄屏的 Logo 和介绍在表单上面。
  * 网页和接口同源，没有 App 底部的“服务器”入口。
  */
@@ -19,29 +20,29 @@ function Art() {
   const ink = {
     fill: "none",
     stroke: "var(--ink)",
-    strokeWidth: 2.2,
+    strokeWidth: 2.6,
     strokeLinecap: "round",
     strokeLinejoin: "round",
   } as const;
-  const soft = { ...ink, stroke: "var(--line2)" };
+  const soft = { ...ink, stroke: "var(--mut)", strokeWidth: 1.8 };
   return (
     <svg className={styles.art} viewBox="0 0 565 802" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <circle cx={402} cy={236} r={30} fill="var(--acc)" />
-      <circle cx={402} cy={236} r={58} fill="none" stroke="var(--line2)" strokeWidth={1.5} />
+      <circle cx={402} cy={236} r={58} fill="none" stroke="var(--ink)" strokeWidth={2.5} />
       <circle
         cx={402}
         cy={236}
         r={92}
         fill="none"
-        stroke="var(--line2)"
-        strokeWidth={1.5}
+        stroke="var(--ink)"
+        strokeWidth={2}
         strokeDasharray="2 7"
       />
       <path d="M60 330h120M60 346h76" {...soft} />
       <path d="M150 556h196l-24 30H174z" {...ink} />
       <path d="M190 556q58-58 116 0" {...ink} />
       <path d="M248 498v-50" {...ink} />
-      <circle cx={248} cy={440} r={8} fill="var(--card)" stroke="var(--ink)" strokeWidth={2.2} />
+      <circle cx={248} cy={440} r={8} fill="var(--paper)" stroke="var(--ink)" strokeWidth={2.6} />
       <path d="M346 556l64-62" {...ink} />
       <path d={`M-20 600${WAVE}`} {...ink} />
       <path d={`M-20 632${WAVE}`} {...soft} />

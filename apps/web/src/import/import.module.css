@@ -1,13 +1,17 @@
+/* 拖着文件进窗口时盖在内容区上的接收区：一大格蓝网点，2.5 虚线描边，--x8 硬投影 */
+
 .dropZone {
   position: fixed;
   z-index: 50;
-  top: var(--edge);
-  right: var(--edge);
-  bottom: var(--edge);
-  left: calc(var(--page-left, 0px) + 16px);
-  border-radius: var(--r-sheet);
-  background: color-mix(in srgb, var(--acc-bg) 94%, transparent);
-  box-shadow: inset 0 0 0 2px var(--acc);
+  top: 24px;
+  right: calc(var(--page-right, 24px) - 8px);
+  bottom: 24px;
+  left: calc(var(--page-left, 24px) - 8px);
+  border: var(--bw) dashed var(--frame);
+  border-radius: var(--r-panel);
+  background: var(--ht-acc), var(--acc);
+  color: var(--on-acc);
+  box-shadow: var(--x8);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -16,7 +20,8 @@
   animation: fade var(--dur) var(--ease);
 }
 :global([data-nav="tabbar"]) .dropZone {
-  left: var(--edge);
+  left: 12px;
+  right: 12px;
 }
 @keyframes fade {
   from {
@@ -24,25 +29,27 @@
   }
 }
 .dropIcon {
-  width: 72px;
-  height: 72px;
-  border-radius: 36px;
+  width: 80px;
+  height: 80px;
+  border: var(--bw) solid var(--frame);
+  border-radius: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--acc);
-  color: #ffffff;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--x4);
 }
 .dropTitle {
-  margin-top: 22px;
-  font-size: 26px;
-  line-height: 34px;
-  font-weight: 700;
+  margin-top: 24px;
+  font-family: var(--font-display);
+  font-size: 44px;
+  line-height: 52px;
+  font-weight: 900;
 }
 .dropText {
   margin-top: 8px;
   font-size: 15px;
   line-height: 24px;
-  color: var(--ink2);
   text-align: center;
 }

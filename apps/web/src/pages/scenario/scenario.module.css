@@ -1,9 +1,11 @@
-/* 剧本详情（W05）、新建和编辑剧本、开始表单：数值同 App 的 app/scenario/[id]/index.tsx、StartForm.tsx */
+/* 剧本详情（W05）、新建和编辑剧本、开始表单：版式同 App 的 app/scenario/[id]/index.tsx、StartForm.tsx，样子是漫画分镜版 */
 
 /* ---- 版式 ---- */
 .split {
   display: flex;
   height: 100vh;
+  /* 左右给轮盘让出位置（AppShell 的 --page-left、--page-right），里面再各留 12 */
+  padding: 0 max(0px, calc(var(--page-right, 12px) - 12px)) 0 max(0px, calc(var(--page-left, 12px) - 12px));
 }
 .info {
   width: calc(var(--scenario-info) + 2 * 12px);
@@ -29,9 +31,10 @@
   bottom: 16px;
   max-width: calc(var(--readable) + 2 * 24px + 96px);
   padding: 12px;
-  border-radius: 34px;
-  background: var(--card);
-  box-shadow: var(--shadow-float);
+  border-radius: 16px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
+  box-shadow: var(--x4);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -56,7 +59,11 @@
 /* ---- 封面与概要 ---- */
 .cover {
   position: relative;
-  margin: 12px 12px 0;
+  margin: 24px 12px 0;
+  border: var(--bw) solid var(--frame);
+  border-radius: var(--r-panel);
+  overflow: hidden;
+  box-shadow: var(--x6);
 }
 .single .cover {
   margin: 0;
@@ -87,8 +94,9 @@
   min-width: 0;
 }
 .hero {
-  font-size: 38px;
-  line-height: 44px;
+  font-size: 44px;
+  line-height: 52px;
+  font-family: var(--font-display);
   font-weight: 900;
   letter-spacing: -0.03em;
 }
@@ -105,8 +113,9 @@
 .card {
   margin: 8px 12px 0;
   padding: 0 16px;
-  border-radius: var(--r-group);
-  background: var(--bg2);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .description {
   padding-top: 18px;
@@ -134,7 +143,7 @@
   background: transparent;
   color: var(--acc);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 700;
 }
 .danger {
   display: flex;
@@ -161,7 +170,8 @@
 .startTitle {
   font-size: 26px;
   line-height: 32px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
   letter-spacing: -0.02em;
 }
 .steps {
@@ -174,8 +184,9 @@
   flex-direction: column;
   gap: 14px;
   padding: 20px 16px;
-  border-radius: var(--r-group);
-  background: var(--bg2);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .stepHead {
   display: flex;
@@ -185,20 +196,21 @@
 .stepNo {
   width: 28px;
   height: 28px;
-  border-radius: 14px;
+  border-radius: var(--r-key);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--card);
+  background: var(--ink);
+  color: var(--on-ink);
   font-family: var(--font-mono);
-  font-weight: 500;
+  font-weight: 700;
   font-size: 12px;
 }
 .stepTitle {
   flex: 1;
   font-size: 17px;
   line-height: 24px;
-  font-weight: 700;
+  font-weight: 800;
 }
 .optional {
   font-size: 12.5px;
@@ -219,7 +231,7 @@
   flex: 1;
 }
 .dice {
-  background: var(--on-fill);
+  border-color: transparent;
 }
 .hiddenLabel label {
   position: absolute;
@@ -237,8 +249,9 @@
   display: flex;
   gap: 4px;
   padding: 4px;
-  border-radius: 26px;
-  background: var(--inset);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .length {
   flex: 1;
@@ -248,27 +261,27 @@
   gap: 10px;
   padding: 16px 0 12px;
   border: 0;
-  border-radius: 22px;
+  border-radius: 12px;
   background: transparent;
   color: var(--ink2);
   font-size: 14px;
 }
 .lengthOn {
-  background: var(--raised);
-  box-shadow: var(--shadow-lift);
-  color: var(--ink);
-  font-weight: 600;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 700;
 }
 .lengthOn svg {
-  color: var(--acc);
+  color: var(--sky);
 }
 .checks {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 10px;
   padding: 4px 14px;
-  border-radius: var(--r-card);
-  background: var(--card);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 
 /* ---- 摘要与开始 ---- */
@@ -278,9 +291,10 @@
   gap: 10px;
   margin-top: 16px;
   padding: 12px;
-  border-radius: var(--r-sheet);
-  background: var(--card);
-  box-shadow: var(--shadow-float);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
+  box-shadow: var(--x4);
 }
 .summary {
   display: flex;
@@ -306,8 +320,9 @@
   align-items: center;
   gap: 12px;
   padding: 8px 12px 8px 8px;
-  border-radius: var(--r-option);
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
   color: inherit;
   text-decoration: none;
 }
@@ -334,8 +349,9 @@
 .setup {
   margin: 8px 12px 0;
   padding: 6px 16px;
-  border-radius: var(--r-group);
-  background: var(--bg2);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .setupRow {
   display: flex;
@@ -344,7 +360,7 @@
   padding: 10px 0;
 }
 .setupRow + .setupRow {
-  border-top: 1px solid var(--line);
+  border-top: 1.5px solid var(--grey2);
 }
 .setupValue {
   font-size: 14.5px;
@@ -353,7 +369,10 @@
 }
 .sectionLabel {
   padding: 22px 24px 8px;
-  font-size: 13px;
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   color: var(--mut);
 }
 
@@ -389,7 +408,8 @@
   padding-top: 20px;
   font-size: 20px;
   line-height: 26px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 900;
 }
 .formHint {
   margin-top: -4px;
@@ -407,8 +427,9 @@
   align-items: center;
   gap: 12px;
   padding: 8px 8px 8px 8px;
-  border-radius: var(--r-option);
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .pickIndex {
   width: 22px;
@@ -419,7 +440,7 @@
   font-variant-numeric: tabular-nums;
 }
 .pickOn {
-  box-shadow: inset 0 0 0 1.5px var(--acc);
+  box-shadow: var(--b3);
 }
 .pickButton {
   flex: 1;
@@ -446,15 +467,15 @@
   gap: 4px;
   padding: 12px 14px;
   border: 0;
-  border-radius: var(--r-option);
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 .openingOn {
-  box-shadow: inset 0 0 0 2px var(--acc);
+  box-shadow: var(--b3);
 }
 .openingTitle {
   font-size: 14px;

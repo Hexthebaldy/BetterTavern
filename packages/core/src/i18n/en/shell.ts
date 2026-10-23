@@ -35,7 +35,7 @@ export const shell: Messages<typeof source> = {
   notFound: {
     title: "Page not found",
     heading: "This page doesn't exist",
-    text: "The address may be wrong, or the content was deleted. <link>Back to Saves</link>",
+    text: "The address may be wrong, or the content was deleted. <home>Back to Saves</home>",
   },
   shortcuts: {
     title: "Keyboard shortcuts",

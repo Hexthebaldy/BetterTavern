@@ -42,8 +42,9 @@
   display: flex;
   gap: 2px;
   padding: 3px;
-  border-radius: 18px;
-  background: var(--inset);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .tab {
   height: 28px;
@@ -58,10 +59,9 @@
   white-space: nowrap;
 }
 .tabOn {
-  background: var(--raised);
-  color: var(--ink);
-  font-weight: 600;
-  box-shadow: var(--shadow-lift);
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 700;
 }
 .scroll {
   flex: 1;
@@ -80,9 +80,9 @@
   aspect-ratio: 16 / 10;
   border: 0;
   padding: 0;
-  border-radius: 20px;
+  border-radius: 12px;
   overflow: hidden;
-  background: var(--card);
+  background: var(--paper);
   color: var(--mut);
   font: inherit;
   font-size: 12.5px;
@@ -135,7 +135,8 @@
 .name {
   font-size: 24px;
   line-height: 30px;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 900;
   letter-spacing: -0.02em;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -151,8 +152,8 @@
   padding: 0 4px;
 }
 .block {
-  border-radius: 16px;
-  background: var(--card);
+  border-radius: 12px;
+  background: var(--paper);
   padding: 10px 14px 12px;
   display: flex;
   flex-direction: column;
@@ -255,8 +256,9 @@
   padding: 0 4px;
 }
 .note {
-  border-radius: 16px;
-  background: var(--card);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -324,8 +326,9 @@
   padding: 8px 4px 0;
 }
 .opening {
-  border-radius: 16px;
-  background: var(--card);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
   padding: 14px 16px;
   font-family: var(--font-serif);
   font-size: 15px;
@@ -367,9 +370,10 @@
 .coverCurrentImg {
   width: 96px;
   aspect-ratio: 2 / 3;
-  border-radius: 14px;
+  border-radius: 12px;
   object-fit: cover;
-  background: var(--fill);
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
   flex: none;
 }
 .coverCurrentBody {
@@ -396,8 +400,9 @@
   flex-direction: column;
   gap: 10px;
   padding: 14px;
-  border-radius: 18px;
-  background: var(--fill);
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
 }
 .service {
   font-size: 12px;

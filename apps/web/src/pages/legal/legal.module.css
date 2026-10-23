@@ -1,4 +1,4 @@
-/* 协议页面：正文宽 680，适合长篇阅读；上面是 Logo 和三篇之间的切换 */
+/* 协议页面：正文宽 680，适合长篇阅读；上面是 Logo 和三篇之间的切换（描边的一条，选中的那格墨底） */
 
 .page {
   min-height: 100vh;
@@ -17,36 +17,42 @@
   max-width: 920px;
   margin: 0 auto;
   padding: 16px 24px;
-  background: var(--bg);
+  background: var(--paper);
 }
 .brand {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   color: var(--ink);
-  font-size: 16px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 900;
   text-decoration: none;
 }
 .tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  overflow: hidden;
 }
 .tab {
   display: inline-flex;
   align-items: center;
   height: 36px;
   padding: 0 14px;
-  border-radius: 999px;
-  color: var(--ink2);
+  color: var(--ink);
   font-size: 14px;
+  font-weight: 600;
   text-decoration: none;
-  background: var(--bg2);
+  background: var(--paper);
+}
+.tab + .tab {
+  border-left: var(--bw-sm) solid var(--frame);
 }
 .active {
   background: var(--ink);
-  color: var(--bg);
+  color: var(--on-ink);
 }
 .body {
   max-width: 680px;
@@ -57,9 +63,10 @@
 }
 .body h1 {
   margin: 24px 0 8px;
-  font-size: 32px;
-  line-height: 1.25;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 1.2;
+  font-weight: 900;
   letter-spacing: -0.02em;
 }
 .body h1 + p {
@@ -69,9 +76,10 @@
 }
 .body h2 {
   margin: 36px 0 8px;
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 22px;
   line-height: 1.4;
-  font-weight: 700;
+  font-weight: 900;
 }
 .body p,
 .body ul {
@@ -91,7 +99,7 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .tab:not(.active):hover {
-    background: var(--bg3);
+    background: var(--grey);
   }
 }
 @media (max-width: 599px) {
@@ -102,6 +110,6 @@
     padding: 8px 16px 72px;
   }
   .body h1 {
-    font-size: 26px;
+    font-size: 30px;
   }
 }

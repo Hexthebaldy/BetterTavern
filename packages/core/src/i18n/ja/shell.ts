@@ -33,7 +33,7 @@ export const shell: MessagesOtherOnly<typeof source> = {
   notFound: {
     title: "ページが見つかりません",
     heading: "このページは見つかりません",
-    text: "アドレスが間違っているか、内容が削除された可能性があります。<link>セーブに戻る</link>",
+    text: "アドレスが間違っているか、内容が削除された可能性があります。<home>セーブに戻る</home>",
   },
   shortcuts: {
     title: "キーボードショートカット",
