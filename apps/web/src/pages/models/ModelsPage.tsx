@@ -2,7 +2,8 @@
  * 模型（/models；/models/:id 打开这个模型的详情，docs/design/comic 的 07）：漫画格子，不翻页。
  * - 左上“分工”：导演、后台整理、工作台三行，每行一个大字占位、说明和一个选模型的下拉框（直接换，不用点进每个模型）；
  * - 右上一格蓝网点：官方模型剩多少点、大约能写多少回合（服务器没有官方模型时这一格不画，“我的模型”占满右边）；
- * - 右下“我的模型”：状态点、名字、用途标签、服务商、Key 尾号、工作窗口、测试结果；点一行打开详情（窗口正中的对话框）。
+ * - 右下“我的模型”：状态点、名字、用途标签、服务商、Key 尾号、工作窗口、测试结果（上次测试量到的延迟）；
+ *   点一行打开详情（窗口正中的对话框）。
  *   官方模型永远在第一行，服务商和 Key 不写（都是服务器提供的）；
  * - 左下“添加模型”三步，“添加”打开对话框（AddModelForm）；
  * - 页头右边是“连接测试”。外部服务不在这一页（在设置里）。
@@ -332,7 +333,14 @@ function ModelList({ routes, selected }: { routes: ModelRoute[]; selected: strin
         ]
           .filter(Boolean)
           .join(" · ");
-        const status = [modelStatusLabel(route.status), route.supports_tools ? null : t("models.noToolsShort")]
+        // 上次测试的延迟（取第一项通过、量到了时间的检查）
+        const latency =
+          kind === "ok" ? route.last_probe?.checks.find((c) => c.ok && c.latency_ms !== null)?.latency_ms : null;
+        const status = [
+          modelStatusLabel(route.status),
+          latency != null ? `${Math.round(latency)}ms` : null,
+          route.supports_tools ? null : t("models.noToolsShort"),
+        ]
           .filter(Boolean)
           .join(" · ");
         return (
