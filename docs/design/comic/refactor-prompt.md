@@ -2,6 +2,8 @@
 
 把下面整段交给 Claude Code（在仓库根目录打开）。也可以只说一句“按 docs/design/comic/refactor-prompt.md 做”。
 
+主体部分（01–09）已经按这份做完了。登录、注册、验证邮箱是后来补的稿，任务在最后的“追加”一节，可以单独交给 Claude Code：“按 docs/design/comic/refactor-prompt.md 最后的追加一节改登录页”。
+
 ---
 
 ## 任务
@@ -82,3 +84,36 @@
 - 夜间模式能正常用。
 - `make lint`、类型检查、`node --test` 和网页端的构建全部通过。
 - 最后给我一份报告：做了什么；哪里和稿子不一样、为什么；接口里缺哪些数据。
+
+---
+
+## 追加：登录、注册、验证邮箱
+
+把 `apps/web/src/pages/auth/` 改成 `docs/design/comic/png/10`–`12` 的样子。
+
+### 先读
+
+1. `docs/design/comic/README.md` 的“登录页”一节，和 `png/10-login.png`、`png/11-register.png`、`png/12-verify.png`。
+2. `docs/design/comic/source/ComicAuth.dc.html`：里面是生成好的 SVG，地图、关系图、文稿的具体形状和数值以它为准。
+3. 现在的 `pages/auth/`：`AuthLayout.tsx`、`LoginPage.tsx`、`RegisterPage.tsx`、`VerifyPage.tsx`、`ForgotPage.tsx`、`ServerSwitch.tsx`、`auth.module.css`。
+
+动手前先给我一份简短的计划，我确认后再写。
+
+### 要做的
+
+- `AuthLayout`：窗口 ≥ 900 时是两格漫画，左格是桌面，右格是表单；去掉现在的 `Art` 插画。窗口 < 900 时不显示左格，只留表单，排法和现在的窄屏一样。
+- 桌面写成一个组件（比如 `pages/auth/Desk.tsx`）。地图、人物关系图、文稿、索引卡各自是一个只画 SVG 的小组件；胶带、图钉、蓝线放在最上层。注册页传一个参数，画“刚开始”的样子。
+- 等高线、湖、河、字条这些看起来随机的形状，用固定种子的伪随机来生成：同一个种子每次画出来都一样。生成用的纯函数单独放一个文件，用 `node --test` 测行为：同一个种子结果相同，所有的点都落在画布里面。
+- 左格里一个字也不要出现，不放图片，也不画插画。整个左格加 `aria-hidden`。
+- 表单按稿子改：Logo 和名字、宋体大标题、输入框、主按钮（里面印 Enter 键帽）、次要按钮；验证码是 6 个格子。右格的底是一圈很淡的集中线。现有的 `ServerSwitch` 放在右格底部左边，三个条款链接放在右边。表单的校验、错误提示、跳转逻辑、服务器切换的行为都不改，只改排法和样式。
+- 找回密码页（`ForgotPage`）没有单独出稿，用和验证邮箱一样的版式。
+- 夜间模式下，桌面上的纸、底纹和描边都跟着现有的变量走。
+- 界面文字照旧走 i18n。左格没有字，所以不需要新加文案。
+
+### 验收
+
+- 1440×900 下三页和 png 对得上。用 Playwright 截图对照，截图放进最后的报告。
+- 窗口宽 900、1280、1920 时都不溢出；窄于 900 时只剩表单。
+- 登录、注册、验证、找回密码和服务器切换的端到端测试都通过；`make lint`、类型检查、`node --test` 和构建全部通过。
+- 更新 `docs/client.md` 里登录页的说明，把 `docs/design/comic/README.md` 的状态改成“10–12 已经实现”。
+- 做完提交一次，不要 push。
