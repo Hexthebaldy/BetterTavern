@@ -109,6 +109,7 @@ function detail(head: Turn | null, extra: Partial<PlaythroughDetail> = {}): Play
       status: "active",
       scenario_id: "s1",
       language: "zh",
+      mode: "standard",
       protagonist_name: "林川",
       preferences: {},
       head_turn_id: head?.id ?? null,

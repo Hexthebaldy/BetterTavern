@@ -10,7 +10,7 @@ const scenario = (name: string, cardIds: string[], extra: Partial<Scenario> = {}
   name,
   cards: cardIds.map((id) => ({ card_id: id, name: `卡${id}`, cover_blob_id: null })),
   cover_blob_id: null,
-  setup: { protagonist: { name: "", summary: "" }, preferences: { length: "medium", style: "", boundaries: "" }, opening: null },
+  setup: { protagonist: { name: "", summary: "" }, preferences: { length: "medium", style: "", boundaries: "" }, opening: null, lightning: false },
   description_preview: "",
   version: 1,
   created_at: "2026-10-01T00:00:00Z",

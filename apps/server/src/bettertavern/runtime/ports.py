@@ -55,6 +55,7 @@ class TurnHeader:
     status: str
     world_ready: bool
     language: str = "zh"
+    mode: str = "standard"  # standard / lightning（domain/story/mode.py）
 
 
 @dataclass(frozen=True, slots=True)

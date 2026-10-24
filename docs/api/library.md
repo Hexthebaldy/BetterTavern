@@ -133,6 +133,7 @@
 | `protagonist` | [`SetupProtagonist`](#setupprotagonist) | 否 | 默认主角 |
 | `preferences` | [`SetupPreferences`](#setuppreferences) | 否 | 默认偏好 |
 | `opening` | [`SetupOpening`](#setupopening) / null | 否 | 用哪张卡的哪条开场白开场；为 null 时由导演写开场 |
+| `lightning` | boolean | 否 | 闪电模式，默认 `false`。开着时这个剧本开的新故事花费更少、没有世界状态（存档的 `mode` 是 `lightning`）；已经开始的故事不受影响 |
 
 #### `SetupProtagonist`
 

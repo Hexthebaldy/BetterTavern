@@ -96,6 +96,7 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
       protagonist: { name: values.name, summary: values.summary },
       preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
       opening,
+      lightning: scenario?.setup.lightning ?? false,
     };
     try {
       if (scenario) {

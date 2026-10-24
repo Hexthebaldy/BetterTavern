@@ -233,6 +233,8 @@ export type ScenarioSetup = {
   preferences: Preferences;
   /** 用哪张卡的哪条开场白开场（0 是 first_mes，1 起是备选开场白）；null 时由导演写开场 */
   opening: { card_id: string; greeting: number } | null;
+  /** 闪电模式：这个剧本开的新故事花费更少、没有世界状态；只影响之后开始的故事 */
+  lightning: boolean;
 };
 
 export type Scenario = {
@@ -524,6 +526,8 @@ export type Playthrough = {
   scenario_id: string | null;
   /** 提示词的语言，开局时定下 */
   language: "zh" | "en" | "ja";
+  /** lightning：闪电模式，没有世界状态（不显示世界状态的入口）；开局时定下 */
+  mode: "standard" | "lightning";
   protagonist_name: string;
   preferences: Partial<Preferences>;
   head_turn_id: string | null;

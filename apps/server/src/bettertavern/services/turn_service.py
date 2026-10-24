@@ -64,6 +64,7 @@ def header_for(pt: repo.PlaythroughRow, turn: repo.TurnRow, user_id: str) -> Tur
         status=turn.status,
         world_ready=pt.status != "building",
         language=pt.language,
+        mode=pt.mode,
     )
 
 

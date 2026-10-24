@@ -168,6 +168,7 @@ class PgTurnStore:
             status=turn.status,
             world_ready=pt.status != "building",
             language=pt.language,
+            mode=pt.mode,
         )
 
     async def load_context(self, header: TurnHeader) -> TurnContext:

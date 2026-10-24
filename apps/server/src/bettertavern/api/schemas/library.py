@@ -144,6 +144,8 @@ class ScenarioSetupModel(BaseModel):
     preferences: SetupPreferences = Field(default_factory=SetupPreferences)
     # 用哪张卡的哪条开场白；为空时由导演写开场
     opening: SetupOpening | None = None
+    # 闪电模式：这个剧本开的新故事更省、没有世界状态（只影响之后开始的故事）
+    lightning: bool = False
 
 
 class ScenarioCardOut(Out):

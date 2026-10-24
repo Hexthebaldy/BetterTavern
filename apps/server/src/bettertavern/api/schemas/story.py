@@ -64,6 +64,7 @@ class PlaythroughOut(Out):
     status: str
     scenario_id: str | None
     language: str
+    mode: Literal["standard", "lightning"]
     protagonist_name: str
     preferences: dict[str, Any]
     head_turn_id: str | None

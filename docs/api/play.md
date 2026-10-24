@@ -274,6 +274,7 @@
 | `status` | string | `building`（世界还没建好）/ `active` / `ended`（已经写完结局，不能再提交行动） |
 | `scenario_id` | string / null | 剧本；剧本被删除后为 null |
 | `language` | string | 提示词的语言：`zh` / `en` / `ja`，开局时定下 |
+| `mode` | string | `standard` / `lightning`（闪电模式：没有世界状态，客户端不显示世界状态的入口）。开局时按剧本的 `setup.lightning` 定下，之后不变 |
 | `protagonist_name` | string | 主角的名字 |
 | `preferences` | object | 叙述偏好 `{"length", "style", "boundaries"}`，含义同 [`PreferencesIn`](#preferencesin) |
 | `head_turn_id` | string / null | 头部回合，也就是最新一个完成的回合；开场完成前为 null |

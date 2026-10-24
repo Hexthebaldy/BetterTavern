@@ -1,4 +1,4 @@
-"""剧本的设置（scenarios.setup）：默认主角、偏好、用哪张卡的哪条开场白。
+"""剧本的设置（scenarios.setup）：默认主角、偏好、用哪张卡的哪条开场白、是不是闪电模式。
 
 开新故事时用它预填没填的字段；opening 为空时由导演写开场。
 这里只做形状和长度的规整；opening 指向的卡是否在剧本里、开场白编号是否存在，
@@ -36,6 +36,9 @@ class ScenarioSetup:
     style: str = ""
     boundaries: str = ""
     opening: Opening | None = None
+    # 闪电模式：这个剧本开的新故事只有导演、不整理世界状态（domain/story/mode.py）；
+    # 已经开始的故事不受影响
+    lightning: bool = False
 
     @classmethod
     def from_json(cls, data: Mapping[str, Any] | None) -> ScenarioSetup:
@@ -62,6 +65,7 @@ class ScenarioSetup:
             style=_clean(preferences.get("style"), MAX_STYLE),
             boundaries=_clean(preferences.get("boundaries"), MAX_BOUNDARIES),
             opening=parsed_opening,
+            lightning=data.get("lightning") is True,
         )
 
     def to_json(self) -> dict[str, Any]:
@@ -77,6 +81,7 @@ class ScenarioSetup:
                 if self.opening is None
                 else {"card_id": self.opening.card_id, "greeting": self.opening.greeting}
             ),
+            "lightning": self.lightning,
         }
 
 

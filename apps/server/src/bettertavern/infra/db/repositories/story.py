@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from bettertavern.domain.story.mode import PlayMode, parse_mode
 from bettertavern.infra.db.sqlutil import (
     Row,
     as_json,
@@ -34,6 +35,7 @@ class PlaythroughRow:
     title: str
     status: str
     language: str
+    mode: PlayMode  # standard / lightning，开局时定下
     settings: dict[str, Any]
     seed: dict[str, Any] | None
     seed_source: str | None
@@ -57,6 +59,7 @@ class PlaythroughRow:
             title=row["title"],
             status=row["status"],
             language=row["language"],
+            mode=parse_mode(row["mode"]),
             settings=as_json(row["settings"], {}),
             seed=as_json(row["seed"]),
             seed_source=row["seed_source"],
@@ -73,7 +76,7 @@ class PlaythroughRow:
         )
 
 
-_PT_COLS = """id, user_id, scenario_id, title, status, language, settings, seed, seed_source,
+_PT_COLS = """id, user_id, scenario_id, title, status, language, mode, settings, seed, seed_source,
     head_turn_id, timeline_epoch, state_seq, summarized_seq, outline_seq, rollbacks_used,
     active_turn_id,
     lease_expires_at, created_at, updated_at"""
@@ -87,12 +90,13 @@ async def insert_playthrough(
     title: str,
     language: str,
     settings: dict[str, Any],
+    mode: PlayMode = "standard",
 ) -> PlaythroughRow:
     row = await fetch_one(
         conn,
         f"""
-        INSERT INTO playthroughs (user_id, scenario_id, title, language, settings)
-        VALUES (:u, :scenario, :title, :lang, CAST(:settings AS jsonb))
+        INSERT INTO playthroughs (user_id, scenario_id, title, language, mode, settings)
+        VALUES (:u, :scenario, :title, :lang, :mode, CAST(:settings AS jsonb))
         RETURNING {_PT_COLS}
         """,
         {
@@ -100,6 +104,7 @@ async def insert_playthrough(
             "scenario": scenario_id,
             "title": title,
             "lang": language,
+            "mode": mode,
             "settings": dumps(settings),
         },
     )

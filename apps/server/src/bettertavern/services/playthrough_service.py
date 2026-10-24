@@ -174,6 +174,8 @@ class PlaythroughService:
                 title=title,
                 language=parse_language(data.language),
                 settings=settings,
+                # 闪电模式在开局时定下，之后改剧本不影响这一局
+                mode="lightning" if setup.lightning else "standard",
             )
             turn = await repo.insert_turn(
                 conn,

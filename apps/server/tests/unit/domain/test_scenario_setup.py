@@ -16,7 +16,15 @@ def test_empty_setup_has_defaults() -> None:
         "protagonist": {"name": "", "summary": ""},
         "preferences": {"length": "medium", "style": "", "boundaries": ""},
         "opening": None,
+        "lightning": False,
     }
+
+
+def test_lightning_is_only_on_when_explicitly_true() -> None:
+    assert ScenarioSetup.from_json({"lightning": True}).lightning is True
+    assert ScenarioSetup.from_json({"lightning": True}).to_json()["lightning"] is True
+    for value in (False, None, "true", 1, "lightning"):
+        assert ScenarioSetup.from_json({"lightning": value}).lightning is False
 
 
 def test_setup_is_trimmed_and_clamped() -> None:
