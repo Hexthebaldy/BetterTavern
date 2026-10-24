@@ -1,5 +1,7 @@
 # BetterTavern 移动端 UI（第一版正式界面）
 
+> App 的样子已经换成漫画风（2026-10-25，见 [`../comic/mobile/`](../comic/mobile/README.md) 和 [`../comic/tablet/`](../comic/tablet/README.md)）。这里的颜色、圆角、阴影只作历史参考；页面结构和交互规则仍以这里为准。
+
 这是移动端（`apps/mobile`）第一版的正式界面设计。手机的画板在本目录，平板在 `tablet/`，电脑浏览器在 `web/`，标志和 App 图标在 `../logo/`。
 
 设计方向是“白 / 柔线 / 大圆角”：

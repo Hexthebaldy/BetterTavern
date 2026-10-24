@@ -2,7 +2,7 @@
 
 这是 `apps/mobile` 在平板横屏（窗口宽 ≥ 900）上的新界面。风格和手机稿（[`../mobile/`](../mobile/README.md)）一样，是网页端那套漫画风；**布局沿用现在平板宽屏的方案**（[`docs/design/ui/tablet/`](../../ui/tablet/README.md)），只换风格。和现在不同的地方只有一处：左侧导航栏从 4 块改成和网页轮盘一样的 6 块，上下居中，不放 Logo。
 
-状态：设计稿（2026-10-25），还没有实现。实现和手机一起做，重构提示词在 [`../mobile/refactor-prompt.md`](../mobile/refactor-prompt.md)。
+状态：已实现（2026-10-25，和手机一起，`apps/mobile`）。重构提示词在 [`../mobile/refactor-prompt.md`](../mobile/refactor-prompt.md)；实现时和稿子不同的地方见手机稿 README 的最后一节，平板另外几处：剧本详情两栏中间没有虚线分隔；角色卡详情照手机的单栏排（名字那一行没有按钮，“在用的剧本”和“版本历史”上下排）。
 
 画板按 iPad 11 寸横屏（1194×834）画，13 寸只是更宽，规则一样。平板竖屏（600–899）没有单独出稿，用手机稿的样式套现在平板中屏的布局（居中单栏、底部 4 块）。
 
@@ -71,7 +71,7 @@ https://claude.ai/artifact/X9AHDCGAN7fs7mCHEUUvZc
 
 ## 实现要点
 
-- **侧栏（`src/components/bars.tsx` 的 `TabBar`）：** 宽屏时不再按 `state.routes` 一项项画，改成按一张 6 项的表画，每项写清楚去哪个路由、带什么参数、什么时候算选中（`library` 带 `tab=cards` 算“角色”，`settings` 带 `section=models` 算“模型”）。上下居中；去掉 `railLogo`；滑动的选中框（`useGlass` 按路由序号滑的玻璃框）去掉，iOS 26 的液态玻璃也不用（同手机稿），选中改成实心蓝图标加粗字。中屏和手机还是按 4 个路由画底部 Tab 栏。
+- **侧栏（实现在 `src/components/tabBar.tsx`，6 块的表在 `navItems.ts`）：** 宽屏时不再按 `state.routes` 一项项画，改成按一张 6 项的表画，每项写清楚去哪个路由、带什么参数、什么时候算选中（`library` 带 `tab=cards` 算“角色”，`settings` 带 `section=models` 算“模型”）。上下居中；去掉 `railLogo`；滑动的选中框（`useGlass` 按路由序号滑的玻璃框）去掉，iOS 26 的液态玻璃也不用（同手机稿），选中改成实心蓝图标加粗字。中屏和手机还是按 4 个路由画底部 Tab 栏。
 - **点同一个页面的另一块：** 现在的 `onPress` 只在没选中这个路由时才跳。6 块以后，“剧本”和“角色”、“模型”和“设置”是同一个路由，点的时候要比较参数，参数不同就带着新参数再导航一次。
 - **库页（`app/(tabs)/library.tsx`）：** 宽屏时不画“剧本 / 角色卡”分段控件，标题按 `tab` 显示“剧本”或“角色”；移到工作台的提示条只在“角色”显示。窄屏和中屏照旧，标题是“库”。
 - **设置页（`app/(tabs)/settings.tsx`）：** 右栏开哪一项现在是页面里的 `picked` 状态，改成也能从参数读。宽屏带 `section=models` 时左栏换成模型列表（`ModelsBody`，嵌在左栏里，点一行在右栏打开 `ModelBody`），右栏默认打开导演模型；不带参数时左栏是设置首页（去掉导演模型卡和“模型”一行），右栏默认打开账户。窄屏和中屏照旧（单栏，有“模型”一行），忽略 `section`。

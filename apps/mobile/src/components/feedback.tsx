@@ -17,7 +17,6 @@ import {
   onColor,
   space,
   useComic,
-  usePalette,
   type ComicColors,
 } from "../theme/index.ts";
 import { Button, IconButton } from "./buttons.tsx";
@@ -132,7 +131,7 @@ export function Notice({
 export type PillTone = "acc" | "accSolid" | "ink" | "ok" | "warn" | "err" | "grey" | "card";
 
 /** 底色、字色，和白底标签的描边色（有描边的是白底配同色线框） */
-function pillColors(tone: PillTone, c: ComicColors, ok: string): { bg: string; fg: string; line?: string } {
+function pillColors(tone: PillTone, c: ComicColors): { bg: string; fg: string; line?: string } {
   switch (tone) {
     case "acc":
     case "accSolid":
@@ -140,7 +139,7 @@ function pillColors(tone: PillTone, c: ComicColors, ok: string): { bg: string; f
     case "ink":
       return { bg: c.ink, fg: c.paper };
     case "ok":
-      return { bg: c.paper, fg: ok, line: ok };
+      return { bg: c.paper, fg: c.forest, line: c.forest };
     case "warn":
       return { bg: c.paper, fg: c.warn, line: c.warn };
     case "err":
@@ -170,8 +169,7 @@ export function Pill({
   style?: StyleProp<ViewStyle>;
 }) {
   const c = useComic();
-  const palette = usePalette();
-  const pc = pillColors(tone, c, palette.ok);
+  const pc = pillColors(tone, c);
   const fontSize = height <= 20 ? 11 : height >= 28 ? 13 : 12;
   return (
     <View

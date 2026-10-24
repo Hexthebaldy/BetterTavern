@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Logo } from "../src/components/Logo.tsx";
 import { Dots } from "../src/components/ui.tsx";
 import { useApp } from "../src/state/AppProvider.tsx";
-import { font, usePalette } from "../src/theme/index.ts";
+import { font, useComic } from "../src/theme/index.ts";
 
 export default function Index() {
   const { status } = useApp();
@@ -17,18 +17,18 @@ export default function Index() {
 
 /** 闪屏：一竖一横两条浅线，交点处是标志 */
 function Splash() {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
-    <View style={[styles.root, { backgroundColor: palette.bg }]}>
-      <View style={[styles.vertical, { backgroundColor: palette.line }]} />
-      <View style={[styles.horizontal, { backgroundColor: palette.line }]} />
+    <View style={[styles.root, { backgroundColor: c.page }]}>
+      <View style={[styles.vertical, { backgroundColor: c.grey2 }]} />
+      <View style={[styles.horizontal, { backgroundColor: c.grey2 }]} />
       <View style={styles.mark}>
         <Logo size={56} />
       </View>
       <View style={styles.name}>
-        <Text style={[styles.title, { color: palette.ink }]}>BetterTavern</Text>
-        <Text style={[styles.tagline, { color: palette.mut }]}>FIRST-PERSON FICTION</Text>
+        <Text style={[styles.title, { color: c.ink }]}>BetterTavern</Text>
+        <Text style={[styles.tagline, { color: c.mut }]}>FIRST-PERSON FICTION</Text>
       </View>
       <View style={styles.dots} accessibilityRole="progressbar" accessibilityLabel={t("splash.restoring")}>
         <Dots cell={8} gap={6} />

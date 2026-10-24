@@ -170,26 +170,30 @@ apps/mobile/
 | 设置首页的“语言” | 选择面板（手机是底部面板，平板是对话框）：跟随系统（下面注明系统语言）、中文、English、日本語；每种语言用它自己的文字写 |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
 
-界面按 [design/ui/](design/ui/README.md) 的设计稿实现（“白 / 柔线 / 大圆角”，第一版正式界面；交互规则也在那份 README 里）。
+界面按漫画风的设计稿实现（[design/comic/mobile/](design/comic/mobile/README.md)、平板横屏 [design/comic/tablet/](design/comic/tablet/README.md)，和网页端同一套：墨黑粗描边、硬投影、网点）。
+页面结构、交互仍按第一版（[design/ui/](design/ui/README.md) 的“白 / 柔线 / 大圆角”，2026-10-25 换成漫画风时只换了风格）。
+颜色在 `packages/design/src/comic.ts`（`useComic()` 取当前主题那一套），描边、圆角、硬投影的层数也在那里；字号在 `src/theme/comicType.ts`；
+按下时往投影的方向挪、投影缩短（`components/press.ts`），不缩放。
 界面文字有中文、英文和日文，在“设置 → 语言”里选：跟随系统（系统语言是中文时用中文，是日文时用日文，其他用英文）、中文、English、日本語，存在设备上，选了立刻生效；
-开局时把当前的界面语言传给服务端，决定这一局的提示词用哪种语言（[i18n.md](i18n.md)）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题只要在 `packages/design/src/themes.ts` 的主题表里加一项、配一套色板；主题只换颜色和投影，圆角、字号、间距是固定的。标签栏是浮在内容上的胶囊，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）。
-选中标签的图标和文字是 `#5B7CFF`（色板的 `tabOn`），底下是一块选中框，切换时滑到新标签（宽屏的竖向导航栏上下滑）：
-iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）——整条标签栏是一块玻璃，页面内容从下面透出来，选中框是另一块透明玻璃；
-没有液态玻璃时（Android、更早的 iOS）标签栏是白卡，选中框没有底色，一圈蓝色细描边加灰色投影（`tabCapsuleShadow`）。
-玻璃和它的上层都不能改透明度（改了玻璃不画），选中框只改位置。网页窄屏的底部 Tab 栏不用滑动的选中框，选中项是墨底；宽屏是轮盘（第 4 节）。和设计稿不同：
+开局时把当前的界面语言传给服务端，决定这一局的提示词用哪种语言（[i18n.md](i18n.md)）。外观在“设置 → 外观”里选：跟随系统、浅色、夜间（夜间就是深色色板），存在设备上，选了立刻生效；固定主题时用 `Appearance.setColorScheme` 覆盖系统深浅，键盘和状态栏跟着 App 走。加主题要在 `packages/design/src/themes.ts` 的主题表里加一项，并在 `comic.ts` 里配一套漫画颜色；主题只换颜色，描边、圆角、字号、间距是固定的。
+标签栏（`components/tabBar.tsx`）是浮在内容上的胶囊：白底、2.5 墨线、圆角 32、墨色硬投影 4，按安全区摆放，列表底部按它的高度留白（`useTabBarSpace()`）；
+四块是存档、库、工作台、设置，选中的一块图标主体填蓝（`FilledIcon`）、字变墨色加粗，没有选中框，不用液态玻璃。
+宽屏左侧是 6 块的侧栏（存档、剧本、角色、工作台、模型、设置，上下居中，没有 Logo），按 `components/navItems.ts` 的表画：
+“剧本”“角色”都是库页（`tab=cards` 算角色），“模型”“设置”都是设置页（`section=models` 算模型），点同一个页面的另一块时带着新参数再导航。和设计稿不同：
 阅读页的选项不再放在固定于底部的行动面板里（它在手机上长期盖住小半屏正文），而是接在故事流末尾（`TurnActions.tsx`），跟着正文滚动；
 底部只留一条贴边的操作栏（`BottomBar.tsx`，iPhone 上连同安全区约 80pt，故事流的底部按它的高度留白）：左边世界状态，右边“更多”，
 中间按状态换成“自己写…”（点了原地展开成输入框，跟着键盘浮起）、生成中的状态和“停止”、同步中的提示；
-往上翻离开最新位置时，中间这一格右端滑出一个灰底的下箭头按钮（和世界、更多一样，生成中带蓝点），“自己写…”跟着变窄，点它回到最新。
-生成状态只在操作栏里显示，正文里不重复。“我的行动”不画成卡片，和叙述用同样的字、浅一档的颜色，左边一道竖线，读起来是故事的一部分。
+往上翻离开最新位置时，中间这一格右端滑出一个下箭头图标按钮（和世界、更多一样，生成中带蓝点），“自己写…”跟着变窄，点它回到最新。
+生成状态只在操作栏里显示，正文里不重复。“我的行动”不画成卡片，和叙述用同样的字、同样的墨色，左边一道 3 的蓝线，读起来是故事的一部分。
 **写结局**（设计稿里没有）：“更多”里的一项，只在能行动时可点（开场写完、没在生成、没有失败等着重试）。点了弹出确认框，说明写完就结束、不能撤销，
 带一个可以不填的“结局方向”输入框（`overlay.prompt` 的 `optional`）。确认后提交 `ending` 行动，故事流里“我的行动”那一行是“写结局”或“写结局：方向”，
-导演接着写一大段；写完后最后一段下面居中一行“—END—”，没有选项，操作栏中间换成旗子和灰字“故事已完结”，“更多”里不再有写结局；
+导演接着写一大段；写完后最后一段下面居中一行“— END —”，没有选项，操作栏中间换成旗子和灰字“故事已完结”，“更多”里不再有写结局；
 故事列表里这个故事显示“已完结”（`storyStatus()`）。改名、看世界状态、删除照常可以。没做的：世界状态的“新”标记和按钮上的变化提示（服务端还没有世界状态的变更记录）、导入进度条（上传没有进度事件，用来回扫动的线代替）、改昵称（没有接口）、存档和剧本上的“闪电”标记（网页端有）。
 
 没有单独的世界页（世界状态在阅读页的面板里看）；时间线页还没做；大纲只给导演看，不做页面。
 
-**平板**按 [design/ui/tablet/](design/ui/tablet/README.md) 实现：同一套代码做响应式，视觉规则不变，只换布局；手机上的布局和行为不变。
+**平板**的布局按 [design/ui/tablet/](design/ui/tablet/README.md) 实现，横屏的样子按 [design/comic/tablet/](design/comic/tablet/README.md)：同一套代码做响应式，视觉规则不变，只换布局；手机上的布局和行为不变。
+平板竖屏（600–899）没有单独的稿子，用手机的样式套中屏的布局。
 
 - 方向：`app.config.ts` 打开 `ios.supportsTablet`，`orientation` 不锁（iPad 要参与分屏和台前调度，必须支持所有方向；
   Expo 会把 `UISupportedInterfaceOrientations~ipad` 填成四个方向）。iPhone 用 `ios.infoPlist` 只给竖屏，
@@ -213,8 +217,9 @@ iOS 26 起用系统的液态玻璃（`expo-glass-effect` 的 `GlassView`）—�
 - 存档列表网格 1 / 2 / 3 列，最近一个存档放大成主卡（方形封面撑满卡片高度，没有“继续读”按钮）；剧本网格宽屏按 240 一列（≤ 5 列），列表视图限宽 640。
 - 设置宽屏两栏：设置子页的主体在 `features/settings/screens/`（连接测试在 `features/probe/ProbeBody.tsx`），
   既是路由页面，也嵌进右栏（`SettingsPane.tsx`）；跳转经 `useSettingsNav()`，右栏里换成自己的小栈。
-  右栏是“灰底白卡”，用 `RaisedSurface` 换这一片的色板，页面主体不用改。
-- 登录、注册宽屏左右分栏（左侧插画区，`components/AuthLayout.tsx`），中屏表单宽 440 居中。
+  右栏是详情区：2.5 墨线、圆角 16，底色是详情区的灰，里面的格子是白的；`RaisedSurface` 把这一片的页面底色换成详情区的灰，页面主体不用改。
+- 登录、注册宽屏左右分栏（`components/AuthLayout.tsx`）：左边一格是网页登录页那张没有字的桌面（`AuthDesk.tsx`、`AuthDeskSheets.tsx`，
+  形状由 `packages/design` 的 `desk.ts` 生成，注册页是“刚开始”的样子），Logo 和名字在右边表单的顶上；中屏表单宽 440 居中。
 
 ### 目录（实际）
 
@@ -239,7 +244,9 @@ packages/
 │   └── utils/    format.ts  ids.ts
 └── design/src/                # @bettertavern/design
     ├── palettes.ts  themes.ts              # 色板（浅色、深色）与主题表（浅色、夜间）
-    ├── tokens.ts                           # 圆角、字号、间距、控件尺寸（不随主题变）
+    ├── comic.ts                            # 漫画风的颜色（按主题）、描边、圆角、硬投影、网点
+    ├── tokens.ts                           # 间距、手机端的控件尺寸（不随主题变）
+    ├── portrait.ts  desk.ts                # 人物位取字和底；登录页桌面的形状（两端共用）
     ├── layout.ts                           # 平板断点、栏宽、列数和浮层形态
     └── icons.ts  cover.ts  logo.ts         # 图标路径、几何封面的图形、标志的几何：只有数据，两端各自画
 
@@ -252,8 +259,8 @@ apps/mobile/
     │             language.ts               # 按设置和系统语言（expo-localization）切换界面语言
     ├── storage/  secure.ts                 # expo-secure-store（令牌、服务器地址、界面偏好）
     ├── features/
-    │   ├── play/     usePlaySession.ts  StoryFeed.tsx  TurnActions.tsx  BottomBar.tsx
-    │   │             ActionParts.tsx  WorldSheet.tsx  WorldParts.tsx  MoreSheet.tsx
+    │   ├── play/     usePlaySession.ts  StoryFeed.tsx  FeedParts.tsx  TurnActions.tsx  BottomBar.tsx
+    │   │             ActionParts.tsx  WorldSheet.tsx  WorldParts.tsx  MoreSheet.tsx  RollbackSheet.tsx
     │   ├── stories/  StoryCards.tsx                   # 平板的存档卡片（网格小卡、主卡）
     │   ├── library/  LibraryParts.tsx  cardActions.ts # 两个仓库的卡片、列表行、空状态；角色卡的操作
     │   ├── scenario/ StartForm.tsx                    # 开始新故事的表单（剧本设置也用它）
@@ -264,18 +271,22 @@ apps/mobile/
     │   │             MemoryBlocks.tsx  ProbeResults.tsx  AppearanceSheet.tsx  LanguageSheet.tsx  nav.tsx  SettingsPane.tsx
     │   │             screens/（模型列表、模型详情、外部服务、账户的页面主体）
     │   └── probe/    DiagnosticsCard.tsx  ProbeBody.tsx   # 连接测试；诊断日志的导出和清空
-    ├── components/ ui.tsx（门面）primitives  feedback  controls  bars  sheet  overlay  dialog  icons
-    │               Cover.tsx（图片或几何封面）SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx  AuthLayout.tsx
+    ├── components/ ui.tsx（门面）primitives  buttons  rows  feedback  controls  bars  tabBar  sheet  menu  overlay  dialog  icons
+    │               press.ts（按下的效果）navItems.ts（Tab 栏和侧栏的表）
+    │               Cover.tsx（图片或几何封面）Portrait.tsx  Halftone.tsx  SwipeRow.tsx  KeyParts.tsx  Logo.tsx  ServerSetting.tsx
+    │               AuthLayout.tsx  AuthDesk.tsx  AuthDeskSheets.tsx
     ├── hooks/      useAsync.ts  useKeyboardLift.ts  useLayout.ts
     ├── observability/ persist.ts  setup.ts  # 诊断日志存文件、启动时安装
-    ├── theme/      index.ts  fonts.ts      # 设计 token 的出口：共用的色板、主题表和 tokens；字体族和按语言选正文宋体（fonts.ts）
-    │               ThemeProvider.tsx       # usePalette()、RaisedSurface
+    ├── theme/      index.ts  fonts.ts      # 设计 token 的出口：主题表、漫画颜色和 tokens；字体族和按语言选正文宋体（fonts.ts）
+    │               comicType.ts            # 字号
+    │               ThemeProvider.tsx       # useComic()、useIsDark()、RaisedSurface
     └── utils/      orientation.ts
 ```
 
 `*.test.ts` 与被测文件放在一起，在仓库根目录 `npm test`（各工作区的 `node --test`）运行。`packages/core`：两种语言的资源一一对应、语言的解析、SSE 解析与重连、回合状态机、
 `PlaySession`（加载、幂等重试、409 的处理、续传、轮询）、`SessionManager`、`ApiClient`、诊断日志，以及开始表单的拼接、窗口格子、
-关系图布局、阅读字号、数字格式；`packages/design`：平板断点与栏宽、主题、几何封面；`apps/mobile`：最近用过的服务器。
+关系图布局、阅读字号、数字格式；`packages/design`：平板断点与栏宽、主题、漫画颜色、图标、几何封面、人物位、登录页桌面的形状；
+`apps/mobile`：最近用过的服务器、Tab 栏和侧栏的选中、浮层的先后、正文宋体的选择。
 
 **字体**：界面用系统黑体，不打包；等宽字用 `@expo-google-fonts/ibm-plex-mono`；叙述用思源宋体的子集，中文、日文各一份（OFL 许可）：
 简体中文版的 GB2312 子集（`assets/fonts/NotoSerifSC-Regular.ttf`，约 3.2 MB）和日文版的 JIS X 0208 子集（`assets/fonts/NotoSerifJP-Regular.ttf`，约 3.3 MB）。

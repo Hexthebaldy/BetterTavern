@@ -7,19 +7,19 @@ import Svg, { G, Path } from "react-native-svg";
 
 import { LOGO, logoStrokeScale } from "@bettertavern/design/logo";
 
-import { usePalette } from "../theme/index.ts";
+import { useComic } from "../theme/index.ts";
 
 export function Logo({ size = 48 }: { size?: number }) {
-  const palette = usePalette();
+  const c = useComic();
   const m = logoStrokeScale(size);
   return (
     <Svg width={size} height={size} viewBox={LOGO.viewBox} accessibilityLabel="BetterTavern">
-      <G fill="none" stroke={palette.ink} strokeLinejoin="miter" strokeMiterlimit={4}>
+      <G fill="none" stroke={c.ink} strokeLinejoin="miter" strokeMiterlimit={4}>
         <Path d={LOGO.frameA} strokeWidth={LOGO.frameStroke * m} />
         <Path d={LOGO.frameB} strokeWidth={LOGO.frameStroke * m} />
         <Path d={LOGO.inner} strokeWidth={LOGO.innerStroke * m} />
       </G>
-      <Path d={LOGO.core} fill={palette.acc} />
+      <Path d={LOGO.core} fill={c.acc} />
     </Svg>
   );
 }

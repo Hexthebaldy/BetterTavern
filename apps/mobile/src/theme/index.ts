@@ -7,12 +7,12 @@
  * 按下时往投影的方向挪、投影缩短（components/press.ts），不缩放、不改透明度。不能点的按钮变灰、没有投影。
  * 蓝给可以点的和“你”；红只表示删除和出错，琥珀只表示警告，都配图标。不用渐变、插画、纸纹。
  *
- * 颜色随主题变：漫画颜色在 @bettertavern/design 的 comic.ts（useComic() 取当前主题那一套），
- * 色板（palettes.ts，usePalette()）还留着给没有换掉的地方。描边、圆角、投影层数不随主题变。
+ * 颜色随主题变：漫画颜色在 @bettertavern/design 的 comic.ts（useComic() 取当前主题那一套；外观面板的配色预览还用
+ * themes.ts 里的色板）。描边、圆角、投影层数不随主题变。
  * 字号在 comicType.ts；字体族名是 React Native 加载字体用的键，只在手机端，在 fonts.ts（正文宋体按语言选也在那里）。
  */
 
-export { lightPalette, darkPalette, type Palette } from "@bettertavern/design/palettes";
+export type { Palette } from "@bettertavern/design/palettes";
 export {
   parseThemeSetting,
   resolveTheme,
@@ -33,15 +33,13 @@ export {
 export {
   BaseSurface,
   RaisedSurface,
-  raisedPalette,
   ThemeProvider,
   useComic,
   useIsDark,
-  usePalette,
   useTheme,
 } from "./ThemeProvider.tsx";
 
-export { onColor, radius, size, space, stroke, type } from "@bettertavern/design/tokens";
+export { onColor, size, space } from "@bettertavern/design/tokens";
 
 export { ctype } from "./comicType.ts";
 export { font, serifFor } from "./fonts.ts";

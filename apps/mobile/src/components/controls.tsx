@@ -47,8 +47,6 @@ export type FieldProps = TextInputProps & {
   hintIcon?: IconName;
   error?: string | null;
   mono?: boolean;
-  /** 旧样式里放在灰卡上时用；漫画风的输入框都是白底，不再起作用 */
-  onGrey?: boolean;
   /** 输入框里右侧的按钮（显示密码、随机、粘贴） */
   trailing?: ReactNode;
   /** 右侧按钮占的宽度，输入的文字不会伸到它下面 */
@@ -70,7 +68,6 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
     hintIcon,
     error,
     mono,
-    onGrey: _onGrey,
     trailing,
     trailingWidth = 52,
     boxHeight,
@@ -240,7 +237,6 @@ export function Chip({
   icon,
   small,
   muted,
-  onGrey,
 }: {
   label: string;
   selected?: boolean;
@@ -251,8 +247,6 @@ export function Chip({
   small?: boolean;
   /** “+ 自定义”这类入口，用蓝字 */
   muted?: boolean;
-  /** 旧样式里放在灰卡上时用；漫画风的标签都是白底，不再起作用 */
-  onGrey?: boolean;
 }) {
   const c = useComic();
   const fg = selected ? c.paper : muted ? c.acc : c.ink;

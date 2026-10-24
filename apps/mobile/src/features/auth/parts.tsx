@@ -10,7 +10,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 
 import { Icon } from "../../components/ui.tsx";
-import { usePalette } from "../../theme/index.ts";
+import { comicStroke, useComic } from "../../theme/index.ts";
 
 /** 协议页面在网页端（/terms、/privacy、/rules）：用当前服务器的地址打开 */
 export function legalUrl(serverUrl: string, page: "terms" | "privacy" | "rules"): string {
@@ -26,11 +26,11 @@ export function AgreeRow({
   onToggle: () => void;
   serverUrl: string;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const link = (page: "terms" | "privacy" | "rules") => (
     <Text
       accessibilityRole="link"
-      style={{ color: palette.acc, textDecorationLine: "underline" }}
+      style={{ color: c.acc, fontWeight: "700", textDecorationLine: "underline" }}
       onPress={() => void Linking.openURL(legalUrl(serverUrl, page))}
     />
   );
@@ -43,14 +43,12 @@ export function AgreeRow({
         hitSlop={10}
         style={[
           styles.box,
-          checked
-            ? { backgroundColor: palette.acc }
-            : { backgroundColor: palette.card, boxShadow: `inset 0 0 0 1.75px ${palette.line2}` },
+          { borderWidth: comicStroke.control, borderColor: c.ink, backgroundColor: checked ? c.acc : c.paper },
         ]}
       >
-        {checked ? <Icon name="check" size={14} color="#ffffff" strokeWidth={2.6} /> : null}
+        {checked ? <Icon name="check" size={14} color={c.onAcc} strokeWidth={2.8} /> : null}
       </Pressable>
-      <Text style={[styles.text, { color: palette.ink2 }]} onPress={onToggle}>
+      <Text style={[styles.text, { color: c.ink2 }]} onPress={onToggle}>
         <Trans i18nKey="auth.agree" components={{ terms: link("terms"), privacy: link("privacy"), rules: link("rules") }} />
       </Text>
     </View>

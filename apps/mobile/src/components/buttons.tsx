@@ -25,7 +25,6 @@ import {
   size,
   space,
   useComic,
-  usePalette,
 } from "../theme/index.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { press } from "./press.ts";
@@ -65,8 +64,6 @@ export function Button({
   between?: boolean;
   /** 小号：高 38，2 描边，投影 3 */
   small?: boolean;
-  /** 旧样式里放在灰卡上时用；漫画风的按钮都是白底或墨底，不再起作用 */
-  onGrey?: boolean;
   style?: StyleProp<ViewStyle>;
   accessibilityHint?: string;
   accessibilityLabel?: string;
@@ -74,7 +71,6 @@ export function Button({
   children?: ReactNode;
 }) {
   const c = useComic();
-  const palette = usePalette();
   const inactive = !!disabled || !!busy;
   const off = !!disabled && !busy;
   const look: Record<ButtonVariant, { bg: string; fg: string; shadow: string }> = {
@@ -138,7 +134,8 @@ export function Button({
             <View
               style={[
                 styles.arrow,
-                { backgroundColor: variant === "primary" ? palette.arrowBg : c.grey },
+                // 墨底上一层 14% 的纸色
+                { backgroundColor: variant === "primary" ? `${c.paper}24` : c.grey },
               ]}
             >
               <Icon name={trailingIcon} size={18} color={fg} />
