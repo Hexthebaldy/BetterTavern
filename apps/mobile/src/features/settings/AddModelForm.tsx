@@ -15,7 +15,7 @@ import { manualWindowChoices, needsManualWindow } from "@bettertavern/core/setti
 import { KeyField, ProviderMark } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, SectionHeader, Segmented } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
-import { space, usePalette } from "../../theme/index.ts";
+import { comicDepth, comicRadius, comicStroke, hardShadow, space, useComic } from "../../theme/index.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
 
 function ProviderTile({
@@ -30,7 +30,7 @@ function ProviderTile({
   /** 一行三块，宽度由外面量出来算好 */
   width: number | undefined;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <Pressable
@@ -42,13 +42,17 @@ function ProviderTile({
         styles.tile,
         width ? { width } : { flex: 1 },
         selected
-          ? { backgroundColor: palette.accBg, boxShadow: `inset 0 0 0 2px ${palette.acc}` }
-          : { backgroundColor: palette.card },
-        { transform: [{ scale: pressed ? 0.97 : 1 }] },
+          ? { borderColor: c.acc, backgroundColor: c.paper, boxShadow: hardShadow(c.acc, comicDepth.focus) }
+          : { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper },
       ]}
     >
-      <ProviderMark provider={provider.id} size={36} tone={selected ? "acc" : "grey"} />
-      <Text style={{ fontSize: 13.5, lineHeight: 18, color: palette.ink }}>
+      <ProviderMark provider={provider.id} size={36} tone={selected ? "acc" : "card"} />
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+        style={{ fontSize: 14, lineHeight: 18, fontWeight: "700", textAlign: "center", color: c.ink }}
+      >
         {provider.requires_base_url ? t("models.customProvider") : provider.display_name}
       </Text>
     </Pressable>
@@ -65,7 +69,7 @@ export function AddModelForm({
   onAdded: (route: ModelRoute) => void;
 }) {
   const { api } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const [provider, setProvider] = useState(providers[0]?.id ?? "");
   const [tilesWidth, setTilesWidth] = useState<number | null>(null);
@@ -180,9 +184,9 @@ export function AddModelForm({
 
   return (
     <View style={{ gap: space.s }}>
-      <View style={[styles.form, { backgroundColor: palette.bg2 }]}>
+      <View style={styles.form}>
         <View style={{ gap: space.s }}>
-          <Text style={[styles.label, { color: palette.ink2 }]}>{t("models.provider")}</Text>
+          <Text style={[styles.label, { color: c.ink }]}>{t("models.provider")}</Text>
           <View
             style={styles.tiles}
             accessibilityRole="radiogroup"
@@ -202,11 +206,10 @@ export function AddModelForm({
         </View>
 
         <View style={{ gap: space.s }}>
-          <Text style={[styles.label, { color: palette.ink2 }]}>{t("models.apiKey")}</Text>
+          <Text style={[styles.label, { color: c.ink }]}>{t("models.apiKey")}</Text>
           <KeyField
             label={t("models.apiKey")}
             hideLabel
-            onGrey
             value={key}
             onChangeText={(text) => {
               setKey(text);
@@ -219,23 +222,22 @@ export function AddModelForm({
         </View>
 
         <View style={{ gap: space.s }}>
-          <Text style={[styles.label, { color: palette.ink2 }]}>{t("models.endpoint")}</Text>
+          <Text style={[styles.label, { color: c.ink }]}>{t("models.endpoint")}</Text>
           {needsUrl ? null : (
             <Pressable
               accessibilityRole="checkbox"
               accessibilityState={{ checked: official }}
               onPress={() => setOfficial((v) => !v)}
-              style={[styles.choice, { backgroundColor: palette.card }]}
+              style={({ pressed }) => [styles.choice, { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper }]}
             >
               <CheckMark checked={official} />
-              <Text style={{ fontSize: 15, color: palette.ink }}>{t("models.official")}</Text>
+              <Text style={{ fontSize: 15, color: c.ink }}>{t("models.official")}</Text>
             </Pressable>
           )}
           {useOfficial ? null : (
             <Field
               label={t("models.endpoint")}
               hideLabel
-              onGrey
               value={baseUrl}
               onChangeText={(text) => {
                 setBaseUrl(text);
@@ -249,7 +251,7 @@ export function AddModelForm({
             />
           )}
           {needsUrl ? (
-            <Text style={[styles.note, { color: palette.mut }]}>{t("models.endpointNote")}</Text>
+            <Text style={[styles.note, { color: c.mut }]}>{t("models.endpointNote")}</Text>
           ) : null}
         </View>
 
@@ -277,8 +279,8 @@ export function AddModelForm({
       {askWindow ? (
         <View>
           <SectionHeader title={t("models.contextWindow")} />
-          <View style={[styles.form, { backgroundColor: palette.bg2, gap: space.m }]}>
-            <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink2 }}>
+          <View style={[styles.form, styles.framed, { borderColor: c.ink, backgroundColor: c.paper, gap: space.m }]}>
+            <Text style={{ fontSize: 14, lineHeight: 22, color: c.ink2 }}>
               {models ? t("models.windowAskListed") : t("models.windowAskUnlisted")}
             </Text>
             <Segmented
@@ -291,12 +293,11 @@ export function AddModelForm({
         </View>
       ) : null}
 
-      <View style={[styles.form, { backgroundColor: palette.bg2, marginTop: space.s }]}>
+      <View style={[styles.form, { marginTop: space.s }]}>
         {error ? <Notice message={error} /> : null}
         <Field
           label={t("models.label")}
           optional
-          onGrey
           value={label}
           onChangeText={setLabel}
           maxLength={60}
@@ -306,10 +307,10 @@ export function AddModelForm({
           accessibilityRole="checkbox"
           accessibilityState={{ checked: director }}
           onPress={() => setDirector((v) => !v)}
-          style={[styles.choice, { backgroundColor: palette.card }]}
+          style={({ pressed }) => [styles.choice, { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper }]}
         >
           <CheckMark checked={director} />
-          <Text style={{ flex: 1, fontSize: 15, color: palette.ink }}>
+          <Text style={{ flex: 1, fontSize: 15, color: c.ink }}>
             {hasDirector ? t("models.makeDirectorReplace") : t("models.makeDirector")}
           </Text>
         </Pressable>
@@ -327,33 +328,34 @@ export function AddModelForm({
 }
 
 /** 服务商图块之间的间距；一行三块 */
-const TILE_GAP = 6;
+const TILE_GAP = 10;
 
 const styles = StyleSheet.create({
-  form: {
-    marginHorizontal: space.list,
-    paddingVertical: space.l,
-    paddingHorizontal: space.m,
-    borderRadius: 30,
-    gap: 22,
-  },
-  label: { fontSize: 13, lineHeight: 18, fontWeight: "500", paddingLeft: space.xs },
-  tiles: { flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP },
+  /** 一段表单：直接放在页面上，左右 20 */
+  form: { marginHorizontal: 20, paddingVertical: space.s, gap: 22 },
+  /** 问上下文长度的那一块是墨线格子 */
+  framed: { padding: 14, borderWidth: comicStroke.frame, borderRadius: comicRadius.frame },
+  label: { fontSize: 14, lineHeight: 19, fontWeight: "700" },
+  tiles: { flexDirection: "row", flexWrap: "wrap", gap: TILE_GAP, paddingBottom: comicDepth.focus },
   tile: {
-    minHeight: 112,
-    padding: 14,
-    borderRadius: 22,
-    justifyContent: "space-between",
-    gap: space.l,
+    minHeight: 88,
+    paddingVertical: 12,
+    paddingHorizontal: space.s,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space.s,
   },
   choice: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.m,
-    minHeight: 52,
+    minHeight: 56,
     paddingVertical: space.s,
-    paddingHorizontal: space.l,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
-  note: { fontSize: 12.5, lineHeight: 18, paddingLeft: space.xs },
+  note: { fontSize: 12.5, lineHeight: 18 },
 });

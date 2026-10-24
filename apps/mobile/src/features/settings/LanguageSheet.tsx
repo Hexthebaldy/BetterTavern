@@ -9,14 +9,13 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { LANGUAGE_NAMES, LANGUAGES, type LanguageSetting } from "@bettertavern/core/i18n/index";
 
-import { RadioMark, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
+import { Group, RadioMark, Sheet } from "../../components/ui.tsx";
 import { useSystemLanguage } from "../../state/language.ts";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
-import { radius, space, usePalette } from "../../theme/index.ts";
+import { space, useComic } from "../../theme/index.ts";
 
 export function LanguageSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const palette = usePalette();
-  const surfaces = useSheetSurfaces();
+  const c = useComic();
   const { t } = useTranslation();
   const { language, setLanguage } = usePrefs();
   const system = useSystemLanguage();
@@ -31,49 +30,44 @@ export function LanguageSheet({ visible, onClose }: { visible: boolean; onClose:
   return (
     <Sheet visible={visible} onClose={onClose} title={t("language.title")}>
       <View accessibilityRole="radiogroup" accessibilityLabel={t("language.title")} style={styles.body}>
-        {options.map((option) => {
-          const on = language === option.value;
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: on }}
-              accessibilityLabel={option.note ? `${option.label}, ${option.note}` : option.label}
-              onPress={() => setLanguage(option.value)}
-              style={({ pressed }) => [
-                styles.option,
-                on
-                  ? { backgroundColor: palette.accBg, boxShadow: `inset 0 0 0 2px ${palette.acc}` }
-                  : { backgroundColor: surfaces.fill },
-                { transform: [{ scale: pressed ? 0.98 : 1 }] },
-              ]}
-            >
-              <RadioMark selected={on} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.label, { color: palette.ink }]}>{option.label}</Text>
-                {option.note ? (
-                  <Text style={[styles.note, { color: palette.mut }]}>{option.note}</Text>
-                ) : null}
-              </View>
-            </Pressable>
-          );
-        })}
+        <Group>
+          {options.map((option) => {
+            const on = language === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={option.note ? `${option.label}, ${option.note}` : option.label}
+                onPress={() => setLanguage(option.value)}
+                style={({ pressed }) => [styles.option, { backgroundColor: pressed ? c.grey : "transparent" }]}
+              >
+                <RadioMark selected={on} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.label, { color: c.ink }]}>{option.label}</Text>
+                  {option.note ? (
+                    <Text style={[styles.note, { color: c.mut }]}>{option.note}</Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </Group>
       </View>
     </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: space.l, paddingBottom: space.s, gap: 6 },
+  body: { paddingHorizontal: 18, paddingBottom: space.s },
   option: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     minHeight: 64,
-    paddingHorizontal: space.l,
+    paddingHorizontal: 14,
     paddingVertical: space.m,
-    borderRadius: radius.card,
   },
-  label: { fontSize: 16, lineHeight: 22, fontWeight: "500" },
+  label: { fontSize: 16, lineHeight: 22, fontWeight: "700" },
   note: { fontSize: 12.5, lineHeight: 18 },
 });

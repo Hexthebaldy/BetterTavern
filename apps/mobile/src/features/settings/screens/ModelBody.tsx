@@ -46,7 +46,7 @@ import {
 } from "../../../components/ui.tsx";
 import { useAsync } from "../../../hooks/useAsync.ts";
 import { useApp } from "../../../state/AppProvider.tsx";
-import { font, space, usePalette } from "../../../theme/index.ts";
+import { comicRadius, comicStroke, font, space, useComic } from "../../../theme/index.ts";
 import { MemoryBlocks } from "../MemoryBlocks.tsx";
 import { EditSheet, ReplaceKeySheet, WindowSheet } from "../ModelSheets.tsx";
 import { SettingsBack, useSettingsNav } from "../nav.tsx";
@@ -58,7 +58,7 @@ export function ModelBody({ id }: { id: string }) {
   const { api } = useApp();
   const nav = useSettingsNav();
   const column = useColumnStyle();
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const { t } = useTranslation();
   const { data, error, loading, reload, setData } = useAsync(async () => {
@@ -85,7 +85,7 @@ export function ModelBody({ id }: { id: string }) {
   if (loading && !data) return <Loading />;
   if (!data || !route) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         <SettingsBack />
         <ErrorState
           title={t("models.modelLoadFailed")}
@@ -187,7 +187,7 @@ export function ModelBody({ id }: { id: string }) {
   };
 
   const kind = statusKind(route.status);
-  const statusColor = kind === "ok" ? palette.ok : kind === "invalid" ? palette.err : palette.warn;
+  const statusColor = kind === "ok" ? c.forest : kind === "invalid" ? c.err : c.warn;
   const dirty =
     windowChoice(route.params.working_window) !== choice || (route.params.thinking === true) !== thinking;
   const clamped = choiceTokens(choice) > route.window.model_window;
@@ -195,7 +195,7 @@ export function ModelBody({ id }: { id: string }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <SettingsBack />
       <ScrollView contentContainerStyle={[{ paddingBottom: 56 }, column]} keyboardShouldPersistTaps="handled">
@@ -203,7 +203,7 @@ export function ModelBody({ id }: { id: string }) {
           <View style={{ flex: 1, gap: space.s }}>
             <Text
               accessibilityRole="header"
-              style={[styles.title, { color: palette.ink }, modelTitle(route) === route.model ? styles.mono : null]}
+              style={[styles.title, { color: c.ink }, modelTitle(route) === route.model ? styles.mono : null]}
             >
               {modelTitle(route)}
             </Text>
@@ -232,12 +232,12 @@ export function ModelBody({ id }: { id: string }) {
             [t("models.modelName"), route.model, true],
             [t("models.endpointShort"), route.base_url ?? t("models.officialShort"), !!route.base_url],
           ].map(([key, value, mono]) => (
-            <View key={String(key)} style={[styles.cell, { backgroundColor: palette.bg2 }]}>
-              <Text style={[styles.cellKey, { color: palette.mut }]}>{key}</Text>
+            <View key={String(key)} style={[styles.cell, { backgroundColor: c.paper, borderColor: c.ink }]}>
+              <Text style={[styles.cellKey, { color: c.mut }]}>{key}</Text>
               <Text
                 numberOfLines={1}
                 style={[
-                  { fontSize: 15, color: palette.ink },
+                  { fontSize: 15, color: c.ink },
                   mono ? { fontFamily: font.mono, fontSize: 14 } : null,
                 ]}
               >
@@ -258,7 +258,7 @@ export function ModelBody({ id }: { id: string }) {
             message={[t("models.officialFixed"), t("models.creditsNote"), credits ? creditsLine(credits) : ""]
               .filter(Boolean)
               .join(" ")}
-            style={{ marginHorizontal: space.list, marginTop: space.s, borderRadius: 22 }}
+            style={{ marginHorizontal: 20, marginTop: space.s }}
           />
         ) : null}
         {platform && route.is_director ? null : (
@@ -272,8 +272,8 @@ export function ModelBody({ id }: { id: string }) {
                 style={styles.action}
               >
                 <View style={{ alignItems: "center" }}>
-                  <Text style={{ fontSize: 16, fontWeight: "500", color: palette.ink }}>{t("models.test")}</Text>
-                  <Text style={{ fontFamily: font.mono, fontSize: 10.5, color: palette.mut }}>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: c.ink }}>{t("models.test")}</Text>
+                  <Text style={{ fontFamily: font.mono, fontSize: 10.5, color: c.mut }}>
                     {t("models.testTime")}
                   </Text>
                 </View>
@@ -292,7 +292,7 @@ export function ModelBody({ id }: { id: string }) {
           <Notice
             tone={message.tone}
             message={message.text}
-            style={{ marginHorizontal: space.list, marginTop: space.s, borderRadius: 22 }}
+            style={{ marginHorizontal: 20, marginTop: space.s }}
           />
         ) : null}
         {route.last_probe ? <ProbeResults report={route.last_probe} /> : null}
@@ -305,12 +305,12 @@ export function ModelBody({ id }: { id: string }) {
             message={note}
             actionLabel={route.window.source === "learned" ? undefined : t("models.fillIn")}
             onAction={route.window.source === "learned" ? undefined : () => setSheet("window")}
-            style={{ marginHorizontal: space.list, marginTop: space.s, borderRadius: 22 }}
+            style={{ marginHorizontal: 20, marginTop: space.s }}
           />
         ) : null}
 
         <SectionHeader title={t("models.workingCap")} />
-        <View style={{ paddingHorizontal: space.list, gap: 10 }}>
+        <View style={{ paddingHorizontal: 20, gap: 10 }}>
           <Segmented
             value={choice}
             options={WINDOW_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
@@ -318,7 +318,7 @@ export function ModelBody({ id }: { id: string }) {
             mono
             height={52}
           />
-          <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut, paddingHorizontal: space.m }}>
+          <Text style={{ fontSize: 13, lineHeight: 20, color: c.mut, paddingHorizontal: space.m }}>
             {t("models.workingNote")}
           </Text>
           {clamped ? (
@@ -335,20 +335,20 @@ export function ModelBody({ id }: { id: string }) {
           accessibilityState={{ checked: thinking }}
           accessibilityLabel={t("models.thinking")}
           onPress={() => setThinking((t) => !t)}
-          style={[styles.switchRow, { backgroundColor: palette.bg2 }]}
+          style={[styles.switchRow, { borderColor: c.ink, backgroundColor: c.paper }]}
         >
-          <View style={[styles.switchIcon, { backgroundColor: palette.card }]}>
+          <View style={[styles.switchIcon, { backgroundColor: c.grey, borderColor: c.ink }]}>
             <Icon name="bulb" size={20} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontSize: 16, color: palette.ink }}>{t("models.thinking")}</Text>
-            <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: c.ink }}>{t("models.thinking")}</Text>
+            <Text style={{ fontSize: 13, lineHeight: 20, color: c.mut }}>
               {t("models.thinkingNote")}
             </Text>
           </View>
           <Toggle value={thinking} onChange={setThinking} label={t("models.thinking")} />
         </Pressable>
-        <View style={{ paddingHorizontal: space.list, paddingTop: space.l }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: space.l }}>
           <Button
             label={dirty ? t("common.save") : t("models.saveNoChanges")}
             onPress={() => void saveParams()}
@@ -371,7 +371,7 @@ export function ModelBody({ id }: { id: string }) {
           )}
           {route.is_director ? (
             <Button label={t("models.cancelDirector")} variant="text" onPress={() => void cancelDirector()}>
-              <Text style={{ fontSize: 15, fontWeight: "500", color: palette.err }}>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: c.err }}>
                 {t("models.cancelDirector")}
               </Text>
             </Button>
@@ -412,7 +412,7 @@ export function ModelBody({ id }: { id: string }) {
 
 /** “用于后台整理”开关：点了立刻保存；不能调用工具的模型打不开 */
 function BackgroundRow({ route, onChange }: { route: ModelRoute; onChange: (on: boolean) => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const locked = !route.supports_tools && !route.is_background;
   return (
@@ -422,15 +422,15 @@ function BackgroundRow({ route, onChange }: { route: ModelRoute; onChange: (on: 
       accessibilityLabel={t("models.background")}
       disabled={locked}
       onPress={() => onChange(!route.is_background)}
-      style={[styles.switchRow, { backgroundColor: palette.bg2, marginTop: space.l }]}
+      style={[styles.switchRow, { borderColor: c.ink, backgroundColor: c.paper, marginTop: space.l }]}
     >
-      <View style={[styles.switchIcon, { backgroundColor: palette.card }]}>
+      <View style={[styles.switchIcon, { backgroundColor: c.grey, borderColor: c.ink }]}>
         <Icon name="world" size={20} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ fontSize: 16, color: palette.ink }}>{t("models.background")}</Text>
+        <Text style={{ fontSize: 16, fontWeight: "700", color: c.ink }}>{t("models.background")}</Text>
         <Text
-          style={{ fontSize: 13, lineHeight: 20, color: route.supports_tools ? palette.mut : palette.warn }}
+          style={{ fontSize: 13, lineHeight: 20, color: route.supports_tools ? c.mut : c.warn }}
         >
           {route.supports_tools ? t("models.backgroundNote") : t("models.backgroundNoTools")}
         </Text>
@@ -444,7 +444,7 @@ function BackgroundRow({ route, onChange }: { route: ModelRoute; onChange: (on: 
 
 /** “用于工作台”：工作台的 agent 用这个模型（要能调用工具） */
 function WorkbenchRow({ route, onChange }: { route: ModelRoute; onChange: (on: boolean) => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const locked = !route.supports_tools && !route.is_workbench;
   return (
@@ -454,15 +454,15 @@ function WorkbenchRow({ route, onChange }: { route: ModelRoute; onChange: (on: b
       accessibilityLabel={t("models.workbench")}
       disabled={locked}
       onPress={() => onChange(!route.is_workbench)}
-      style={[styles.switchRow, { backgroundColor: palette.bg2, marginTop: space.s }]}
+      style={[styles.switchRow, { borderColor: c.ink, backgroundColor: c.paper, marginTop: space.s }]}
     >
-      <View style={[styles.switchIcon, { backgroundColor: palette.card }]}>
+      <View style={[styles.switchIcon, { backgroundColor: c.grey, borderColor: c.ink }]}>
         <Icon name="workbench" size={20} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ fontSize: 16, color: palette.ink }}>{t("models.workbench")}</Text>
+        <Text style={{ fontSize: 16, fontWeight: "700", color: c.ink }}>{t("models.workbench")}</Text>
         <Text
-          style={{ fontSize: 13, lineHeight: 20, color: route.supports_tools ? palette.mut : palette.warn }}
+          style={{ fontSize: 13, lineHeight: 20, color: route.supports_tools ? c.mut : c.warn }}
         >
           {route.supports_tools ? t("models.workbenchNote") : t("models.workbenchNoTools")}
         </Text>
@@ -476,40 +476,49 @@ function WorkbenchRow({ route, onChange }: { route: ModelRoute; onChange: (on: b
 
 const styles = StyleSheet.create({
   action: { flex: 1, minHeight: 60, paddingHorizontal: space.s },
-  actions: { flexDirection: "row", gap: space.s, paddingHorizontal: space.list, paddingTop: 10 },
-  bottom: { paddingHorizontal: space.list, paddingTop: space.xl, gap: space.s },
+  actions: { flexDirection: "row", gap: space.m, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4 },
+  bottom: { paddingHorizontal: 20, paddingTop: space.xl, gap: space.s },
   cell: {
-    width: "48.9%",
+    width: "48%",
     flexGrow: 1,
-    paddingVertical: 14,
-    paddingHorizontal: space.l,
+    paddingVertical: space.m,
+    paddingHorizontal: 14,
     gap: 2,
-    borderRadius: 22,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
-  cellKey: { fontSize: 12 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginHorizontal: space.list },
+  cellKey: { fontSize: 12.5, fontWeight: "700" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginHorizontal: 20 },
   head: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: space.s,
-    paddingLeft: space.page,
+    paddingLeft: 20,
     paddingRight: space.l,
     paddingTop: space.l,
     paddingBottom: space.l,
   },
-  hint: { fontSize: 13, lineHeight: 20, paddingHorizontal: space.page, paddingTop: space.s },
+  hint: { fontSize: 13, lineHeight: 20, paddingHorizontal: 20, paddingTop: space.s },
   mono: { fontFamily: font.monoMedium, fontSize: 24, letterSpacing: -0.4 },
   statusLine: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    minHeight: 76,
-    marginHorizontal: space.list,
+    minHeight: 72,
+    marginHorizontal: 20,
     paddingVertical: space.m,
-    paddingHorizontal: space.l,
-    borderRadius: 26,
+    paddingHorizontal: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
-  switchIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 28, lineHeight: 36, fontWeight: "700", letterSpacing: -0.56 },
+  switchIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: comicRadius.iconButtonSm,
+    borderWidth: comicStroke.control,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: { fontSize: 28, lineHeight: 36, fontWeight: "900", letterSpacing: -0.56 },
 });

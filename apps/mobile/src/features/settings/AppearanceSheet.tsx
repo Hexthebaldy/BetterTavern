@@ -6,14 +6,15 @@
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { RadioMark, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
+import { Group, RadioMark, Sheet } from "../../components/ui.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
 import {
-  radius,
+  comicRadius,
+  comicStroke,
   space,
   THEME_ORDER,
   THEMES,
-  usePalette,
+  useComic,
   type Palette,
   type ThemeSetting,
 } from "../../theme/index.ts";
@@ -28,10 +29,10 @@ const OPTIONS: Option[] = [
 
 /** 配色预览：页面底色上一条灰卡，下面一个墨色点和一个强调色点 */
 function Swatch({ previews }: { previews: Palette[] }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View
-      style={[styles.swatch, { boxShadow: `inset 0 0 0 1px ${palette.line2}` }]}
+      style={[styles.swatch, { borderWidth: comicStroke.chip, borderColor: c.ink }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
@@ -49,60 +50,54 @@ function Swatch({ previews }: { previews: Palette[] }) {
 }
 
 export function AppearanceSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const palette = usePalette();
-  const surfaces = useSheetSurfaces();
+  const c = useComic();
   const { theme, setTheme } = usePrefs();
   const { t } = useTranslation();
   return (
     <Sheet visible={visible} onClose={onClose} title={t("appearance.title")}>
       <View accessibilityRole="radiogroup" accessibilityLabel={t("appearance.title")} style={styles.body}>
-        {OPTIONS.map((option) => {
-          const on = theme === option.value;
-          const label = t(`appearance.${option.value}`);
-          const note = t(`appearance.${option.value}Note`);
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: on }}
-              accessibilityLabel={`${label}, ${note}`}
-              onPress={() => setTheme(option.value)}
-              style={({ pressed }) => [
-                styles.option,
-                on
-                  ? { backgroundColor: palette.accBg, boxShadow: `inset 0 0 0 2px ${palette.acc}` }
-                  : { backgroundColor: surfaces.fill },
-                { transform: [{ scale: pressed ? 0.98 : 1 }] },
-              ]}
-            >
-              <RadioMark selected={on} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.label, { color: palette.ink }]}>{label}</Text>
-                <Text style={[styles.note, { color: palette.mut }]}>{note}</Text>
-              </View>
-              <Swatch previews={option.previews} />
-            </Pressable>
-          );
-        })}
+        <Group>
+          {OPTIONS.map((option) => {
+            const on = theme === option.value;
+            const label = t(`appearance.${option.value}`);
+            const note = t(`appearance.${option.value}Note`);
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`${label}, ${note}`}
+                onPress={() => setTheme(option.value)}
+                style={({ pressed }) => [styles.option, { backgroundColor: pressed ? c.grey : "transparent" }]}
+              >
+                <RadioMark selected={on} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.label, { color: c.ink }]}>{label}</Text>
+                  <Text style={[styles.note, { color: c.mut }]}>{note}</Text>
+                </View>
+                <Swatch previews={option.previews} />
+              </Pressable>
+            );
+          })}
+        </Group>
       </View>
     </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: space.l, paddingBottom: space.s, gap: 6 },
+  body: { paddingHorizontal: 18, paddingBottom: space.s },
   option: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     minHeight: 72,
-    paddingHorizontal: space.l,
+    paddingHorizontal: 14,
     paddingVertical: space.m,
-    borderRadius: radius.card,
   },
-  label: { fontSize: 16, lineHeight: 22, fontWeight: "500" },
+  label: { fontSize: 16, lineHeight: 22, fontWeight: "700" },
   note: { fontSize: 12.5, lineHeight: 18 },
-  swatch: { flexDirection: "row", width: 56, height: 40, borderRadius: 12, overflow: "hidden" },
+  swatch: { flexDirection: "row", width: 56, height: 40, borderRadius: comicRadius.tag, overflow: "hidden" },
   swatchPart: { flex: 1, paddingHorizontal: 6, paddingTop: 7, gap: 6 },
   swatchBar: { height: 8, borderRadius: 4 },
   swatchDots: { flexDirection: "row", gap: 4 },

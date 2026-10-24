@@ -14,20 +14,20 @@ import { manualWindowChoice, manualWindowChoices } from "@bettertavern/core/sett
 import { KeyField } from "../../components/KeyParts.tsx";
 import { Button, CheckMark, Field, Notice, Segmented, Sheet } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
-import { radius, space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 
 function OfficialToggle({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       onPress={onToggle}
-      style={[styles.official, { backgroundColor: palette.bg2 }]}
+      style={({ pressed }) => [styles.official, { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper }]}
     >
       <CheckMark checked={checked} />
-      <Text style={{ fontSize: 15, color: palette.ink }}>{t("models.official")}</Text>
+      <Text style={{ fontSize: 15, color: c.ink }}>{t("models.official")}</Text>
     </Pressable>
   );
 }
@@ -46,7 +46,7 @@ export function EditSheet({
   onSaved: (r: ModelRoute) => void;
 }) {
   const { api } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const needsUrl = provider?.requires_base_url ?? false;
   const [label, setLabel] = useState(route.label);
@@ -109,7 +109,7 @@ export function EditSheet({
           maxLength={200}
         />
         <View style={{ gap: space.s }}>
-          <Text style={[styles.label, { color: palette.ink2 }]}>{t("models.endpoint")}</Text>
+          <Text style={[styles.label, { color: c.ink2 }]}>{t("models.endpoint")}</Text>
           {needsUrl ? null : <OfficialToggle checked={official} onToggle={() => setOfficial((v) => !v)} />}
           {useOfficial ? null : (
             <Field
@@ -126,7 +126,7 @@ export function EditSheet({
           )}
         </View>
         {urlChanged || modelChanged ? (
-          <Text style={{ fontSize: 12.5, lineHeight: 18, color: palette.warn }}>
+          <Text style={{ fontSize: 12.5, lineHeight: 18, color: c.warn }}>
             {modelChanged ? t("models.changedModel") : t("models.changedEndpoint")}
           </Text>
         ) : null}
@@ -153,7 +153,7 @@ export function ReplaceKeySheet({
   onSaved: (r: ModelRoute) => void;
 }) {
   const { api } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const shared = route.shares_key_with.length;
   const { t } = useTranslation();
   const [key, setKey] = useState("");
@@ -201,10 +201,10 @@ export function ReplaceKeySheet({
             accessibilityRole="checkbox"
             accessibilityState={{ checked: together }}
             onPress={() => setTogether((v) => !v)}
-            style={[styles.official, { backgroundColor: palette.bg2 }]}
+            style={({ pressed }) => [styles.official, { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper }]}
           >
             <CheckMark checked={together} />
-            <Text style={{ flex: 1, fontSize: 15, color: palette.ink }}>
+            <Text style={{ flex: 1, fontSize: 15, color: c.ink }}>
               {t("models.shareKey", { count: shared })}
             </Text>
           </Pressable>
@@ -227,7 +227,7 @@ export function WindowSheet({
   onSaved: (r: ModelRoute) => void;
 }) {
   const { api } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const [choice, setChoice] = useState(manualWindowChoice(route.manual_window));
   const [busy, setBusy] = useState(false);
@@ -255,7 +255,7 @@ export function WindowSheet({
     <Sheet visible={visible} onClose={onClose} title={t("models.contextWindow")}>
       <View style={styles.sheetBody}>
         {error ? <Notice message={error} /> : null}
-        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink2 }}>
+        <Text style={{ fontSize: 14, lineHeight: 22, color: c.ink2 }}>
           {t("models.windowSheetNote", { unknown: t("models.manualUnknown") })}
         </Text>
         <Segmented
@@ -275,10 +275,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.m,
-    minHeight: 52,
-    paddingHorizontal: space.l,
-    borderRadius: radius.input,
+    minHeight: 56,
+    paddingHorizontal: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
-  label: { fontSize: 13, fontWeight: "500", paddingLeft: space.xs },
-  sheetBody: { paddingHorizontal: space.l, paddingBottom: space.s, gap: space.l },
+  label: { fontSize: 13.5, fontWeight: "700" },
+  sheetBody: { paddingHorizontal: 18, paddingBottom: space.s, gap: space.l },
 });

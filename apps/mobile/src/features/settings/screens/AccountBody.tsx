@@ -32,7 +32,15 @@ import {
 import { legalUrl } from "../../auth/parts.tsx";
 import { SettingsBack } from "../nav.tsx";
 import { useApp } from "../../../state/AppProvider.tsx";
-import { font, onColor, radius, space, usePalette } from "../../../theme/index.ts";
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  font,
+  hardShadow,
+  space,
+  useComic,
+} from "../../../theme/index.ts";
 
 type Counts = { stories: number; scenarios: number; models: number };
 
@@ -41,7 +49,7 @@ const MIN_PASSWORD = 8;
 /** 修改密码：改完其他设备退出，这台设备换上新令牌（同网页端的 ChangePassword） */
 function ChangePassword() {
   const { api, signIn } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -68,25 +76,24 @@ function ChangePassword() {
   };
 
   return (
-    <View style={[styles.fold, { backgroundColor: palette.bg2 }]}>
+    <View style={[styles.fold, { backgroundColor: c.paper, borderColor: c.ink }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen(!open)}
         style={styles.dangerHead}
       >
-        <Icon name="key" size={20} color={palette.ink} />
-        <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: palette.ink }}>
+        <Icon name="key" size={20} color={c.ink} />
+        <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: c.ink }}>
           {t("account.changePassword")}
         </Text>
-        <Icon name={open ? "chevronUp" : "chevronDown"} size={18} color={palette.ink} />
+        <Icon name={open ? "chevronUp" : "chevronDown"} size={18} color={c.ink} />
       </Pressable>
       {open ? (
         <View style={{ gap: space.m }}>
           {error ? <Notice message={error} /> : null}
           <Field
             label={t("account.currentPassword")}
-            onGrey
             value={current}
             onChangeText={setCurrent}
             secureTextEntry
@@ -95,7 +102,6 @@ function ChangePassword() {
           />
           <Field
             label={t("account.newPassword")}
-            onGrey
             placeholder={t("auth.passwordMin", { min: MIN_PASSWORD })}
             value={next}
             onChangeText={setNext}
@@ -119,7 +125,7 @@ function ChangePassword() {
 /** 账户页底部的协议链接（在浏览器里打开网页端的页面） */
 function LegalLinks() {
   const { serverUrl } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <View style={styles.legal} accessibilityLabel={t("legal.nav")}>
@@ -131,7 +137,7 @@ function LegalLinks() {
           hitSlop={6}
           style={styles.legalLink}
         >
-          <Text style={{ fontSize: 13, color: palette.mut, textDecorationLine: "underline" }}>
+          <Text style={{ fontSize: 13, color: c.mut, textDecorationLine: "underline" }}>
             {t(`legal.${page}`)}
           </Text>
         </Pressable>
@@ -143,7 +149,7 @@ function LegalLinks() {
 export function AccountBody() {
   const { api, user, signOut } = useApp();
   const column = useColumnStyle();
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -188,13 +194,13 @@ export function AccountBody() {
 
   const stat = (icon: IconName, value: number | undefined, label: string) => (
     <View
-      style={[styles.stat, { backgroundColor: palette.card }]}
+      style={[styles.stat, { backgroundColor: c.paper, borderColor: c.ink }]}
       accessibilityLabel={`${label} ${value ?? ""}`}
     >
-      <Text style={{ fontFamily: font.monoMedium, fontSize: 17, color: palette.ink }}>{value ?? "–"}</Text>
+      <Text style={{ fontFamily: font.monoMedium, fontSize: 17, color: c.ink }}>{value ?? "–"}</Text>
       <View style={styles.statLabel}>
-        <Icon name={icon} size={13} color={palette.mut} />
-        <Text style={{ fontSize: 12.5, color: palette.mut }}>{label}</Text>
+        <Icon name={icon} size={13} color={c.mut} />
+        <Text style={{ fontSize: 12.5, color: c.mut }}>{label}</Text>
       </View>
     </View>
   );
@@ -202,20 +208,25 @@ export function AccountBody() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <SettingsBack />
       <ScrollView contentContainerStyle={[styles.content, column]} keyboardShouldPersistTaps="handled">
         <View style={styles.head}>
-          <View style={[styles.avatar, { backgroundColor: palette.acc }]}>
-            <Text style={{ fontSize: 34, fontWeight: "700", color: onColor }}>{[...name][0] ?? "?"}</Text>
+          <View
+            style={[
+              styles.avatar,
+              { backgroundColor: c.acc, borderColor: c.ink, boxShadow: hardShadow(c.ink, comicDepth.raised) },
+            ]}
+          >
+            <Text style={{ fontSize: 40, fontWeight: "900", color: c.onAcc }}>{[...name][0] ?? "?"}</Text>
           </View>
           <View style={{ alignItems: "center", gap: 2 }}>
-            <Text accessibilityRole="header" numberOfLines={1} style={[styles.name, { color: palette.ink }]}>
+            <Text accessibilityRole="header" numberOfLines={1} style={[styles.name, { color: c.ink }]}>
               {name}
             </Text>
             {joined ? (
-              <Text style={{ fontSize: 12.5, color: palette.mut }}>
+              <Text style={{ fontSize: 12.5, color: c.mut }}>
                 {t("account.joined", { date: joined })}
               </Text>
             ) : null}
@@ -223,14 +234,14 @@ export function AccountBody() {
         </View>
         <Group>
           <View style={styles.kv}>
-            <Text style={[styles.key, { color: palette.mut }]}>{t("account.email")}</Text>
-            <Text style={{ flex: 1, fontSize: 15, color: palette.ink }} selectable>
+            <Text style={[styles.key, { color: c.mut }]}>{t("account.email")}</Text>
+            <Text style={{ flex: 1, fontSize: 15, color: c.ink }} selectable>
               {user?.email}
             </Text>
           </View>
           <View style={styles.kv}>
-            <Text style={[styles.key, { color: palette.mut }]}>{t("account.nickname")}</Text>
-            <Text style={{ flex: 1, fontSize: 15, color: user?.display_name ? palette.ink : palette.mut }}>
+            <Text style={[styles.key, { color: c.mut }]}>{t("account.nickname")}</Text>
+            <Text style={{ flex: 1, fontSize: 15, color: user?.display_name ? c.ink : c.mut }}>
               {user?.display_name || t("account.notSet")}
             </Text>
           </View>
@@ -244,18 +255,18 @@ export function AccountBody() {
         />
 
         <LegalLinks />
-        <View style={[styles.danger, { backgroundColor: palette.errBg }]}>
+        <View style={[styles.danger, { backgroundColor: c.paper, borderColor: c.err }]}>
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ expanded }}
             onPress={toggle}
             style={styles.dangerHead}
           >
-            <Icon name="alert" size={20} color={palette.err} />
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: palette.err }}>
+            <Icon name="alert" size={20} color={c.err} />
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: c.err }}>
               {t("account.deleteAccount")}
             </Text>
-            <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} color={palette.err} />
+            <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} color={c.err} />
           </Pressable>
           {expanded ? (
             <View style={{ gap: space.m }}>
@@ -265,7 +276,7 @@ export function AccountBody() {
                 {stat("key", counts?.models, t("account.models"))}
               </View>
               <Text
-                style={{ fontSize: 14, lineHeight: 22, color: palette.ink2, paddingHorizontal: space.xs }}
+                style={{ fontSize: 14, lineHeight: 22, color: c.ink2, paddingHorizontal: space.xs }}
               >
                 {t("account.deleteMessage")}
               </Text>
@@ -273,7 +284,6 @@ export function AccountBody() {
               <Field
                 label={t("account.confirmPassword")}
                 hideLabel
-                onGrey
                 placeholder={t("account.confirmPassword")}
                 value={password}
                 onChangeText={setPassword}
@@ -297,26 +307,37 @@ export function AccountBody() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: space.list, paddingBottom: 56, gap: space.s },
+  content: { paddingHorizontal: 20, paddingBottom: 56, gap: space.m },
   head: { alignItems: "center", gap: 10, paddingTop: space.page, paddingBottom: 14 },
-  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
-  name: { fontSize: 26, lineHeight: 32, fontWeight: "700" },
+  avatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: comicStroke.frame,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  name: { fontSize: 26, lineHeight: 32, fontWeight: "900" },
   kv: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 56, paddingHorizontal: 14 },
-  key: { width: 44, fontSize: 13 },
+  /** 标签一列：中文两个字、英文的 Nickname 都放得下，值对齐 */
+  key: { width: 72, fontSize: 13.5, fontWeight: "700" },
   legal: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", columnGap: space.l, marginTop: space.s },
   legalLink: { minHeight: 32, justifyContent: "center" },
   fold: {
     paddingTop: space.s,
     paddingHorizontal: 14,
     paddingBottom: 14,
-    borderRadius: radius.group,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
+  /** 删除账户：红框的格子 */
   danger: {
     marginTop: 20,
     paddingTop: space.s,
     paddingHorizontal: 14,
     paddingBottom: 14,
-    borderRadius: radius.group,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
   dangerHead: {
     flexDirection: "row",
@@ -325,7 +346,15 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: space.xs,
   },
-  stats: { flexDirection: "row", gap: 6 },
-  stat: { flex: 1, height: 60, borderRadius: 18, alignItems: "center", justifyContent: "center", gap: 2 },
+  stats: { flexDirection: "row", gap: space.s },
+  stat: {
+    flex: 1,
+    height: 64,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
   statLabel: { flexDirection: "row", alignItems: "center", gap: 4 },
 });

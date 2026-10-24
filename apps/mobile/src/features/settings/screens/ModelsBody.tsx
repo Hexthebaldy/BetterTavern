@@ -28,7 +28,7 @@ import {
 } from "../../../components/ui.tsx";
 import { useAsync } from "../../../hooks/useAsync.ts";
 import { useApp } from "../../../state/AppProvider.tsx";
-import { font, space, useComic, usePalette } from "../../../theme/index.ts";
+import { font, space, useComic } from "../../../theme/index.ts";
 import { AddModelForm } from "../AddModelForm.tsx";
 import { SettingsBack, useSettingsNav } from "../nav.tsx";
 
@@ -96,7 +96,7 @@ export function ModelsBody() {
   const { api } = useApp();
   const nav = useSettingsNav();
   const column = useColumnStyle();
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const { t } = useTranslation();
   const [addError, setAddError] = useState<unknown>(null);
@@ -113,7 +113,7 @@ export function ModelsBody() {
   if (loading && !data) return <Loading />;
   if (!data) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         <SettingsBack />
         <ErrorState
           title={t("models.loadFailed")}
@@ -138,15 +138,15 @@ export function ModelsBody() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <SettingsBack />
       <ScrollView contentContainerStyle={[{ paddingBottom: 56 }, column]} keyboardShouldPersistTaps="handled">
         <View style={styles.head}>
-          <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
+          <Text accessibilityRole="header" style={[styles.big, { color: c.ink }]}>
             {t("models.title")}
           </Text>
-          <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut }}>
+          <Text style={{ fontSize: 14, lineHeight: 22, color: c.mut }}>
             {platform ? t("models.introPlatform") : t("models.intro")}
           </Text>
         </View>
@@ -194,9 +194,9 @@ export function ModelsBody() {
 
 const styles = StyleSheet.create({
   head: { paddingHorizontal: space.page, paddingTop: space.l, paddingBottom: 18, gap: space.s },
-  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
-  inset: { marginHorizontal: space.list },
-  notice: { marginHorizontal: space.list, marginBottom: space.m, borderRadius: 22 },
+  big: { fontSize: 32, lineHeight: 40, fontWeight: "900", letterSpacing: -0.64 },
+  inset: { marginHorizontal: 20 },
+  notice: { marginHorizontal: 20, marginBottom: space.m },
   row: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 66, paddingVertical: 10, paddingHorizontal: 14 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 0 },
   title: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "800" },

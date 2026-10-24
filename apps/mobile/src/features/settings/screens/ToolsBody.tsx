@@ -30,7 +30,7 @@ import {
 } from "../../../components/ui.tsx";
 import { useAsync } from "../../../hooks/useAsync.ts";
 import { useApp } from "../../../state/AppProvider.tsx";
-import { font, radius, space, usePalette } from "../../../theme/index.ts";
+import { comicRadius, comicStroke, font, space, useComic } from "../../../theme/index.ts";
 import { SettingsBack } from "../nav.tsx";
 
 const KINDS: ToolKind[] = ["search", "fetch", "image"];
@@ -153,7 +153,7 @@ function AddSheet({
 }
 
 function RouteCard({ route, onChanged }: { route: ToolRoute; onChanged: () => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const { api } = useApp();
   const overlay = useOverlay();
@@ -200,13 +200,13 @@ function RouteCard({ route, onChanged }: { route: ToolRoute; onChanged: () => vo
     .filter(Boolean)
     .join(" · ");
   return (
-    <View style={[styles.card, { backgroundColor: palette.bg2 }]}>
+    <View style={[styles.card, { backgroundColor: c.paper, borderColor: c.ink }]}>
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space.s }}>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ fontSize: 16, fontWeight: "600", color: palette.ink }}>{name}</Text>
-          {meta ? <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.mut }}>{meta}</Text> : null}
+          <Text style={{ fontSize: 16, fontWeight: "900", color: c.ink }}>{name}</Text>
+          {meta ? <Text style={{ fontFamily: font.mono, fontSize: 12, color: c.mut }}>{meta}</Text> : null}
         </View>
-        {route.is_default ? <Pill label={t("tools.default")} tone="acc" /> : null}
+        {route.is_default ? <Pill label={t("tools.default")} tone="accSolid" /> : null}
       </View>
       <View style={{ flexDirection: "row" }}>
         <Status
@@ -221,12 +221,12 @@ function RouteCard({ route, onChanged }: { route: ToolRoute; onChanged: () => vo
         />
       </View>
       <View style={styles.chips}>
-        <Chip small onGrey label={testing ? t("tools.testing") : t("tools.test")} onPress={() => void test()} />
+        <Chip small label={testing ? t("tools.testing") : t("tools.test")} onPress={() => void test()} />
         {route.is_default ? null : (
-          <Chip small onGrey label={t("tools.makeDefault")} onPress={() => void run(() => api.tools.update(route.id, { default: true }))} />
+          <Chip small label={t("tools.makeDefault")} onPress={() => void run(() => api.tools.update(route.id, { default: true }))} />
         )}
-        {route.has_key ? <Chip small onGrey label={t("tools.replaceKey")} onPress={() => void replaceKey()} /> : null}
-        <Chip small onGrey label={t("common.delete")} onPress={() => void remove()} />
+        {route.has_key ? <Chip small label={t("tools.replaceKey")} onPress={() => void replaceKey()} /> : null}
+        <Chip small label={t("common.delete")} onPress={() => void remove()} />
       </View>
     </View>
   );
@@ -234,7 +234,7 @@ function RouteCard({ route, onChanged }: { route: ToolRoute; onChanged: () => vo
 
 export function ToolsBody() {
   const { api } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const column = useColumnStyle();
   const overlay = useOverlay();
   const { t } = useTranslation();
@@ -247,7 +247,7 @@ export function ToolsBody() {
   if (loading && !data) return <Loading />;
   if (!data) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         <SettingsBack />
         <ErrorState title={t("tools.loadFailed")} message={describeError(error)} onRetry={() => void reload()} />
       </View>
@@ -256,15 +256,15 @@ export function ToolsBody() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <SettingsBack />
       <ScrollView contentContainerStyle={[{ paddingBottom: 56 }, column]}>
         <View style={styles.head}>
-          <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
+          <Text accessibilityRole="header" style={[styles.big, { color: c.ink }]}>
             {t("tools.title")}
           </Text>
-          <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut }}>{t("tools.intro")}</Text>
+          <Text style={{ fontSize: 14, lineHeight: 22, color: c.mut }}>{t("tools.intro")}</Text>
         </View>
         {KINDS.map((kind) => {
           const list = data.routes.filter((r) => r.kind === kind);
@@ -274,11 +274,11 @@ export function ToolsBody() {
                 title={t(`tools.kinds.${kind}`)}
                 meta={<Chip small icon="plus" label={t("tools.add")} onPress={() => setAdding(kind)} />}
               />
-              <Text style={[styles.note, { color: palette.mut }]}>{t(`tools.kindNotes.${kind}`)}</Text>
+              <Text style={[styles.note, { color: c.mut }]}>{t(`tools.kindNotes.${kind}`)}</Text>
               {list.length ? (
                 list.map((route) => <RouteCard key={route.id} route={route} onChanged={() => void reload()} />)
               ) : (
-                <Text style={[styles.note, { color: palette.mut }]}>{t("tools.none")}</Text>
+                <Text style={[styles.note, { color: c.mut }]}>{t("tools.none")}</Text>
               )}
             </View>
           );
@@ -303,9 +303,15 @@ export function ToolsBody() {
 
 const styles = StyleSheet.create({
   head: { paddingHorizontal: space.page, paddingTop: space.s, paddingBottom: space.s, gap: space.s },
-  big: { fontSize: 28, lineHeight: 34, fontWeight: "700" },
+  big: { fontSize: 28, lineHeight: 34, fontWeight: "900" },
   note: { paddingHorizontal: space.page, fontSize: 13, lineHeight: 20 },
-  card: { marginHorizontal: space.list, padding: space.l, borderRadius: radius.option, gap: 10 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  sheet: { paddingHorizontal: space.l, paddingBottom: space.xl, gap: space.m },
+  card: {
+    marginHorizontal: 20,
+    padding: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+    gap: 10,
+  },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: space.s },
+  sheet: { paddingHorizontal: 18, paddingBottom: space.xl, gap: space.m },
 });
