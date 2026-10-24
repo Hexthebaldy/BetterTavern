@@ -6,8 +6,9 @@
  *   存档、剧本、角色、工作台、模型、设置。当前页那块墨底；指着的那块蓝网点、往外弹出 14，旁边冒一个说明气泡。
  *   靠边时先把圆心挪到离每条边至少 204 的地方，挪完以后要等鼠标动一下才开始高亮（免得一展开就选中光标底下那块）。
  *   选哪块只看方向：光标离圆心超过内半径就按角度算。
- * - 收起：鼠标离开圆盘 0.3 秒后（中途回来不收）；Esc、点页面别处、进了新页面立刻收起。
+ * - 收起：鼠标离开圆盘 1 秒后（中途回来不收）；Esc、点页面别处、进了新页面立刻收起。收起时圆盘缩回去、淡出（0.22 秒）。
  * - 拖动：在圆上按住 0.4 秒拿起来（放大 1.12、投影加深、原地留一个虚线圈），松手停在那里；离左右边 40 以内贴边。
+ *   展开以后圆心可能已经挪开了，所以在圆盘上任何地方按住 0.4 秒也能拿起来，圆跳到光标底下；点一下扇区还是进入那一页。
  *   位置存在浏览器里（偏好的 wheel），窗口变了按比例换算再夹回窗口里。
  * - 键盘：Q 打开或收起；展开时 1–6 直接去，方向键在六块之间转，Enter 进去，Esc 收起。
  *   Q 和 1–6 是单键快捷键，跟着设置里的开关走，光标在输入框里时不响应；方向键、Enter、Esc 一直可用。
@@ -58,7 +59,8 @@ const BOX = 416;
 const MID = BOX / 2;
 const ARROWS = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 
-type Press = { id: number; type: string; start: Point; at: number; offset: Point; timer: number };
+/** 一次按住：从哪按下的（中间的圆，还是展开的圆盘） */
+type Press = { id: number; type: string; from: "hub" | "disc"; start: Point; at: number; offset: Point; timer: number };
 type OpenedBy = "hover" | "tap" | "key";
 type BubbleTail = "left" | "right" | "up" | "upRight";
 
@@ -108,6 +110,8 @@ export function NavWheel() {
 
   const [open, setOpenState] = useState(false);
   const [center, setCenter] = useState<Point | null>(null);
+  /** 收起的动画还在放：圆盘留着（不能点），放完才卸掉 */
+  const [closing, setClosing] = useState(false);
   const [hovered, setHoveredState] = useState<number | null>(null);
   // 连着按键（Q 紧接着 5、连按方向键）时，下一个键要看到上一个键的结果，所以开关和高亮另记一份，改的时候同步更新
   const openNow = useRef(false);
@@ -155,9 +159,11 @@ export function NavWheel() {
       window.clearTimeout(closeTimer.current);
       openTimer.current = 0;
       closeTimer.current = 0;
+      const animate = openNow.current && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       setOpen(false);
-      setCenter(null);
       setHovered(null);
+      if (animate) setClosing(true);
+      else setCenter(null);
       if (focusHub) hubButton.current?.focus({ preventScroll: true });
     },
     [setOpen, setHovered],
@@ -175,6 +181,7 @@ export function NavWheel() {
     armAt.current = lastPointer.current;
     opened.current = { by, at: performance.now() };
     setCounted(true);
+    setClosing(false);
     setCenter(target);
     setOpen(true);
     setHovered(by === "key" ? (current ?? 0) : null);
@@ -209,7 +216,7 @@ export function NavWheel() {
     items.current[hovered]?.focus({ preventScroll: true });
   }, [open, hovered]);
 
-  // ---- 展开时：鼠标在圆盘上就高亮指着的那块，离开 0.3 秒收起；点页面别处收起 ----
+  // ---- 展开时：鼠标在圆盘上就高亮指着的那块，离开 1 秒收起；点页面别处收起 ----
   useEffect(() => {
     if (!open || !center) return;
     const onMove = (event: PointerEvent): void => {
@@ -294,10 +301,47 @@ export function NavWheel() {
   const lift = (): void => {
     const p = press.current;
     if (!p) return;
-    const at = live.current.shown;
+    let at = live.current.shown;
+    if (p.from === "disc") {
+      // 在圆盘上按住的：圆跳到光标底下；圆盘马上要卸掉，之后的移动和松手交给中间的圆接着处理
+      at = p.start;
+      try {
+        hubButton.current?.setPointerCapture(p.id);
+      } catch {
+        // 指针已经松开了：松手会在下面的 pointerup 里收尾
+      }
+    }
     p.offset = { x: p.start.x - at.x, y: p.start.y - at.y };
     closeWheel();
     setDrag(at);
+  };
+
+  const beginPress = (event: ReactPointerEvent<HTMLElement>, from: Press["from"]): void => {
+    press.current = {
+      id: event.pointerId,
+      type: event.pointerType,
+      from,
+      start: { x: event.clientX, y: event.clientY },
+      at: performance.now(),
+      offset: { x: 0, y: 0 },
+      timer: window.setTimeout(lift, WHEEL.hold),
+    };
+  };
+
+  /** 按住还没到 0.4 秒就挪开了：不算拖，当成悬停或滑动 */
+  const movedTooSoon = (event: ReactPointerEvent<HTMLElement>, p: Press): boolean =>
+    pressOutcome({
+      heldMs: performance.now() - p.at,
+      moved: distance({ x: event.clientX, y: event.clientY }, p.start),
+      released: false,
+    }) === "cancel";
+
+  /** 圆盘上的按住在拿起来之前就结束了（松手、挪开、被取消）：松手照常算点击 */
+  const dropDiscPress = (event: ReactPointerEvent<HTMLElement>): void => {
+    const p = press.current;
+    if (!p || p.id !== event.pointerId || p.from !== "disc" || drag) return;
+    window.clearTimeout(p.timer);
+    press.current = null;
   };
 
   const finishPress = (event: ReactPointerEvent<HTMLButtonElement>, released: boolean): void => {
@@ -334,17 +378,34 @@ export function NavWheel() {
     <nav ref={root} aria-label={t("nav.main")} className={styles.wheel}>
       {drag ? <span className={styles.ghost} style={{ left: hub.x, top: hub.y }} aria-hidden="true" /> : null}
 
-      {open && center ? (
+      {center && (open || closing) ? (
         <div
           id={menuId}
           role="menu"
           aria-label={t("nav.wheel")}
-          className={styles.disc}
+          className={cx(styles.disc, closing && styles.discOut)}
           style={{ left: center.x - MID, top: center.y - MID }}
+          inert={closing}
+          onAnimationEnd={(event) => {
+            if (!closing || event.target !== event.currentTarget) return;
+            setClosing(false);
+            setCenter(null);
+          }}
           onClick={(event) => {
             const index = sectorAt(center, { x: event.clientX, y: event.clientY });
             if (index !== null) go(index);
           }}
+          onPointerDown={(event) => {
+            if (event.button !== 0 || closing) return;
+            beginPress(event, "disc");
+          }}
+          onPointerMove={(event) => {
+            const p = press.current;
+            if (p && p.id === event.pointerId && p.from === "disc" && movedTooSoon(event, p)) dropDiscPress(event);
+          }}
+          onPointerUp={dropDiscPress}
+          onPointerCancel={dropDiscPress}
+          onContextMenu={(event) => event.preventDefault()}
         >
           <svg className={styles.plate} width={BOX} height={BOX} viewBox={`0 0 ${BOX} ${BOX}`} aria-hidden="true">
             <defs>
@@ -460,15 +521,7 @@ export function NavWheel() {
           window.clearTimeout(openTimer.current);
           openTimer.current = 0;
           event.currentTarget.setPointerCapture(event.pointerId);
-          const start = { x: event.clientX, y: event.clientY };
-          press.current = {
-            id: event.pointerId,
-            type: event.pointerType,
-            start,
-            at: performance.now(),
-            offset: { x: 0, y: 0 },
-            timer: window.setTimeout(lift, WHEEL.hold),
-          };
+          beginPress(event, "hub");
         }}
         onPointerMove={(event) => {
           lastPointer.current = { x: event.clientX, y: event.clientY };
@@ -484,12 +537,7 @@ export function NavWheel() {
             });
             return;
           }
-          const outcome = pressOutcome({
-            heldMs: performance.now() - p.at,
-            moved: distance(now, p.start),
-            released: false,
-          });
-          if (outcome === "cancel") {
+          if (movedTooSoon(event, p)) {
             window.clearTimeout(p.timer);
             press.current = null;
             event.currentTarget.releasePointerCapture(event.pointerId);

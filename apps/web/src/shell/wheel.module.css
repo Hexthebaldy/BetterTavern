@@ -39,7 +39,7 @@
     background-color var(--dur-fast) var(--ease);
 }
 :root {
-  --wheel-shift: 150ms;
+  --wheel-shift: 240ms;
 }
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -94,10 +94,25 @@
   z-index: 2;
   width: 416px;
   height: 416px;
-  animation: discIn 160ms var(--ease);
+  /* 在圆盘上长按也能拿起来拖（触屏上不能让页面跟着滚） */
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  animation: discIn 240ms var(--ease);
 }
 @keyframes discIn {
   from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+}
+/* 收起：缩回去、淡出，同时中间的圆挪回原位；放完才卸掉（NavWheel 的 closing） */
+.discOut {
+  pointer-events: none;
+  animation: discOut 220ms var(--ease) forwards;
+}
+@keyframes discOut {
+  to {
     opacity: 0;
     transform: scale(0.88);
   }
@@ -133,7 +148,7 @@
 /* 指着的那块：往外弹出 14（在留缝的 4 之外），带 6px 硬投影，描边 3 */
 .hot {
   transform: translate(var(--dx), var(--dy));
-  animation: pop 120ms var(--ease);
+  animation: pop 180ms var(--ease);
 }
 @keyframes pop {
   from {
@@ -150,6 +165,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .disc,
+  .discOut,
   .hot {
     animation: none;
   }

@@ -28,10 +28,10 @@ export const WHEEL = {
   hold: 400,
   /** 按住没到时间就挪开这么远，算悬停或滑动，不算拖 */
   moveTolerance: 8,
-  /** 鼠标停在圆上多久展开、离开圆盘多久收起、靠边时圆心挪过去用多久（毫秒） */
+  /** 鼠标停在圆上多久展开、离开圆盘多久收起、靠边时圆心挪过去用多久（毫秒；挪动的时长在 wheel.module.css 里用的是同一个数） */
   openDelay: 120,
-  closeDelay: 300,
-  shift: 150,
+  closeDelay: 1000,
+  shift: 240,
 } as const;
 
 /** 六块，从正上方开始顺时针：存档、剧本、角色、工作台、模型、设置 */
@@ -120,7 +120,7 @@ export function sectorAt(center: Point, pointer: Point, inner: number = WHEEL.in
   return Math.floor(turned / STEP) % SECTORS;
 }
 
-/** 光标在不在圆盘上（离开圆盘 0.3 秒后收起） */
+/** 光标在不在圆盘上（离开圆盘 1 秒后收起） */
 export function insideDisc(center: Point, pointer: Point): boolean {
   return Math.hypot(pointer.x - center.x, pointer.y - center.y) <= WHEEL.disc;
 }
