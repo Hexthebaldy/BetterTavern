@@ -56,6 +56,7 @@ import {
   font,
   space,
   useComic,
+  useIsDark,
   usePalette,
 } from "../../src/theme/index.ts";
 
@@ -63,6 +64,7 @@ import {
 function DirectorCard({ route, onPress }: { route: ModelRoute; onPress: () => void }) {
   const c = useComic();
   const palette = usePalette();
+  const dark = useIsDark();
   const { t } = useTranslation();
   const { model_window: total, working_cap: cap, max_tokens: out } = route.window;
   const used = Math.min(cap, total);
@@ -102,7 +104,8 @@ function DirectorCard({ route, onPress }: { route: ModelRoute; onPress: () => vo
         <Icon name="chevronRight" size={20} color={c.paper} />
       </View>
       <View style={{ marginTop: space.l, gap: 8 }}>
-        <View style={[styles.bar, { backgroundColor: palette.arrowBg }]} accessibilityElementsHidden>
+        {/* 轨道：白天是墨底上一层淡白，夜间（格子变成浅色）是深灰 */}
+        <View style={[styles.bar, { backgroundColor: dark ? c.line2 : palette.arrowBg }]} accessibilityElementsHidden>
           <View style={[styles.barPart, { flex: story, backgroundColor: c.paper }]} />
           <View style={[styles.barPart, { flex: output, backgroundColor: c.sky }]} />
           <View style={{ flex: Math.max(0, 1 - story - output) }} />
