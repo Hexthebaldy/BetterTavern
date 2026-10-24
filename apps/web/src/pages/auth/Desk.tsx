@@ -11,7 +11,7 @@
 import { useId } from "react";
 
 import styles from "./desk.module.css";
-import { rays } from "./desk.ts";
+import { rays } from "@bettertavern/design/desk";
 import { DocSheet, IndexCard, MapSheet, RelationSheet, Sheet, type DeskIds, type DeskStage } from "./DeskSheets.tsx";
 
 const TAPES = [

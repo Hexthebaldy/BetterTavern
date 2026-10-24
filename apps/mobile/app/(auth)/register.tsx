@@ -13,7 +13,7 @@ import { ApiError, describeError } from "@bettertavern/core/api/client";
 import { registeredSession } from "@bettertavern/core/auth/session";
 import { currentLanguage } from "@bettertavern/core/i18n/index";
 
-import { AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
+import { AuthBrand, AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
 import { ServerRow, ServerSheet } from "../../src/components/ServerSetting.tsx";
 import { BackBar, Button, Field, IconButton, Notice } from "../../src/components/ui.tsx";
 import { AgreeRow } from "../../src/features/auth/parts.tsx";
@@ -59,7 +59,7 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
   const [serverOpen, setServerOpen] = useState(false);
-  const { compact } = useLayout();
+  const { compact, expanded } = useLayout();
   const column = useAuthColumn();
   const formWidth = useAuthFormWidth();
 
@@ -111,6 +111,8 @@ export default function RegisterScreen() {
         contentContainerStyle={[styles.content, compact ? null : styles.centered, column]}
         keyboardShouldPersistTaps="handled"
       >
+        {/* 宽屏左边的桌面上没有字：Logo 和名字放在表单顶上 */}
+        {expanded ? <AuthBrand /> : null}
         <Text accessibilityRole="header" style={[styles.big, { color: c.ink }]}>
           {t("auth.registerTitle")}
         </Text>
@@ -177,7 +179,11 @@ export default function RegisterScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1, backgroundColor: c.page }}
     >
-      <AuthSplit form={form} footer={<ServerRow onChange={() => setServerOpen(true)} width={formWidth} />} />
+      <AuthSplit
+        form={form}
+        desk="start"
+        footer={<ServerRow onChange={() => setServerOpen(true)} width={formWidth} />}
+      />
       <ServerSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
     </KeyboardAvoidingView>
   );

@@ -1,7 +1,7 @@
 /**
  * 登录。服务器地址在页面底部更改；连不上服务器时自动打开服务器面板。
  * 邮箱还没验证（EMAIL_NOT_VERIFIED，服务端已经重发了验证码）时去验证页。
- * 平板（components/AuthLayout.tsx）：宽屏左边是插画区、表单在右半边居中；中屏表单宽 440 居中。
+ * 平板（components/AuthLayout.tsx）：宽屏左边是写故事的桌面、表单在右半边居中；中屏表单宽 440 居中。
  */
 
 import { useRouter } from "expo-router";
@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 
-import { AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
+import { AuthBrand, AuthSplit, useAuthColumn, useAuthFormWidth } from "../../src/components/AuthLayout.tsx";
 import { Logo } from "../../src/components/Logo.tsx";
 import { ServerRow, ServerSheet } from "../../src/components/ServerSetting.tsx";
 import { Button, Field, IconButton, Notice } from "../../src/components/ui.tsx";
@@ -95,8 +95,8 @@ export default function LoginScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 宽屏的 Logo 和介绍在左边的插画区里 */}
-        {expanded ? null : <Logo />}
+        {/* 宽屏左边的桌面上没有字：Logo 和名字放在表单顶上，介绍语不放 */}
+        {expanded ? <AuthBrand /> : <Logo />}
         <View style={{ gap: 10 }}>
           <Text accessibilityRole="header" style={[styles.big, { color: c.ink }]}>
             {t("auth.loginTitle")}

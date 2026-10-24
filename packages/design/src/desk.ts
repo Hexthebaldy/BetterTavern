@@ -1,7 +1,8 @@
 /**
  * 登录页左格“写故事的桌面”和右格集中线里看起来随机的形状（docs/design/comic 的“登录页”一节）：
  * 等高线、湖、文稿上的字条、集中线。都用固定种子的伪随机生成，同一个种子每次画出来都一样，
- * 页面每次打开桌面不变，截图也对得上。位置、大小这些确定的数值在 Desk.tsx / DeskSheets.tsx 里，照设计稿源码。
+ * 页面每次打开桌面不变，截图也对得上。网页（apps/web 的 pages/auth/Desk.tsx）和手机端平板横屏的登录页
+ * （apps/mobile 的 components/AuthDesk.tsx）共用这里；位置、大小这些确定的数值在两边的组件里，照设计稿源码。
  */
 
 export type Pt = { x: number; y: number };

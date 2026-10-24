@@ -353,7 +353,7 @@ apps/mobile/
 - 一级页的“漫画格子”（`components/ComicGrid.tsx`）：6 列 × 3 行，间距 14，三行分掉窗口高度（每行至少 200）；每一页放哪几项、每一项占哪几格由
   `theme/grid.ts` 的纯函数决定（存档、剧本第一页不满时换一套排法，不留空洞；角色是 4 × 2）。翻页在底下，← → 也能翻。
   不翻页的页面（工作台、模型、设置）格子放不下时这一行跟着长高。窄于 900 时变成一列。
-- 漫画版的部件在 `components/comic.tsx`：格子（五种底、“热”的大投影）、对话气泡、旁白框、键帽、人物位（`portrait.ts` 决定取名字里的哪个字、用哪种底）、底部提示条；
+- 漫画版的部件在 `components/comic.tsx`：格子（五种底、“热”的大投影）、对话气泡、旁白框、键帽、人物位（`@bettertavern/design` 的 `portrait.ts` 决定取名字里的哪个字、用哪种底，手机端也用它）、底部提示条；
   共用控件（`controls.tsx`）换成粗线样式，接口不变。
 - 阅读页：世界状态一律从右侧滑出（手机宽度是底部面板，`worldMode()`）。页面整体滚动（浏览器的查找、滚动条都是原生的），停在底部时跟着新文字滚，
   往上翻就停下，右下角出现“回到最新”。窄于 1200 收起右栏，窄于 900 只剩分镜一栏。
@@ -395,13 +395,13 @@ apps/web/
     ├── overlay/   OverlayProvider.tsx  Dialog.tsx  Menu.tsx  Tooltip.tsx  ShortcutsDialog.tsx  useContextMenu.ts
     ├── import/    ImportProvider.tsx  DropZone.tsx  rules.ts   # 导入角色卡（按钮和拖放，一次一张，进草稿）
     ├── components/ controls.tsx（按钮、输入框、提示条、标签、勾选、分段）comic.tsx（格子、气泡、旁白框、键帽、人物位、提示条）
-    │               portrait.ts  ComicGrid.tsx  PageHeader.tsx  FluidCover.tsx  Icon.tsx  Logo.tsx  Cover.tsx
+    │               ComicGrid.tsx  PageHeader.tsx  FluidCover.tsx  Icon.tsx  Logo.tsx  Cover.tsx
     ├── data/      stories.ts  scenarios.ts  models.ts  tools.ts  blobs.ts  workbench.ts   # 查询
     │              storyActions.ts  scenarioActions.ts  cardActions.ts                 # 共用的操作
     └── pages/     auth/  stories/  library/  cards/  scenario/  workbench/  play/  models/  tools/  settings/  Splash.tsx  NotFound.tsx
 ```
 
-纯逻辑（`theme/layout.ts`、`theme/wheel.ts`、`theme/grid.ts`、`theme/palette.ts`、`components/portrait.ts`、`storage/local.ts`、`state/prefs.ts`、`pages/auth/servers.ts`、`pages/auth/desk.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/library/collection.ts`、`pages/play/reading.ts`）
+纯逻辑（`theme/layout.ts`、`theme/wheel.ts`、`theme/grid.ts`、`theme/palette.ts`、`storage/local.ts`、`state/prefs.ts`、`pages/auth/servers.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/library/collection.ts`、`pages/play/reading.ts`）
 用 `node --test` 测，在仓库根目录 `npm test` 时一起跑；整条路的端到端测试见 [testing.md 第 3 节](testing.md)。
 
 ### 登录页
@@ -411,7 +411,7 @@ apps/web/
 - 窗口 ≥ 900 是两格漫画（`AuthLayout.tsx`）：四周离窗口 40、中间空 16，宽度按 700 : 644 分，右格至少 480；窗口太矮时整页滚动。窄于 900 只留表单，同以前的窄屏。
 - 左格是一张写故事的桌面（`Desk.tsx`、`DeskSheets.tsx`）：地图、人物关系图、三张文稿、一张索引卡，最上层是胶带、图钉和一根蓝线。
   一个字都没有，不放图片，整格 `aria-hidden`。整个是一张 700×820 的 SVG，格子大小不同时按比例铺满、裁掉多出来的边。
-  位置、大小、转角、关系图的人物和连线照设计稿源码；等高线、湖、字条和右格的集中线用固定种子的伪随机生成（`desk.ts`，`node --test` 测同一个种子结果相同、点都在画布里）。
+  位置、大小、转角、关系图的人物和连线照设计稿源码；等高线、湖、字条和右格的集中线用固定种子的伪随机生成（`packages/design` 的 `desk.ts`，手机端平板横屏的登录页也用它；`node --test` 测同一个种子结果相同、点都在画布里）。
   注册页是“刚开始”的样子（`desk="start"`）。颜色都走现有的变量，夜间跟着换。
 - 右格是表单：Logo 和名字、宋体大标题，输入框用大号的 `Field`（`size="lg"`：高 56、圆角 14、正在输入的那一栏蓝框加 `--b4`），主按钮印着 Enter 键帽（`Button` 的 `kbd`），
   下面是次要按钮（登录页“注册新账户”，注册页和找回密码“返回登录”）。验证码是 6 个格子（`CodeField`），粘贴时先去掉不是数字的再留前 6 位。

@@ -6,7 +6,6 @@ export const auth: MessagesOtherOnly<typeof source> = {
     loginTitle: "物語の続きへ",
     registerTitle: "アカウントを作成",
     tagline: "キャラクターカードを読み込んで、一人称で物語を紡ぎましょう。",
-    taglineLines: "キャラクターカードを読み込んで、\n一人称で物語を紡ぎましょう。",
     email: "メールアドレス",
     password: "パスワード",
     passwordPlaceholder: "パスワードを入力",

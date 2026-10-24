@@ -6,7 +6,6 @@ export const auth: Messages<typeof source> = {
     loginTitle: "Continue your story",
     registerTitle: "Create an account",
     tagline: "Import a character card and write the story in the first person.",
-    taglineLines: "Import a character card,\nwrite the story in the first person.",
     email: "Email",
     password: "Password",
     passwordPlaceholder: "Enter your password",

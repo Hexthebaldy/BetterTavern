@@ -6,7 +6,6 @@ export const auth = {
     registerTitle: "创建账户",
     tagline: "导入一张角色卡，用第一人称把故事写下去。",
     /** 平板插画区里分两行的版本 */
-    taglineLines: "导入一张角色卡，\n用第一人称把故事写下去。",
     email: "邮箱",
     password: "密码",
     passwordPlaceholder: "输入密码",

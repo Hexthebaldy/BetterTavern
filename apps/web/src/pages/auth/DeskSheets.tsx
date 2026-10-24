@@ -1,13 +1,14 @@
 /**
  * 桌面上的四样东西（地图、人物关系图、文稿、索引卡），每样只画 SVG，没有字。
  * 坐标是每张纸自己的（左上角是纸的里侧，去掉了 2.5 的描边），数值照 docs/design/comic/source/ComicAuth.dc.html；
- * 看起来随机的形状由 desk.ts 按固定种子生成。颜色都走 desk.module.css 里的类（跟着深浅色变）。
+ * 看起来随机的形状由 @bettertavern/design 的 desk.ts 按固定种子生成（手机端平板横屏的登录页也用它）。
+ * 颜色都走 desk.module.css 里的类（跟着深浅色变）。
  */
 
 import type { ReactNode } from "react";
 
 import styles from "./desk.module.css";
-import { contours, lake, smoothPath, strips, zigzag, type Pt } from "./desk.ts";
+import { contours, lake, smoothPath, strips, zigzag, type Pt } from "@bettertavern/design/desk";
 
 /** 桌面上共用的底纹（Desk 里的 <defs> 定义）：蓝网点、白底墨点、灰底墨点、关系图的点阵 */
 export type DeskIds = { blue: string; inkDots: string; greyDots: string; grid: string; clip: string };
