@@ -298,27 +298,46 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 320px;
 }
+/* 一回合：先是“我的行动”，再是叙述；没有边框，直接写在页面上。
+   行动和叙述之间、回合和回合之间都和段与段之间一样空 0.7 个字高（分镜一列本来有 14 的间距，减掉） */
 .frame {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
+  gap: calc(0.7 * var(--narr-size));
 }
-/* 正在写的那一格：蓝色硬投影 */
-.frameLive {
-  box-shadow: var(--b4);
+.turn + .turn {
+  margin-top: calc(0.7 * var(--narr-size) - 14px);
 }
-.narrative {
+/* 叙述：连着读的正文，段与段之间空 0.7 个字高 */
+.prose {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7em;
+  font-size: var(--narr-size);
+}
+.narrative,
+.action {
   margin: 0;
+  font-family: var(--font-serif);
   font-size: var(--narr-size);
   line-height: var(--narr-leading);
   letter-spacing: var(--narr-tracking);
-  text-align: justify;
-  padding: 10px 14px;
   overflow-wrap: anywhere;
+  color: var(--ink);
+}
+.narrative {
+  text-align: justify;
+}
+/* “我的行动”：和叙述一样的字，左边一道蓝色竖线 */
+.action {
+  padding-left: 14px;
+  border-left: 3px solid var(--acc);
+  cursor: text;
+  user-select: text;
 }
 .page[data-narr-font="sans"] .narrative,
-.page[data-narr-font="sans"] .actionText {
+.page[data-narr-font="sans"] .action {
   font-family: var(--font-sans);
 }
 .dim {
@@ -342,26 +361,11 @@
 .caretWaiting {
   background: var(--mut);
 }
-/* “我的行动”：靠右的蓝气泡，上面给说话人的小标签留空，下面给尾巴留空 */
-.actionRow {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 0 12px;
-}
-.action {
-  max-width: min(82%, 560px);
-}
-.actionText {
-  margin: 0;
-  font-size: var(--narr-size);
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-/* 回到这里：鼠标移上来时出现在这一格右上角；触屏上一直在 */
+/* 回到这里：鼠标移上来时出现在这一回合的右上角；触屏上一直在，放在这一回合末尾 */
 .turnTools {
   position: absolute;
-  top: -12px;
-  right: 12px;
+  top: 0;
+  right: 0;
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease);
 }
@@ -1005,9 +1009,7 @@
   .recap {
     display: none;
   }
-  .frame {
-    padding: 10px;
-  }
+
   .jump {
     bottom: 20px;
   }

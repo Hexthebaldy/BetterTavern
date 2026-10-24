@@ -1,7 +1,8 @@
 /**
- * 故事流，画成一条分镜（docs/design/comic 的 09，第一版只用现有的数据）：
- * - 叙述：每一回合一格（白底墨点），这一回合的每一段放进一个旁白框（宋体）；
- * - 玩家的行动（“我的行动”）：靠右的蓝色对话气泡，左上角写“你”；读屏时前面加“我的行动：”；
+ * 故事流（docs/design/comic 的 09，第一版只用现有的数据）：直接写在页面上的一整篇正文，没有任何边框；回合之间不画线，也不多空，和段与段之间一样。
+ * - 每回合先是玩家这一回合的行动（“我的行动”），再是叙述；两者都从左往右排、用同样的正文字体，
+ *   行动只在左边多一道蓝色竖线，读屏时前面加“我的行动：”；
+ * - 叙述的段与段之间空一点，不一段一个框；
  * - 正在生成的那一段末尾是蓝色光标（3×20 的圆头竖条，不闪烁），重连、等结果时是灰色；
  * - 写完结局的故事，最后一格下面居中一行“—END—”，没有选项也没有别的按钮。
  * 已完成的回合 memo 固定（不随流式文字重渲染），用 content-visibility: auto，很长的故事也只排版看得见的部分。
@@ -25,7 +26,7 @@ import {
 } from "@bettertavern/core/play/turnMachine";
 import { lineHeightFor, readingSize, type ReadingPrefs } from "@bettertavern/core/play/reading";
 
-import { Bubble, Caption, Panel } from "../../components/comic.tsx";
+import { Panel } from "../../components/comic.tsx";
 import { cx } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
 import styles from "./play.module.css";
@@ -62,18 +63,14 @@ export function turnAnchor(seq: number): string {
  */
 type StoryLang = { lang: string | undefined };
 
-/** “我的行动”：靠右的蓝气泡 */
-function ActionBubble({ text, lang }: { text: string } & StoryLang) {
+/** “我的行动”：和叙述一样从左往右排、同样的字，只在左边多一道蓝色竖线 */
+function ActionLine({ text, lang }: { text: string } & StoryLang) {
   const { t } = useTranslation();
   return (
-    <div className={styles.actionRow}>
-      <Bubble who={t("play.you")} tail="right" tone="blue" className={styles.action}>
-        <p className={styles.actionText} lang={lang}>
-          <span className={styles.srOnly}>{t("play.myActionPrefix")}</span>
-          {text}
-        </p>
-      </Bubble>
-    </div>
+    <p className={styles.action} lang={lang}>
+      <span className={styles.srOnly}>{t("play.myActionPrefix")}</span>
+      {text}
+    </p>
   );
 }
 
@@ -97,23 +94,23 @@ function Narrative({
   ) : null;
   if (parts.length === 0)
     return caretNode ? (
-      <Caption as="p" className={styles.narrative} lang={lang}>
+      <p className={styles.narrative} lang={lang}>
         {caretNode}
-      </Caption>
+      </p>
     ) : null;
   return (
-    <>
+    <div className={cx(styles.prose, dim && styles.dim)}>
       {parts.map((p, i) => {
         const last = i === parts.length - 1;
         return (
-          <Caption key={i} as="p" className={cx(styles.narrative, "narrative", dim && styles.dim)} lang={lang}>
+          <p key={i} className={cx(styles.narrative, "narrative")} lang={lang}>
             {p}
             {last ? caretNode : null}
             {last && interrupted ? <span className={styles.cut}>{t("play.interrupted")}</span> : null}
-          </Caption>
+          </p>
         );
       })}
-    </>
+    </div>
   );
 }
 
@@ -135,12 +132,13 @@ const TurnBlock = memo(function TurnBlock({
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
   const { t } = useTranslation();
   const note = actionNote(turn.action);
+  const narrative = turn.narrative.trim();
   return (
     <section className={cx(styles.turn, styles.settled)} id={turnAnchor(turn.seq)}>
-      {note ? <ActionBubble text={note} lang={lang} /> : null}
-      {turn.narrative.trim() ? (
-        <Panel tone="dots" className={styles.frame}>
-          <Narrative text={turn.narrative} lang={lang} />
+      {note || narrative ? (
+        <div className={styles.frame}>
+          {note ? <ActionLine text={note} lang={lang} /> : null}
+          {narrative ? <Narrative text={turn.narrative} lang={lang} /> : null}
           {rollback && onRollback ? (
             <div className={styles.turnTools}>
               {rollback === "available" ? (
@@ -153,7 +151,7 @@ const TurnBlock = memo(function TurnBlock({
               )}
             </div>
           ) : null}
-        </Panel>
+        </div>
       ) : null}
     </section>
   );
@@ -195,17 +193,19 @@ function PendingBlock({ pending, phase, lang }: { pending: PendingTurn; phase: P
   if (opening && !failed && pending.narrative === "") return <OpeningSteps building={pending.buildingWorld} />;
   return (
     <section className={styles.turn} id={pending.seq !== null ? turnAnchor(pending.seq) : undefined}>
-      {note ? <ActionBubble text={note} lang={lang} /> : null}
-      {pending.narrative || caret ? (
-        <Panel tone="dots" className={cx(styles.frame, styles.frameLive)}>
-          <Narrative
-            text={pending.narrative}
-            lang={lang}
-            dim={failed}
-            caret={caret}
-            interrupted={failed && pending.narrative.length > 0}
-          />
-        </Panel>
+      {note || pending.narrative || caret ? (
+        <div className={styles.frame}>
+          {note ? <ActionLine text={note} lang={lang} /> : null}
+          {pending.narrative || caret ? (
+            <Narrative
+              text={pending.narrative}
+              lang={lang}
+              dim={failed}
+              caret={caret}
+              interrupted={failed && pending.narrative.length > 0}
+            />
+          ) : null}
+        </div>
       ) : null}
     </section>
   );
