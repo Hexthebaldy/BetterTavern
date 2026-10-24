@@ -742,7 +742,7 @@ apps/server/
 │   │
 │   ├── entrypoints/                    # 组装根：唯一允许 import 所有层的地方
 │   │   ├── api.py                      # create_app()：装配路由、中间件、生命周期
-│   │   ├── worker.py                   # worker 进程：领取任务，按 kind 分派（state.turn、memory.chapter、memory.outline）
+│   │   ├── worker.py                   # worker 进程：领取任务，按 kind 分派（state.turn、memory.chapter、memory.outline、memory.lightning）
 │   │   └── cli.py  server.py  bootstrap.py  logging_setup.py   # bettertavern serve / worker / migrate / keygen / vis
 │   │
 │   ├── api/                            # HTTP 层：只做解析、鉴权、序列化

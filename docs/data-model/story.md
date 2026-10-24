@@ -28,7 +28,7 @@
 | `head_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：活跃链的头部 |
 | `timeline_epoch` | integer | 否 | `0` | 时间线纪元，回退时加 1。回合记下发起时的值，提交时如果不一致，结果就作废；世界状态 agent 写入时也要求它没变 |
 | `state_seq` | integer | 否 | `-1` | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态 agent 写入时用带条件的 UPDATE 从 N-1 改成 N（见下文“带围栏的提交”）。迁移 `0011` 把已有的存档设成活跃链上最新的回合，不回头整理旧回合 |
-| `summarized_seq` | integer | 否 | `-1` | 章节摘要已经覆盖到第几回合；-1 表示还没有（[memory.md](memory.md)）。章节整理写入时用带条件的 UPDATE 从“这一章第一回合减 1”改成这一章的最后一回合；导演上下文里的原文从它减 1 开始（多留上一章最后两回合）。CHECK 不小于 -1。迁移 `0016` 加的，同时删掉了一直是 0 的 `summary_version` 和 `rollback_floor_seq` |
+| `summarized_seq` | integer | 否 | `-1` | 章节摘要已经覆盖到第几回合；-1 表示还没有（[memory.md](memory.md)）。章节整理写入时用带条件的 UPDATE 从“这一章第一回合减 1”改成这一章的最后一回合；导演上下文里的原文从它减 1 开始（多留上一章最后两回合）。闪电模式没有章节摘要，它记全书梗概覆盖到第几回合，压缩写入时同样用带条件的 UPDATE 推进，原文从它加 1 开始。CHECK 不小于 -1。迁移 `0016` 加的，同时删掉了一直是 0 的 `summary_version` 和 `rollback_floor_seq` |
 | `outline_seq` | integer | 否 | `-1` | 大纲修订已经看过第几回合的“要改”的原因；-1 表示还没有大纲（[memory.md](memory.md)）。大纲修订写入时用带条件的 UPDATE 从读到的值改成这次依据到的回合。CHECK 不小于 -1。迁移 `0017` 加的，同时删掉了一直是 0 的 `outline_version` |
 | `rollbacks_used` | integer | 否 | `0` | 已经回退了几次。每个存档能回退的次数有上限（服务端设置 `ROLLBACK_LIMIT`，默认 1），用完后回退接口返回 409 `ROLLBACK_LIMIT_REACHED` |
 | `active_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：持有租约、正在生成的回合；没有正在生成的回合时为空 |
@@ -182,6 +182,7 @@ stateDiagram-v2
 - 写 `failed` 的地方有三个，都要求当前状态还是 `generating`：runner 自己（出错或取消）、清理任务（租约过期）、提交新行动时发现上一轮的租约已经过期。
 - 失败的回合保留在表里；重试时插入同一个 `seq` 的新回合（`attempt + 1`）。
 - 回合存为 `replied` 的同一个事务里，往任务队列放一个 `state.turn` 任务（排序键 `{playthrough_id}:state`；这个键上已经有一个还没开始的同类任务时不再放）。worker 领到后按顺序整理这一局所有 `replied` 的回合（[agent-runtime.md](../agent-runtime.md) 第 3、4 节）。
+- 闪电模式的回合不整理世界状态，存好就是 `committed`；同一个事务里放一个 `memory.lightning` 任务（结局那一回合不放），看原文够不够压成梗概（[agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)）。
 - 下一回合不等世界状态整理：`replied` 的回合也算在活跃链上，状态块开头写明截至第几回合。结局之后不再整理世界状态，所以结局那一轮直接是 `committed`。
 
 `playthroughs.status`：`building` → `active` → `ended`；`ended` 的故事回退后回到 `active`。
@@ -237,7 +238,7 @@ WHERE id = :id AND state_seq = :seq - 1 AND timeline_epoch = :epoch
 1. 锁住 `playthroughs` 行。有未过期的租约就返回 409 `TURN_IN_PROGRESS`；租约已过期就先把那一轮标为 `RUNNER_LOST`。
 2. 检查目标回合 K 在当前故事线上、不是头部、回退次数没用完。
 3. 读出 K 之后各回合的 `state_patches`，按回合倒序、按 `idx` 倒序，把每一行写回 `before`（`before` 为空就删掉这一行），然后删掉这些撤销记录和 K 之后的 `turn_notes`。线索也在撤销记录里：K 之后记下的删掉，K 之后解开的变回没解开。
-   在 K 之后写的章节摘要和全书梗概（`written_seq > K`）删掉，`summarized_seq` 改回剩下的最后一章；玩家画像不动（[memory.md](memory.md)）。
+   在 K 之后写的章节摘要和全书梗概（`written_seq > K`）删掉，`summarized_seq` 改回剩下的摘要覆盖到的最后一回合（普通模式就是剩下的最后一章，闪电模式是剩下的最新一版梗概）；玩家画像不动（[memory.md](memory.md)）。
    依据超过 K 的大纲修订（`based_on_seq > K`）删掉，`outline_seq` 改回剩下的最后一次。
 4. K 之后的回合（包括失败的尝试）标为 `archived`，共用一个新的 `rollback_id`。
 5. `head_turn_id` 指回 K，`timeline_epoch` 加 1，`state_seq` 改成 `min(state_seq, K)`，`rollbacks_used` 加 1；`ended` 改回 `active`。

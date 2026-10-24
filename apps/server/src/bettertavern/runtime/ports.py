@@ -347,6 +347,43 @@ class MemoryStore(Protocol):
     async def fail(self, work: MemoryWork, run: AgentRunRecord) -> None: ...
 
 
+# ---- 闪电模式的压缩（后台） -----------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CompressWork:
+    """闪电模式一局待压缩的情况（docs/agent-runtime.md 的“闪电模式”）：按下一回合拼导演上下文要用的
+    全部内容（context：原文是梗概之后到头部回合为止，行动留空），加上记运行用的回合 id。"""
+
+    playthrough_id: str
+    user_id: str
+    epoch: int
+    context: TurnContext
+    turn_ids: dict[int, str]  # 回合号 → 回合 id
+
+
+@dataclass(frozen=True)
+class CompressCommit:
+    first_seq: int  # 这次压进梗概的第一回合（梗概原来覆盖到的回合 + 1）
+    last_seq: int  # 压到第几回合（含）
+    synopsis: str  # 新一版全书梗概
+    run: AgentRunRecord
+
+
+class LightningStore(Protocol):
+    async def pending(self, playthrough_id: str) -> CompressWork | None:
+        """这一局的压缩材料；局不存在、不是闪电模式、还在开局或者已经写完结局时返回 None。"""
+        ...
+
+    async def commit(self, work: CompressWork, result: CompressCommit) -> bool:
+        """一个事务：梗概的覆盖进度从 first_seq - 1 前进到 last_seq，写新一版全书梗概，
+        记下这次运行。覆盖进度或时间线编号对不上（期间回退过、已经压过）时什么都不写，
+        运行记为 stale，返回 False。"""
+        ...
+
+    async def fail(self, work: CompressWork, run: AgentRunRecord) -> None: ...
+
+
 # ---- 大纲修订（后台） ---------------------------------------------------------------------
 
 

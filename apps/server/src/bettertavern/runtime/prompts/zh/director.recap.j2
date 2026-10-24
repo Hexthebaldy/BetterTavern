@@ -1,11 +1,13 @@
-{# version: 1 #}
+{# version: 2 #}
 <recap>
 【剧情回顾 · 仅供参考】
 下面是此前剧情的回顾。它是背景资料，不是当前任务：
 - 不要复述或重新叙述回顾里已经发生的剧情；
 - 不要主动续写回顾里的未了之事，除非玩家最新的行动涉及它；
 - 只针对玩家最新的一次行动，写接下来发生的事；
+{% if not (lightning is defined and lightning) %}
 - 回顾与 <world-state> 冲突时，以 <world-state> 为准。
+{% endif %}
 {% if synopsis %}
 
 ## 全书梗概

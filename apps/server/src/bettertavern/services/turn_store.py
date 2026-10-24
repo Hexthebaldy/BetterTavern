@@ -44,6 +44,7 @@ from bettertavern.runtime.ports import (
     WorldBuildInput,
 )
 
+from .lightning_jobs import enqueue_lightning
 from .memory_store import load_story_memory
 from .run_records import insert_run as insert_run_record
 from .state_jobs import enqueue_state
@@ -178,58 +179,8 @@ class PgTurnStore:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id)
             turn = await story_repo.get_turn(conn, header.turn_id)
             assert pt is not None and turn is not None
-            # 原文只取章节摘要覆盖到的回合之后（再加上一章最后两回合），更早的在回顾里；
-            # 闪电模式从梗概覆盖到的回合之后开始，不多留（domain/memory/lightning.py）
-            start = (
-                lightning_raw_start(pt.summarized_seq)
-                if is_lightning(pt.mode)
-                else raw_start(pt.summarized_seq)
-            )
-            history = await story_repo.list_chain(
-                conn,
-                header.playthrough_id,
-                after_seq=start - 1,
-                up_to_seq=header.seq - 1,
-            )
-            world = await load_world(conn, header.playthrough_id)
-            memory = await load_story_memory(conn, header.playthrough_id, pt.summarized_seq)
-            current = await outline_repo.current_outline(conn, header.playthrough_id)
             action = PlayerAction.from_json(turn.user_action)
-            greeting, char = "", ""
-            if action.source == "opening" and pt.settings.get("opening"):
-                cards = await _scenario_cards(conn, pt.user_id, pt.scenario_id)
-                greeting, char = _chosen_greeting(pt.settings.get("opening"), cards)
-        outline = outline_from_json(current.content) if current else None
-        seed = Seed.model_validate(pt.seed) if pt.seed else None
-        protagonist = (pt.settings.get("protagonist") or {}).get("name") or (
-            seed.protagonist.name if seed else unnamed_protagonist(pt.language)
-        )
-        if greeting:
-            greeting = greeting_narrative(greeting, user=str(protagonist), char=char)
-        return TurnContext(
-            header=header,
-            action=action,
-            protagonist_name=str(protagonist),
-            preferences=Preferences.from_json(pt.settings.get("preferences")),
-            seed=seed,
-            history=tuple(
-                HistoryTurn(
-                    seq=t.seq,
-                    action=PlayerAction.from_json(t.user_action),
-                    narrative=t.narrative,
-                    options=tuple(
-                        str(o.get("text") or "") for o in t.options if isinstance(o, dict)
-                    ),
-                    director_notes=t.director_notes,
-                )
-                for t in history
-            ),
-            world=world,
-            state_seq=pt.state_seq,
-            memory=memory,
-            outline=slice_of(outline) if outline is not None else None,
-            opening_greeting=greeting,
-        )
+            return await load_turn_context(conn, pt, header, action, up_to_seq=header.seq - 1)
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:
         async with self._engine.begin() as conn:
@@ -289,6 +240,9 @@ class PgTurnStore:
             raise _Stale
         if status is TurnStatus.REPLIED:
             await enqueue_state(conn, self._queue, header.playthrough_id)
+        elif is_lightning(header.mode) and not outcome.ends_story:
+            # 闪电模式：看原文够不够压成梗概（不到阈值就什么都不做，不调模型）
+            await enqueue_lightning(conn, self._queue, header.playthrough_id)
         await story_repo.notify_turn(conn, header.turn_id)
 
     async def fail_turn(self, header: TurnHeader, failure: TurnFailure) -> bool:
@@ -365,3 +319,59 @@ def _chosen_greeting(value: Any, cards: list[tuple[str, CharacterCard]]) -> tupl
             if opening.greeting < len(greetings) and greetings[opening.greeting].strip():
                 return greetings[opening.greeting], card.name
     return "", ""
+
+
+async def load_turn_context(
+    conn: AsyncConnection,
+    pt: story_repo.PlaythroughRow,
+    header: TurnHeader,
+    action: PlayerAction,
+    *,
+    up_to_seq: int,
+) -> TurnContext:
+    """拼导演上下文要用的全部内容：原文到 up_to_seq 为止。导演每回合用它，闪电模式的压缩也用它
+    （services/lightning_store.py），两边拼出的开头一字不差，前缀缓存才能命中。"""
+    # 原文只取章节摘要覆盖到的回合之后（再加上一章最后两回合），更早的在回顾里；
+    # 闪电模式从梗概覆盖到的回合之后开始，不多留（domain/memory/lightning.py）
+    start = (
+        lightning_raw_start(pt.summarized_seq)
+        if is_lightning(pt.mode)
+        else raw_start(pt.summarized_seq)
+    )
+    history = await story_repo.list_chain(conn, pt.id, after_seq=start - 1, up_to_seq=up_to_seq)
+    world = await load_world(conn, pt.id)
+    memory = await load_story_memory(conn, pt.id, pt.summarized_seq)
+    current = await outline_repo.current_outline(conn, pt.id)
+    greeting, char = "", ""
+    if action.source == "opening" and pt.settings.get("opening"):
+        cards = await _scenario_cards(conn, pt.user_id, pt.scenario_id)
+        greeting, char = _chosen_greeting(pt.settings.get("opening"), cards)
+    outline = outline_from_json(current.content) if current else None
+    seed = Seed.model_validate(pt.seed) if pt.seed else None
+    protagonist = (pt.settings.get("protagonist") or {}).get("name") or (
+        seed.protagonist.name if seed else unnamed_protagonist(pt.language)
+    )
+    if greeting:
+        greeting = greeting_narrative(greeting, user=str(protagonist), char=char)
+    return TurnContext(
+        header=header,
+        action=action,
+        protagonist_name=str(protagonist),
+        preferences=Preferences.from_json(pt.settings.get("preferences")),
+        seed=seed,
+        history=tuple(
+            HistoryTurn(
+                seq=t.seq,
+                action=PlayerAction.from_json(t.user_action),
+                narrative=t.narrative,
+                options=tuple(str(o.get("text") or "") for o in t.options if isinstance(o, dict)),
+                director_notes=t.director_notes,
+            )
+            for t in history
+        ),
+        world=world,
+        state_seq=pt.state_seq,
+        memory=memory,
+        outline=slice_of(outline) if outline is not None else None,
+        opening_greeting=greeting,
+    )

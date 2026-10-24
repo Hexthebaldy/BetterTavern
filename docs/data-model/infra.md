@@ -112,6 +112,7 @@
 | `state.turn` | `{ "playthrough_id" }` | 回合存为 `replied` 时放进来，`max_attempts` 是 1：整理失败不靠队列重试，下一回合的任务会再从那一回合开始 |
 | `memory.chapter` | `{ "playthrough_id" }` | 世界状态整理完（或跳过）一回合时在同一个事务里放进来，排序键 `{playthrough_id}:memory`，`max_attempts` 是 1：由章节整理看够不够切一章，够就写，失败了下一回合再试 |
 | `memory.outline` | `{ "playthrough_id" }` | 世界状态整理完（或跳过）一回合时，还没有大纲或者有还没处理的“大纲要改”的原因就放进来；回退删了大纲修订时也放。排序键和 `max_attempts` 同上 |
+| `memory.lightning` | `{ "playthrough_id" }` | 闪电模式的回合存好（结局除外）时在同一个事务里放进来，排序键和 `max_attempts` 同上：看梗概之后的原文够不够压，够就用导演的模型压成一版新梗概，不够就什么都不做（[agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)） |
 | `workbench.run` | `{ "draft_id", "run_id", "trigger" }` | 工作台开一轮 agent 时和用户的消息、草稿改成 `running` 在同一个事务里放进来，排序键 `{draft_id}:workbench`，`max_attempts` 是 1（跑到一半进程挂了，重跑会重复搜索、重复出图；草稿的心跳过期以后用户可以再开一轮）。`trigger` 是 `text` / `answers` / `plan_reply` / `continue` |
 | `noop` | 任意 | 冒烟测试用 |
 

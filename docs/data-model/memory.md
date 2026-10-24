@@ -7,7 +7,7 @@
 整理出来的记忆（[agent-runtime.md](../agent-runtime.md) 第 4、7 节）：章节整理在后台每切一章写一条章节摘要、改写一版玩家画像，
 还没并进全书梗概的章节摘要已经有 3 章时，把最早一章并进全书梗概（新增一版）。
 导演的上下文里放最新一版全书梗概、还没并进梗概的章节摘要和最新一版玩家画像（`<recap>`），再加当前这一章的原文。
-存档上的 `playthroughs.summarized_seq` 记章节摘要已经覆盖到第几回合（[story.md](story.md)）。
+存档上的 `playthroughs.summarized_seq` 记章节摘要已经覆盖到第几回合（[story.md](story.md)）。闪电模式（`playthroughs.mode = 'lightning'`）没有章节摘要和玩家画像，只有全书梗概：原文超过阈值时后台把旧梗概和较早的回合合成新的一版（`kind = 'synopsis'`，`first_seq` 是 0，`written_seq` 等于 `last_seq`），`summarized_seq` 记它覆盖到第几回合（[agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)）。
 
 大纲也在这里：大纲修订在后台写第一版大纲，之后按世界状态 agent 留下的“大纲要改”的原因（`turn_notes.outline_reason`，[world.md](world.md)）决定改不改，
 每次决定记一行 `outline_revisions`；导演每回合在最后一条消息里看到最新一版的前提、当前这一拍、下一拍和约束（`<outline>`）。

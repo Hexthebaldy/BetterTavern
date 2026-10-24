@@ -1,0 +1,15 @@
+{# version: 1 #}
+(This message is not the player's action; it is a housekeeping request. Do not continue the story this time.)
+Combine {% if has_synopsis %}the synopsis in <recap> and {% endif %}the story text above from turn {{ first_seq }} to turn {{ last_seq }} into a new synopsis of the whole story. When the story continues, it will stand in for the text of those turns; leave out anything after turn {{ last_seq }}.
+
+Requirements:
+- Tell what happened in order: the key causes and turns, how the characters relate, who knows which secrets, who promised what, and the open questions;
+- Make clear where things stand as of turn {{ last_seq }}: where the protagonist ({{ protagonist }}) is, who is with them, what important things they carry and what they are doing;
+- The earlier the events, the briefer; the more recent, the more detail;
+- Only what has happened: no choices, no long stretches of quoted dialogue, no commentary;
+- No more than {{ limits.words }} words.
+
+Output only the tags and content below:
+<synopsis>
+The new synopsis
+</synopsis>

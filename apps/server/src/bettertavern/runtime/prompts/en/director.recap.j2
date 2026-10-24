@@ -1,11 +1,13 @@
-{# version: 1 #}
+{# version: 2 #}
 <recap>
 [Story so far · for reference only]
 Below is a recap of the story so far. It is background material, not the current task:
 - Don't retell or re-narrate what already happened in the recap;
 - Don't pick up loose ends from the recap on your own unless the player's latest action touches them;
 - Respond only to the player's latest action and write what happens next;
+{% if not (lightning is defined and lightning) %}
 - When the recap conflicts with <world-state>, <world-state> wins.
+{% endif %}
 {% if synopsis %}
 
 ## Synopsis of the whole story

@@ -24,16 +24,19 @@ from bettertavern.infra.queue.notify import PgNotifyListener
 from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.infra.queue.worker import Handler, JobWorker
 from bettertavern.providers.transport import build_http_client
+from bettertavern.runtime.lightning_runner import LightningRunner
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
 from bettertavern.runtime.outline_runner import OutlineRunner
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
 from bettertavern.runtime.workbench_runner import WorkbenchRunner
 from bettertavern.services.container import (
+    build_lightning_runner,
     build_memory_runner,
     build_outline_runner,
     build_state_runner,
     build_workbench_runner,
 )
+from bettertavern.services.lightning_jobs import LIGHTNING_JOB, lightning_handler
 from bettertavern.services.memory_jobs import MEMORY_JOB, memory_handler
 from bettertavern.services.outline_jobs import OUTLINE_JOB, outline_handler
 from bettertavern.services.state_jobs import STATE_JOB, state_handler
@@ -64,6 +67,7 @@ def handlers(
     memory: MemoryRunner,
     outline: OutlineRunner,
     workbench: WorkbenchRunner | None = None,
+    lightning: LightningRunner | None = None,
 ) -> dict[str, Handler]:
     registered: dict[str, Handler] = {
         "noop": noop,
@@ -73,6 +77,8 @@ def handlers(
     }
     if workbench is not None:
         registered[WORKBENCH_JOB] = workbench_handler(workbench)
+    if lightning is not None:
+        registered[LIGHTNING_JOB] = lightning_handler(lightning)
     return registered
 
 
@@ -110,6 +116,10 @@ async def run_worker(settings: Settings) -> None:
     outline = build_outline_runner(
         engine=engine, secrets=secrets, hub=hub, policy=policy, prompts=prompts, platform=platform
     )
+    # 闪电模式的压缩：用导演的模型（官方模型照样扣点数）
+    lightning = build_lightning_runner(
+        engine=engine, secrets=secrets, hub=hub, policy=policy, prompts=prompts, platform=platform
+    )
     web_client = build_http_client(policy, proxy=settings.outbound_proxy)
     workbench = build_workbench_runner(
         engine=engine,
@@ -126,7 +136,7 @@ async def run_worker(settings: Settings) -> None:
     listener = PgNotifyListener(engine, queue.channel)
     await listener.start()
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
-    registered = handlers(state, memory, outline, workbench)
+    registered = handlers(state, memory, outline, workbench, lightning)
     worker = JobWorker(
         queue,
         registered,

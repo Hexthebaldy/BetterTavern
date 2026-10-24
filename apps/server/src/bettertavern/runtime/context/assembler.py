@@ -141,6 +141,7 @@ class ContextAssembler:
                 for c in memory.chapters
             ],
             profile=sanitize_for_fence(memory.profile),
+            lightning=is_lightning(ctx.header.mode),
         )
 
     def history_messages(self, ctx: TurnContext) -> list[tuple[Message, Message]]:

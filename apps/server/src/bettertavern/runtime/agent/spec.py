@@ -17,6 +17,8 @@ class OutputKind(StrEnum):
     TAGGED_STREAM = "tagged_stream"
     # 规定格式的 JSON，走结构化输出阶梯（开局构建、补选项）
     STRUCTURED = "structured"
+    # 带标签的文字，一次拿到、不推给玩家（闪电模式的压缩）
+    TAGGED_TEXT = "tagged_text"
     # 用工具做事，最后调用收尾工具结束（世界状态 agent 的 commit）
     FINISH_TOOL = "finish_tool"
     # 和用户对话：说的话一边生成一边推出去，可以连续调很多次工具；

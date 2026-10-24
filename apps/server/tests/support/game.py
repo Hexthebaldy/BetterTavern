@@ -3,6 +3,8 @@
 导演用流式脚本（director()），世界状态 agent 用一次回复里的一串工具调用（calls()）；
 章节整理由假模型按请求里的回合号回复（chapter_reply()），切章的线很低，几回合就切一章；
 大纲修订由假模型按请求里的原因回复（outline_reply()）。
+new_game(lightning=True) 开一局闪电模式：开局不调模型搭世界，压缩由假模型按请求里的回合号回复
+（compress_reply()），压缩的线也很低。
 """
 
 from __future__ import annotations
@@ -22,12 +24,14 @@ from bettertavern.domain.memory.chapters import ChapterRule
 from bettertavern.infra.crypto.keyring import load_secrets, new_master_key_entry
 from bettertavern.providers import ChatRequest, ChatResult, EndpointPolicy, ToolCall, Usage
 from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.runtime.lightning_runner import LightningRunner, LightningRunnerConfig
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
 from bettertavern.runtime.outline_runner import OutlineRunner, OutlineRunnerConfig
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
 from bettertavern.services.container import (
     Services,
+    build_lightning_runner,
     build_memory_runner,
     build_outline_runner,
     build_services,
@@ -144,10 +148,31 @@ def outline_reply(request: ChatRequest) -> ChatResult:
     )
 
 
+# 闪电模式的压缩：原文累计到 200 token 就压，留最近至少 100 token、2 回合（一回合约 60 token）
+LIGHTNING_CONFIG = LightningRunnerConfig(
+    compress_tokens=200, keep_tokens=100, keep_turns=2, timeout_s=5.0
+)
+
+
+def compress_reply(request: ChatRequest) -> ChatResult:
+    """压缩要求里写着压到第几回合：回“截至第N回合的梗概”。"""
+    found = re.search(r"到第 (\d+) 回合的原文", request.messages[-1].content)
+    assert found is not None, "不是压缩请求"
+    return ChatResult(
+        text=f"<synopsis>\n截至第{found.group(1)}回合的梗概\n</synopsis>",
+        reasoning="",
+        tool_calls=(),
+        finish_reason="stop",
+        usage=Usage(prompt=900, completion=60, cached=800),
+    )
+
+
 def background_reply(request: ChatRequest) -> ChatResult:
-    """后台的结构化输出：按请求的内容分给章节整理或大纲修订。"""
+    """后台的结构化输出：按请求的内容分给章节整理、大纲修订或闪电模式的压缩。"""
     if "<outline-source>" in request.messages[-1].content:
         return outline_reply(request)
+    if "<synopsis>" in request.messages[-1].content:
+        return compress_reply(request)
     return chapter_reply(request)
 
 
@@ -157,6 +182,7 @@ class Game:
     state: StateRunner
     memory: MemoryRunner
     outline: OutlineRunner
+    lightning: LightningRunner
     adapter: ScriptedAdapter
     engine: AsyncEngine
     user_id: str
@@ -172,8 +198,11 @@ async def finish(services: Services, turn_id: str) -> None:
 
 
 @asynccontextmanager
-async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> AsyncIterator[Game]:
-    """注册、配好导演、导入角色卡、开局并等开场写完（世界状态还没整理）。"""
+async def new_game(
+    url: str, tmp_path: Path, *, rollback_limit: int = 1, lightning: bool = False
+) -> AsyncIterator[Game]:
+    """注册、配好导演、导入角色卡、开局并等开场写完（世界状态还没整理）。
+    lightning：剧本打开闪电模式再开局（开局不调模型搭世界）。"""
     async with schema_engine(url, pool_size=10) as engine:
         hub, adapters = scripted_hub("fake")
         secrets = load_secrets(
@@ -215,6 +244,13 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
             policy=EndpointPolicy(),
             config=OutlineRunnerConfig(timeout_s=5.0),
         )
+        quick = build_lightning_runner(
+            engine=engine,
+            secrets=secrets,
+            hub=hub,
+            policy=EndpointPolicy(),
+            config=LIGHTNING_CONFIG,
+        )
         user, _ = await services.auth.register("lin@example.com", "correct horse")
         await services.routes.create(
             user.id,
@@ -225,7 +261,17 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
         scenario = await import_scenario(services, user.id, json.dumps(CARD).encode())
         adapter = adapters["fake"]
         adapter.responder = background_reply
-        adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))
+        if lightning:
+            async with engine.begin() as conn:
+                await conn.execute(
+                    text(
+                        "UPDATE scenarios SET setup = setup || '{\"lightning\": true}'::jsonb"
+                        " WHERE id = :id"
+                    ),
+                    {"id": scenario.id},
+                )
+        else:
+            adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))
         adapter.streams.append(StreamScript(director(0)))
         pt, opening = await services.playthroughs.create(
             user.id, NewPlaythrough(scenario_id=scenario.id, protagonist_name="林川")
@@ -233,7 +279,16 @@ async def new_game(url: str, tmp_path: Path, *, rollback_limit: int = 1) -> Asyn
         await finish(services, opening.id)
         try:
             yield Game(
-                services, state, memory, outline, adapter, engine, user.id, pt.id, opening.id
+                services,
+                state,
+                memory,
+                outline,
+                quick,
+                adapter,
+                engine,
+                user.id,
+                pt.id,
+                opening.id,
             )
         finally:
             await services.runners.shutdown(1.0)

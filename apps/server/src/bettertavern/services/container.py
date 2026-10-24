@@ -15,6 +15,7 @@ from bettertavern.infra.mail import MailSender
 from bettertavern.providers import EndpointPolicy, ProviderHub
 from bettertavern.providers.transport import build_http_client
 from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.runtime.lightning_runner import LightningRunner, LightningRunnerConfig
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
 from bettertavern.runtime.outline_runner import OutlineRunner, OutlineRunnerConfig
 from bettertavern.runtime.ports import ToolConfig
@@ -28,6 +29,7 @@ from .card_service import CardService
 from .cover_service import CoverService
 from .credits import CreditPolicy, CreditService, grant_key
 from .draft_service import DraftService
+from .lightning_store import PgLightningStore
 from .maintenance import Maintenance
 from .memory_store import PgMemoryStore
 from .outline_store import PgOutlineStore
@@ -203,6 +205,27 @@ def build_memory_runner(
     routes = RouteService(engine, secrets.keyring, hub, policy, platform)
     return MemoryRunner(
         store=PgMemoryStore(engine),
+        routes=routes,
+        hub=hub,
+        prompts=prompts or PromptBook(),
+        config=config,
+    )
+
+
+def build_lightning_runner(
+    *,
+    engine: AsyncEngine,
+    secrets: AppSecrets,
+    hub: ProviderHub,
+    policy: EndpointPolicy,
+    config: LightningRunnerConfig | None = None,
+    prompts: PromptBook | None = None,
+    platform: PlatformModel | None = None,
+) -> LightningRunner:
+    """worker 进程用：闪电模式的后台压缩。"""
+    routes = RouteService(engine, secrets.keyring, hub, policy, platform)
+    return LightningRunner(
+        store=PgLightningStore(engine),
         routes=routes,
         hub=hub,
         prompts=prompts or PromptBook(),

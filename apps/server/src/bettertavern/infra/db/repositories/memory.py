@@ -166,7 +166,10 @@ async def insert_profile(
 
 async def delete_after(conn: AsyncConnection, playthrough_id: str, seq: int) -> int:
     """回退到第 seq 回合：在它之后写的摘要（章节摘要、全书梗概）删掉，和只玩到它时一样；
-    章节摘要的覆盖进度改回剩下的最后一章。玩家画像不动。返回删了几条。"""
+    摘要的覆盖进度改回剩下的摘要覆盖到的最后一回合。玩家画像不动。返回删了几条。
+
+    普通模式里梗概覆盖的总在章节摘要之前，结果就是剩下的最后一章；闪电模式只有梗概，
+    结果是剩下的最新一版梗概（只看章节摘要的话会被清成 -1，原文和梗概就重复了）。"""
     deleted = await execute(
         conn,
         "DELETE FROM story_summaries WHERE playthrough_id = :pt AND written_seq > :seq",
@@ -176,8 +179,7 @@ async def delete_after(conn: AsyncConnection, playthrough_id: str, seq: int) -> 
         conn,
         """
         UPDATE playthroughs SET summarized_seq = COALESCE(
-            (SELECT max(last_seq) FROM story_summaries
-             WHERE playthrough_id = :pt AND kind = 'chapter'),
+            (SELECT max(last_seq) FROM story_summaries WHERE playthrough_id = :pt),
             -1)
         WHERE id = :pt
         """,
