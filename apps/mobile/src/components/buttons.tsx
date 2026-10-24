@@ -122,7 +122,18 @@ export function Button({
       ) : (
         <>
           {icon ? <Icon name={icon} size={20} color={fg} /> : null}
-          {children ?? <Text style={[small ? ctype.buttonSm : ctype.button, { color: fg }]}>{label}</Text>}
+          {children ?? (
+            // 窄按钮里的长文字（英文）缩进按钮里换行，不撑出去
+            <Text
+              style={[
+                small ? ctype.buttonSm : ctype.button,
+                { flexShrink: 1, color: fg },
+                between ? null : { textAlign: "center" },
+              ]}
+            >
+              {label}
+            </Text>
+          )}
           {arrowInCircle ? (
             <View
               style={[

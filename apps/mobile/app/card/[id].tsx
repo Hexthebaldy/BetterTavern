@@ -2,6 +2,9 @@
  * 角色卡详情（同网页端 pages/cards/CardPage.tsx）：封面、名字、来源和作者、标签；在工作台里改、用这张卡新建剧本；
  * 描述、开场白和世界书的条数；在用的剧本；参考资料；版本历史（可以恢复旧版）；删除（有剧本在用时不能删）。
  * 导出 PNG / JSON 只在网页端（手机上没有存文件的地方）。
+ *
+ * 漫画风（docs/design/comic/mobile/png/18）：封面是墨线的格子；标签是白底墨框的小标签；
+ * 世界书、开场白、版本三个数字格；描述不进框，下面“展开全文”；在用的剧本和版本历史是墨线格子里的列表行。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -33,7 +36,7 @@ import { useCardActions } from "../../src/features/library/cardActions.ts";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { space, type as typography, usePalette } from "../../src/theme/index.ts";
+import { comicRadius, comicStroke, ctype, font, space, useComic } from "../../src/theme/index.ts";
 
 function revisionNote(revision: CardRevision): string {
   const restored = /^restore:(\d+)$/.exec(revision.note);
@@ -46,7 +49,7 @@ export default function CardScreen() {
   const { api } = useApp();
   const router = useRouter();
   const overlay = useOverlay();
-  const palette = usePalette();
+  const c = useComic();
   const { width } = useLayout();
   const { t } = useTranslation();
   const actions = useCardActions();
@@ -57,7 +60,7 @@ export default function CardScreen() {
 
   if (!detail.data) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         <BackBar />
         {detail.loading ? (
           <Loading />
@@ -72,7 +75,7 @@ export default function CardScreen() {
     );
   }
   const { card, content } = detail.data;
-  const coverWidth = Math.min(width, 640) - space.page * 2;
+  const coverWidth = Math.min(width, 640) - space.page * 2 - comicStroke.frame * 2;
 
   const edit = async (): Promise<void> => {
     setOpening(true);
@@ -113,13 +116,15 @@ export default function CardScreen() {
 
   return (
     <Page header={<BackBar />} contentStyle={styles.content}>
-      <Cover seed={card.id} blobId={card.cover_blob_id} width={coverWidth} height={Math.round(coverWidth * 0.62)} rounded={28} />
-      <Text style={[styles.caption, { color: palette.mut }]}>{caption}</Text>
-      <Text style={[typography.hero, { color: palette.ink }]}>{card.name}</Text>
+      <View style={[styles.cover, { borderColor: c.ink }]}>
+        <Cover seed={card.id} blobId={card.cover_blob_id} width={coverWidth} height={Math.round(coverWidth * 0.56)} rounded={0} />
+      </View>
+      <Text style={[styles.caption, { color: c.mut }]}>{caption}</Text>
+      <Text style={[styles.name, { color: c.ink }]}>{card.name}</Text>
       {card.character_name && card.character_name !== card.name ? (
-        <Text style={[styles.caption, { color: palette.mut }]}>{card.character_name}</Text>
+        <Text style={[styles.caption, { color: c.mut }]}>{card.character_name}</Text>
       ) : null}
-      {card.ip ? <Text style={[styles.caption, { color: palette.mut }]}>{t("cards.ip", card.ip)}</Text> : null}
+      {card.ip ? <Text style={[styles.caption, { color: c.mut }]}>{t("cards.ip", card.ip)}</Text> : null}
       {card.tags.length ? (
         <View style={styles.tags}>
           {card.tags.slice(0, 12).map((tag) => (
@@ -138,20 +143,35 @@ export default function CardScreen() {
       <Button label={t("cards.openInWorkbench")} icon="workbench" busy={opening} onPress={() => void edit()} />
       <Button label={t("cards.newScenario")} icon="plus" variant="secondary" onPress={() => actions.newScenario(card)} />
 
+      <View style={styles.stats}>
+        {[
+          { n: card.book_entries, label: t("cards.statEntries") },
+          { n: card.greetings, label: t("cards.statGreetings") },
+          { n: card.version, label: t("cards.statVersions") },
+        ].map((stat) => (
+          <View
+            key={stat.label}
+            accessible
+            accessibilityLabel={`${stat.label} ${stat.n}`}
+            style={[styles.stat, { borderColor: c.ink, backgroundColor: c.paper }]}
+          >
+            <Text style={[styles.statNumber, { color: c.ink }]}>{stat.n}</Text>
+            <Text numberOfLines={2} style={[styles.statLabel, { color: c.mut }]}>
+              {stat.label}
+            </Text>
+          </View>
+        ))}
+      </View>
       {content.description.trim() ? (
-        <Pressable onPress={() => setExpanded((v) => !v)} style={[styles.panel, { backgroundColor: palette.bg2 }]}>
-          <Text numberOfLines={expanded ? undefined : 6} style={{ fontSize: 15, lineHeight: 24, color: palette.ink2 }}>
+        <Pressable accessibilityState={{ expanded }} onPress={() => setExpanded((v) => !v)} style={styles.description}>
+          <Text numberOfLines={expanded ? undefined : 6} style={{ fontSize: 15, lineHeight: 26, color: c.ink2 }}>
             {content.description}
           </Text>
-          <Text style={{ fontSize: 13.5, color: palette.acc }}>
+          <Text style={{ fontSize: 14.5, fontWeight: "700", color: c.acc }}>
             {expanded ? t("scenario.collapse") : t("scenario.expand")}
           </Text>
         </Pressable>
       ) : null}
-      <Text style={[styles.caption, { color: palette.mut }]}>
-        {t("workbench.preview.greetings", { count: card.greetings })} ·{" "}
-        {t("workbench.preview.entries", { count: card.book_entries })}
-      </Text>
 
       <SectionHeader title={t("cards.usedBy")} style={styles.section} />
       {detail.data.scenarios.length ? (
@@ -166,7 +186,7 @@ export default function CardScreen() {
           ))}
         </Group>
       ) : (
-        <Text style={[styles.caption, { color: palette.mut }]}>{t("cards.notUsed")}</Text>
+        <Text style={[styles.caption, { color: c.mut }]}>{t("cards.notUsed")}</Text>
       )}
 
       {detail.data.sources.length ? (
@@ -196,17 +216,13 @@ export default function CardScreen() {
           return (
             <ListRow
               key={revision.version}
-              title={`${t("cards.version", { n: revision.version })}${current ? ` · ${t("cards.current")}` : ""}`}
+              title={t("cards.version", { n: revision.version })}
               subtitle={[revisionNote(revision), formatRelative(revision.created_at)].filter(Boolean).join(" · ")}
               trailing={
-                current ? null : (
-                  <Button
-                    label={t("cards.restore")}
-                    variant="secondary"
-                    onGrey
-                    onPress={() => void restore(revision)}
-                    style={{ minHeight: 36, height: 36, paddingHorizontal: space.m }}
-                  />
+                current ? (
+                  <Pill tone="ink" label={t("cards.current")} />
+                ) : (
+                  <Button label={t("cards.restore")} variant="text" small onPress={() => void restore(revision)} />
                 )
               }
             />
@@ -225,15 +241,28 @@ export default function CardScreen() {
         }
         style={{ marginTop: space.xl }}
       />
-      <Text style={[styles.caption, { color: palette.mut, textAlign: "center" }]}>{t("cards.deleteMessage")}</Text>
+      <Text style={[styles.caption, { color: c.mut, textAlign: "center" }]}>{t("cards.deleteMessage")}</Text>
     </Page>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: space.page, gap: space.m },
+  cover: { borderWidth: comicStroke.frame, borderRadius: comicRadius.frame, overflow: "hidden" },
   caption: { fontSize: 13, lineHeight: 19 },
+  name: { ...ctype.title, fontSize: 30, lineHeight: 38 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  panel: { padding: 16, borderRadius: 28, gap: space.s },
+  stats: { flexDirection: "row", gap: 10 },
+  stat: {
+    flex: 1,
+    gap: 2,
+    paddingVertical: 10,
+    paddingHorizontal: space.m,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+  },
+  statNumber: { fontFamily: font.monoMedium, fontSize: 20, lineHeight: 26, fontWeight: "700" },
+  statLabel: { fontSize: 12.5, lineHeight: 17 },
+  description: { gap: space.s },
   section: { paddingHorizontal: 0, paddingBottom: 0, paddingTop: space.l },
 });

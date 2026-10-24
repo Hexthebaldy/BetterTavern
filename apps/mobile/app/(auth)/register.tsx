@@ -20,13 +20,13 @@ import { AgreeRow } from "../../src/features/auth/parts.tsx";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
-import { font, space, usePalette } from "../../src/theme/index.ts";
+import { font, space, useComic } from "../../src/theme/index.ts";
 
 const MIN_PASSWORD = 8;
 const NAME_MAX = 40;
 
 function LengthBar({ length }: { length: number }) {
-  const palette = usePalette();
+  const c = useComic();
   const ratio = Math.min(length / MIN_PASSWORD, 1);
   const { t } = useTranslation();
   return (
@@ -34,15 +34,10 @@ function LengthBar({ length }: { length: number }) {
       style={styles.lengthRow}
       accessibilityLabel={t("auth.passwordTyped", { length, min: MIN_PASSWORD })}
     >
-      <View style={[styles.track, { backgroundColor: palette.bg3 }]}>
-        <View
-          style={[
-            styles.fill,
-            { width: `${ratio * 100}%`, backgroundColor: ratio >= 1 ? palette.ok : palette.ink },
-          ]}
-        />
+      <View style={[styles.track, { backgroundColor: c.grey2 }]}>
+        <View style={[styles.fill, { width: `${ratio * 100}%`, backgroundColor: c.ink }]} />
       </View>
-      <Text style={[styles.meta, { color: palette.mut }]}>
+      <Text style={[styles.meta, { color: c.mut }]}>
         {length >= MIN_PASSWORD ? t("auth.passwordLength", { count: length }) : `${length} / ${MIN_PASSWORD}`}
       </Text>
     </View>
@@ -52,7 +47,7 @@ function LengthBar({ length }: { length: number }) {
 export default function RegisterScreen() {
   const { api, signIn, serverUrl } = useApp();
   const { serverUsed, serverFailed } = usePrefs();
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -116,7 +111,7 @@ export default function RegisterScreen() {
         contentContainerStyle={[styles.content, compact ? null : styles.centered, column]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
+        <Text accessibilityRole="header" style={[styles.big, { color: c.ink }]}>
           {t("auth.registerTitle")}
         </Text>
         {error ? <Notice message={error} /> : null}
@@ -147,7 +142,7 @@ export default function RegisterScreen() {
                 label={reveal ? t("auth.hidePassword") : t("auth.showPassword")}
                 tone="plain"
                 diameter={44}
-                color={palette.mut}
+                color={c.mut}
                 onPress={() => setReveal((r) => !r)}
               />
             }
@@ -180,7 +175,7 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <AuthSplit form={form} footer={<ServerRow onChange={() => setServerOpen(true)} width={formWidth} />} />
       <ServerSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
@@ -191,7 +186,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: space.page, paddingTop: space.l, paddingBottom: space.xxl, gap: space.xl },
   centered: { flexGrow: 1, justifyContent: "center" },
-  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
+  big: { fontSize: 34, lineHeight: 42, fontWeight: "900", letterSpacing: -0.7 },
   form: { gap: 18 },
   lengthRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingLeft: space.xs },
   track: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },

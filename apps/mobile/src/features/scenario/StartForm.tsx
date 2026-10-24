@@ -5,6 +5,9 @@
  * 宽屏的剧本详情两栏里（wide）：名字建议排在输入框右侧。
  * initial：按剧本设置预填（默认主角、偏好）；不在内置标签里的文风、不想看到的内容当作自定义的项。
  * 也用在新建、编辑剧本（app/scenario/form.tsx）里填剧本的默认设置。
+ *
+ * 漫画风（docs/design/comic/mobile/png/16–17）：每一步一个白底墨线的格子，步骤号是墨底方块白字；
+ * 篇幅是三格的切换（选中墨底），不想看到的内容是两列复选框。
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -28,7 +31,7 @@ import {
 } from "@bettertavern/core/scenario/startForm";
 
 import { Checkbox, Chip, Field, Icon, useOverlay } from "../../components/ui.tsx";
-import { font, radius, space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, ctype, font, space, useComic } from "../../theme/index.ts";
 
 export type StartValues = {
   name: string;
@@ -38,7 +41,7 @@ export type StartValues = {
   boundaries: string;
 };
 
-/** 一步：浅灰圆角卡片，标题前一个白色圆形序号 */
+/** 一步：白底墨线的格子，标题前一个墨底方块序号 */
 function Step({
   n,
   title,
@@ -50,16 +53,16 @@ function Step({
   optional?: string;
   children: ReactNode;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
-    <View style={[styles.step, { backgroundColor: palette.bg2 }]}>
+    <View style={[styles.step, { borderColor: c.ink, backgroundColor: c.paper }]}>
       <View style={styles.stepHead}>
-        <View style={[styles.stepNo, { backgroundColor: palette.card }]}>
-          <Text style={{ fontFamily: font.monoMedium, fontSize: 12, color: palette.ink }}>{n}</Text>
+        <View style={[styles.stepNo, { backgroundColor: c.ink }]}>
+          <Text style={{ fontFamily: font.monoMedium, fontSize: 13, fontWeight: "700", color: c.paper }}>{n}</Text>
         </View>
-        <Text accessibilityRole="header" style={[styles.stepTitle, { color: palette.ink }]}>
+        <Text accessibilityRole="header" style={[ctype.frameTitle, styles.stepTitle, { color: c.ink }]}>
           {title}
-          {optional ? <Text style={[styles.optional, { color: palette.mut }]}> {optional}</Text> : null}
+          {optional ? <Text style={[styles.optional, { color: c.mut }]}>  {optional}</Text> : null}
         </Text>
       </View>
       {children}
@@ -87,7 +90,7 @@ export function StartForm({
   wide?: boolean;
   initial?: StartValues;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const { t, i18n } = useTranslation();
   // 名字建议、内置的文风和边界随界面语言
@@ -150,7 +153,6 @@ export function StartForm({
           <Field
             label={t("start.nameLabel")}
             hideLabel
-            onGrey
             value={name}
             onChangeText={changeName}
             maxLength={NAME_MAX}
@@ -161,21 +163,15 @@ export function StartForm({
                 accessibilityRole="button"
                 accessibilityLabel={t("start.randomName")}
                 onPress={() => changeName(randomName(name))}
-                style={({ pressed }) => [
-                  styles.dice,
-                  {
-                    backgroundColor: pressed ? palette.bg3 : palette.bg2,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                  },
-                ]}
+                style={({ pressed }) => [styles.dice, { backgroundColor: pressed ? c.grey : "transparent" }]}
               >
-                <Icon name="dice" size={20} />
+                <Icon name="dice" size={22} color={c.ink} />
               </Pressable>
             }
           />
           <View style={wide ? styles.nameChips : styles.wrap}>
             {suggestions.map((n) => (
-              <Chip key={n} label={n} onGrey selected={name.trim() === n} onPress={() => changeName(n)} />
+              <Chip key={n} label={n} selected={name.trim() === n} onPress={() => changeName(n)} />
             ))}
           </View>
         </View>
@@ -185,7 +181,6 @@ export function StartForm({
         <Field
           label={t("start.stepIdentity")}
           hideLabel
-          onGrey
           multiline
           counter
           value={summary}
@@ -197,11 +192,11 @@ export function StartForm({
 
       <Step n="3" title={t("start.stepLength")}>
         <View
-          style={[styles.lengths, { backgroundColor: palette.bg3 }]}
+          style={[styles.lengths, { borderColor: c.ink, backgroundColor: c.paper }]}
           accessibilityRole="radiogroup"
           accessibilityLabel={t("start.stepLength")}
         >
-          {(["short", "medium", "long"] as const).map((value) => {
+          {(["short", "medium", "long"] as const).map((value, i) => {
             const on = length === value;
             const glyph = LENGTH_GLYPHS[value];
             return (
@@ -211,26 +206,21 @@ export function StartForm({
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={lengthLabel(value)}
                 onPress={() => setLength(value)}
-                style={[
+                style={({ pressed }) => [
                   styles.length,
-                  on ? { backgroundColor: palette.card, boxShadow: palette.shadowLift } : null,
+                  i > 0 ? { borderLeftWidth: comicStroke.control, borderLeftColor: c.ink } : null,
+                  { backgroundColor: on ? c.ink : pressed ? c.grey : "transparent" },
                 ]}
               >
-                <Svg width={36} height={22} viewBox="0 0 36 22">
+                <Svg width={28} height={18} viewBox="0 0 36 22">
                   <Path
                     d={glyph.d}
-                    stroke={on ? palette.acc : palette.ink2}
-                    strokeWidth={glyph.width}
+                    stroke={on ? c.paper : c.ink}
+                    strokeWidth={glyph.width + 0.6}
                     strokeLinecap="round"
                   />
                 </Svg>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: on ? "600" : "400",
-                    color: on ? palette.ink : palette.ink2,
-                  }}
-                >
+                <Text style={{ fontSize: 15, fontWeight: "700", color: on ? c.paper : c.ink }}>
                   {lengthLabel(value)}
                 </Text>
               </Pressable>
@@ -246,7 +236,6 @@ export function StartForm({
               key={tag}
               label={tag}
               check
-              onGrey
               selected={styles_.includes(tag)}
               onPress={() => setStyles((list) => toggle(list, tag))}
             />
@@ -255,14 +244,13 @@ export function StartForm({
             label={t("start.customStyle")}
             icon="plus"
             muted
-            onGrey
             onPress={() => void addCustom("style")}
           />
         </View>
       </Step>
 
       <Step n="5" title={t("start.stepAvoid")} optional={t("common.optional")}>
-        <View style={[styles.checks, { backgroundColor: palette.card }]}>
+        <View style={styles.checks}>
           {[...avoidItems, ...customBounds].map((item) => (
             <View key={item} style={styles.checkCell}>
               <Checkbox
@@ -288,32 +276,31 @@ export function StartForm({
 
 const styles = StyleSheet.create({
   step: {
-    marginHorizontal: space.list,
-    marginBottom: space.s,
-    paddingVertical: 20,
-    paddingHorizontal: space.l,
-    borderRadius: radius.group,
+    marginHorizontal: 20,
+    marginBottom: space.m,
+    paddingVertical: space.l,
+    paddingHorizontal: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
     gap: 14,
   },
   stepHead: { flexDirection: "row", alignItems: "center", gap: 10 },
-  stepNo: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  stepTitle: { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: "700" },
-  optional: { fontSize: 12.5, fontWeight: "400" },
-  dice: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  wrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  stepNo: { width: 26, height: 26, borderRadius: comicRadius.tag, alignItems: "center", justifyContent: "center" },
+  stepTitle: { flex: 1 },
+  optional: { fontSize: 13, fontWeight: "500" },
+  dice: { width: 40, height: 40, borderRadius: comicRadius.iconButtonSm, alignItems: "center", justifyContent: "center" },
+  wrap: { flexDirection: "row", flexWrap: "wrap", gap: space.s },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.s },
   /** 手机上：输入框和名字建议上下排，间距和步骤里其他内容一样 */
   nameColumn: { gap: 14 },
-  nameChips: { flexDirection: "row", gap: 6 },
-  lengths: { flexDirection: "row", padding: 4, gap: 4, borderRadius: 26 },
-  length: { flex: 1, alignItems: "center", gap: 10, paddingTop: 16, paddingBottom: 12, borderRadius: 22 },
-  checks: {
+  nameChips: { flexDirection: "row", gap: space.s },
+  lengths: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    columnGap: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 14,
-    borderRadius: radius.card,
+    borderWidth: comicStroke.control,
+    borderRadius: comicRadius.input,
+    overflow: "hidden",
   },
+  length: { flex: 1, alignItems: "center", gap: 6, paddingTop: 12, paddingBottom: 10 },
+  checks: { flexDirection: "row", flexWrap: "wrap", columnGap: 10 },
   checkCell: { width: "47%" },
 });

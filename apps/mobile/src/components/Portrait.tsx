@@ -6,7 +6,7 @@
 
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { isDarkTone, portraitGlyph, portraitTone } from "@bettertavern/design/portrait";
+import { isDarkTone, portraitGlyph, portraitTone, type PanelTone } from "@bettertavern/design/portrait";
 
 import { comicRadius, comicStroke, useComic } from "../theme/index.ts";
 import { Cover } from "./Cover.tsx";
@@ -18,6 +18,7 @@ export function Portrait({
   blobId,
   size,
   rounded = comicRadius.cover,
+  tone: forcedTone,
   style,
 }: {
   name: string;
@@ -26,13 +27,15 @@ export function Portrait({
   blobId?: string | null;
   size: number;
   rounded?: number;
+  /** 指定底（剧本里的主角色是蓝网点）；不传就按 seed 选 */
+  tone?: PanelTone;
   style?: StyleProp<ViewStyle>;
 }) {
   const c = useComic();
   if (blobId) {
     return <Cover seed={seed} blobId={blobId} width={size} height={size} rounded={rounded} framed style={style} />;
   }
-  const tone = portraitTone(seed);
+  const tone = forcedTone ?? portraitTone(seed);
   const fg = tone === "blue" ? c.onAcc : isDarkTone(tone) ? c.paper : c.ink;
   const glyph = (
     <Text

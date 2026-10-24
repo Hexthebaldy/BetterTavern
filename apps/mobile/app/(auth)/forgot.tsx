@@ -16,13 +16,13 @@ import { BackBar, Button, Field, IconButton, Notice } from "../../src/components
 import { cleanCode, codeErrorText, useCooldown } from "../../src/features/auth/parts.tsx";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { space, usePalette } from "../../src/theme/index.ts";
+import { space, useComic } from "../../src/theme/index.ts";
 
 const MIN_PASSWORD = 8;
 
 export default function ForgotScreen() {
   const { api, signIn } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
@@ -80,7 +80,7 @@ export default function ForgotScreen() {
       hitSlop={8}
       style={styles.link}
     >
-      <Text style={{ fontSize: 14, fontWeight: "500", color: disabled ? palette.mut : palette.acc }}>{label}</Text>
+      <Text style={{ fontSize: 14, fontWeight: "700", color: disabled ? c.mut : c.acc }}>{label}</Text>
     </Pressable>
   );
 
@@ -92,10 +92,10 @@ export default function ForgotScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ gap: 10 }}>
-          <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
+          <Text accessibilityRole="header" style={[styles.big, { color: c.ink }]}>
             {step === "email" ? t("auth.forgotTitle") : t("auth.resetTitle")}
           </Text>
-          <Text style={[styles.lead, { color: palette.mut }]}>
+          <Text style={[styles.lead, { color: c.mut }]}>
             {step === "email" ? t("auth.forgotLead") : t("auth.resetSent", { email: email.trim() })}
           </Text>
         </View>
@@ -153,7 +153,7 @@ export default function ForgotScreen() {
                   label={reveal ? t("auth.hidePassword") : t("auth.showPassword")}
                   tone="plain"
                   diameter={44}
-                  color={palette.mut}
+                  color={c.mut}
                   onPress={() => setReveal((r) => !r)}
                 />
               }
@@ -184,7 +184,7 @@ export default function ForgotScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <AuthSplit form={form} />
     </KeyboardAvoidingView>
@@ -194,7 +194,7 @@ export default function ForgotScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: space.page, paddingTop: space.l, paddingBottom: space.xxl, gap: space.xl },
   centered: { flexGrow: 1, justifyContent: "center" },
-  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
+  big: { fontSize: 34, lineHeight: 42, fontWeight: "900", letterSpacing: -0.7 },
   lead: { fontSize: 15, lineHeight: 24 },
   form: { gap: space.l },
   links: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: space.xs },

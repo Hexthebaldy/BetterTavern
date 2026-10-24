@@ -5,7 +5,11 @@
  *
  * 平板（theme/layout.ts）：中屏单栏，宽 640，居中。宽屏两栏（设计稿 T12），两栏各自滚动：
  * 左栏宽 420 是封面（高 236，返回按钮浮在上面）、名字、角色卡、设置、简介；
- * 右栏是开始新故事的五步，底部浮着一条摘要栏（已选项胶囊加“开始故事”），圆角 34，带投影。
+ * 右栏是开始新故事的五步，底部浮着一条摘要栏（已选项胶囊加“开始故事”）。
+ *
+ * 漫画风（docs/design/comic/mobile/png/15–17）：手机上封面铺满顶部、底边一道墨线，返回是浮在上面的图标按钮；
+ * 平板上封面是墨线的格子。剧本里的卡是一排人物位小卡（主角色是蓝网点底加“主角色”）；设置是墨线格子里的三行；
+ * 简介不进框。浮着的摘要栏是白底墨线、墨投影 4。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -22,24 +26,24 @@ import { needsModelSettings } from "@bettertavern/core/settings/labels";
 import { pane } from "@bettertavern/design/layout";
 
 import { Cover } from "../../../src/components/Cover.tsx";
+import { Portrait } from "../../../src/components/Portrait.tsx";
 import {
   BackBar,
   Button,
   ErrorState,
-  Icon,
+  Group,
   IconButton,
   Loading,
   Notice,
   Pill,
   useColumnStyle,
   useOverlay,
-  type IconName,
 } from "../../../src/components/ui.tsx";
 import { StartForm, type StartValues } from "../../../src/features/scenario/StartForm.tsx";
 import { useAsync } from "../../../src/hooks/useAsync.ts";
 import { useLayout } from "../../../src/hooks/useLayout.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
-import { font, radius, size, space, type, usePalette } from "../../../src/theme/index.ts";
+import { comicDepth, comicRadius, comicStroke, ctype, hardShadow, space, useComic } from "../../../src/theme/index.ts";
 
 /** 开场：导演来写，或者“用‘温九’的第 2 条备选开场白” */
 function openingText(scenario: Pick<Scenario, "cards" | "setup">): string {
@@ -52,7 +56,7 @@ function openingText(scenario: Pick<Scenario, "cards" | "setup">): string {
 }
 
 function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const router = useRouter();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -67,25 +71,18 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
     .join(" · ");
   const setupRow = (label: string, value: string) => (
     <View style={styles.setupRow}>
-      <Text style={[styles.caption, { color: palette.mut }]}>{label}</Text>
-      <Text style={{ fontSize: 15, lineHeight: 22, color: palette.ink }}>{value}</Text>
+      <Text style={[styles.setupLabel, { color: c.mut }]}>{label}</Text>
+      <Text style={{ flex: 1, fontSize: 15, lineHeight: 22, color: c.ink }}>{value}</Text>
     </View>
   );
+  const lead = scenario.cards.length > 1;
   return (
     <>
-      <View style={styles.titleBlock}>
-        <View style={styles.titleRow}>
-          <Text accessibilityRole="header" style={[styles.hero, { flex: 1, color: palette.ink }]}>
-            {scenario.name}
-          </Text>
-          <Button
-            label={t("scenario.editSetup")}
-            icon="write"
-            variant="secondary"
-            onPress={onEdit}
-            style={styles.edit}
-          />
-        </View>
+      <View style={styles.titleRow}>
+        <Text accessibilityRole="header" style={[styles.hero, { flex: 1, color: c.ink }]}>
+          {scenario.name}
+        </Text>
+        <Button label={t("scenario.editSetup")} icon="write" variant="secondary" small onPress={onEdit} />
       </View>
       <View style={styles.cast}>
         {scenario.cards.map((card, i) => (
@@ -94,18 +91,27 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
             accessibilityRole="button"
             accessibilityHint={t("scenario.openCard")}
             onPress={() => router.push({ pathname: "/card/[id]", params: { id: card.card_id } })}
-            style={({ pressed }) => [styles.castRow, { backgroundColor: pressed ? palette.bg3 : palette.bg2 }]}
+            style={({ pressed }) => [
+              styles.castCard,
+              { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper },
+            ]}
           >
-            <Cover seed={card.card_id} blobId={card.cover_blob_id} width={44} height={44} surface="card" />
-            <Text numberOfLines={1} style={{ flex: 1, fontSize: 15, fontWeight: "600", color: palette.ink }}>
+            <Portrait
+              name={card.name}
+              seed={card.card_id}
+              blobId={card.cover_blob_id}
+              size={40}
+              rounded={7}
+              tone={i === 0 && lead ? "blue" : undefined}
+            />
+            <Text numberOfLines={1} style={[styles.castName, { color: c.ink }]}>
               {card.name}
             </Text>
-            {i === 0 && scenario.cards.length > 1 ? <Pill label={t("scenario.lead")} tone="acc" /> : null}
-            <Icon name="chevronRight" size={16} color={palette.mut} />
+            {i === 0 && lead ? <Pill label={t("scenario.lead")} tone="accSolid" /> : null}
           </Pressable>
         ))}
       </View>
-      <View style={[styles.card, styles.setup, { backgroundColor: palette.bg2 }]}>
+      <Group style={styles.setup}>
         {setupRow(
           t("scenario.protagonist"),
           protagonist.name
@@ -114,16 +120,19 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
         )}
         {setupRow(t("scenario.preferences"), prefs)}
         {setupRow(t("scenario.opening"), openingText(scenario))}
-      </View>
+      </Group>
       {scenario.description_preview ? (
-        <View style={[styles.card, styles.description, { backgroundColor: palette.bg2 }]}>
+        <View style={styles.description}>
+          <Text accessibilityRole="header" style={[styles.sectionLabel, { color: c.ink }]}>
+            {t("scenario.description")}
+          </Text>
           <Text
             numberOfLines={expanded ? undefined : 4}
             onTextLayout={(e) => {
               if (!expanded) setClamped(e.nativeEvent.lines.length >= 4);
             }}
             selectable
-            style={{ fontSize: 15, lineHeight: 26, color: palette.ink2 }}
+            style={{ fontSize: 15, lineHeight: 26, color: c.ink2 }}
           >
             {scenario.description_preview}
           </Text>
@@ -132,12 +141,12 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
               accessibilityRole="button"
               accessibilityState={{ expanded }}
               onPress={() => setExpanded((v) => !v)}
+              hitSlop={8}
               style={styles.expand}
             >
-              <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
+              <Text style={{ fontSize: 14.5, fontWeight: "700", color: c.acc }}>
                 {expanded ? t("scenario.collapse") : t("scenario.expand")}
               </Text>
-              <Icon name={expanded ? "chevronUp" : "chevronDown"} size={16} color={palette.acc} />
             </Pressable>
           ) : null}
         </View>
@@ -150,11 +159,11 @@ export default function ScenarioScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { api } = useApp();
   const router = useRouter();
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { width, expanded } = useLayout();
+  const { width, expanded, compact } = useLayout();
   const column = useColumnStyle();
   // 宽屏右栏底部浮着的摘要栏有多高：表单最后留出这么多
   const [barHeight, setBarHeight] = useState(120);
@@ -167,7 +176,7 @@ export default function ScenarioScreen() {
   if (loading && !scenario) return <Loading />;
   if (!scenario) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         <BackBar />
         <ErrorState
           title={t("scenario.loadFailed")}
@@ -220,39 +229,32 @@ export default function ScenarioScreen() {
   const routeMissing = startCode === "ROUTE_MISSING";
   // 没有导演、官方模型的点数用完了：都带“去设置”按钮
   const toSettings = needsModelSettings(startCode);
-  // 封面宽度：手机整屏减两边 12；中屏的居中栏最宽 640；宽屏左栏 420
-  const coverWidth = expanded
-    ? pane.scenarioInfo
-    : Math.min(width, column ? pane.readable : width) - space.list * 2;
-  const coverHeight = expanded ? 236 : Math.round(coverWidth * 0.82);
+  // 封面：手机铺满整宽、伸到状态栏下面；中屏的居中栏最宽 640、宽屏左栏 420，是墨线的格子
+  const coverWidth = compact
+    ? width
+    : (expanded ? pane.scenarioInfo : Math.min(width, column ? pane.readable : width) - space.list * 2) -
+      comicStroke.frame * 2;
+  const coverHeight = compact ? insets.top + 176 : expanded ? 236 : Math.round(coverWidth * 0.5);
 
   const cover = (
-    <View style={styles.cover}>
-      <Cover
-        seed={scenario.id}
-        blobId={scenario.cover_blob_id}
-        width={coverWidth}
-        height={coverHeight}
-        rounded={34}
-      />
-      {/* 封面伸到状态栏下面，返回按钮避开刘海和灵动岛 */}
-      <View style={[styles.coverBar, { top: Math.max(insets.top - space.list, 0) + space.s }]}>
-        <IconButton
-          icon="back"
-          label={t("common.back")}
-          tone="card"
-          diameter={size.touch}
-          onPress={() => router.back()}
-        />
+    <View
+      style={[
+        compact ? [styles.coverBleed, { borderBottomColor: c.ink }] : [styles.coverFramed, { borderColor: c.ink }],
+      ]}
+    >
+      <Cover seed={scenario.id} blobId={scenario.cover_blob_id} width={coverWidth} height={coverHeight} rounded={0} />
+      {/* 返回按钮避开刘海和灵动岛 */}
+      <View style={[styles.coverBar, { top: compact ? insets.top + 6 : space.m }]}>
+        <IconButton icon="back" label={t("common.back")} diameter={38} onPress={() => router.back()} />
       </View>
     </View>
   );
   const startHead = (
     <View style={[styles.startHead, expanded ? { paddingTop: insets.top + space.l } : null]}>
-      <Text accessibilityRole="header" style={[styles.startTitle, { color: palette.ink }]}>
+      <Text accessibilityRole="header" style={[styles.startTitle, { color: c.ink }]}>
         {t("start.title")}
       </Text>
-      <Text style={[styles.caption, { color: palette.mut }]}>{t("start.hint")}</Text>
+      <Text style={[styles.caption, { color: c.mut }]}>{t("start.hint")}</Text>
     </View>
   );
   const { protagonist, preferences } = scenario.setup;
@@ -305,7 +307,7 @@ export default function ScenarioScreen() {
         onPress={() => void remove()}
         style={{ alignSelf: "stretch" }}
       />
-      <Text style={[styles.caption, { color: palette.mut }]}>{t("library.deleteMessage")}</Text>
+      <Text style={[styles.caption, { color: c.mut, textAlign: "center" }]}>{t("library.deleteMessage")}</Text>
     </View>
   );
 
@@ -313,7 +315,7 @@ export default function ScenarioScreen() {
     return (
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1, flexDirection: "row", backgroundColor: palette.bg }}
+        style={{ flex: 1, flexDirection: "row", backgroundColor: c.page }}
       >
         <ScrollView
           style={{ width: pane.scenarioInfo + space.list * 2, flexGrow: 0 }}
@@ -338,8 +340,9 @@ export default function ScenarioScreen() {
               styles.floatingBar,
               {
                 bottom: Math.max(insets.bottom, space.l),
-                backgroundColor: palette.card,
-                boxShadow: palette.shadowFloat,
+                backgroundColor: c.paper,
+                borderColor: c.ink,
+                boxShadow: hardShadow(c.ink, comicDepth.raised),
               },
             ]}
           >
@@ -356,7 +359,7 @@ export default function ScenarioScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <ScrollView
         contentContainerStyle={[{ paddingBottom: insets.bottom + 48 }, column]}
@@ -366,7 +369,7 @@ export default function ScenarioScreen() {
         <Overview scenario={scenario} onEdit={edit} />
         {startHead}
         {form}
-        <View style={[styles.submit, { backgroundColor: palette.card, boxShadow: palette.shadowFloat }]}>
+        <View style={styles.submit}>
           {errorNotice}
           {pills}
           {startButton}
@@ -378,47 +381,69 @@ export default function ScenarioScreen() {
 }
 
 const styles = StyleSheet.create({
-  cover: { marginTop: space.list, marginHorizontal: space.list },
-  coverBar: { position: "absolute", left: space.m },
-  titleBlock: { paddingTop: 22, paddingHorizontal: space.page, paddingBottom: space.l, gap: space.m },
+  coverBleed: { borderBottomWidth: comicStroke.frame },
+  coverFramed: {
+    marginTop: space.list,
+    marginHorizontal: space.list,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+    overflow: "hidden",
+  },
+  coverBar: { position: "absolute", left: 14 },
   caption: { fontSize: 13, lineHeight: 19 },
-  hero: { ...type.hero },
-  cast: { paddingHorizontal: space.list, gap: 6 },
-  castRow: { flexDirection: "row", alignItems: "center", gap: space.m, padding: 8, paddingRight: space.m, borderRadius: radius.option },
-  setup: { paddingVertical: 6 },
-  setupRow: { paddingVertical: 10, gap: 2 },
-  card: {
-    marginTop: space.s,
-    marginHorizontal: space.list,
-    borderRadius: radius.group,
-    paddingHorizontal: space.l,
-  },
-  description: { paddingTop: 18, paddingBottom: space.s },
-  expand: { flexDirection: "row", alignItems: "center", gap: 4, height: 44, alignSelf: "flex-start" },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: space.m },
-  /** 剧本名右边的小按钮 */
-  edit: { height: 40, paddingHorizontal: space.l },
-  startHead: {
-    paddingTop: 40,
-    paddingBottom: space.l,
-    paddingHorizontal: space.page,
+  hero: { ...ctype.title, fontSize: 30, lineHeight: 38 },
+  titleRow: {
     flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: space.s,
+    alignItems: "center",
+    gap: space.m,
+    paddingTop: 22,
+    paddingHorizontal: 20,
+    paddingBottom: space.l,
   },
-  startTitle: { fontSize: 26, lineHeight: 32, fontWeight: "700", letterSpacing: -0.5 },
-  submit: {
-    marginTop: space.l,
-    marginHorizontal: space.list,
-    padding: space.m,
-    borderRadius: radius.sheet,
+  cast: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 20 },
+  castCard: {
+    maxWidth: "100%",
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
+    padding: 7,
+    paddingRight: 12,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
-  summary: { flexDirection: "row", flexWrap: "wrap", gap: 4, paddingHorizontal: 4 },
-  startButton: { height: 56, borderRadius: 28, paddingLeft: space.page, paddingRight: space.s },
+  castName: { flexShrink: 1, fontSize: 15, fontWeight: "900" },
+  setup: { marginTop: space.l, marginHorizontal: 20 },
+  setupRow: { flexDirection: "row", gap: space.m, paddingVertical: 14, paddingHorizontal: 14 },
+  /** 标签一列：中文四个字正好，英文长的标签换行 */
+  setupLabel: { width: "28%", minWidth: 64, fontSize: 13.5, lineHeight: 22, fontWeight: "700" },
+  sectionLabel: { fontSize: 14, lineHeight: 20, fontWeight: "700" },
+  description: { marginTop: 20, paddingHorizontal: 20, gap: space.s },
+  expand: { alignSelf: "flex-start", paddingVertical: space.xs },
+  startHead: {
+    paddingTop: 36,
+    paddingBottom: space.l,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+    columnGap: 10,
+    rowGap: space.xs,
+  },
+  startTitle: { ...ctype.title, fontSize: 26, lineHeight: 32 },
+  submit: { marginTop: space.s, marginHorizontal: 20, gap: space.m },
+  summary: { flexDirection: "row", flexWrap: "wrap", gap: space.xs },
+  startButton: { alignSelf: "stretch" },
   /** 宽屏右栏底部浮着的摘要栏 */
-  floatingBar: { position: "absolute", left: 0, right: 0, marginTop: 0, borderRadius: 34 },
+  floatingBar: {
+    position: "absolute",
+    left: space.l,
+    right: space.l,
+    marginTop: 0,
+    marginHorizontal: 0,
+    padding: space.m,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.panel,
+  },
   barRow: { flexDirection: "row", alignItems: "center", gap: space.m },
-  danger: { marginTop: 40, marginHorizontal: space.list, gap: space.s, alignItems: "center" },
+  danger: { marginTop: 40, marginHorizontal: 20, gap: space.s, alignItems: "center" },
 });

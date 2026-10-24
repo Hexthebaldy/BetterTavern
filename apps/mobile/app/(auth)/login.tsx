@@ -19,12 +19,12 @@ import { Button, Field, IconButton, Notice } from "../../src/components/ui.tsx";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
-import { space, usePalette } from "../../src/theme/index.ts";
+import { space, useComic } from "../../src/theme/index.ts";
 
 export default function LoginScreen() {
   const { api, signIn, serverUrl } = useApp();
   const { serverUsed, serverFailed } = usePrefs();
-  const palette = usePalette();
+  const c = useComic();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
@@ -98,10 +98,10 @@ export default function LoginScreen() {
         {/* 宽屏的 Logo 和介绍在左边的插画区里 */}
         {expanded ? null : <Logo />}
         <View style={{ gap: 10 }}>
-          <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
+          <Text accessibilityRole="header" style={[styles.big, { color: c.ink }]}>
             {t("auth.loginTitle")}
           </Text>
-          {expanded ? null : <Text style={[styles.lead, { color: palette.mut }]}>{t("auth.tagline")}</Text>}
+          {expanded ? null : <Text style={[styles.lead, { color: c.mut }]}>{t("auth.tagline")}</Text>}
         </View>
         <View style={styles.form}>
           <Field
@@ -130,7 +130,7 @@ export default function LoginScreen() {
                 hitSlop={8}
                 style={styles.forgot}
               >
-                <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: c.acc }}>
                   {t("auth.forgotPassword")}
                 </Text>
               </Pressable>
@@ -141,7 +141,7 @@ export default function LoginScreen() {
                 label={reveal ? t("auth.hidePassword") : t("auth.showPassword")}
                 tone="plain"
                 diameter={44}
-                color={palette.mut}
+                color={c.mut}
                 onPress={() => setReveal((r) => !r)}
               />
             }
@@ -156,7 +156,7 @@ export default function LoginScreen() {
             style={{ marginTop: space.s }}
           />
           <View style={styles.switch}>
-            <Text style={{ fontSize: 14, color: palette.mut }}>{t("auth.noAccount")}</Text>
+            <Text style={{ fontSize: 14, color: c.mut }}>{t("auth.noAccount")}</Text>
             <Pressable
               accessibilityRole="link"
               accessibilityLabel={t("auth.register")}
@@ -164,7 +164,7 @@ export default function LoginScreen() {
               hitSlop={8}
               style={styles.switchAction}
             >
-              <Text style={{ fontSize: 14, fontWeight: "500", color: palette.acc }}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: c.acc }}>
                 {t("auth.register")}
               </Text>
             </Pressable>
@@ -177,7 +177,7 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <AuthSplit form={form} footer={<ServerRow onChange={() => setServerOpen(true)} width={formWidth} />} />
       <ServerSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   errorRow: { left: 0, right: 0, alignItems: "center" },
   content: { paddingHorizontal: space.page, paddingTop: space.xl, paddingBottom: space.xxl, gap: 32 },
   centered: { flexGrow: 1, justifyContent: "center" },
-  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
+  big: { fontSize: 34, lineHeight: 42, fontWeight: "900", letterSpacing: -0.7 },
   lead: { fontSize: 15, lineHeight: 24 },
   form: { gap: space.l },
   switch: { flexDirection: "row", justifyContent: "center", alignItems: "center" },

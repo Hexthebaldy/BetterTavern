@@ -13,10 +13,10 @@ import { Button, SectionHeader, useOverlay } from "../../components/ui.tsx";
 import { CLIENT_VERSION } from "../../config.ts";
 import { platformLabel } from "../../observability/setup.ts";
 import { useApp } from "../../state/AppProvider.tsx";
-import { space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 
 export function DiagnosticsCard() {
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const { t } = useTranslation();
   const { serverUrl } = useApp();
@@ -51,8 +51,8 @@ export function DiagnosticsCard() {
   return (
     <View>
       <SectionHeader title={t("diagnostics.title")} meta={t("diagnostics.count", { count })} />
-      <View style={[styles.card, { backgroundColor: palette.bg2 }]}>
-        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink2 }}>{t("diagnostics.about")}</Text>
+      <View style={[styles.card, { backgroundColor: c.paper, borderColor: c.ink }]}>
+        <Text style={{ fontSize: 14, lineHeight: 22, color: c.ink2 }}>{t("diagnostics.about")}</Text>
         <View style={styles.buttons}>
           <Button
             label={t("diagnostics.export")}
@@ -65,7 +65,6 @@ export function DiagnosticsCard() {
             label={t("diagnostics.clear")}
             icon="trash"
             variant="secondary"
-            onGrey
             onPress={() => void clear()}
             disabled={count === 0}
             style={styles.flex}
@@ -77,7 +76,13 @@ export function DiagnosticsCard() {
 }
 
 const styles = StyleSheet.create({
-  card: { marginHorizontal: space.list, padding: space.l, borderRadius: 24, gap: space.l },
-  buttons: { flexDirection: "row", gap: space.s },
+  card: {
+    marginHorizontal: space.list,
+    padding: space.l,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+    gap: space.l,
+  },
+  buttons: { flexDirection: "row", gap: space.s, paddingBottom: 4 },
   flex: { flex: 1 },
 });

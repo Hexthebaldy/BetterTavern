@@ -5,6 +5,9 @@
  * 3. 默认主角和偏好：开新故事时预填（和“开始新的故事”是同一个表单，StartForm.tsx）；
  * 4. 开场：用其中一张卡的开场白或某条备选开场白（导演不重写），或者让导演根据设定写一个。
  * 编辑时带版本号保存，别处改过（409 SCENARIO_CHANGED）就重新读一次。
+ *
+ * 漫画风（docs/design/comic/mobile/png/19）：选好的卡在一个墨线格子里，序号是墨底方块，第一张标“主角色”；
+ * 还没选的卡在下面另一个格子里；开场是墨线格子里的单选行。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -19,11 +22,14 @@ import { Cover } from "../../src/components/Cover.tsx";
 import {
   ErrorState,
   Field,
+  Group,
+  Icon,
   IconButton,
   Loading,
   NavBar,
   Notice,
   Pill,
+  RadioMark,
   SectionHeader,
   Toggle,
   useColumnStyle,
@@ -32,7 +38,7 @@ import {
 import { StartForm, type StartValues } from "../../src/features/scenario/StartForm.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { radius, space, usePalette } from "../../src/theme/index.ts";
+import { comicRadius, font, space, useComic } from "../../src/theme/index.ts";
 
 const MAX_CARDS = 8;
 
@@ -42,7 +48,7 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
   const { api } = useApp();
   const router = useRouter();
   const overlay = useOverlay();
-  const palette = usePalette();
+  const c = useComic();
   const column = useColumnStyle();
   const { t } = useTranslation();
   const cards = useAsync(() => api.cards.list(), [api]);
@@ -160,7 +166,7 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
     a === b || (!!a && !!b && a.card_id === b.card_id && a.greeting === b.greeting);
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+    <View style={{ flex: 1, backgroundColor: c.page }}>
       <NavBar
         title={scenario ? t("newScenario.editTitle") : t("newScenario.title")}
         actions={
@@ -178,7 +184,7 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
             meta={picked.length ? t("newScenario.picked", { count: picked.length }) : undefined}
             style={styles.section}
           />
-          <Text style={[styles.hint, { color: palette.mut }]}>{t("newScenario.pickHint")}</Text>
+          <Text style={[styles.hint, { color: c.mut }]}>{t("newScenario.pickHint")}</Text>
           {cards.loading && !cards.data ? (
             <Loading />
           ) : all.length === 0 ? (
@@ -189,50 +195,62 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
               onAction={() => router.navigate("/workbench")}
             />
           ) : (
-            <View style={{ gap: 6 }}>
-              {picked.map((id, i) => {
-                const card = byId.get(id);
-                return (
-                  <View key={id} style={[styles.pick, { backgroundColor: palette.bg2, borderColor: palette.acc }]}>
-                    <Text style={[styles.index, { color: palette.mut }]}>{i + 1}</Text>
-                    <Cover seed={id} blobId={card?.cover_blob_id} width={40} height={40} surface="card" />
-                    <Text numberOfLines={1} style={[styles.pickName, { color: palette.ink }]}>
-                      {card?.name ?? details.get(id)?.card.name ?? id}
-                    </Text>
-                    {i === 0 && picked.length > 1 ? <Pill label={t("scenario.lead")} tone="acc" /> : null}
-                    <IconButton icon="chevronUp" label={t("newScenario.moveUp")} tone="plain" diameter={32} size={16} disabled={i === 0} onPress={() => move(i, -1)} />
-                    <IconButton
-                      icon="chevronDown"
-                      label={t("newScenario.moveDown")}
-                      tone="plain"
-                      diameter={32}
-                      size={16}
-                      disabled={i === picked.length - 1}
-                      onPress={() => move(i, 1)}
-                    />
-                    <IconButton icon="close" label={t("newScenario.remove")} tone="plain" diameter={32} size={16} onPress={() => toggle(id)} />
-                  </View>
-                );
-              })}
-              {rest.map((card) => (
-                <Pressable
-                  key={card.id}
-                  accessibilityRole="button"
-                  onPress={() => toggle(card.id)}
-                  style={({ pressed }) => [styles.pick, { backgroundColor: pressed ? palette.bg3 : palette.bg2, borderColor: "transparent" }]}
-                >
-                  <Text style={styles.index} />
-                  <Cover seed={card.id} blobId={card.cover_blob_id} width={40} height={40} surface="card" />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text numberOfLines={1} style={[styles.pickName, { color: palette.ink }]}>
-                      {card.name}
-                    </Text>
-                    <Text numberOfLines={1} style={{ fontSize: 12.5, color: palette.mut }}>
-                      {card.description_preview}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
+            <View style={{ gap: space.m }}>
+              {picked.length ? (
+                <Group>
+                  {picked.map((id, i) => {
+                    const card = byId.get(id);
+                    return (
+                      <View key={id} style={styles.pick}>
+                        <View style={[styles.index, { backgroundColor: c.ink }]}>
+                          <Text style={[styles.indexText, { color: c.paper }]}>{i + 1}</Text>
+                        </View>
+                        <Cover seed={id} blobId={card?.cover_blob_id} width={40} height={40} rounded={7} framed />
+                        <Text numberOfLines={1} style={[styles.pickName, { color: c.ink }]}>
+                          {card?.name ?? details.get(id)?.card.name ?? id}
+                        </Text>
+                        {i === 0 && picked.length > 1 ? <Pill label={t("scenario.lead")} tone="accSolid" /> : null}
+                        <IconButton icon="chevronUp" label={t("newScenario.moveUp")} tone="plain" diameter={32} size={18} disabled={i === 0} onPress={() => move(i, -1)} />
+                        <IconButton
+                          icon="chevronDown"
+                          label={t("newScenario.moveDown")}
+                          tone="plain"
+                          diameter={32}
+                          size={18}
+                          disabled={i === picked.length - 1}
+                          onPress={() => move(i, 1)}
+                        />
+                        <IconButton icon="close" label={t("newScenario.remove")} tone="plain" diameter={32} size={18} onPress={() => toggle(id)} />
+                      </View>
+                    );
+                  })}
+                </Group>
+              ) : null}
+              {rest.length ? (
+                <Group>
+                  {rest.map((card) => (
+                    <Pressable
+                      key={card.id}
+                      accessibilityRole="button"
+                      onPress={() => toggle(card.id)}
+                      style={({ pressed }) => [styles.pick, { backgroundColor: pressed ? c.grey : "transparent" }]}
+                    >
+                      <View style={styles.index}>
+                        <Icon name="plus" size={18} color={c.mut} />
+                      </View>
+                      <Cover seed={card.id} blobId={card.cover_blob_id} width={40} height={40} rounded={7} framed />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text numberOfLines={1} style={[styles.pickName, { color: c.ink }]}>
+                          {card.name}
+                        </Text>
+                        <Text numberOfLines={1} style={{ fontSize: 12.5, color: c.mut }}>
+                          {card.description_preview}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </Group>
+              ) : null}
             </View>
           )}
 
@@ -247,43 +265,51 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
           />
 
           <SectionHeader title={t("newScenario.protagonist")} style={styles.section} />
-          <Text style={[styles.hint, { color: palette.mut }]}>{t("newScenario.protagonistHint")}</Text>
-          <StartForm
-            initial={
-              scenario
-                ? { name: scenario.setup.protagonist.name, summary: scenario.setup.protagonist.summary, ...scenario.setup.preferences }
-                : undefined
-            }
-            onChange={(next) => setValues(next)}
-          />
+          <Text style={[styles.hint, { color: c.mut }]}>{t("newScenario.protagonistHint")}</Text>
+          {/* 五步的格子自己离边 20：抵掉这一页的左右边距 */}
+          <View style={{ marginHorizontal: -space.page }}>
+            <StartForm
+              initial={
+                scenario
+                  ? { name: scenario.setup.protagonist.name, summary: scenario.setup.protagonist.summary, ...scenario.setup.preferences }
+                  : undefined
+              }
+              onChange={(next) => setValues(next)}
+            />
+          </View>
 
           <SectionHeader title={t("newScenario.opening")} style={styles.section} />
-          <Text style={[styles.hint, { color: palette.mut }]}>{t("newScenario.openingHint")}</Text>
-          <View accessibilityRole="radiogroup" style={{ gap: 6 }}>
-            {openings.map((option) => {
-              const on = same(option.value, opening);
-              return (
-                <Pressable
-                  key={option.value ? `${option.value.card_id}:${option.value.greeting}` : "director"}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
-                  onPress={() => setOpening(option.value)}
-                  style={[styles.opening, { backgroundColor: palette.bg2, borderColor: on ? palette.acc : "transparent" }]}
-                >
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: palette.ink }}>{option.title}</Text>
-                  {option.text ? (
-                    <Text numberOfLines={2} style={{ fontSize: 13, lineHeight: 20, color: palette.mut }}>
-                      {option.text}
-                    </Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
+          <Text style={[styles.hint, { color: c.mut }]}>{t("newScenario.openingHint")}</Text>
+          <View accessibilityRole="radiogroup">
+            <Group>
+              {openings.map((option) => {
+                const on = same(option.value, opening);
+                return (
+                  <Pressable
+                    key={option.value ? `${option.value.card_id}:${option.value.greeting}` : "director"}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    onPress={() => setOpening(option.value)}
+                    style={({ pressed }) => [styles.opening, { backgroundColor: pressed ? c.grey : "transparent" }]}
+                  >
+                    <RadioMark selected={on} />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={{ fontSize: 15, lineHeight: 22, fontWeight: "700", color: c.ink }}>{option.title}</Text>
+                      {option.text ? (
+                        <Text numberOfLines={2} style={{ fontSize: 13, lineHeight: 20, color: c.mut }}>
+                          {option.text}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </Group>
           </View>
 
           <SectionHeader title={t("newScenario.lightning")} style={styles.section} />
           <View style={styles.switchRow}>
-            <Text style={[styles.hint, styles.switchHint, { color: palette.mut }]}>
+            <Text style={[styles.hint, styles.switchHint, { color: c.mut }]}>
               {t("newScenario.lightningHint")}
             </Text>
             <Toggle value={lightning} onChange={setLightning} label={t("newScenario.lightning")} />
@@ -297,13 +323,13 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
 export default function ScenarioFormScreen() {
   const { id, card } = useLocalSearchParams<{ id?: string; card?: string }>();
   const { api } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const scenario = useAsync(() => (id ? api.scenarios.get(id) : Promise.resolve(null)), [api, id]);
   if (!id) return <Form scenario={null} presetCard={card ?? null} onChanged={() => undefined} />;
   if (!scenario.data) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         <NavBar title={t("newScenario.editTitle")} />
         {scenario.loading ? (
           <Loading />
@@ -329,15 +355,9 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: space.page, paddingTop: space.s, paddingBottom: 56, gap: space.m },
   section: { paddingHorizontal: 0, paddingBottom: 0, paddingTop: space.l },
   hint: { fontSize: 13, lineHeight: 20, marginTop: -space.s },
-  pick: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.s,
-    padding: 8,
-    borderRadius: radius.option,
-    borderWidth: 1.5,
-  },
-  index: { width: 20, textAlign: "center", fontSize: 12 },
-  pickName: { flex: 1, fontSize: 15, fontWeight: "600" },
-  opening: { padding: 14, borderRadius: radius.option, gap: 4, borderWidth: 2 },
+  pick: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: space.m },
+  index: { width: 26, height: 26, borderRadius: comicRadius.tag, alignItems: "center", justifyContent: "center" },
+  indexText: { fontFamily: font.monoMedium, fontSize: 13, fontWeight: "700" },
+  pickName: { flex: 1, fontSize: 15.5, fontWeight: "900" },
+  opening: { flexDirection: "row", alignItems: "flex-start", gap: space.m, paddingVertical: 14, paddingHorizontal: 14 },
 });

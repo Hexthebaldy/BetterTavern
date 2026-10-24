@@ -16,11 +16,11 @@ import { BackBar, Button, Field, Notice } from "../../src/components/ui.tsx";
 import { cleanCode, codeErrorText, useCooldown } from "../../src/features/auth/parts.tsx";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { space, usePalette } from "../../src/theme/index.ts";
+import { space, useComic } from "../../src/theme/index.ts";
 
 export default function VerifyScreen() {
   const { api, signIn } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
@@ -66,10 +66,10 @@ export default function VerifyScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ gap: 10 }}>
-          <Text accessibilityRole="header" style={[styles.big, { color: palette.ink }]}>
+          <Text accessibilityRole="header" style={[styles.big, { color: c.ink }]}>
             {t("auth.verifyTitle")}
           </Text>
-          <Text style={[styles.lead, { color: palette.mut }]}>{t("auth.verifySent", { email })}</Text>
+          <Text style={[styles.lead, { color: c.mut }]}>{t("auth.verifySent", { email })}</Text>
         </View>
         {error ? <Notice message={error} /> : null}
         {info ? <Notice tone="info" message={info} /> : null}
@@ -88,7 +88,7 @@ export default function VerifyScreen() {
             onSubmitEditing={() => void submit()}
           />
           <View style={styles.resendRow}>
-            <Text style={{ flex: 1, fontSize: 13, lineHeight: 19, color: palette.mut }}>{t("auth.checkSpam")}</Text>
+            <Text style={{ flex: 1, fontSize: 13, lineHeight: 19, color: c.mut }}>{t("auth.checkSpam")}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ disabled: cooldown.seconds > 0 }}
@@ -98,7 +98,7 @@ export default function VerifyScreen() {
               style={styles.resend}
             >
               <Text
-                style={{ fontSize: 14, fontWeight: "500", color: cooldown.seconds > 0 ? palette.mut : palette.acc }}
+                style={{ fontSize: 14, fontWeight: "700", color: cooldown.seconds > 0 ? c.mut : c.acc }}
               >
                 {cooldown.seconds > 0 ? t("auth.resendIn", { seconds: cooldown.seconds }) : t("auth.resend")}
               </Text>
@@ -121,7 +121,7 @@ export default function VerifyScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: palette.bg }}
+      style={{ flex: 1, backgroundColor: c.page }}
     >
       <AuthSplit form={form} />
     </KeyboardAvoidingView>
@@ -131,7 +131,7 @@ export default function VerifyScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: space.page, paddingTop: space.l, paddingBottom: space.xxl, gap: space.xl },
   centered: { flexGrow: 1, justifyContent: "center" },
-  big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
+  big: { fontSize: 34, lineHeight: 42, fontWeight: "900", letterSpacing: -0.7 },
   lead: { fontSize: 15, lineHeight: 24 },
   form: { gap: space.l },
   resendRow: { flexDirection: "row", alignItems: "center", gap: space.m, paddingHorizontal: space.xs },
