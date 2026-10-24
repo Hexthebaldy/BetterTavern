@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>手机 · 漫画风格 · 工作台（一）</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&amp;family=Noto+Serif+SC:wght@400;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.L{--bg:#FFFFFF;--bg2:#F5F5F2;--bg3:#EBEBE7;--ink:#1A1A1A;--ink2:#3D3C38;--mut:#6E6D68;--line:#EEEEEA;--line2:#DCDCD6;--acc:#2F55F4;--accBg:#EEF2FF;--ok:#13875A;--okBg:#E9F6EF;--warn:#B25A0B;--warnBg:#FFF4E4;--err:#D3392B;--errBg:#FDEEEB;--narr:#222222;--pri:#1A1A1A;--onPri:#FFFFFF;--priHv:#33332F;--card:#FFFFFF;--sheet:#FFFFFF;--scrim:rgba(20,20,20,.38);--arrowBg:rgba(255,255,255,.14);--sh:0 1px 2px rgba(20,20,20,.05),0 8px 28px rgba(20,20,20,.10);--lift:0 1px 3px rgba(20,20,20,.12);--chrome:#ECECE8;--url:rgba(255,255,255,.85);--frame:#E2E2DE;--fade:rgba(255,255,255,0);--hv:#EBEBE7;--cardHv:#FFFFFF}
+.D{--bg:#111113;--bg2:#1C1C1F;--bg3:#27272B;--ink:#F2F2F0;--ink2:#D3D3CF;--mut:#9C9C97;--line:#2A2A2F;--line2:#3A3A40;--acc:#8597FF;--accBg:#1F2546;--ok:#43C98C;--okBg:#11281D;--warn:#F0B257;--warnBg:#2C2213;--err:#FF7466;--errBg:#2F1715;--narr:#E2E2DE;--pri:#F2F2F0;--onPri:#111113;--priHv:#FFFFFF;--card:#2A2A2F;--sheet:#1F1F23;--scrim:rgba(0,0,0,.6);--arrowBg:rgba(0,0,0,.08);--sh:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.5);--lift:0 1px 3px rgba(0,0,0,.35);--chrome:#202023;--url:rgba(255,255,255,.07);--frame:#2A2A2F;--fade:rgba(17,17,19,0);--hv:#27272B;--cardHv:#313136}
+.L,.D{--fill:var(--bg2);--onFill:var(--card);--inset:var(--bg2);--raised:var(--card)}
+.L .panel{--fill:var(--card);--onFill:var(--bg2);--inset:var(--bg3);--raised:var(--card)}
+.D .panel{--fill:var(--card);--onFill:var(--bg2);--inset:var(--bg);--raised:var(--bg3)}
+.L .sheet{--fill:var(--bg2);--onFill:var(--sheet);--inset:var(--bg2);--raised:var(--card);--hv:#EBEBE7}
+.D .sheet{--fill:var(--bg3);--onFill:var(--sheet);--inset:var(--bg);--raised:var(--bg3);--hv:#2E2E33}
+.bd0{box-sizing:border-box;padding:40px;display:flex;gap:40px;align-items:flex-start;font-family:"Noto Sans SC","PingFang SC",system-ui,sans-serif;background:#FFFFFF}
+.cell{display:flex;flex-direction:column;gap:12px;flex:none}
+.tag{display:inline-flex;align-self:flex-start;align-items:center;gap:10px;height:30px;padding:0 14px;border-radius:15px;background:#F5F5F2;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:#6E6D68}
+.tag b{font-family:"Noto Sans SC",sans-serif;font-weight:500;color:#1A1A1A}
+.win{border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px var(--frame),0 18px 50px rgba(20,20,20,.08);flex:none;background:var(--bg)}
+.chrome{height:44px;background:var(--chrome);position:relative;display:flex;align-items:center;gap:8px;padding:0 18px}
+.chrome i{display:block;width:12px;height:12px;border-radius:6px}
+.url{position:absolute;left:50%;top:8px;transform:translateX(-50%);width:460px;height:28px;border-radius:14px;background:var(--url);display:flex;align-items:center;justify-content:center;gap:6px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--mut)}
+.url b{font-weight:500;color:var(--ink2)}
+.vp{position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:15px;line-height:22px;-webkit-font-smoothing:antialiased}
+.vp *{box-sizing:border-box}
+.ab{position:absolute!important}
+.fx{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+.f1{flex:1;min-width:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.serif{font-family:"Noto Serif SC","Songti SC",serif}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.mut{color:var(--mut)}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big{font-size:32px;line-height:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.h1{font-size:26px;line-height:34px;font-weight:700;letter-spacing:-.01em;margin:0}
+.h2{font-size:20px;line-height:28px;font-weight:700;margin:0}
+.h3{font-size:17px;line-height:24px;font-weight:700;margin:0}
+.sec{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;font-size:17px;line-height:24px;font-weight:700}
+.sec .m{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:400;color:var(--mut)}
+.cnt{font-family:"IBM Plex Mono",monospace;font-size:13px;height:32px;min-width:32px;padding:0 10px;border-radius:16px;background:var(--bg2);display:inline-flex;align-items:center;justify-content:center;color:var(--ink2)}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;border:0;border-radius:22px;font-family:inherit;font-size:15px;line-height:20px;font-weight:500;white-space:nowrap;flex:none}
+.btn.lg{height:52px;border-radius:26px;font-size:16px;padding:0 24px}
+.btn.sm{height:36px;border-radius:18px;font-size:14px;padding:0 14px}
+.btn.between{justify-content:space-between}
+.bp{background:var(--pri);color:var(--onPri)}
+.bp.hv{background:var(--priHv)}
+.bs{background:var(--fill);color:var(--ink)}
+.bs.hv{background:var(--hv)}
+.bq{background:transparent;color:var(--ink)}
+.bx{background:var(--errBg);color:var(--err)}
+.bw{background:var(--warn);color:#FFFFFF}
+.D .bw{color:#111113}
+.dis{opacity:.32}
+.arr{width:32px;height:32px;border-radius:16px;background:var(--arrowBg);display:flex;align-items:center;justify-content:center;margin-right:-14px}
+.lg .arr{width:36px;height:36px;border-radius:18px;margin-right:-16px}
+.ib{width:40px;height:40px;border-radius:20px;background:var(--fill);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;flex:none;position:relative}
+.ib.on{background:var(--ink);color:var(--bg)}
+.ib.ghost{background:transparent;color:var(--mut)}
+.ib.hv{background:var(--hv)}
+.ib .bdg{position:absolute;right:7px;top:7px;width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 2px var(--fill)}
+.ring{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--acc)}
+.iring{box-shadow:inset 0 0 0 2px var(--acc)}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:7px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line2),0 1px 0 var(--line2);font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1;color:var(--mut);flex:none;font-weight:500}
+.kbd.lg{height:26px;min-width:26px;font-size:12px;border-radius:8px;padding:0 8px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:14px;background:var(--fill);font-size:12.5px;color:var(--ink2);white-space:nowrap;flex:none}
+.pill.s{height:24px;padding:0 9px;border-radius:12px;font-size:12px}
+.pill.acc{background:var(--accBg);color:var(--acc);font-weight:500}
+.pill.accS{background:var(--acc);color:#FFFFFF;font-weight:600}
+.D .pill.accS{color:#111113}
+.pill.ok{background:var(--okBg);color:var(--ok)}
+.pill.warn{background:var(--warnBg);color:var(--warn)}
+.pill.err{background:var(--errBg);color:var(--err)}
+.pill.card{background:var(--card)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:3px;background:currentColor;flex:none}
+.stat{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap}
+.stat.ok{color:var(--ok)}.stat.warn{color:var(--warn)}.stat.err{color:var(--err)}
+/* fields */
+.fld{display:flex;flex-direction:column;gap:8px}
+.lab{font-size:13px;line-height:18px;color:var(--ink2);font-weight:500;padding-left:4px}
+.hint{font-size:12.5px;line-height:18px;color:var(--mut);padding-left:4px}
+.inp{display:flex;align-items:center;gap:10px;width:100%;height:52px;border-radius:14px;background:var(--fill);padding:0 8px 0 16px;font-size:15px;color:var(--ink)}
+.inp.ph{color:var(--mut)}
+.inp.foc{box-shadow:inset 0 0 0 2px var(--acc)}
+.caret{display:inline-block;width:2px;height:20px;background:var(--acc);margin-left:1px;vertical-align:-4px;border-radius:1px}
+.chk{width:22px;height:22px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:inset 0 0 0 1.75px var(--line2)}
+.chk.on{background:var(--ink);box-shadow:none;color:var(--bg)}
+.rad{width:22px;height:22px;border-radius:11px;flex:none;box-shadow:inset 0 0 0 1.75px var(--line2)}
+.rad.on{box-shadow:inset 0 0 0 6.5px var(--acc)}
+.tgl{width:52px;height:32px;border-radius:16px;background:var(--bg3);position:relative;flex:none}
+.tgl::after{content:"";position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:13px;background:#FFFFFF;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.tgl.on{background:var(--acc)}
+.tgl.on::after{left:23px}
+.segc{display:flex;gap:4px;padding:4px;border-radius:26px;background:var(--inset)}
+.segc>span{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:22px;font-size:14.5px;color:var(--mut)}
+.segc>span.on{background:var(--raised);color:var(--ink);font-weight:600;box-shadow:var(--lift)}
+.D .segc>span.on{box-shadow:none}
+/* sidebar */
+.sb{position:absolute;z-index:4;left:12px;top:12px;bottom:12px;width:268px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;padding:12px}
+.sbh{display:flex;align-items:center;gap:10px;height:44px;padding:0 0 0 8px;flex:none}
+.sbh .nm{flex:1;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.ni{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:22px;font-size:15px;color:var(--ink2);flex:none}
+.ni.on{background:var(--ink);color:var(--bg);font-weight:500}
+.ni.hv{background:var(--bg3)}
+.sbl{display:flex;align-items:center;justify-content:space-between;padding:0 10px;margin:22px 0 4px;font-size:12.5px;color:var(--mut);flex:none}
+.grp{padding:10px 10px 4px;font-size:11.5px;color:var(--mut);font-family:"IBM Plex Mono",monospace;letter-spacing:.04em}
+.sr{position:relative;display:flex;align-items:center;gap:10px;height:54px;padding:0 8px;border-radius:18px;flex:none}
+.sr.on{background:var(--card);box-shadow:var(--lift)}
+.D .sr.on{box-shadow:none}
+.sr.hv{background:var(--bg3)}
+.sr .tt{font-size:14px;line-height:20px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr .st{font-size:11.5px;line-height:16px;color:var(--mut);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.sr .st.lv{color:var(--acc)}
+.sr .st.warn{color:var(--warn)}
+.sba{display:flex;align-items:center;gap:10px;padding:8px;border-radius:20px;margin-top:auto;flex:none}
+.av{width:32px;height:32px;border-radius:16px;background:var(--accBg);color:var(--acc);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:none}
+/* rail */
+.rail{position:absolute;z-index:4;left:12px;top:12px;bottom:12px;width:76px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;align-items:center;padding:16px 0 12px;gap:4px}
+.rn{width:60px;height:60px;border-radius:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink2);font-size:11px;line-height:14px}
+.rn.on{background:var(--ink);color:var(--bg);font-weight:500}
+.rsep{width:28px;height:1px;background:var(--line2);margin:8px 0}
+.rcv{width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;position:relative}
+.rcv.on{background:var(--card);box-shadow:var(--lift)}
+.rcv .ld{position:absolute;right:5px;top:5px;width:9px;height:9px;border-radius:5px;background:var(--acc);box-shadow:0 0 0 2px var(--bg2)}
+/* overlays */
+.menu{position:absolute;z-index:9;padding:6px;border-radius:24px;background:var(--sheet);box-shadow:var(--sh)}
+.mi{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-radius:18px;font-size:15px;color:var(--ink)}
+.mi.hv{background:var(--hv)}
+.mi.err{color:var(--err)}
+.mi .kbd{margin-left:auto}
+.msep{height:1px;background:var(--line);margin:4px 10px}
+.scrim{position:absolute;inset:0;z-index:8;background:var(--scrim)}
+.dlg{position:absolute;z-index:9;background:var(--sheet);border-radius:32px;box-shadow:var(--sh);display:flex;flex-direction:column}
+.tip{position:absolute;z-index:9;display:flex;align-items:center;gap:8px;height:32px;padding:0 6px 0 12px;border-radius:16px;background:var(--ink);color:var(--bg);font-size:12.5px;white-space:nowrap;box-shadow:var(--sh)}
+.tip .kbd{background:rgba(255,255,255,.16);box-shadow:none;color:inherit;height:20px;min-width:20px;border-radius:6px}
+.D .tip .kbd{background:rgba(0,0,0,.1)}
+.toast{position:absolute;z-index:9;display:flex;align-items:center;gap:10px;height:52px;padding:0 6px 0 18px;border-radius:26px;background:var(--ink);color:var(--bg);font-size:14px;box-shadow:var(--sh)}
+.cursor{position:absolute;z-index:20;width:20px;height:24px;pointer-events:none}
+/* covers */
+.cv path,.cv circle.o{fill:none;stroke:var(--ink);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.cv .bgr{fill:var(--onFill)}
+.cv .dt{fill:var(--acc)}
+.cv .soft{stroke:var(--line2)}
+/* reading */
+.rtop{position:absolute;z-index:3;top:0;height:76px;display:flex;align-items:flex-start;justify-content:center;padding-top:24px;background:linear-gradient(var(--bg) 55%,var(--fade))}
+.rtop .t{font-size:15px;line-height:22px;font-weight:600}
+.feed{position:absolute;z-index:1}
+.narr{font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--narr);margin:0 0 16px;text-align:justify;letter-spacing:.175px}
+.note{margin:4px 0 20px;padding-left:14px;border-left:3px solid var(--line2);font-family:"Noto Serif SC","Songti SC",serif;font-size:17.5px;line-height:31px;color:var(--ink2);letter-spacing:.175px}
+.scur{display:inline-block;width:3px;height:20px;border-radius:1.5px;background:var(--acc);vertical-align:-3px;margin-left:2px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{display:flex;align-items:center;gap:12px;min-height:76px;padding:10px 14px 10px 12px;border-radius:24px;background:var(--fill);font-size:15px;line-height:22px;color:var(--ink)}
+.opt.hv{background:var(--hv)}
+.opt.on{background:var(--accBg);box-shadow:inset 0 0 0 2px var(--acc)}
+.key{width:32px;height:32px;border-radius:16px;background:var(--onFill);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;flex:none}
+.opt.on .key{background:var(--acc);color:var(--bg)}
+.book{border-radius:32px;background:var(--bg2);padding:12px 12px 18px;display:flex;flex-direction:column;gap:12px;margin-bottom:28px}
+.abar{position:absolute;z-index:5;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:8px 0 14px}
+.abar .in{margin:0 auto;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 4px}
+.tb{width:44px;height:44px;border-radius:22px;background:var(--fill);color:var(--ink);display:flex;align-items:center;justify-content:center;flex:none;position:relative}
+.tb.on{background:var(--ink);color:var(--bg)}
+.tb.hv{background:var(--hv)}
+.tb .bdg{position:absolute;right:8px;top:8px;width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 2px var(--fill)}
+.wpill{flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:44px;padding:0 11px 0 16px;border-radius:22px;background:var(--fill);color:var(--mut);font-size:15px}
+.lst{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding-left:8px;font-size:15px;color:var(--ink)}
+.ldot{width:8px;height:8px;border-radius:4px;background:var(--acc);box-shadow:0 0 0 4px var(--accBg);flex:none}
+.stopb{display:flex;align-items:center;gap:8px;height:44px;padding:0 18px 0 14px;border-radius:22px;background:var(--fill);font-size:15px;flex:none}
+.ta{border-radius:24px;background:var(--fill);padding:14px 16px;font-size:16px;line-height:25px;height:124px;color:var(--ink)}
+.ta.foc{box-shadow:inset 0 0 0 2px var(--acc)}
+/* world panel */
+.wp{position:absolute;z-index:4;top:12px;bottom:12px;width:400px;border-radius:28px;background:var(--bg2);display:flex;flex-direction:column;overflow:hidden}
+.wph{display:flex;align-items:flex-start;gap:12px;padding:16px 12px 0 20px}
+.wph .t{font-size:24px;line-height:32px;font-weight:700}
+.wph .s{font-size:12px;line-height:17px;color:var(--mut)}
+.seg{display:grid;gap:4px;padding:4px;border-radius:24px;background:var(--inset)}
+.sg{display:flex;align-items:center;justify-content:center;gap:5px;height:38px;border-radius:19px;font-size:13.5px;color:var(--ink2)}
+.sg.on{background:var(--raised);color:var(--ink);font-weight:600;box-shadow:var(--lift)}
+.D .sg.on{box-shadow:none}
+.n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--mut);font-weight:400}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:16px;background:var(--fill);font-size:13px;color:var(--ink);flex:none}
+.chip.on{background:var(--ink);color:var(--bg)}
+.ent{display:flex;gap:12px;padding:12px;border-radius:22px;background:var(--fill)}
+.ent.me{background:var(--accBg)}
+.ent.hv{box-shadow:var(--lift)}
+.eic{width:40px;height:40px;border-radius:20px;background:var(--onFill);display:flex;align-items:center;justify-content:center;flex:none}
+.ent.me .eic{background:var(--acc);color:#FFFFFF}
+.D .ent.me .eic{color:#111113}
+.en{font-size:15.5px;line-height:22px;font-weight:700}
+.kd{font-size:12px;line-height:17px;color:var(--mut)}
+.es{font-size:13.5px;line-height:21px;color:var(--ink2)}
+.rchip{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 9px;border-radius:13px;background:var(--onFill);font-size:12.5px;color:var(--ink)}
+.rchip .k{font-size:12px;color:var(--mut)}
+.fact{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:20px;background:var(--fill)}
+.fact.sec{background:var(--warnBg)}
+.fdot{width:6px;height:6px;border-radius:3px;background:var(--ink);margin-top:8px;flex:none}
+.lnk{display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:16px;background:var(--fill);font-size:14px}
+.lnk .m{height:24px;padding:0 9px;border-radius:12px;background:var(--onFill);font-size:12px;color:var(--mut);display:flex;align-items:center}
+/* story cards */
+.sc{position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:24px;background:var(--bg2);min-width:0;overflow:hidden}
+.sc.hv{background:var(--bg3)}
+.sc .tt{font-size:17px;line-height:24px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--mut);white-space:nowrap}
+.live{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;background:var(--accBg);font-size:12.5px;color:var(--acc);font-weight:500;white-space:nowrap;flex:none}
+.ex{font-size:14px;line-height:21px;color:var(--ink2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* library tiles */
+.tile{display:flex;flex-direction:column;padding:8px;border-radius:26px;background:var(--bg2);min-width:0;position:relative}
+.tile.hv{background:var(--bg3)}
+.tile .meta{padding:10px 8px 6px;display:flex;flex-direction:column;gap:3px}
+.tile .nm{font-size:16px;line-height:22px;font-weight:700}
+.tile .sm{font-size:12.5px;line-height:18px;color:var(--mut);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:36px}
+.tcv{display:block;width:100%;height:auto}
+.tcv path,.tcv circle.o{fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tcv .bgr{fill:var(--card)}
+.tcv .dt{fill:var(--acc)}
+.tcv .soft{stroke:var(--line2)}
+/* settings */
+.grpl{padding:0 16px;margin:22px 0 8px;font-size:13px;color:var(--mut)}
+.group{border-radius:28px;background:var(--bg2);padding:6px;display:flex;flex-direction:column;gap:2px}
+.lr{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 12px;border-radius:22px}
+.lr.on{background:var(--card);box-shadow:inset 0 0 0 2px var(--acc)}
+.lr.hv{background:var(--bg3)}
+.lr .t{font-size:15.5px;line-height:22px}
+.lr .s{font-size:12.5px;line-height:18px;color:var(--mut)}
+.rico{width:36px;height:36px;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;flex:none}
+.pm{width:40px;height:40px;border-radius:20px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;flex:none;color:var(--ink)}
+.pm.ink{background:var(--ink);color:var(--bg)}
+.pm.acc{background:var(--acc);color:#FFFFFF}
+.pane{position:absolute;z-index:2;top:12px;bottom:12px;right:12px;border-radius:32px;background:var(--bg2);overflow:hidden}
+.wc{border-radius:28px;background:var(--card)}
+.back{display:inline-flex;align-items:center;gap:4px;height:36px;padding:0 14px 0 8px;border-radius:18px;background:var(--card);font-size:13.5px;color:var(--ink)}
+
+.bd0{flex-wrap:wrap}
+.G{--ink:#1A1A1A;--paper:#FFFFFF;--acc:#2F55F4;--deep:#1B34A6;--sky:#93A8FF;--grey:#F5F5F2;--grey2:#EBEBE7;--mut:#6E6D68;--line:#DCDCD6;
+  --x2:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A;--x3:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A;--x4:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A;--x6:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A,5px 5px 0 #1A1A1A,6px 6px 0 #1A1A1A;--x8:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A,5px 5px 0 #1A1A1A,6px 6px 0 #1A1A1A,7px 7px 0 #1A1A1A,8px 8px 0 #1A1A1A;
+  --b3:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4,3px 3px 0 #2F55F4;--b4:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4,3px 3px 0 #2F55F4,4px 4px 0 #2F55F4;--b6:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4,3px 3px 0 #2F55F4,4px 4px 0 #2F55F4,5px 5px 0 #2F55F4,6px 6px 0 #2F55F4;--b8:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4,3px 3px 0 #2F55F4,4px 4px 0 #2F55F4,5px 5px 0 #2F55F4,6px 6px 0 #2F55F4,7px 7px 0 #2F55F4,8px 8px 0 #2F55F4;
+  --fill:#F5F5F2;--onFill:#FFFFFF;--line2:#DCDCD6;--card:#FFFFFF}
+.vp.G{background:#FFFFFF;color:var(--ink);font-family:"Noto Sans SC",sans-serif;font-size:15px;line-height:24px}
+.G .i{width:20px;height:20px}
+.ser{font-family:"Noto Serif SC","Songti SC",serif}
+.disp{font-family:"Noto Serif SC","Songti SC",serif;font-weight:900;letter-spacing:-.02em}
+.lbl{font-family:"IBM Plex Mono",monospace;font-weight:700;letter-spacing:.08em;font-size:12px;line-height:16px}
+.mut{color:var(--mut)}
+.chipb,.chipk,.chipw{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:6px;font-family:"IBM Plex Mono",monospace;font-weight:700;letter-spacing:.08em;font-size:11.5px;flex:none;white-space:nowrap}
+.chipb{background:var(--acc);color:#FFFFFF}
+.chipk{background:var(--ink);color:#FFFFFF}
+.chipw{background:#FFFFFF;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.pnl{position:relative;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:22px;background:#FFFFFF;box-shadow:var(--x6)}
+.pnl.b{box-shadow:var(--b6)}
+.pnl.flat{box-shadow:none}
+.ht{background-color:var(--acc);background-image:radial-gradient(rgba(255,255,255,.22) 1.4px,transparent 1.9px);background-size:12px 12px}
+.htk{background-color:#FFFFFF;background-image:radial-gradient(rgba(26,26,26,.14) 1.3px,transparent 1.8px);background-size:11px 11px}
+.htg{background-color:var(--grey);background-image:radial-gradient(rgba(26,26,26,.10) 1.3px,transparent 1.8px);background-size:11px 11px}
+.inkb{background:var(--ink);color:#FFFFFF}
+.gbtn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:48px;padding:0 22px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:24px;background:#FFFFFF;color:var(--ink);font-size:16px;font-weight:700;white-space:nowrap;box-shadow:var(--x4);flex:none}
+.gbtn.p{background:var(--ink);color:#FFFFFF;box-shadow:var(--b4)}
+.gbtn.b{background:var(--acc);color:#FFFFFF;box-shadow:var(--x4)}
+.gbtn.sm{height:38px;padding:0 16px;font-size:14px;border-width:2px;box-shadow:var(--x3)}
+.gbtn.sm.p{box-shadow:var(--b3)}
+.gbtn .i{width:18px;height:18px}
+.gkey{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;box-sizing:border-box;border:2px solid currentColor;border-radius:7px;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:700;line-height:1;flex:none}
+.gkey.f{background:#FFFFFF;color:var(--ink);border-color:var(--ink);box-shadow:0 2px 0 var(--ink)}
+.hints{position:absolute;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;gap:26px;padding:0 32px;background:var(--ink);color:#FFFFFF;font-size:13.5px}
+.hints span{display:flex;align-items:center;gap:8px}
+.hints .gkey{color:var(--sky)}
+/* 漫画的旁白框和对话气泡 */
+.cap-box{position:relative;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:6px;background:#FFFFFF;padding:10px 14px;font-family:"Noto Serif SC",serif;font-size:15.5px;line-height:27px;color:var(--ink)}
+.bub{position:relative;display:inline-block;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:22px;background:#FFFFFF;padding:10px 16px;font-family:"Noto Serif SC",serif;font-size:16px;line-height:26px;color:var(--ink)}
+.bub .tail{position:absolute;bottom:-17px;left:26px;width:26px;height:20px;overflow:visible}
+.bub.r .tail{left:auto;right:26px;transform:scaleX(-1)}
+.bub.b{background:var(--acc);color:#FFFFFF}
+.bub .who{position:absolute;top:-13px;left:14px;height:22px;padding:0 8px;border-radius:5px;background:var(--ink);color:#FFFFFF;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:11px;letter-spacing:.06em;display:flex;align-items:center}
+/* 立绘位：大字号的姓 + 网点 */
+.port{position:relative;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;box-sizing:border-box}
+.port .g{font-family:"Noto Serif SC",serif;font-weight:900;line-height:.86;color:var(--ink);letter-spacing:-.04em;user-select:none}
+.port.dk .g{color:#FFFFFF}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.clamp4{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.gtoast{position:absolute;z-index:20;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:18px;background:#FFFFFF;box-shadow:var(--x6);overflow:hidden}
+.gtoast .gth{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;color:#FFFFFF;border-bottom:2.5px solid var(--ink)}
+.gtoast .gtr{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:14px}
+.gtoast .gtr + .gtr{border-top:1.5px solid var(--grey2)}
+.newb{display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:5px;background:var(--acc);color:#FFFFFF;font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em}
+
+.intro{box-sizing:border-box;width:380px;height:944px;padding:36px 32px;border:2.5px solid #1A1A1A;border-radius:24px;background:#FFFFFF;box-shadow:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A,5px 5px 0 #1A1A1A,6px 6px 0 #1A1A1A,7px 7px 0 #1A1A1A,8px 8px 0 #1A1A1A;display:flex;flex-direction:column;gap:18px;font-family:"Noto Sans SC",sans-serif}
+.intro h2{margin:0;font-size:44px;line-height:52px;color:#1A1A1A}
+.intro ul{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:14px;font-size:15px;line-height:25px;color:#3D3C38}
+.intro li::marker{color:#2F55F4}
+
+.gnav{position:absolute;left:0;right:0;top:0;height:68px;display:flex;align-items:center;gap:6px;padding:0 32px;border-bottom:2.5px solid var(--ink);background:#FFFFFF}
+.gnav .nm{font-size:19px;font-weight:800;letter-spacing:-.01em;margin:0 28px 0 10px}
+.gnav .it{display:flex;align-items:center;height:40px;padding:0 16px;border-radius:10px;font-size:15.5px;font-weight:600}
+.gnav .it.on{background:var(--acc);color:#FFFFFF;box-shadow:3px 3px 0 var(--ink)}
+.sq{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px 0 10px;box-sizing:border-box;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF;box-shadow:var(--x3);font-size:14px;font-weight:600}
+.gav{width:40px;height:40px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:20px;background:var(--acc);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:var(--x2)}
+.page{position:absolute;left:40px;right:40px;top:96px;bottom:56px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:14px}
+.fr{position:relative;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:10px;background-color:#FFFFFF;overflow:hidden;padding:16px 18px}
+.fr.hot{box-shadow:var(--x8);overflow:visible}
+.fr .ttl{font-family:"Noto Serif SC",serif;font-weight:900;letter-spacing:-.02em}
+.fr .gtm{position:absolute;right:14px;bottom:12px;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:11.5px;letter-spacing:.06em}
+.pgno{position:absolute;left:0;right:0;bottom:18px;display:flex;align-items:center;justify-content:center;gap:20px;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px;letter-spacing:.12em}
+.pgno .side{position:absolute;right:40px;display:flex;align-items:center;gap:10px;letter-spacing:.04em}
+.pgno .left{position:absolute;left:40px;letter-spacing:.04em;color:var(--mut);font-weight:500;font-family:"Noto Sans SC",sans-serif;font-size:13px}
+.fr.ht,.fr2.ht{background-color:var(--acc)}
+.fr.inkb,.fr2.inkb{background-color:var(--ink);color:#FFFFFF}
+/* 人物介绍 */
+.cast{position:absolute;left:40px;right:40px;top:178px;bottom:56px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:16px}
+.cf{position:relative;display:flex;flex-direction:column;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF;overflow:visible}
+.cf .pt{position:relative;flex:1;min-height:0;border-bottom:2.5px solid var(--ink);border-radius:9px 9px 0 0;overflow:hidden}
+.cf .ft{display:flex;flex-direction:column;gap:2px;padding:10px 14px 12px}
+.cf .nmb{position:absolute;left:12px;bottom:10px;display:inline-flex;align-items:center;height:34px;padding:0 12px;border-radius:8px;background:var(--ink);color:#FFFFFF;font-family:"Noto Serif SC",serif;font-weight:900;font-size:20px}
+.cf.on{box-shadow:var(--b8)}
+.cf .bub{position:absolute;right:12px;top:14px;max-width:72%;font-size:14px;line-height:22px;padding:8px 12px}
+/* 分镜阅读 */
+.rhead{position:absolute;left:0;right:0;top:68px;height:56px;display:flex;align-items:center;gap:12px;padding:0 40px;border-bottom:2px solid var(--grey2)}
+.strip{position:absolute;left:300px;width:720px;top:140px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:14px}
+.fr2{position:relative;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:10px;background-color:#FFFFFF;padding:14px}
+.castl{position:absolute;right:40px;top:140px;width:300px;display:flex;flex-direction:column;gap:10px}
+.cm{display:flex;align-items:center;gap:12px;padding:8px 10px;box-sizing:border-box;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF}
+.chs{position:absolute;left:300px;width:720px;top:628px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ch{position:relative;display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:18px;background:#FFFFFF;font-size:14.5px;line-height:22px;font-weight:600;box-shadow:var(--x3)}
+.ch.on{background:var(--ink);color:#FFFFFF;box-shadow:var(--b4)}
+.ch.on .gkey{color:var(--sky)}
+.ch .gkey{align-self:flex-start}
+.fct{display:flex;gap:10px;align-items:baseline;padding:9px 12px;border:2px solid var(--ink);border-radius:10px;font-size:13px;line-height:20px;background:#FFFFFF}
+.fct b{flex:none;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;padding:1px 6px;border-radius:4px;background:var(--ink);color:#FFFFFF}
+.nxl{position:absolute;left:300px;top:598px;display:flex;align-items:center;gap:10px}
+.wbx{position:absolute;left:300px;width:720px;top:760px;height:54px;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:0 8px 0 18px;border:2.5px dashed var(--ink);border-radius:16px;background:#FFFFFF;font-size:15px;color:var(--mut)}
+.turns{position:absolute;left:40px;top:140px;width:220px;display:flex;flex-direction:column;gap:8px}
+.tn{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;box-sizing:border-box;border:2px solid var(--grey2);border-radius:10px;font-size:12.5px;line-height:19px;color:var(--mut)}
+.tn b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink);flex:none}
+.tn.on{border-color:var(--ink);color:var(--ink);box-shadow:var(--x3)}
+.caret2{display:inline-block;width:3px;height:20px;margin-left:3px;vertical-align:-4px;border-radius:2px;background:var(--acc)}
+
+.G{--b2:1px 1px 0 #2F55F4,2px 2px 0 #2F55F4}
+.mo-ph{position:relative;flex:none;width:390px;height:844px;border-radius:48px;overflow:hidden;background:#F8F8F5;color:var(--ink);font-family:"Noto Sans SC",sans-serif;font-size:15px;line-height:22px;box-shadow:0 0 0 3px #1A1A1A}
+.mo-ph *{box-sizing:border-box}
+.mo-i{flex:none;display:block}
+.mo-sb{position:absolute;left:0;right:0;top:0;height:47px;display:flex;align-items:center;justify-content:space-between;padding:4px 28px 0 46px;z-index:70;font-weight:700;font-size:16px;letter-spacing:-.01em}
+.mo-sb.w{color:#FFFFFF}
+.mo-hi{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:var(--ink);z-index:80}
+/* 一级页的大标题 */
+.mo-hd{position:absolute;left:20px;right:20px;top:58px;height:52px;display:flex;align-items:center;gap:10px;z-index:20}
+.mo-h1{font-family:"Noto Serif SC",serif;font-weight:900;font-size:36px;line-height:44px;letter-spacing:-.02em}
+.mo-hdc{position:absolute;left:0;right:0;top:47px;height:54px;display:flex;align-items:center;gap:10px;padding:0 16px 0 20px;background:#F8F8F5;border-bottom:2.5px solid var(--ink);z-index:30}
+.mo-hdc .mo-h1{font-size:22px;line-height:28px}
+.mo-ib{width:44px;height:44px;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF;color:var(--ink);display:flex;align-items:center;justify-content:center;box-shadow:var(--x2);flex:none}
+.mo-ib.sm{width:38px;height:38px;border-radius:10px}
+.mo-ib.on{background:var(--ink);color:#FFFFFF;box-shadow:var(--b2)}
+/* 内容：竖着滑的格子条 */
+.mo-sc{position:absolute;left:0;right:0;overflow:hidden}
+.mo-col{display:flex;flex-direction:column;gap:16px;padding:0 20px}
+.mo-row{display:flex;gap:16px}
+.mo-row > *{flex:1;min-width:0}
+.mo-fr{position:relative;border:2.5px solid var(--ink);border-radius:12px;background-color:#FFFFFF;overflow:hidden}
+.mo-fr.hot{box-shadow:var(--x6);overflow:visible}
+.mo-fr.s4{box-shadow:var(--x4)}
+.mo-fr.ink{background-color:var(--ink);color:#FFFFFF}
+.mo-fr.dash{border-style:dashed;background:transparent}
+.mo-fr.ht{background-color:var(--acc)}
+.mo-fr.htg{background-color:var(--grey)}
+.mo-t{font-family:"Noto Serif SC",serif;font-weight:900;letter-spacing:-.02em}
+.mo-m{font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:11px;line-height:15px;letter-spacing:.05em;color:var(--mut)}
+.mo-ex{font-family:"Noto Serif SC",serif;font-size:14.5px;line-height:24px;color:#3D3C38}
+.mo-pad{padding:14px 16px}
+.mo-cv{line-height:0;overflow:hidden;flex:none}
+.mo-warn{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:#B45309}
+/* Tab 栏：贴着屏幕底边，选中是实心的蓝图标加粗字，不加胶囊 */
+.mo-tb{position:absolute;left:20px;right:20px;bottom:30px;height:64px;border:2.5px solid var(--ink);border-radius:32px;background:#FFFFFF;box-shadow:var(--x4);display:flex;padding:0 10px;z-index:40}
+.mo-tb.flat{position:relative;left:auto;right:auto;bottom:auto;width:350px;z-index:auto}
+.mo-ti{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;line-height:14px;font-weight:500;color:var(--mut)}
+.mo-ti .mo-i{color:#4A4945}
+.mo-ti.on{color:var(--ink);font-weight:800}
+.mo-ti.on .mo-i{color:var(--ink)}
+.mo-tb.alt .mo-ti.on::after{content:"";position:absolute;left:50%;bottom:5px;width:22px;height:4px;margin-left:-11px;border-radius:2px;background:var(--ink)}
+.mo-tb.alt .mo-ti{justify-content:flex-start;padding-top:9px}
+.mo-tb.alt .mo-ti.on{font-weight:800}
+/* 阅读页 */
+.mo-nav{position:absolute;left:0;right:0;top:47px;height:56px;display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:2.5px solid var(--ink);background:#F8F8F5;z-index:30}
+.mo-nt{flex:1;min-width:0;text-align:center;font-family:"Noto Serif SC",serif;font-weight:900;font-size:18px;line-height:24px;letter-spacing:-.01em}
+.mo-feed{position:absolute;left:0;right:0;top:103px;bottom:88px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;padding:0 24px 18px}
+.mo-p{margin:0;font-family:"Noto Serif SC",serif;font-size:17px;line-height:30px;color:var(--ink)}
+.mo-p.old{color:#3D3C38}
+.mo-tn{display:flex;align-items:center;gap:12px;margin:6px 0 2px;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:12px;line-height:16px;letter-spacing:.14em;color:var(--ink)}
+.mo-tn::before,.mo-tn::after{content:"";flex:1;height:2px;background:var(--grey2)}
+.mo-me{display:flex;justify-content:flex-end;padding:6px 0 12px}
+.mo-me .bub{max-width:286px;font-size:16px;line-height:25px;padding:10px 15px}
+.mo-nx{display:flex;align-items:baseline;gap:8px;margin-top:6px}
+.mo-nx b{font-size:14px;font-weight:800}
+.mo-op{display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border:2.5px solid var(--ink);border-radius:14px;background:#EEEEEA;box-shadow:var(--x4);font-size:16px;line-height:24px;font-weight:700}
+.mo-op.dn{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink);background:var(--ink);color:#FFFFFF}
+.mo-ok{flex:none;width:26px;height:26px;margin-top:-1px;border-radius:7px;background:var(--ink);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px}
+.mo-op.dn .mo-ok{background:#FFFFFF;color:var(--ink)}
+.mo-caret{display:inline-block;width:3px;height:21px;margin-left:3px;vertical-align:-4px;border-radius:2px;background:var(--acc)}
+/* 阅读页的底部操作栏 */
+.mo-bb{position:absolute;left:0;right:0;bottom:0;height:88px;border-top:2.5px solid var(--ink);background:#F8F8F5;display:flex;align-items:flex-start;gap:10px;padding:9px 14px 0;z-index:40}
+.mo-bb.flat{position:relative;height:64px;padding:9px 14px;border:2.5px solid var(--ink);z-index:auto}
+.mo-wr{flex:1;min-width:0;height:44px;border:2px dashed var(--ink);border-radius:22px;display:flex;align-items:center;gap:8px;padding:0 16px;color:var(--mut);font-size:15px}
+.mo-gen{flex:1;min-width:0;height:44px;border:2px solid var(--ink);border-radius:22px;background:var(--grey);display:flex;align-items:center;gap:10px;padding:0 5px 0 16px;font-size:14.5px;font-weight:700}
+.mo-gen .ld{width:9px;height:9px;border-radius:5px;background:var(--acc);box-shadow:0 0 0 2px var(--ink);flex:none}
+.mo-stop{margin-left:auto;display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:17px;background:var(--ink);color:#FFFFFF;font-size:13.5px;font-weight:700}
+.mo-stop i{display:block;width:10px;height:10px;border-radius:2px;background:#FFFFFF}
+/* 自己写：键盘弹起时 */
+.mo-cmp{position:absolute;left:0;right:0;z-index:42;display:flex;align-items:flex-end;gap:10px;padding:10px 14px;border-top:2.5px solid var(--ink);background:#F8F8F5}
+.mo-in{flex:1;min-width:0;min-height:48px;border:2.5px solid var(--ink);border-radius:16px;padding:10px 14px;font-family:"Noto Serif SC",serif;font-size:16px;line-height:25px;box-shadow:var(--b3)}
+.mo-send{width:44px;height:44px;border:2px solid var(--ink);border-radius:22px;background:var(--acc);color:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:var(--x2);flex:none}
+.mo-kb{position:absolute;left:0;right:0;bottom:0;height:336px;background:#D3D5DB;z-index:41;padding:8px 3px 0;display:flex;flex-direction:column;gap:11px}
+.mo-kb .r{display:flex;justify-content:center;gap:6px}
+.mo-kb .k{width:33px;height:43px;border-radius:5px;background:#FFFFFF;box-shadow:0 1px 0 #898A8D}
+.mo-kb .k.g{background:#ABB0BA}
+.mo-kb .sug{height:36px;display:flex;align-items:center;justify-content:space-around;font-size:15px;color:#1A1A1A}
+/* 面板（世界状态、菜单） */
+.mo-dim{position:absolute;inset:0;background:rgba(26,26,26,.46);z-index:45}
+.mo-sh{position:absolute;left:0;right:0;bottom:0;border:2.5px solid var(--ink);border-bottom:0;border-radius:26px 26px 0 0;background:#F8F8F5;z-index:46;padding:10px 18px 0;display:flex;flex-direction:column;gap:12px}
+.mo-grab{align-self:center;width:44px;height:5px;border-radius:3px;background:var(--ink)}
+.mo-seg{display:flex;height:40px;border:2px solid var(--ink);border-radius:11px;overflow:hidden}
+.mo-seg span{flex:1;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+.mo-seg span + span{border-left:2px solid var(--ink)}
+.mo-seg span.on{background:var(--ink);color:#FFFFFF}
+.mo-sl{display:flex;align-items:center;gap:8px;margin-top:2px}
+.mo-er{display:flex;align-items:center;gap:12px;padding:9px 12px 9px 9px;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF}
+.mo-er.new{box-shadow:var(--b3)}
+.mo-er b{font-family:"Noto Serif SC",serif;font-weight:900;font-size:17px;line-height:22px}
+.mo-er .s{font-size:13px;line-height:19px;color:var(--mut)}
+.mo-er .mo-i{color:var(--mut)}
+.mo-pl{width:44px;height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--grey);flex:none;border:2px solid var(--ink)}
+.mo-menu{position:absolute;z-index:47;border:2.5px solid var(--ink);border-radius:14px;background:#FFFFFF;box-shadow:var(--x4);overflow:hidden}
+.mo-menu .r{display:flex;align-items:center;gap:12px;height:50px;padding:0 16px;font-size:15.5px;font-weight:600}
+.mo-menu .r + .r{border-top:1.5px solid var(--grey2)}
+.mo-menu .r.red{color:#D93025}
+.mo-lift{position:absolute;z-index:46;transform:scale(1.04);transform-origin:50% 50%;box-shadow:var(--x8)}
+
+/* 列表（存档）：每行一个格子，左边 72 的方形封面 */
+.mo-cnt{display:flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 9px;border:2px solid var(--ink);border-radius:10px;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:15px;flex:none}
+.mo-li{position:relative;display:flex;gap:14px;padding:12px;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF}
+.mo-lc{width:72px;height:72px;border:2px solid var(--ink);border-radius:9px;overflow:hidden;line-height:0;flex:none}
+.mo-lb{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:1px}
+.mo-lt{display:flex;align-items:center;gap:8px;min-width:0}
+.mo-lt b{font-family:"Noto Serif SC",serif;font-weight:900;font-size:18px;line-height:24px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo-time{margin-left:auto;padding-left:6px;font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:11.5px;line-height:16px;color:var(--mut);white-space:nowrap;flex:none}
+.mo-lx{font-family:"Noto Serif SC",serif;font-size:14px;line-height:22px;color:#3D3C38}
+.mo-st{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:700;flex:none;align-self:flex-start;white-space:nowrap}
+.mo-st.w{background:var(--acc);color:#FFFFFF}
+.mo-st.w i{width:6px;height:6px;border-radius:3px;background:#FFFFFF}
+.mo-st.e{background:var(--ink);color:#FFFFFF}
+.mo-st.n{background:#FFFFFF;color:#B45309;box-shadow:inset 0 0 0 1.5px #B45309}
+.mo-swp{position:relative}
+.mo-swp > .mo-li{transform:translateX(-166px)}
+.mo-sa{position:absolute;top:0;bottom:0;width:72px;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:13px;font-weight:700}
+.mo-sa.red{background:#E5483A;color:#FFFFFF}
+.mo-pull{display:flex;justify-content:center;padding:6px 0 2px}
+.mo-pull span{display:flex;align-items:center;gap:8px;height:32px;padding:0 14px;border:2px solid var(--ink);border-radius:16px;background:#FFFFFF;box-shadow:var(--x2);font-size:13px;font-weight:600}
+.mo-pull i{display:block;width:6px;height:6px;border-radius:3px;background:var(--ink)}
+.mo-note{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF;font-size:14px;line-height:20px}
+.mo-redb{display:flex;align-items:center;height:36px;padding:0 14px;border:2px solid var(--ink);border-radius:18px;background:#E5483A;color:#FFFFFF;font-size:13.5px;font-weight:700;flex:none;box-shadow:var(--x2)}
+/* 阅读页：正文和你的行动一样排，行动左边一道蓝线 */
+.mo-act{margin:0;padding-left:13px;border-left:3px solid var(--acc);font-family:"Noto Serif SC",serif;font-size:17px;line-height:30px;color:var(--ink)}
+.mo-fail{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF;font-size:14px;line-height:21px;color:#B42318}
+.mo-fail .mo-i{color:#D93025;margin-top:1px}
+.mo-btns{display:flex;gap:12px}
+.mo-btns .gbtn{flex:1;height:46px}
+/* 世界 */
+.mo-chips{display:flex;gap:8px}
+.mo-chip{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border:2px solid var(--ink);border-radius:9px;font-size:13.5px;font-weight:600;background:#FFFFFF}
+.mo-chip.on{background:var(--ink);color:#FFFFFF}
+.mo-ent{display:flex;gap:12px;padding:12px;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF}
+.mo-ent.me{box-shadow:var(--b3)}
+.mo-eic{width:42px;height:42px;border:2px solid var(--ink);border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--grey)}
+.mo-ent.me .mo-eic{background:var(--acc);color:#FFFFFF}
+.mo-eb{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.mo-eh{display:flex;align-items:center;gap:7px}
+.mo-eh b{font-family:"Noto Serif SC",serif;font-weight:900;font-size:17px;line-height:22px}
+.mo-eh .k{margin-left:auto;font-size:12px;color:var(--mut)}
+.mo-ed{font-size:14px;line-height:21px;color:#3D3C38}
+.mo-tag{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border:1.5px solid var(--ink);border-radius:7px;font-size:12.5px;background:#FFFFFF}
+.mo-tag span{color:var(--mut)}
+.mo-sec2{display:flex;align-items:center;gap:8px;height:42px;padding:0 6px 0 12px;border:2px dashed var(--ink);border-radius:10px;font-size:13.5px;font-weight:600}
+.mo-sec2 .gbtn{margin-left:auto}
+/* 板子：手机格的说明卡和规格页 */
+.mo-spec{position:relative;box-sizing:border-box;width:1440px;height:944px;padding:34px 44px;border:2.5px solid var(--ink);border-radius:24px;background:#FFFFFF;box-shadow:1px 1px 0 #1A1A1A,2px 2px 0 #1A1A1A,3px 3px 0 #1A1A1A,4px 4px 0 #1A1A1A,5px 5px 0 #1A1A1A,6px 6px 0 #1A1A1A,7px 7px 0 #1A1A1A,8px 8px 0 #1A1A1A;color:var(--ink);overflow:hidden}
+.mo-spec *{box-sizing:border-box}
+.mo-spec h2{margin:0;font-family:"Noto Serif SC",serif;font-weight:900;font-size:40px;line-height:48px;letter-spacing:-.02em}
+.mo-spec .lead{margin:6px 0 0;font-size:15px;line-height:25px;color:#3D3C38}
+.mo-sg{display:grid;grid-template-columns:400px 440px 1fr;gap:40px;margin-top:22px}
+.mo-sec{display:flex;flex-direction:column;gap:10px}
+.mo-sec > .lbl{padding-bottom:6px;border-bottom:2.5px solid var(--ink)}
+.mo-kv{display:flex;align-items:baseline;gap:12px;font-size:13.5px;line-height:20px}
+.mo-kv b{width:56px;flex:none;font-weight:800}
+.mo-kv span{color:#3D3C38}
+.mo-ty{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1.5px solid var(--grey2)}
+.mo-ty:last-child{border-bottom:0}
+.mo-ty code{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--mut);white-space:nowrap}
+.mo-cap{font-size:12.5px;line-height:18px;color:var(--mut)}
+.mo-rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;margin-top:18px}
+.mo-rules div{display:flex;flex-direction:column;gap:3px;padding-top:10px;border-top:2.5px solid var(--ink)}
+.mo-rules b{font-size:14px}
+.mo-rules span{font-size:12.5px;line-height:19px;color:#3D3C38}
+
+/* 二级页的导航栏 */
+.mo-n2{position:absolute;left:0;right:0;top:47px;height:60px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#F8F8F5;border-bottom:2.5px solid var(--ink);z-index:30}
+.mo-n2 .tt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:1px}
+.mo-n2 .tt b{font-family:"Noto Serif SC",serif;font-weight:900;font-size:17px;line-height:22px;white-space:nowrap}
+.mo-n2 .tt span{font-size:11.5px;line-height:15px;color:var(--mut)}
+.mo-n2 .sp{width:38px;flex:none}
+.mo-body{position:absolute;left:0;right:0;top:107px;bottom:0;overflow:hidden}
+.mo-in2{display:flex;flex-direction:column;gap:14px;padding:16px 20px 0}
+/* 一级页的工具 */
+.mo-vt{display:flex;height:40px;border:2px solid var(--ink);border-radius:11px;overflow:hidden;background:#FFFFFF;flex:none}
+.mo-vt span{width:42px;display:flex;align-items:center;justify-content:center}
+.mo-vt span + span{border-left:2px solid var(--ink)}
+.mo-vt span.on{background:var(--ink);color:#FFFFFF}
+.mo-add{width:44px;height:44px;border:2px solid var(--ink);border-radius:12px;background:var(--ink);color:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:var(--b2);flex:none}
+/* 网格卡 */
+.mo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.mo-gc{border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF;overflow:hidden;display:flex;flex-direction:column}
+.mo-gc .cv{height:116px;border-bottom:2.5px solid var(--ink);line-height:0;overflow:hidden;position:relative}
+.mo-gc .bd{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px}
+.mo-gc b{font-family:"Noto Serif SC",serif;font-weight:900;font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo-gc .s{font-size:13px;line-height:20px;color:#3D3C38}
+.mo-gc .m{font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:15px;color:var(--mut)}
+/* 提示条 */
+.mo-info{display:flex;align-items:center;gap:10px;padding:10px 8px 10px 14px;border:2.5px solid var(--ink);border-radius:12px;background:#FFFFFF;font-size:14px;line-height:20px}
+.mo-info a{color:var(--acc);font-weight:700;text-decoration:none;white-space:nowrap}
+.mo-info.err{color:#B42318}
+.mo-toast{position:absolute;left:16px;right:16px;z-index:48;display:flex;align-items:center;gap:10px;padding:12px 16px;border:2.5px solid var(--ink);border-radius:14px;background:#FFFFFF;box-shadow:var(--x4);font-size:14.5px;line-height:21px}
+/* 表单 */
+.mo-f{display:flex;flex-direction:column;gap:8px}
+.mo-fl{display:flex;align-items:baseline;justify-content:space-between;font-size:13.5px;font-weight:700}
+.mo-fl span{font-weight:500;color:var(--mut);font-size:12.5px}
+.mo-inp{min-height:50px;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:16px;line-height:24px}
+.mo-inp.ph{color:var(--mut)}
+.mo-inp.fo{border:2.5px solid var(--acc);box-shadow:var(--b3)}
+.mo-inp.bad{border-color:#D93025;background:#FFF6F5}
+.mo-inp.ta{align-items:flex-start;padding:12px 14px;min-height:96px}
+.mo-inp .mo-i{margin-left:auto;color:var(--mut)}
+.mo-errt{display:flex;align-items:center;gap:6px;font-size:13px;line-height:18px;color:#D93025}
+.mo-hint{font-size:13px;line-height:20px;color:var(--mut)}
+.mo-wide{width:100%;justify-content:space-between !important;padding:0 8px 0 22px !important;height:52px !important}
+.mo-wide .arr{width:36px;height:36px;border-radius:18px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center}
+.mo-wide.off{background:#D8D8D3 !important;border-color:#B9B9B3 !important;color:#FFFFFF;box-shadow:none !important}
+.mo-link,.mo-fl .mo-link{color:var(--acc);font-weight:700}
+.mo-tip{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border:1.5px solid var(--ink);border-radius:8px;background:#FFFFFF;font-size:12.5px;font-weight:600;white-space:nowrap}
+.mo-srv{position:absolute;left:20px;right:20px;bottom:30px;display:flex;align-items:center;gap:10px;height:52px;padding:0 6px 0 14px;border:2px dashed var(--ink);border-radius:26px;background:#FFFFFF;font-size:14px;z-index:20}
+.mo-srv code{font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px}
+/* 设置的分组和行 */
+.mo-gl{font-size:13px;font-weight:700;color:var(--mut);padding:0 4px;margin-bottom:-6px}
+.mo-grp{border:2.5px solid var(--ink);border-radius:14px;background:#FFFFFF;overflow:hidden}
+.mo-sr{display:flex;align-items:center;gap:12px;min-height:60px;padding:9px 12px 9px 12px}
+.mo-sr + .mo-sr{border-top:1.5px solid var(--grey2)}
+.mo-sr .ic{width:40px;height:40px;border:2px solid var(--ink);border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--grey);flex:none}
+.mo-sr .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.mo-sr .t{font-size:15.5px;line-height:22px;font-weight:600}
+.mo-sr .s{font-size:12.5px;line-height:18px;color:var(--mut)}
+.mo-sr .v{font-size:13.5px;color:var(--mut);white-space:nowrap}
+.mo-sr > .mo-i:last-child{color:var(--mut)}
+.mo-sr.red .t{color:#D93025}
+/* 开关、单选、复选、步骤号、数字格 */
+.mo-tg{position:relative;width:50px;height:30px;border:2px solid var(--ink);border-radius:15px;background:#FFFFFF;flex:none}
+.mo-tg::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:10px;background:var(--ink)}
+.mo-tg.on{background:var(--acc)}
+.mo-tg.on::after{left:23px;background:#FFFFFF;box-shadow:0 0 0 2px var(--ink)}
+.mo-cb{width:22px;height:22px;border:2px solid var(--ink);border-radius:6px;background:#FFFFFF;flex:none;display:flex;align-items:center;justify-content:center;color:#FFFFFF}
+.mo-cb.on{background:var(--acc)}
+.mo-rd{width:22px;height:22px;border:2px solid var(--ink);border-radius:11px;background:#FFFFFF;flex:none}
+.mo-rd.on{border:7px solid var(--acc);box-shadow:0 0 0 2px var(--ink)}
+.mo-no{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:var(--ink);color:#FFFFFF;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:12px;flex:none}
+.mo-stats{display:flex;gap:10px}
+.mo-stat{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding:9px 11px;border:2px solid var(--ink);border-radius:10px;background:#FFFFFF}
+.mo-stat b{font-family:"IBM Plex Mono",monospace;font-size:20px;line-height:24px}
+.mo-stat span{font-size:12px;line-height:16px;color:var(--mut)}
+.mo-stat.warn{border-color:#B45309;color:#B45309}
+.mo-stat.warn span{color:#B45309}
+/* 选择 */
+.mo-chip .rec{display:inline-flex;align-items:center;height:17px;padding:0 5px;margin-left:2px;border-radius:4px;background:var(--acc);color:#FFFFFF;font-size:10.5px;font-weight:700}
+.mo-chip.on .rec{background:#FFFFFF;color:var(--ink)}
+.mo-chip.dash{border-style:dashed;color:var(--mut)}
+.mo-wrap{display:flex;flex-wrap:wrap;gap:8px}
+.mo-tile{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;padding:12px;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF;font-size:14px;font-weight:600}
+.mo-tile.on{border-width:2.5px;border-color:var(--acc);box-shadow:var(--b3)}
+.mo-tile .ti{width:32px;height:32px;border-radius:9px;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;background:var(--grey)}
+.mo-tile.on .ti{background:var(--acc);color:#FFFFFF}
+.mo-sg3{display:flex;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:#FFFFFF}
+.mo-sg3 span{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 8px;font-size:13.5px;font-weight:600}
+.mo-sg3 span + span{border-left:2px solid var(--ink)}
+.mo-sg3 span.on{background:var(--ink);color:#FFFFFF}
+.mo-step{display:flex;flex-direction:column;gap:12px;padding:14px;border:2.5px solid var(--ink);border-radius:14px;background:#FFFFFF}
+.mo-sh3{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800}
+.mo-sh3 span{font-size:12.5px;font-weight:500;color:var(--mut)}
+.mo-sh3 .mo-no{color:#FFFFFF;font-size:12px;font-weight:700}
+.mo-ckl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 10px;font-size:14px}
+.mo-ckl div{display:flex;align-items:center;gap:8px}
+/* 对话框 */
+.mo-dlg{position:absolute;left:22px;right:22px;z-index:48;border:2.5px solid var(--ink);border-radius:18px;background:#FFFFFF;box-shadow:var(--x6);padding:22px 20px 18px;display:flex;flex-direction:column;gap:12px}
+.mo-dlg h3{margin:0;font-family:"Noto Serif SC",serif;font-weight:900;font-size:22px;line-height:28px}
+.mo-dlg p{margin:0;font-size:14.5px;line-height:23px;color:#3D3C38}
+.mo-dlg .mo-btns .gbtn{height:46px}
+/* 面板的标题行、列表行 */
+.mo-shh{display:flex;align-items:flex-start;gap:10px}
+.mo-shh .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mo-shh b{font-family:"Noto Serif SC",serif;font-weight:900;font-size:26px;line-height:32px}
+.mo-shh span{font-size:13px;line-height:19px;color:var(--mut)}
+.mo-ar{display:flex;align-items:center;gap:12px;min-height:54px;padding:0 14px;font-size:15.5px;font-weight:600}
+.mo-ar + .mo-ar{border-top:1.5px solid var(--grey2)}
+.mo-ar.red{color:#D93025}
+.mo-ar .v{margin-left:auto;font-size:13px;font-weight:500;color:var(--mut)}
+.mo-ar.off{color:var(--mut)}
+/* 工作台的对话 */
+.mo-chat{display:flex;flex-direction:column;gap:14px}
+.mo-um{align-self:flex-end;max-width:290px;padding:10px 14px;border:2px solid var(--ink);border-radius:14px;background:#EEEEEA;font-size:15px;line-height:23px}
+.mo-am{display:flex;gap:10px;align-items:flex-start;font-size:15px;line-height:24px}
+.mo-av{width:30px;height:30px;border-radius:15px;background:var(--ink);color:#FFFFFF;display:flex;align-items:center;justify-content:center;flex:none;margin-top:-2px}
+.mo-wbc{border:2.5px solid var(--ink);border-radius:14px;background:#FFFFFF;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.mo-wbh{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:800}
+.mo-wbh .r{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--mut)}
+.mo-wbh .r.b{color:var(--acc)}
+.mo-q{display:flex;flex-direction:column;gap:8px}
+.mo-q > b{display:flex;gap:8px;font-size:14.5px}
+.mo-q > b i{font-style:normal;font-family:"IBM Plex Mono",monospace;color:var(--mut);font-size:13px}
+.mo-steps{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--mut)}
+.mo-steps i{display:block;width:6px;height:6px;border-radius:3px;background:#C9C9C3}
+.mo-steps .dn{color:var(--ink)} .mo-steps .dn i{background:var(--ink)}
+.mo-steps .on{color:var(--acc);font-weight:700} .mo-steps .on i{background:var(--acc)}
+.mo-steps em{display:block;width:14px;height:1.5px;background:#C9C9C3}
+.mo-steps span{display:flex;align-items:center;gap:4px}
+.mo-mode{display:flex;align-self:center;height:36px;border:2px solid var(--ink);border-radius:11px;overflow:hidden;background:#FFFFFF}
+.mo-mode span{display:flex;align-items:center;gap:6px;padding:0 14px;font-size:13.5px;font-weight:700}
+.mo-mode span + span{border-left:2px solid var(--ink)}
+.mo-mode span.on{background:var(--ink);color:#FFFFFF}
+.mo-wbb{position:absolute;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:flex-start;gap:10px;height:86px;padding:10px 14px 0;border-top:2.5px solid var(--ink);background:#F8F8F5}
+.mo-wbi{flex:1;min-width:0;height:46px;border:2px solid var(--ink);border-radius:23px;background:#FFFFFF;display:flex;align-items:center;gap:8px;padding:0 5px 0 16px;color:var(--mut);font-size:15px}
+.mo-snd{margin-left:auto;width:34px;height:34px;border-radius:17px;background:var(--ink);color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.mo-snd.off{background:#D8D8D3}
+.mo-ck{display:flex;gap:10px;align-items:flex-start}
+.mo-ck .d{width:22px;height:22px;border-radius:11px;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;flex:none;background:#FFFFFF;color:#FFFFFF}
+.mo-ck .d.ok{background:var(--ink)}
+.mo-ck .d.cur{border:6px solid var(--acc);box-shadow:0 0 0 2px var(--ink)}
+.mo-ck .d.todo{border-color:#C9C9C3}
+.mo-ck b{font-size:14.5px;line-height:21px}
+.mo-ck span{font-size:12.5px;line-height:19px;color:var(--mut)}
+.mo-del{padding:8px 10px;border-radius:8px;background:color-mix(in srgb,#8C2A3C 18%,transparent);color:#8C2A3C;text-decoration:line-through;text-decoration-color:color-mix(in srgb,#8C2A3C 50%,transparent);font-size:13.5px;line-height:21px}
+.mo-ins{padding:8px 10px;border-radius:8px;background:color-mix(in srgb,#1F6B44 18%,transparent);color:var(--ink);font-size:13.5px;line-height:21px}
+.mo-harr{position:relative;z-index:1;align-self:center;display:flex;height:14px;margin:-14px 0;color:var(--ink)}
+.mo-ph2{border:2px solid var(--ink);border-radius:10px;background:var(--grey);display:flex;align-items:center;justify-content:center;color:var(--mut);overflow:hidden;position:relative}
+.mo-ph2.on{border:2.5px solid var(--acc);box-shadow:var(--b3)}
+.mo-ph2 .ok{position:absolute;right:6px;top:6px;width:22px;height:22px;border-radius:11px;background:var(--acc);color:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--ink)}
+/* 模型 */
+.mo-pv{width:40px;height:40px;border:2px solid var(--ink);border-radius:20px;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:15px;background:#FFFFFF;flex:none}
+.mo-pill{display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:5px;font-size:11px;font-weight:700;background:var(--ink);color:#FFFFFF;flex:none}
+.mo-pill.b{background:var(--acc)}
+.mo-pill.w{background:#FFFFFF;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.mo-mem{display:grid;grid-template-columns:repeat(16,1fr);gap:3px}
+.mo-mem i{display:block;height:14px;border-radius:2px;background:#E2E2DD}
+.mo-mem i.a{background:var(--ink)}
+.mo-mem i.b{background:var(--acc)}
+.mo-pt{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mo-pt span{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px 10px;border:2px solid var(--ink);border-radius:12px;background:#FFFFFF;font-size:12.5px;font-weight:600}
+.mo-pt span.on{border-width:2.5px;border-color:var(--acc);box-shadow:var(--b3)}
+.mo-pt i{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:18px;border:2px solid var(--ink);font-style:normal;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px}
+/* 阅读页的其他状态 */
+.mo-end{display:flex;justify-content:center;font-family:"Noto Serif SC",serif;font-weight:900;font-size:20px;letter-spacing:.2em;padding:14px 0 6px}
+.mo-ended{flex:1;min-width:0;height:44px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--mut);font-size:14.5px;font-weight:600}
+.mo-rl{display:flex;gap:12px;align-items:flex-start;padding:12px 14px}
+.mo-rl + .mo-rl{border-top:1.5px solid var(--grey2)}
+.mo-rl b{font-family:"IBM Plex Mono",monospace;font-size:12px;width:24px;flex:none;padding-top:2px}
+.mo-rl span{font-size:14px;line-height:21px}
+.mo-rl.on{background:#EEF1FF}
+.mo-gnode{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;height:34px;padding:0 14px;border:2px solid var(--ink);border-radius:17px;background:#FFFFFF;font-size:14px;font-weight:700;white-space:nowrap}
+.mo-gnode.me{background:var(--acc);color:#FFFFFF}
+.mo-gnode.c{background:var(--ink);color:#FFFFFF}
+.mo-glab{position:absolute;transform:translate(-50%,-50%);font-size:12px;color:var(--mut);background:#FFFFFF;padding:0 3px}
+.mo-fa{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;font-size:14.5px;line-height:22px}
+.mo-fa + .mo-fa{border-top:1.5px solid var(--grey2)}
+.mo-fa i{display:block;width:7px;height:7px;border-radius:4px;background:var(--ink);margin-top:8px;flex:none}
+.mo-fa.lock{color:var(--mut)}
+.mo-stp{display:flex;height:40px;border:2px solid var(--ink);border-radius:11px;overflow:hidden;background:#FFFFFF}
+.mo-stp span{width:46px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.mo-stp span + span{border-left:2px solid var(--ink)}
+.mo-stp .v{width:54px;font-family:"IBM Plex Mono",monospace;background:var(--grey)}
+/* 账户 */
+.mo-avt{width:84px;height:84px;border:2.5px solid var(--ink);border-radius:42px;background:var(--acc);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-family:"Noto Serif SC",serif;font-weight:900;font-size:40px;box-shadow:var(--x4)}
+.mo-kv2{display:flex;align-items:center;gap:14px;min-height:52px;padding:0 14px;font-size:15px}
+.mo-kv2 + .mo-kv2{border-top:1.5px solid var(--grey2)}
+.mo-kv2 b{width:44px;font-size:13px;font-weight:600;color:var(--mut);flex:none}
+.mo-danger{border:2.5px solid #D93025;border-radius:14px;background:#FFFFFF;padding:14px;display:flex;flex-direction:column;gap:12px}
+.mo-redbtn{display:flex;align-items:center;justify-content:center;height:48px;border:2.5px solid var(--ink);border-radius:24px;background:#E5483A;color:#FFFFFF;font-size:15.5px;font-weight:700;box-shadow:var(--x3)}
+.mo-redbtn.off{opacity:.45}
+.mo-code{height:58px;border:2.5px solid var(--acc);border-radius:12px;background:#FFFFFF;display:flex;align-items:center;padding:0 18px;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:24px;letter-spacing:.42em;box-shadow:var(--b3)}
+.mo-code .ph{color:#C9C9C3}
+.mo-pw{display:flex;align-items:center;gap:10px}
+.mo-pw .bar{flex:1;height:6px;border-radius:3px;background:#E2E2DD;overflow:hidden}
+.mo-pw .bar i{display:block;height:100%;width:86%;background:var(--ink);border-radius:3px}
+.mo-pw span{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--mut)}
+.intro{height:844px}</style>
+</helmet>
+<div class="bd0" style="width: 2610px; height: 970px">
+<div class="cell"><div class="tag"><b>方向</b> 先看这里</div><div class="intro G"><div class="chipb" style="align-self: flex-start">第二轮</div><h2 class="disp">工作台</h2><ul><li>首页：一句话开始、示例、导入和手动新建两块、草稿列表，排法和现在一样。</li><li>草稿页顶上是“Agent / 手动”切换和四步进度；对话里你说的话是右边的灰框，agent 说的话左边是墨底圆标。</li><li>问卷、方案都是墨线格子；推荐的选项带蓝色小标。</li></ul></div></div><div class="cell"><div class="tag"><b>15-20</b> 工作台首页</div><div class="mo-ph G"><div class="mo-hd"><span class="mo-h1">工作台</span><span class="f1"></span></div><div class="mo-body" style="top: 118px; bottom: 0px"><div class="mo-in2" style="padding: 4px 20px 0; gap: 14px"><div class="mo-fr" style="padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 18px"><span style="font-size: 16px; line-height: 25px; color: var(--mut)">想做一个什么样的角色？说一句就行，比如“民国当铺的掌柜，冷淡但讲规矩”</span><div class="fx" style="gap: 8px"><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-7.8 7.8a5 5 0 01-7-7L13 4.5a3.3 3.3 0 014.7 4.7l-7.7 7.7a1.7 1.7 0 01-2.4-2.4L14.8 7.3"/></svg></span><span class="mo-tip"><svg class="mo-i" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z"/></svg>Agent 会先问清楚再动手</span><span class="mo-snd off" style="width: 38px; height: 38px; border-radius: 19px"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg></span></div></div><span class="mo-gl" style="margin-bottom: -4px">试试这些</span><div class="mo-wrap"><span class="mo-chip">雨夜开当铺的掌柜</span><span class="mo-chip">《红楼梦》里的林黛玉</span><span class="mo-chip">会算命的猫</span><span class="mo-chip">末日电台的主播</span></div><div class="fx" style="gap: 12px; align-items: stretch"><div class="mo-tile" style="gap: 6px"><span class="ti"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3"/></svg></span><b style="font-size: 16px">导入角色卡</b><span class="mo-hint" style="font-weight: 400; font-size: 12.5px">PNG 或 JSON<br>一次一张</span></div><div class="mo-tile" style="gap: 6px"><span class="ti"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></span><b style="font-size: 16px">手动新建</b><span class="mo-hint" style="font-weight: 400; font-size: 12.5px">空白表单<br>自己写</span></div></div><div class="fx" style="justify-content: space-between; margin-bottom: -6px"><span class="mo-gl" style="margin: 0">草稿</span><span class="mo-m">2</span></div><div class="mo-grp"><div class="mo-sr"><span class="ic" style="overflow: hidden; padding: 0"><div class="port ht dk" style="width: 36px; height: 36px; border-radius: 0px; "><span class="g" style="font-size: 32px">温</span></div></span><div class="tx"><span class="t">长生当 · 温九</span><span class="s"><span style="color: var(--acc); font-weight: 700">● 等你回答 6 个问题</span> · 5 分钟前</span></div><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div><div class="mo-sr"><span class="ic" style="overflow: hidden; padding: 0"><div class="port htg" style="width: 36px; height: 36px; border-radius: 0px; "><span class="g" style="font-size: 32px">黛</span></div></span><div class="tx"><span class="t">林黛玉 · 元宵</span><span class="s"><span style="color: var(--acc); font-weight: 700">● 方案等你确认</span> · 昨天</span></div><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div></div><div class="fx" style="justify-content: space-between; margin-bottom: -6px"><span class="mo-gl" style="margin: 0">最近保存的角色卡</span><span class="mo-link" style="font-size: 13px">全部角色卡</span></div><div class="mo-grp"><div class="mo-sr"><span class="ic" style="overflow: hidden; padding: 0"><div class="port htg" style="width: 36px; height: 36px; border-radius: 0px; "><span class="g" style="font-size: 32px">沈</span></div></span><div class="tx"><span class="t">沈知微</span><span class="s">10月20日 · 第 3 版</span></div><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div></div></div></div><nav class="mo-tb"><div class="mo-ti"><svg class="mo-i" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg><span>存档</span></div><div class="mo-ti"><svg class="mo-i" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg><span>库</span></div><div class="mo-ti on"><svg class="mo-i" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z" fill="#2F55F4"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z" fill="#2F55F4"/></svg><span>工作台</span></div><div class="mo-ti"><svg class="mo-i" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>设置</span></div></nav><div class="mo-sb"><span>9:41</span><span style="display: flex; align-items: center; gap: 6px"><svg width="18" height="11" viewBox="0 0 18 11"><rect x="0" y="7.5" width="3.2" height="2.5" rx="1" fill="#1A1A1A"/><rect x="5" y="5.0" width="3.2" height="5.0" rx="1" fill="#1A1A1A"/><rect x="10" y="2.5" width="3.2" height="7.5" rx="1" fill="#1A1A1A"/><rect x="15" y="0.0" width="3.2" height="10.0" rx="1" fill="#1A1A1A"/></svg><svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 3.2c2.3 0 4.4.9 6 2.4l1.2-1.3A10.3 10.3 0 008.5 1.4 10.3 10.3 0 001.3 4.3l1.2 1.3c1.6-1.5 3.7-2.4 6-2.4z" fill="#1A1A1A"/><path d="M8.5 6.6c1.3 0 2.5.5 3.4 1.3l1.2-1.3a6.5 6.5 0 00-9.2 0l1.2 1.3c.9-.8 2.1-1.3 3.4-1.3z" fill="#1A1A1A"/><circle cx="8.5" cy="10.3" r="1.6" fill="#1A1A1A"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#1A1A1A" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.2" fill="#1A1A1A"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="#1A1A1A" opacity=".45"/></svg></span></div><div class=mo-hi></div></div></div><div class="cell"><div class="tag"><b>15-21</b> 导入角色卡</div><div class="mo-ph G"><div class="mo-hd"><span class="mo-h1">工作台</span><span class="f1"></span></div><div class="mo-body" style="top: 118px; bottom: 0px"><div class="mo-in2" style="padding: 4px 20px 0; gap: 14px"><div class="mo-fr" style="padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 18px"><span style="font-size: 16px; line-height: 25px; color: var(--mut)">想做一个什么样的角色？说一句就行，比如“民国当铺的掌柜，冷淡但讲规矩”</span><div class="fx" style="gap: 8px"><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-7.8 7.8a5 5 0 01-7-7L13 4.5a3.3 3.3 0 014.7 4.7l-7.7 7.7a1.7 1.7 0 01-2.4-2.4L14.8 7.3"/></svg></span><span class="mo-tip"><svg class="mo-i" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z"/></svg>Agent 会先问清楚再动手</span><span class="mo-snd off" style="width: 38px; height: 38px; border-radius: 19px"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg></span></div></div><span class="mo-gl" style="margin-bottom: -4px">试试这些</span><div class="mo-wrap"><span class="mo-chip">雨夜开当铺的掌柜</span><span class="mo-chip">《红楼梦》里的林黛玉</span><span class="mo-chip">会算命的猫</span><span class="mo-chip">末日电台的主播</span></div><div class="fx" style="gap: 12px; align-items: stretch"><div class="mo-tile" style="gap: 6px"><span class="ti"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3"/></svg></span><b style="font-size: 16px">导入角色卡</b><span class="mo-hint" style="font-weight: 400; font-size: 12.5px">PNG 或 JSON<br>一次一张</span></div><div class="mo-tile" style="gap: 6px"><span class="ti"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg></span><b style="font-size: 16px">手动新建</b><span class="mo-hint" style="font-weight: 400; font-size: 12.5px">空白表单<br>自己写</span></div></div><div class="fx" style="justify-content: space-between; margin-bottom: -6px"><span class="mo-gl" style="margin: 0">草稿</span><span class="mo-m">2</span></div><div class="mo-grp"><div class="mo-sr"><span class="ic" style="overflow: hidden; padding: 0"><div class="port ht dk" style="width: 36px; height: 36px; border-radius: 0px; "><span class="g" style="font-size: 32px">温</span></div></span><div class="tx"><span class="t">长生当 · 温九</span><span class="s"><span style="color: var(--acc); font-weight: 700">● 等你回答 6 个问题</span> · 5 分钟前</span></div><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div><div class="mo-sr"><span class="ic" style="overflow: hidden; padding: 0"><div class="port htg" style="width: 36px; height: 36px; border-radius: 0px; "><span class="g" style="font-size: 32px">黛</span></div></span><div class="tx"><span class="t">林黛玉 · 元宵</span><span class="s"><span style="color: var(--acc); font-weight: 700">● 方案等你确认</span> · 昨天</span></div><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div></div><div class="fx" style="justify-content: space-between; margin-bottom: -6px"><span class="mo-gl" style="margin: 0">最近保存的角色卡</span><span class="mo-link" style="font-size: 13px">全部角色卡</span></div><div class="mo-grp"><div class="mo-sr"><span class="ic" style="overflow: hidden; padding: 0"><div class="port htg" style="width: 36px; height: 36px; border-radius: 0px; "><span class="g" style="font-size: 32px">沈</span></div></span><div class="tx"><span class="t">沈知微</span><span class="s">10月20日 · 第 3 版</span></div><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div></div></div></div><nav class="mo-tb"><div class="mo-ti"><svg class="mo-i" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z"/><path d="M12 6.5v13"/></svg><span>存档</span></div><div class="mo-ti"><svg class="mo-i" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3"/></svg><span>库</span></div><div class="mo-ti on"><svg class="mo-i" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z" fill="#2F55F4"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z" fill="#2F55F4"/></svg><span>工作台</span></div><div class="mo-ti"><svg class="mo-i" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>设置</span></div></nav><div class="mo-dim"></div><div class="mo-sh" style="top: 300px; gap: 14px"><span class="mo-grab"></span><div class="mo-shh"><div class="tx"><b>导入角色卡</b><span>PNG（卡面图片里带数据）或 JSON，SillyTavern V1、V2、V3，最大 16 MB，一次一张。</span></div><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div><span class="gbtn p mo-wide">选择文件<span class="arr"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3"/></svg></span></span><div class="mo-fr" style="padding: 14px; display: flex; flex-direction: column; gap: 12px"><div class="fx" style="gap: 12px"><span style="width: 52px; height: 52px; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; line-height: 0; flex: none"><svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true" style="flex: none; display: block; border-radius: 0px; background: var(--fill)"><path d="M0 14.879999999999999H48M0 21.12H30" fill="none" stroke="var(--line2)" stroke-width="1.1199999999999999" stroke-linecap="round"/><path d="M4 35.04H44M10 35.04A14 14 0 0 1 38 35.04" fill="none" stroke="var(--ink)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="37.54" cy="20.5" r="3.25" fill="var(--acc)"/></svg></span><div class="col f1"><b style="font-size: 16px">沈知微</b><span class="mo-hint">之前已经导入过了 · 10月12日</span></div></div><div class="fx" style="gap: 10px"><span class="gbtn " style="flex: 1; height: 44px">另外导入一份</span><span class="gbtn p" style="flex: 1; height: 44px">打开已有的</span></div></div><div class="mo-info err"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.3L2.6 18a2 2 0 001.7 3h15.4a2 2 0 001.7-3L13.7 4.3a2 2 0 00-3.4 0z"/><path d="M12 10v4M12 17h.01"/></svg><span class="f1"><b>霜月城.webp</b> 不是角色卡：只支持 PNG 或 JSON</span></div></div><div class="mo-sb"><span>9:41</span><span style="display: flex; align-items: center; gap: 6px"><svg width="18" height="11" viewBox="0 0 18 11"><rect x="0" y="7.5" width="3.2" height="2.5" rx="1" fill="#1A1A1A"/><rect x="5" y="5.0" width="3.2" height="5.0" rx="1" fill="#1A1A1A"/><rect x="10" y="2.5" width="3.2" height="7.5" rx="1" fill="#1A1A1A"/><rect x="15" y="0.0" width="3.2" height="10.0" rx="1" fill="#1A1A1A"/></svg><svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 3.2c2.3 0 4.4.9 6 2.4l1.2-1.3A10.3 10.3 0 008.5 1.4 10.3 10.3 0 001.3 4.3l1.2 1.3c1.6-1.5 3.7-2.4 6-2.4z" fill="#1A1A1A"/><path d="M8.5 6.6c1.3 0 2.5.5 3.4 1.3l1.2-1.3a6.5 6.5 0 00-9.2 0l1.2 1.3c.9-.8 2.1-1.3 3.4-1.3z" fill="#1A1A1A"/><circle cx="8.5" cy="10.3" r="1.6" fill="#1A1A1A"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#1A1A1A" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.2" fill="#1A1A1A"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="#1A1A1A" opacity=".45"/></svg></span></div><div class=mo-hi></div></div></div><div class="cell"><div class="tag"><b>15-22</b> Agent · 先问清楚</div><div class="mo-ph G"><div class="mo-n2"><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><div class="tt"><b>新角色</b><span>草稿 · 自动保存</span></div><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span></div><div style="position: absolute; left: 0; right: 0; top: 107px; padding: 10px 0 8px; display: flex; flex-direction: column; gap: 8px; background: #F8F8F5; border-bottom: 1.5px solid var(--grey2); z-index: 25"><div class="mo-mode"><span class=on><svg class="mo-i" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z"/></svg>Agent</span><span><svg class="mo-i" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg>手动</span></div><div class="mo-steps"><span class="on"><i></i>需求</span><em></em><span class=""><i></i>方案</span><em></em><span class=""><i></i>动手</span><em></em><span class=""><i></i>检查</span></div></div><div class="mo-body" style="top: 196px; bottom: 0px"><div class="mo-in2" style="padding: 14px 20px 0; gap: 14px"><div class="mo-chat"><div class="mo-um">想要一个开在城隍庙边上的当铺掌柜，收的不是东西，是记忆。</div><div class="mo-am"><span class="mo-av"><svg class="mo-i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z"/></svg></span><span class="f1">好主意。动手前先确认几件事。每题我都选好了推荐，不想细想就直接出方案。</span></div><div class="mo-wbc"><div class="mo-wbh">6 个问题<span class="r">都可以跳过</span></div><div class="mo-q"><b><i>1</i>故事的基调</b><div class="mo-wrap"><span class="mo-chip on">悬疑<span class="rec">推荐</span></span><span class="mo-chip">温情</span><span class="mo-chip">恐怖</span><span class="mo-chip">轻松</span><span class="mo-chip dash">其他…</span></div></div><div class="mo-q"><b><i>2</i>时代</b><div class="mo-wrap"><span class="mo-chip on">民国<span class="rec">推荐</span></span><span class="mo-chip">古代</span><span class="mo-chip">现代都市</span><span class="mo-chip dash">其他…</span></div></div><div class="mo-q"><b><i>3</i>掌柜是什么人</b><div class="mo-wrap"><span class="mo-chip on">不老的狐妖<span class="rec">推荐</span></span><span class="mo-chip">失忆的普通人</span><span class="mo-chip dash">其他…</span></div></div></div></div></div></div><div style="position: absolute; left: 14px; right: 14px; bottom: 100px; z-index: 35"><span class="gbtn p mo-wide">就按这些，出方案<span class="arr"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></span></div><div class="mo-wbb"><div class="mo-wbi">补充一句…<span class="mo-snd off"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg></span></div></div><div class="mo-sb"><span>9:41</span><span style="display: flex; align-items: center; gap: 6px"><svg width="18" height="11" viewBox="0 0 18 11"><rect x="0" y="7.5" width="3.2" height="2.5" rx="1" fill="#1A1A1A"/><rect x="5" y="5.0" width="3.2" height="5.0" rx="1" fill="#1A1A1A"/><rect x="10" y="2.5" width="3.2" height="7.5" rx="1" fill="#1A1A1A"/><rect x="15" y="0.0" width="3.2" height="10.0" rx="1" fill="#1A1A1A"/></svg><svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 3.2c2.3 0 4.4.9 6 2.4l1.2-1.3A10.3 10.3 0 008.5 1.4 10.3 10.3 0 001.3 4.3l1.2 1.3c1.6-1.5 3.7-2.4 6-2.4z" fill="#1A1A1A"/><path d="M8.5 6.6c1.3 0 2.5.5 3.4 1.3l1.2-1.3a6.5 6.5 0 00-9.2 0l1.2 1.3c.9-.8 2.1-1.3 3.4-1.3z" fill="#1A1A1A"/><circle cx="8.5" cy="10.3" r="1.6" fill="#1A1A1A"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#1A1A1A" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.2" fill="#1A1A1A"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="#1A1A1A" opacity=".45"/></svg></span></div><div class=mo-hi></div></div></div><div class="cell"><div class="tag"><b>15-23</b> Agent · 方案</div><div class="mo-ph G"><div class="mo-n2"><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><div class="tt"><b>长生当</b><span>草稿 · 自动保存</span></div><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span></div><div style="position: absolute; left: 0; right: 0; top: 107px; padding: 10px 0 8px; display: flex; flex-direction: column; gap: 8px; background: #F8F8F5; border-bottom: 1.5px solid var(--grey2); z-index: 25"><div class="mo-mode"><span class=on><svg class="mo-i" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z"/></svg>Agent</span><span><svg class="mo-i" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg>手动</span></div><div class="mo-steps"><span class="dn"><i></i>需求</span><em></em><span class="on"><i></i>方案</span><em></em><span class=""><i></i>动手</span><em></em><span class=""><i></i>检查</span></div></div><div class="mo-body" style="top: 196px; bottom: 0px"><div class="mo-in2" style="padding: 14px 20px 0; gap: 14px"><div class="mo-chat"><div class="mo-um">就按这些，出方案</div><div class="mo-wbc" style="gap: 0"><div class="mo-wbh" style="padding-bottom: 8px"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>方案<span class="r b">等你确认</span></div><div class="col" style="gap: 6px; padding: 10px 0; border-top: 1.5px solid var(--grey2)"><span class="mo-hint" style="font-size: 12.5px">名字 · 点一下换</span><div class=mo-wrap><span class="mo-chip on">温九</span><span class="mo-chip">陆迟</span><span class="mo-chip">薛无咎</span></div></div><div class="col" style="gap: 6px; padding: 10px 0; border-top: 1.5px solid var(--grey2)"><span class="mo-hint" style="font-size: 12.5px">一句话</span><span style=font-size:14.5px;line-height:23px>民国北平，城隍庙东边的「长生当」。掌柜温九收记忆、付银元，客气、慢，从不问来客为什么要当。</span></div><div class="col" style="gap: 6px; padding: 10px 0; border-top: 1.5px solid var(--grey2)"><span class="mo-hint" style="font-size: 12.5px">世界书 · 7 条</span><div class=mo-wrap style=gap:6px><span class="mo-tag">长生当</span><span class="mo-tag">当票</span><span class="mo-tag">城隍庙</span><span class="mo-tag">记忆的成色</span><span class="mo-tag">赎回期限</span><span class="mo-tag">巡警刘三</span><span class="mo-tag">隔壁纸扎铺</span></div></div><div class="fx" style="gap: 10px; padding-top: 10px"><span class="gbtn p" style="flex: 1; height: 44px">开始写</span><span class="gbtn " style="height: 44px">改一改</span></div></div></div></div></div><div class="mo-wbb"><div class="mo-wbi">比如：掌柜改成女性，开场直接出事<span class="mo-snd off"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg></span></div></div><div class="mo-sb"><span>9:41</span><span style="display: flex; align-items: center; gap: 6px"><svg width="18" height="11" viewBox="0 0 18 11"><rect x="0" y="7.5" width="3.2" height="2.5" rx="1" fill="#1A1A1A"/><rect x="5" y="5.0" width="3.2" height="5.0" rx="1" fill="#1A1A1A"/><rect x="10" y="2.5" width="3.2" height="7.5" rx="1" fill="#1A1A1A"/><rect x="15" y="0.0" width="3.2" height="10.0" rx="1" fill="#1A1A1A"/></svg><svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 3.2c2.3 0 4.4.9 6 2.4l1.2-1.3A10.3 10.3 0 008.5 1.4 10.3 10.3 0 001.3 4.3l1.2 1.3c1.6-1.5 3.7-2.4 6-2.4z" fill="#1A1A1A"/><path d="M8.5 6.6c1.3 0 2.5.5 3.4 1.3l1.2-1.3a6.5 6.5 0 00-9.2 0l1.2 1.3c.9-.8 2.1-1.3 3.4-1.3z" fill="#1A1A1A"/><circle cx="8.5" cy="10.3" r="1.6" fill="#1A1A1A"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#1A1A1A" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.2" fill="#1A1A1A"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="#1A1A1A" opacity=".45"/></svg></span></div><div class=mo-hi></div></div></div><div class="cell"><div class="tag"><b>15-24</b> Agent · 动手中</div><div class="mo-ph G"><div class="mo-n2"><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><div class="tt"><b>长生当</b><span>正在写 · 3 / 7</span></div><span class="mo-ib sm"><svg class="mo-i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span></div><div style="position: absolute; left: 0; right: 0; top: 107px; padding: 10px 0 8px; display: flex; flex-direction: column; gap: 8px; background: #F8F8F5; border-bottom: 1.5px solid var(--grey2); z-index: 25"><div class="mo-mode"><span class=on><svg class="mo-i" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z"/></svg>Agent</span><span><svg class="mo-i" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg>手动</span></div><div class="mo-steps"><span class="dn"><i></i>需求</span><em></em><span class="dn"><i></i>方案</span><em></em><span class="on"><i></i>动手</span><em></em><span class=""><i></i>检查</span></div></div><div class="mo-body" style="top: 196px; bottom: 0px"><div class="mo-in2" style="padding: 14px 20px 0; gap: 14px"><div class="mo-chat"><div class="mo-um">开始写</div><div class="mo-am"><span class="mo-av"><svg class="mo-i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/><path d="M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z"/></svg></span><span class="f1">开始了，写的时候可以随时打断。写好的部分点右上角就能看。</span></div><div class="mo-wbc"><div class="mo-wbh"><svg class="mo-i" width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z"/></svg>正在写<span class="mo-m">3 / 7</span><span class="r" style="margin-left: auto"><span class="gbtn sm" style="height: 32px; padding: 0 12px"><svg class="mo-i" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" stroke="none"/></svg>停止</span></span></div><div class="mo-ck"><span class="d ok"><svg class="mo-i" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div class="col f1"><b>基本信息</b><span>温九 · 民国 · 悬疑 · 志怪</span></div></div><div class="mo-ck"><span class="d ok"><svg class="mo-i" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div class="col f1"><b>描述和性格</b><span>描述 412 字，性格 96 字</span></div></div><div class="mo-ck"><span class="d cur"></span><div class="col f1"><b>开场白</b><span class=ser>雨下到第三更，长生当的门帘被人掀开。柜台后的人没有抬头<span class=mo-caret style=height:16px></span></span></div></div><div class="mo-ck"><span class="d todo"></span><div class="col f1"><b style=color:var(--mut);font-weight:500>对话示例</b></div></div><div class="mo-ck"><span class="d todo"></span><div class="col f1"><b style=color:var(--mut);font-weight:500>世界书 7 条</b></div></div><div class="mo-ck"><span class="d todo"></span><div class="col f1"><b style=color:var(--mut);font-weight:500>封面 4 张</b></div></div><div class="mo-ck"><span class="d todo"></span><div class="col f1"><b style=color:var(--mut);font-weight:500>按导入规则检查</b></div></div></div></div></div></div><div class="mo-wbb"><div class="mo-wbi">写完以后可以接着提要求<span class="mo-snd off"><svg class="mo-i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg></span></div></div><div class="mo-sb"><span>9:41</span><span style="display: flex; align-items: center; gap: 6px"><svg width="18" height="11" viewBox="0 0 18 11"><rect x="0" y="7.5" width="3.2" height="2.5" rx="1" fill="#1A1A1A"/><rect x="5" y="5.0" width="3.2" height="5.0" rx="1" fill="#1A1A1A"/><rect x="10" y="2.5" width="3.2" height="7.5" rx="1" fill="#1A1A1A"/><rect x="15" y="0.0" width="3.2" height="10.0" rx="1" fill="#1A1A1A"/></svg><svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 3.2c2.3 0 4.4.9 6 2.4l1.2-1.3A10.3 10.3 0 008.5 1.4 10.3 10.3 0 001.3 4.3l1.2 1.3c1.6-1.5 3.7-2.4 6-2.4z" fill="#1A1A1A"/><path d="M8.5 6.6c1.3 0 2.5.5 3.4 1.3l1.2-1.3a6.5 6.5 0 00-9.2 0l1.2 1.3c.9-.8 2.1-1.3 3.4-1.3z" fill="#1A1A1A"/><circle cx="8.5" cy="10.3" r="1.6" fill="#1A1A1A"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#1A1A1A" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.2" fill="#1A1A1A"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="#1A1A1A" opacity=".45"/></svg></span></div><div class=mo-hi></div></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2610,"height":970}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
