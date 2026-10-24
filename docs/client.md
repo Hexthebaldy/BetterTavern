@@ -320,8 +320,8 @@ apps/mobile/
 
 | 地址 | 页面 |
 | --- | --- |
-| `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交；宽屏左边是插画区。注册要勾选“已满 18 岁并同意协议”。底部的服务器行可以跳到别的服务器的网页（见上面的“登录：Cookie 模式”） |
-| `/verify`、`/forgot` | 验证邮箱、找回密码，同 App 的 `(auth)/verify`、`(auth)/forgot`；验证码框用 `autocomplete="one-time-code"` |
+| `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交。注册要勾选“已满 18 岁并同意协议”。版式见下面的“登录页” |
+| `/verify`、`/forgot` | 验证邮箱、找回密码，同 App 的 `(auth)/verify`、`(auth)/forgot`；验证码是 6 个格子，底下是一个 `autocomplete="one-time-code"` 的真输入框 |
 | `/terms`、`/privacy`、`/rules` | 用户协议、隐私政策、内容规则：登录前后都能打开（App 在浏览器里打开这三个地址）。正文是 `pages/legal/content/<语言>/*.md`，按界面语言按需加载，用页面里的极简 Markdown 渲染（标题、段落、列表、粗体、链接）；三种语言一一对应，改一份就改另外两份 |
 | `/playthroughs` | 存档（漫画稿 01）：最近玩的那个占左上的大格（剧本名、最近一段的摘录、“继续”、回合数、主角色的人物位），正在写的存档是墨底格，“新的故事 ＋”一格（键 N，去剧本页挑一个），其余是白格；一页六个，之后每页九个，翻页 |
 | `/scenarios`、`/characters` | 剧本、角色两个一级页（`pages/library/`，漫画稿 04、05）。剧本：页头是搜索、题材筛选（取剧本里几张卡的标签）、导入；最近添加的占左边一整列（大封面、题材、卡数和存档数、简介、主角色、默认主角，“开局”和“看设定”，Enter 开局：有默认主角时直接开一局），其余是宽格和窄格，“新建剧本 ＋”一格。角色：4 × 2 张卡，人物位（头像或名字里的一个大字压在网点底上）、名牌、简介、题材和世界书数；指着的卡出现“用这张开局”（用它新建剧本） |
@@ -401,8 +401,21 @@ apps/web/
     └── pages/     auth/  stories/  library/  cards/  scenario/  workbench/  play/  models/  tools/  settings/  Splash.tsx  NotFound.tsx
 ```
 
-纯逻辑（`theme/layout.ts`、`theme/wheel.ts`、`theme/grid.ts`、`theme/palette.ts`、`components/portrait.ts`、`storage/local.ts`、`state/prefs.ts`、`pages/auth/servers.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/library/collection.ts`、`pages/play/reading.ts`）
+纯逻辑（`theme/layout.ts`、`theme/wheel.ts`、`theme/grid.ts`、`theme/palette.ts`、`components/portrait.ts`、`storage/local.ts`、`state/prefs.ts`、`pages/auth/servers.ts`、`pages/auth/desk.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/library/collection.ts`、`pages/play/reading.ts`）
 用 `node --test` 测，在仓库根目录 `npm test` 时一起跑；整条路的端到端测试见 [testing.md 第 3 节](testing.md)。
+
+### 登录页
+
+登录、注册、验证邮箱、找回密码（`pages/auth/`，漫画稿 10–12，规则见 [design/comic/README.md 的“登录页”](design/comic/README.md)）：
+
+- 窗口 ≥ 900 是两格漫画（`AuthLayout.tsx`）：四周离窗口 40、中间空 16，宽度按 700 : 644 分，右格至少 480；窗口太矮时整页滚动。窄于 900 只留表单，同以前的窄屏。
+- 左格是一张写故事的桌面（`Desk.tsx`、`DeskSheets.tsx`）：地图、人物关系图、三张文稿、一张索引卡，最上层是胶带、图钉和一根蓝线。
+  一个字都没有，不放图片，整格 `aria-hidden`。整个是一张 700×820 的 SVG，格子大小不同时按比例铺满、裁掉多出来的边。
+  位置、大小、转角、关系图的人物和连线照设计稿源码；等高线、湖、字条和右格的集中线用固定种子的伪随机生成（`desk.ts`，`node --test` 测同一个种子结果相同、点都在画布里）。
+  注册页是“刚开始”的样子（`desk="start"`）。颜色都走现有的变量，夜间跟着换。
+- 右格是表单：Logo 和名字、宋体大标题，输入框用大号的 `Field`（`size="lg"`：高 56、圆角 14、正在输入的那一栏蓝框加 `--b4`），主按钮印着 Enter 键帽（`Button` 的 `kbd`），
+  下面是次要按钮（登录页“注册新账户”，注册页和找回密码“返回登录”）。验证码是 6 个格子（`CodeField`），粘贴时先去掉不是数字的再留前 6 位。
+  底部一行：左边是服务器行（只在自己部署的网页上的登录、注册页），右边是三份条款。
 
 ### 和设计稿不同的地方
 
@@ -412,6 +425,9 @@ apps/web/
 - API Key 输入框：用圆点遮住，但不用 `type=password`（免得浏览器把它存成这个网站的密码）；网页里直接粘贴，没有 App 的“粘贴”按钮。
 - 诊断日志导出：设计稿写的是 `.json`；内容和 App 导出的一样（开头几行说明，后面每行一条 JSON，可以拖进 vis），所以文件名是 `.jsonl`。
 - 提示浮条停留 4 秒（设计稿的值）；App 是 3 秒，带操作的 5 秒。
+- 登录页（漫画稿 10–12）：注册页的输入框照旧是邮箱、密码、昵称（稿子是昵称在前）；验证页多一行“没收到？看看垃圾邮件……”，“换一个邮箱”回注册页，
+  顶上不再有返回箭头；找回密码的第二步标题下面仍是“如果注册过，验证码已经发过去了”这句（服务端不透露邮箱是否注册过），不是邮箱小块；
+  官方网站上没有服务器行。等高线、湖、字条是按种子生成的，和 png 里的线条样子相同、但不是一模一样。
 
 ### 还没做的
 

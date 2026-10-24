@@ -2,22 +2,22 @@
  * 验证邮箱：注册以后（服务器要求验证邮箱时）、没验证就登录时来这里。验证码已经发出，填对了直接登录。
  * 邮箱从上一页带过来（路由的 state）；直接打开这个地址、没有邮箱时回注册页。
  * “重新发送”有 60 秒倒计时（服务端同一个邮箱 1 分钟只发 1 封）。同 App 的 app/(auth)/verify.tsx。
+ * 版式见漫画稿 12：邮箱在标题下的灰色小块里，验证码是 6 个格子；“换一个邮箱”回注册页。
  */
 
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { Link, Navigate, useLocation } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import { currentLanguage } from "@bettertavern/core/i18n/index";
 
-import { Button, Field, IconButton, Notice } from "../../components/controls.tsx";
+import { Button, cx, Notice } from "../../components/controls.tsx";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useApp } from "../../state/AppProvider.tsx";
-import { AuthLayout, NarrowIntro, useCooldown } from "./AuthLayout.tsx";
+import { AuthBrand, AuthLayout, AuthTitle, CODE_LENGTH, CodeField, EmailChip, useCooldown } from "./AuthLayout.tsx";
 import styles from "./auth.module.css";
 
-const CODE_LENGTH = 6;
 
 /** 验证码的错误：错太多次作废时说清楚要重发 */
 export function codeErrorText(e: unknown, burnt: string): string {
@@ -27,7 +27,6 @@ export function codeErrorText(e: unknown, burnt: string): string {
 
 export function VerifyPage() {
   const { api, signIn } = useApp();
-  const navigate = useNavigate();
   const location = useLocation();
   const email = (location.state as { email?: string } | null)?.email ?? "";
   const [code, setCode] = useState("");
@@ -70,34 +69,13 @@ export function VerifyPage() {
 
   return (
     <AuthLayout>
-      <IconButton
-        icon="back"
-        label={t("auth.backToLogin")}
-        className={styles.back}
-        onClick={() => navigate("/login")}
-      />
-      <NarrowIntro />
-      <div className={styles.heading}>
-        <h1 className={styles.big}>{t("auth.verifyTitle")}</h1>
-        <p className={styles.lead}>{t("auth.verifySent", { email })}</p>
-      </div>
-      {error ? <Notice message={error} onClose={() => setError(null)} /> : null}
-      {info ? <Notice tone="info" message={info} onClose={() => setInfo(null)} /> : null}
+      <AuthBrand />
+      <AuthTitle below={<EmailChip email={email} />}>{t("auth.verifyTitle")}</AuthTitle>
+      {error ? <Notice message={error} onClose={() => setError(null)} className={styles.notice} /> : null}
+      {info ? <Notice tone="info" message={info} onClose={() => setInfo(null)} className={styles.notice} /> : null}
       <form className={styles.form} onSubmit={(e) => void submit(e)} noValidate>
-        <Field
-          label={t("auth.code")}
-          className={styles.code}
-          name="code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          placeholder={t("auth.codePlaceholder")}
-          maxLength={CODE_LENGTH}
-          autoFocus
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))}
-        />
+        <CodeField value={code} onChange={setCode} aside={t("auth.codeValid")} autoFocus />
         <div className={styles.resendRow}>
-          <span>{t("auth.checkSpam")}</span>
           <button
             type="button"
             className={styles.linkButton}
@@ -106,16 +84,19 @@ export function VerifyPage() {
           >
             {cooldown.seconds > 0 ? t("auth.resendIn", { seconds: cooldown.seconds }) : t("auth.resend")}
           </button>
+          <Link to="/register" className={styles.linkButton}>
+            {t("auth.changeEmail")}
+          </Link>
         </div>
+        <p className={cx(styles.note, styles.spam)}>{t("auth.checkSpam")}</p>
         <Button
           type="submit"
           label={t("auth.verifyAndLogin")}
           size="lg"
-          between
-          trailingIcon="arrowRight"
+          kbd="Enter"
           busy={busy}
           disabled={!ready}
-          className={styles.submit}
+          className={styles.main}
         />
       </form>
     </AuthLayout>

@@ -1,63 +1,48 @@
-/* 登录、注册：版式同 App 的 AuthLayout 与 login.tsx、register.tsx，样子是漫画分镜版（粗描边、硬投影、宋体标题） */
+/*
+ * 登录、注册、验证邮箱、找回密码（docs/design/comic 的“登录页”一节，png/10–12）。
+ * 窄屏（< 900）在前：只有表单；宽屏的两格漫画在后面的 @media 里覆盖。桌面的颜色在 desk.module.css。
+ */
 
 .page {
   min-height: 100vh;
   display: flex;
-  background: var(--bg);
+  flex-direction: column;
+  background: var(--paper);
 }
-.panel {
+.deskPanel {
   display: none;
 }
-.formSide {
+.formPanel {
+  position: relative;
   flex: 1;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  padding: 28px 24px 36px;
+  padding: 28px 24px 24px;
+}
+.formPanel > svg {
+  display: none;
 }
 .column {
+  position: relative;
+  flex: 1;
   width: 100%;
   max-width: 440px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  justify-content: center;
+  padding-bottom: 24px;
 }
-.art {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
+
+/* ---- 表单的头：Logo 和名字、宋体大标题 ---- */
 .brand {
-  position: absolute;
-  top: 32px;
-  left: 32px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-}
-.caption {
-  position: absolute;
-  left: 32px;
-  right: 32px;
-  bottom: 32px;
-  margin: 0;
-  /* 文案里用换行分两行（i18n 的 auth.taglineLines） */
-  white-space: pre-line;
-  font-family: var(--font-display);
-  font-size: 30px;
-  line-height: 42px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
+  display: none;
 }
 .narrowIntro {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  margin-bottom: 28px;
 }
 .lead {
   margin: 0;
@@ -68,7 +53,8 @@
 .heading {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 16px;
 }
 .big {
   margin: 0;
@@ -78,81 +64,96 @@
   font-weight: 900;
   letter-spacing: -0.02em;
 }
+.heading .lead {
+  font-size: 14.5px;
+  line-height: 22px;
+}
+/* 验证码发到的邮箱 */
+.emailChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: var(--grey);
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.emailChip > svg {
+  flex: none;
+}
+.notice {
+  margin-top: 20px;
+}
+
+/* ---- 表单 ---- */
 .form {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  margin-top: 34px;
 }
-.register .form {
-  gap: 18px;
+.form.register {
+  gap: 14px;
 }
-.submit {
-  margin-top: 8px;
+/* 主按钮：墨底、--b4，文字和 Enter 键帽居中 */
+.main {
+  width: 100%;
+  height: 58px;
+  border-radius: 29px;
+  font-size: 18px;
+  font-weight: 800;
+  margin-top: 10px;
 }
-.switch {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 2px;
+/* 次要按钮：白底、--x4 */
+.second {
+  width: 100%;
+  height: 50px;
+  border-radius: 25px;
+  margin-top: -2px;
+}
+/* “忘记密码？”：和密码的标签在同一行，靠右 */
+.passwordWrap {
+  position: relative;
+}
+.forgot {
+  position: absolute;
+  top: -1px;
+  right: 0;
   font-size: 14px;
+  line-height: 18px;
+  font-weight: 700;
+  color: var(--acc);
+}
+.note {
+  font-size: 13px;
+  line-height: 19px;
   color: var(--mut);
 }
-.switch a {
-  display: inline-flex;
-  align-items: center;
-  height: 44px;
-  padding: 0 6px;
-  border-radius: var(--r-frame);
-  color: var(--acc);
-  font-weight: 700;
+.warn {
+  color: var(--warn);
 }
 @media (hover: hover) and (pointer: fine) {
-  .switch a:hover {
+  .forgot:hover,
+  .linkButton:not(:disabled):hover {
     text-decoration: underline;
     text-underline-offset: 3px;
   }
 }
-.back {
-  align-self: flex-start;
-  margin-left: -4px;
-}
-.lengthRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-left: 4px;
-}
-.track {
-  flex: 1;
-  height: 10px;
-  border: var(--bw-sm) solid var(--frame);
-  border-radius: 5px;
-  overflow: hidden;
-  background: var(--paper);
-}
-.fill {
-  height: 100%;
-  background: var(--ink);
-  transition: width var(--dur-fast) var(--ease);
-}
-.fill.enough {
-  background: var(--ok);
-}
-.meta {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--mut);
-}
 
-/* “已满 18 岁并同意…”：原生 checkbox 藏起来，画一个和 Checkbox 一样的 22 圆角框 */
+/* “已满 18 岁并同意…”：原生 checkbox 藏起来，画一个 22 的框，勾上是蓝底白勾 */
 .agree {
   position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 14px;
-  line-height: 22px;
+  margin-top: 4px;
+  font-size: 13.5px;
+  line-height: 21px;
   color: var(--ink2);
   cursor: pointer;
 }
@@ -170,8 +171,8 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  border: var(--bw-sm) solid var(--frame);
-  border-radius: var(--r-chip);
+  border: var(--bw) solid var(--frame);
+  border-radius: 6px;
   background: var(--paper);
   color: var(--on-acc);
   transition: background-color var(--dur-fast) var(--ease);
@@ -184,28 +185,92 @@
   outline-offset: 2px;
 }
 .agreeText a {
-  color: var(--acc);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 2px solid var(--acc);
 }
-/* 验证码：等宽字、字距大，一眼看清 6 位 */
-.code input {
+
+/* ---- 验证码：6 个 68 高的格子，底下盖着一个透明的真输入框 ---- */
+.codeField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.label {
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+.codeBoxes {
+  position: relative;
+  display: flex;
+  gap: 10px;
+}
+.codeBox {
+  flex: 1;
+  min-width: 0;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--bw) solid var(--frame);
+  border-radius: 12px;
+  background: var(--paper);
   font-family: var(--font-mono);
-  font-size: 22px;
-  letter-spacing: 0.3em;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
 }
-.code input::placeholder {
-  font-family: var(--font-sans);
-  font-size: 15px;
-  letter-spacing: normal;
+.codeFilled {
+  box-shadow: var(--x3);
+}
+.codeEmpty {
+  background: var(--grey);
+}
+.codeOn {
+  border-color: var(--acc);
+  background: var(--paper);
+  box-shadow: var(--b4);
+}
+.caret {
+  width: 2px;
+  height: 28px;
+  background: var(--acc);
+  animation: caret 1s steps(1) infinite;
+}
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+.codeInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px;
+  cursor: text;
 }
 .resendRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 14px;
-  color: var(--mut);
+  min-height: 24px;
 }
 .linkButton {
   flex: none;
@@ -214,65 +279,72 @@
   align-items: center;
   border: 0;
   background: none;
-  padding: 0 6px;
-  height: 44px;
-  border-radius: var(--r-frame);
-  color: var(--acc);
+  padding: 0;
   font: inherit;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 700;
+  color: var(--acc);
   cursor: pointer;
+}
+/* “没收到？看看垃圾邮件……”：倒计时那一行下面的小字 */
+.spam {
+  margin: -8px 0 0;
 }
 .linkButton:disabled {
   color: var(--mut);
+  font-weight: 400;
   cursor: default;
 }
-.forgot {
-  align-self: flex-end;
-  margin-top: -8px;
-}
 
-/* 宽屏：左右分栏（放在最后，覆盖上面的窄屏样式） */
-@media (min-width: 900px) {
-  .panel {
-    position: sticky;
-    top: 16px;
-    display: block;
-    flex: none;
-    width: 47.3%;
-    height: calc(100vh - 40px);
-    margin: 16px 24px 24px 16px;
-    border: var(--bw) solid var(--frame);
-    border-radius: var(--r-panel);
-    overflow: hidden;
-    background: var(--ht-grey), var(--grey);
-    box-shadow: var(--x8);
-  }
-  .column {
-    max-width: 400px;
-  }
-  .narrowIntro {
-    display: none;
-  }
-}
-
-/* 登录、注册页底部的服务器行（ServerSwitch）：灰底细框，右边“更改”是一个小键 */
-.server {
+/* ---- 底部一行：服务器行、三份条款 ---- */
+.foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 5px 6px 5px 14px;
-  border: var(--bw-sm) solid var(--frame);
-  border-radius: var(--r-frame);
-  background: var(--grey);
+  justify-content: space-between;
+  gap: 12px 18px;
+  width: 100%;
+  max-width: 440px;
+}
+.legal {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+}
+.legal a {
+  font-size: 12.5px;
+  line-height: 18px;
   color: var(--mut);
-  font-size: 14px;
+  text-decoration: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .legal a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+/* 服务器行（ServerSwitch）：虚线胶囊，服务器图标、“服务器”、现在的网站、墨底的“更改” */
+.server {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  height: 42px;
+  padding: 0 6px 0 14px;
+  border: var(--bw-sm) dashed var(--frame);
+  border-radius: 21px;
+  background: var(--paper);
+  color: var(--mut);
+  font-size: 13.5px;
 }
 .server > svg {
   flex: none;
+  color: var(--ink);
 }
 .serverText {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -281,31 +353,91 @@
 .serverName {
   font-family: var(--font-mono);
   font-size: 13px;
+  font-weight: 700;
   color: var(--ink);
 }
 .serverChange {
   flex: none;
-  height: 36px;
+  height: 30px;
   padding: 0 12px;
-  border: var(--bw-sm) solid var(--frame);
-  border-radius: var(--r-key);
-  background: var(--paper);
-  color: var(--ink);
+  border: 0;
+  border-radius: 15px;
+  background: var(--ink);
+  color: var(--paper);
   font: inherit;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--x2);
-  transition:
-    transform 0.08s ease,
-    box-shadow 0.08s ease;
+  transition: transform 0.08s ease;
 }
 .serverChange:active {
-  transform: translate(2px, 2px);
-  box-shadow: none;
+  transform: translate(1px, 1px);
 }
-@media (hover: hover) and (pointer: fine) {
-  .serverChange:hover {
-    transform: translateY(-1px);
+.serverChange:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+/* ---- 宽屏：两格漫画（放在最后，覆盖上面的窄屏样式） ---- */
+@media (min-width: 900px) {
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 700fr) minmax(480px, 644fr);
+    grid-template-rows: 1fr;
+    gap: 16px;
+    padding: 40px;
+    box-sizing: border-box;
+  }
+  /* 左格：灰网点底的桌面，不加投影，出了格子的部分裁掉 */
+  .deskPanel {
+    position: relative;
+    display: block;
+    min-height: 720px;
+    border: var(--bw) solid var(--frame);
+    border-radius: var(--r-frame);
+    overflow: hidden;
+    background: var(--ht-grey), var(--grey);
+  }
+  /* 右格：白底、--x8 投影，表单在中间，底部一行贴着下沿 */
+  .formPanel {
+    min-height: 720px;
+    padding: 0;
+    border: var(--bw) solid var(--frame);
+    border-radius: var(--r-frame);
+    overflow: hidden;
+    box-shadow: var(--x8);
+  }
+  .formPanel > svg {
+    display: block;
+  }
+  .column {
+    max-width: 400px;
+    padding: 48px 0;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+    /* 名字全是拉丁字母：用系统的拉丁字体，才有 800 这么粗（中文字体的拉丁字母最粗只到半粗） */
+    font-family: system-ui, var(--font-sans);
+    font-size: 17px;
+    line-height: 24px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .narrowIntro {
+    display: none;
+  }
+  .big {
+    font-size: 52px;
+    line-height: 60px;
+  }
+  .foot {
+    position: relative;
+    max-width: none;
+    padding: 0 26px 22px;
+    box-sizing: border-box;
   }
 }
 
@@ -384,5 +516,8 @@
 @media (prefers-reduced-motion: reduce) {
   .serverChange {
     transition: none;
+  }
+  .caret {
+    animation: none;
   }
 }

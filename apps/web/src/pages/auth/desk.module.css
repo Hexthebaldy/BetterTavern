@@ -1,0 +1,245 @@
+/* 登录页桌面（Desk.tsx、DeskSheets.tsx）和右格集中线的颜色：全走现有的变量，夜间跟着换 */
+
+.desk {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.shade {
+  fill: var(--shade);
+}
+.paper {
+  fill: var(--paper);
+}
+.greyPaper {
+  fill: var(--grey);
+}
+.edge {
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+.ink {
+  fill: var(--frame);
+}
+
+/* 底纹 */
+.blueBg {
+  fill: var(--acc);
+}
+.blueDot {
+  fill: var(--dot-acc);
+}
+.inkDot {
+  fill: var(--frame);
+  opacity: 0.32;
+}
+.greyDot {
+  fill: var(--frame);
+  opacity: 0.16;
+}
+.gridDot {
+  fill: var(--line2);
+}
+
+/* 地图 */
+.gridLine {
+  stroke: var(--line2);
+  stroke-width: 1;
+}
+.contour {
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+.lake {
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+.river {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+.riverDots {
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 1.5;
+  stroke-dasharray: 1 9;
+  stroke-linecap: round;
+  opacity: 0.6;
+}
+.route {
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 2.5;
+  stroke-dasharray: 9 7;
+  stroke-linecap: round;
+}
+.whitePin {
+  fill: var(--paper);
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+.bluePin {
+  fill: var(--acc);
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+.ring {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+.needle {
+  fill: var(--acc);
+  stroke: var(--frame);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.scaleInk,
+.scaleWhite {
+  stroke: var(--frame);
+  stroke-width: 2;
+}
+.scaleInk {
+  fill: var(--frame);
+}
+.scaleWhite {
+  fill: var(--paper);
+}
+
+/* 人物关系图 */
+.tie,
+.tieDashed {
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+.tieDashed {
+  stroke-dasharray: 7 6;
+}
+.tieDouble {
+  stroke: var(--frame);
+  stroke-width: 2;
+}
+.tieDiamond {
+  fill: var(--paper);
+  stroke: var(--frame);
+  stroke-width: 2;
+}
+.tieDot {
+  fill: var(--acc);
+  stroke: var(--frame);
+  stroke-width: 2;
+}
+.person,
+.personInk,
+.personWhite {
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+.personInk {
+  fill: var(--frame);
+}
+.personWhite {
+  fill: var(--paper);
+}
+.group {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+/* 文稿：字条浅灰，段首深一档；页边线和高亮是浅蓝 */
+.margin {
+  stroke: var(--sky);
+  stroke-width: 2;
+}
+.strip {
+  fill: var(--line2);
+}
+.stripDark {
+  fill: color-mix(in srgb, var(--line2) 88%, var(--ink));
+}
+.highlight {
+  fill: var(--sky);
+  opacity: 0.55;
+}
+.strike {
+  fill: none;
+  stroke: var(--frame);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.note {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* 索引卡 */
+.cardStrip,
+.cardStripSoft {
+  fill: var(--on-acc);
+}
+.cardStrip {
+  opacity: 0.95;
+}
+.cardStripSoft {
+  opacity: 0.7;
+}
+.box {
+  fill: var(--paper);
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+.tick {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 最上层：蓝线、胶带、图钉 */
+.thread {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 2.5;
+  stroke-dasharray: 2 6;
+  stroke-linecap: round;
+}
+.tape {
+  fill: var(--sky);
+  fill-opacity: 0.62;
+  stroke: var(--acc);
+  stroke-opacity: 0.25;
+  stroke-width: 1;
+}
+.pin {
+  fill: var(--acc);
+  stroke: var(--frame);
+  stroke-width: 2.5;
+}
+
+/* 右格的集中线 */
+.rays {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+.ray {
+  fill: var(--frame);
+  opacity: 0.1;
+}

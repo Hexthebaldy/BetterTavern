@@ -31,6 +31,25 @@
     transform var(--dur-fast) var(--ease),
     box-shadow var(--dur-fast) var(--ease);
 }
+/* 按钮里印的键帽（登录页主按钮的 Enter） */
+.buttonKey {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border: var(--bw-sm) solid currentColor;
+  border-radius: var(--r-key);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.primary .buttonKey {
+  color: var(--sky);
+}
 .lg {
   height: 54px;
   border-radius: 27px;
@@ -239,6 +258,35 @@
 }
 .input:focus {
   box-shadow: var(--b3);
+}
+/* 登录页的大号输入框：高 56、圆角 14、2.5 描边，正在输入的那一栏蓝框加 --b4；标签是等宽小字 */
+.fieldLg .input {
+  height: 56px;
+  border-width: var(--bw);
+  border-radius: 14px;
+  padding: 0 16px;
+  font-size: 16px;
+}
+.fieldLg .input:focus {
+  border-color: var(--acc);
+  box-shadow: var(--b4);
+}
+.fieldLg .input.invalid:focus {
+  border-color: var(--err);
+  box-shadow: 4px 4px 0 var(--err);
+}
+.fieldLg .input.hasTrailing {
+  padding-right: 56px;
+}
+.fieldLg .trailing {
+  top: 6px;
+  right: 6px;
+}
+.fieldLg .label {
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.08em;
 }
 .input::placeholder {
   color: var(--mut);

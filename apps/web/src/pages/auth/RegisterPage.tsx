@@ -1,42 +1,35 @@
 /**
- * 注册（W02）：邮箱、密码（至少 8 位，下面一条长度进度条）、可选的昵称，勾选“已满 18 岁并同意协议”。
+ * 注册（W02，漫画稿 11）：邮箱、密码（至少 8 位，下面一行写已经输了几位）、可选的昵称，勾选“已满 18 岁并同意协议”；
+ * 主按钮印着 Enter，下面是“返回登录”。左格的桌面是“刚开始”的样子。
  * 服务器要求验证邮箱时去验证页（验证码已经发出），否则直接登录。
  * 文案、校验和错误提示同 App 的 app/(auth)/register.tsx；服务端指出是哪个字段时，错误显示在那个字段下面。
  */
 
 import { useState, type FormEvent } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import { registeredSession } from "@bettertavern/core/auth/session";
 import { currentLanguage } from "@bettertavern/core/i18n/index";
 
-import { Button, Field, IconButton, Notice, PasswordField } from "../../components/controls.tsx";
+import { Button, buttonClass, cx, Field, Notice, PasswordField } from "../../components/controls.tsx";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useApp } from "../../state/AppProvider.tsx";
-import { AgreeRow, AuthLayout, NarrowIntro } from "./AuthLayout.tsx";
+import { AgreeRow, AuthBrand, AuthLayout, AuthTitle } from "./AuthLayout.tsx";
 import styles from "./auth.module.css";
-import { ServerSwitch } from "./ServerSwitch.tsx";
 
 const MIN_PASSWORD = 8;
 const NAME_MAX = 40;
 
-function LengthBar({ length }: { length: number }) {
+/** 密码下面的一行字：不到 8 位时是橙色的“已输入 5 位，至少 8 位”，够了写“已输入 N 位” */
+function PasswordHint({ length }: { length: number }) {
   const { t } = useTranslation();
-  const ratio = Math.min(length / MIN_PASSWORD, 1);
+  const short = length < MIN_PASSWORD;
   return (
-    <div className={styles.lengthRow} aria-label={t("auth.passwordTyped", { length, min: MIN_PASSWORD })}>
-      <div className={styles.track}>
-        <div
-          className={`${styles.fill} ${ratio >= 1 ? styles.enough : ""}`}
-          style={{ width: `${ratio * 100}%` }}
-        />
-      </div>
-      <span className={styles.meta}>
-        {length >= MIN_PASSWORD ? t("auth.passwordLength", { count: length }) : `${length} / ${MIN_PASSWORD}`}
-      </span>
-    </div>
+    <span className={cx(styles.note, short && styles.warn)}>
+      {short ? t("auth.passwordTyped", { length, min: MIN_PASSWORD }) : t("auth.passwordLength", { count: length })}
+    </span>
   );
 }
 
@@ -84,18 +77,13 @@ export function RegisterPage() {
     fieldError?.field === field ? fieldError.message : null;
 
   return (
-    <AuthLayout>
-      <IconButton
-        icon="back"
-        label={t("auth.backToLogin")}
-        className={styles.back}
-        onClick={() => navigate("/login")}
-      />
-      <NarrowIntro />
-      <h1 className={styles.big}>{t("auth.registerTitle")}</h1>
-      {error ? <Notice message={error} onClose={() => setError(null)} /> : null}
+    <AuthLayout desk="start" server>
+      <AuthBrand />
+      <AuthTitle>{t("auth.registerTitle")}</AuthTitle>
+      {error ? <Notice message={error} onClose={() => setError(null)} className={styles.notice} /> : null}
       <form className={`${styles.form} ${styles.register}`} onSubmit={(e) => void submit(e)} noValidate>
         <Field
+          size="lg"
           label={t("auth.email")}
           type="email"
           name="email"
@@ -109,6 +97,7 @@ export function RegisterPage() {
           error={errorFor("email")}
         />
         <PasswordField
+          size="lg"
           label={t("auth.password")}
           name="new-password"
           autoComplete="new-password"
@@ -116,9 +105,10 @@ export function RegisterPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={errorFor("password")}
-          below={password.length > 0 ? <LengthBar length={password.length} /> : null}
+          below={password.length > 0 ? <PasswordHint length={password.length} /> : null}
         />
         <Field
+          size="lg"
           label={t("auth.nickname")}
           optional
           counter
@@ -143,14 +133,15 @@ export function RegisterPage() {
           type="submit"
           label={t("auth.register")}
           size="lg"
-          between
-          trailingIcon="arrowRight"
+          kbd="Enter"
           busy={busy}
           disabled={!ready}
-          className={styles.submit}
+          className={styles.main}
         />
+        <Link to="/login" className={cx(buttonClass("secondary", "lg"), styles.second)}>
+          {t("auth.backToLogin")}
+        </Link>
       </form>
-      <ServerSwitch />
     </AuthLayout>
   );
 }

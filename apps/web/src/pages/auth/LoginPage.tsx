@@ -1,7 +1,8 @@
 /**
  * 登录（W01）。真正的 <form>，浏览器和密码管理器能自动填充；打开时焦点在邮箱，在密码框按 Enter 就提交。
  * 邮箱还没验证（EMAIL_NOT_VERIFIED，服务端已经重发了验证码）时去验证页。
- * 文案和错误提示同 App 的 app/(auth)/login.tsx。底部是服务器行（ServerSwitch），可以跳到别的服务器的网页。
+ * 文案和错误提示同 App 的 app/(auth)/login.tsx。版式见 AuthLayout（漫画稿 10）：“忘记密码？”在密码标签那一行，
+ * 主按钮印着 Enter，下面是“注册新账户”；底部是服务器行（只在自己部署的网页上）和三份条款。
  */
 
 import { useState, type FormEvent } from "react";
@@ -10,12 +11,12 @@ import { Link, useNavigate } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 
-import { Button, Field, Notice, PasswordField } from "../../components/controls.tsx";
+import { Button, buttonClass, cx, Field, Notice, PasswordField } from "../../components/controls.tsx";
+import { Icon } from "../../components/Icon.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
-import { AuthLayout, NarrowIntro } from "./AuthLayout.tsx";
+import { AuthBrand, AuthLayout, AuthTitle } from "./AuthLayout.tsx";
 import styles from "./auth.module.css";
-import { ServerSwitch } from "./ServerSwitch.tsx";
 
 export function LoginPage() {
   const { api, signIn } = useApp();
@@ -48,12 +49,13 @@ export function LoginPage() {
   };
 
   return (
-    <AuthLayout>
-      <NarrowIntro lead />
-      <h1 className={styles.big}>{t("auth.loginTitle")}</h1>
-      {error ? <Notice message={error} onClose={() => setError(null)} /> : null}
+    <AuthLayout server>
+      <AuthBrand lead />
+      <AuthTitle>{t("auth.loginTitle")}</AuthTitle>
+      {error ? <Notice message={error} onClose={() => setError(null)} className={styles.notice} /> : null}
       <form className={styles.form} onSubmit={(e) => void submit(e)} noValidate>
         <Field
+          size="lg"
           label={t("auth.email")}
           type="email"
           name="email"
@@ -65,33 +67,34 @@ export function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <PasswordField
-          label={t("auth.password")}
-          name="password"
-          autoComplete="current-password"
-          placeholder={t("auth.passwordPlaceholder")}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Link to="/forgot" state={{ email: email.trim() }} className={`${styles.linkButton} ${styles.forgot}`}>
-          {t("auth.forgotPassword")}
-        </Link>
+        <div className={styles.passwordWrap}>
+          <PasswordField
+            size="lg"
+            label={t("auth.password")}
+            name="password"
+            autoComplete="current-password"
+            placeholder={t("auth.passwordPlaceholder")}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <Link to="/forgot" state={{ email: email.trim() }} className={styles.forgot}>
+            {t("auth.forgotPassword")}
+          </Link>
+        </div>
         <Button
           type="submit"
           label={t("auth.login")}
           size="lg"
-          between
-          trailingIcon="arrowRight"
+          kbd="Enter"
           busy={busy}
           disabled={!ready}
-          className={styles.submit}
+          className={styles.main}
         />
-        <div className={styles.switch}>
-          {t("auth.noAccount")}
-          <Link to="/register">{t("auth.register")}</Link>
-        </div>
+        <Link to="/register" className={cx(buttonClass("secondary", "lg"), styles.second)}>
+          {t("auth.registerNew")}
+          <Icon name="arrowRight" size={18} />
+        </Link>
       </form>
-      <ServerSwitch />
     </AuthLayout>
   );
 }

@@ -49,6 +49,8 @@ type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
   trailingIcon?: IconName;
   /** 文字靠左、图标靠右（推进流程的主按钮） */
   between?: boolean;
+  /** 文字后面印一个键帽（登录页主按钮的 Enter），只是提示，读屏不念 */
+  kbd?: string;
   ref?: Ref<HTMLButtonElement>;
 };
 
@@ -66,6 +68,7 @@ export function Button({
   icon,
   trailingIcon,
   between,
+  kbd,
   className,
   disabled,
   type = "button",
@@ -96,6 +99,11 @@ export function Button({
         <>
           {icon ? <Icon name={icon} size={size === "sm" ? 17 : 19} strokeWidth={2.2} /> : null}
           <span>{label}</span>
+          {kbd ? (
+            <kbd className={styles.buttonKey} aria-hidden="true">
+              {kbd}
+            </kbd>
+          ) : null}
           {arrow ? (
             <span className={styles.arrow}>
               <Icon name={trailingIcon} size={18} />
@@ -173,6 +181,8 @@ type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
   trailing?: ReactNode;
   /** 输入框下面的额外一行（密码长度条） */
   below?: ReactNode;
+  /** lg：登录页的大号输入框（高 56、圆角 14、2.5 描边，标签是等宽小字） */
+  size?: "lg";
   ref?: Ref<HTMLInputElement>;
 };
 
@@ -185,6 +195,7 @@ export function Field({
   error,
   trailing,
   below,
+  size,
   className,
   id,
   ref,
@@ -196,7 +207,7 @@ export function Field({
   const messageId = `${inputId}-message`;
   const length = typeof input.value === "string" ? input.value.length : 0;
   return (
-    <div className={cx(styles.field, className)}>
+    <div className={cx(styles.field, size === "lg" && styles.fieldLg, className)}>
       <div className={styles.labelRow}>
         <label htmlFor={inputId} className={styles.label}>
           {label}
