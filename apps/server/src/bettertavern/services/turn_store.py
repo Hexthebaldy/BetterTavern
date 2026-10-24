@@ -11,10 +11,12 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from bettertavern.domain.memory.chapters import raw_start
+from bettertavern.domain.memory.lightning import raw_start as lightning_raw_start
 from bettertavern.domain.memory.outline import outline_from_json, slice_of
 from bettertavern.domain.scenario.card import CharacterCard, greeting_narrative
 from bettertavern.domain.scenario.setup import ScenarioSetup, greetings_of
 from bettertavern.domain.story.language import unnamed_protagonist
+from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
 from bettertavern.domain.world.plan import plan_world
 from bettertavern.domain.world.seed import Seed
@@ -176,11 +178,17 @@ class PgTurnStore:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id)
             turn = await story_repo.get_turn(conn, header.turn_id)
             assert pt is not None and turn is not None
-            # 原文只取章节摘要覆盖到的回合之后（再加上一章最后两回合），更早的在回顾里
+            # 原文只取章节摘要覆盖到的回合之后（再加上一章最后两回合），更早的在回顾里；
+            # 闪电模式从梗概覆盖到的回合之后开始，不多留（domain/memory/lightning.py）
+            start = (
+                lightning_raw_start(pt.summarized_seq)
+                if is_lightning(pt.mode)
+                else raw_start(pt.summarized_seq)
+            )
             history = await story_repo.list_chain(
                 conn,
                 header.playthrough_id,
-                after_seq=raw_start(pt.summarized_seq) - 1,
+                after_seq=start - 1,
                 up_to_seq=header.seq - 1,
             )
             world = await load_world(conn, header.playthrough_id)
@@ -258,8 +266,13 @@ class PgTurnStore:
                 "cached": outcome.usage.cached,
                 "reasoning": outcome.usage.reasoning,
             }
-        # 结局之后不再整理世界状态，直接 committed；其余存为 replied，等世界状态 agent 整理
-        status = TurnStatus.COMMITTED if outcome.ends_story else TurnStatus.REPLIED
+        # 结局之后不再整理世界状态，直接 committed；闪电模式没有世界状态 agent，也直接 committed；
+        # 其余存为 replied，等世界状态 agent 整理
+        status = (
+            TurnStatus.COMMITTED
+            if outcome.ends_story or is_lightning(header.mode)
+            else TurnStatus.REPLIED
+        )
         updated = await story_repo.complete_turn(
             conn,
             header.turn_id,

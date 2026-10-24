@@ -344,3 +344,32 @@ def test_the_outline_sits_in_the_last_message_after_the_state_block() -> None:
     assembled = assembler.assemble(opening, 64_000)
     assert "<outline>" not in assembled.messages[-1].content
     assert "director.outline" not in assembled.prompt_versions
+
+
+def lightning(ctx: TurnContext) -> TurnContext:
+    return replace(ctx, header=replace(ctx.header, mode="lightning"))
+
+
+def test_lightning_context_has_no_world_state_outline_or_notes() -> None:
+    assembler = ContextAssembler(PromptLibrary("zh"))
+    assembled = assembler.assemble(replace(lightning(context(history=2)), outline=OUTLINE), 64_000)
+    system = assembled.messages[0].content
+    for absent in ("<world-state>", "<outline>", "<director-notes>", "recall"):
+        assert absent not in system
+    assert "<narrative>" in system and "灰石镇" in system  # 规则和设定照旧
+    last = assembled.messages[-1].content
+    assert last.startswith("<player-action>") and "<world-state>" not in last
+    assert "<outline>" not in last
+    assert "director.outline" not in assembled.prompt_versions
+    # 普通模式不受影响
+    plain = assembler.assemble(context(history=2), 64_000).messages[0].content
+    assert "<world-state>" in plain and "<director-notes>" in plain
+
+
+def test_lightning_requests_only_grow_at_the_end() -> None:
+    """下一回合的请求一直到上一回合玩家的行动，都和上一回合的请求一字不差：前缀缓存能命中"""
+    for language in ("zh", "en", "ja"):
+        assembler = ContextAssembler(PromptLibrary(language))
+        before = assembler.assemble(lightning(context(history=2, action="行动2")), 64_000)
+        after = assembler.assemble(lightning(context(history=3, action="我坐下")), 64_000)
+        assert after.messages[: len(before.messages)] == before.messages

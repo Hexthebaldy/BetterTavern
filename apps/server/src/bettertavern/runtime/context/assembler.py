@@ -12,6 +12,10 @@
 
 章节摘要之前的回合不在上下文里，导演用召回工具查（第 7 节“召回”）。超过有效窗口 95% 时只截断
 发送视图，从最旧的回合开始丢，至少保留最近 2 个回合，直到不超过 90%：这是整理跟不上时的保护。
+
+闪电模式（ctx.header.mode，docs/agent-runtime.md 的“闪电模式”）：回顾里只有一版梗概，最后一条消息里
+只有玩家行动（没有状态块和大纲），和下一回合历史里这一回合的写法一字不差，所以下一回合的请求
+一直到这一回合的行动都能命中前缀缓存。
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ from dataclasses import dataclass, field
 
 from bettertavern.domain.memory.outline import Beat
 from bettertavern.domain.memory.thresholds import EMERGENCY_LINE, emergency_budget
+from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.story.turn import clip_middle
 from bettertavern.providers import Message
 from bettertavern.runtime.ports import TurnContext
@@ -120,6 +125,7 @@ class ContextAssembler:
             style=sanitize_for_fence(style),
             boundaries=sanitize_for_fence(prefs.boundaries),
             length=prefs.length,
+            lightning=is_lightning(ctx.header.mode),
         )
 
     def recap(self, ctx: TurnContext) -> RenderedPrompt | None:
@@ -191,15 +197,20 @@ class ContextAssembler:
     ) -> RenderedPrompt:
         """recall_before 大于 0 时（提供了召回工具）提示导演：
         现在是第几回合，原文从第几回合开始。"""
+        lightning = is_lightning(ctx.header.mode)
         state_budget = min(math.floor(window * STATE_BLOCK_RATIO), STATE_BLOCK_CAP)
         last_narrative = ctx.history[-1].narrative if ctx.history else ""
-        world_state = render_state_block(
-            ctx.world,
-            self._prompts,
-            budget_tokens=state_budget,
-            state_seq=ctx.state_seq,
-            mention_texts=(ctx.action.text, last_narrative),
-            turn_seq=ctx.header.seq,
+        world_state = (
+            ""
+            if lightning
+            else render_state_block(
+                ctx.world,
+                self._prompts,
+                budget_tokens=state_budget,
+                state_seq=ctx.state_seq,
+                mention_texts=(ctx.action.text, last_narrative),
+                turn_seq=ctx.header.seq,
+            )
         )
         if ctx.action.source == "opening":
             opening = ctx.seed.opening if ctx.seed is not None else None
@@ -214,7 +225,7 @@ class ContextAssembler:
             )
         action_chars = max(math.floor(window * ACTION_RATIO), 200)
         action = clip_middle(sanitize_for_fence(ctx.action.text), action_chars)
-        outline = self.outline(ctx)
+        outline = None if lightning else self.outline(ctx)
         hint = {
             "seq": ctx.header.seq,
             "recall_before": recall_before,
@@ -284,7 +295,11 @@ class ContextAssembler:
         }
         if recap is not None:
             versions[recap.name] = recap.version
-        outline = self.outline(ctx) if ctx.action.source != "opening" else None
+        outline = (
+            self.outline(ctx)
+            if ctx.action.source != "opening" and not is_lightning(ctx.header.mode)
+            else None
+        )
         if outline is not None:
             versions[outline.name] = outline.version
         return AssembledContext(

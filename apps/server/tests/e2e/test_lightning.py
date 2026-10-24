@@ -5,6 +5,9 @@
 
 from __future__ import annotations
 
+import itertools
+import json
+import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -78,3 +81,63 @@ async def test_mode_is_taken_from_the_scenario_at_start_and_never_changes(runnin
             p["id"]: p["mode"] for p in (await client.get("/v1/playthroughs", headers=auth)).json()
         }
         assert modes[lightning_id] == "lightning"
+
+
+async def start_lightning(
+    client: httpx.AsyncClient, auth: dict[str, str], token: str
+) -> tuple[str, dict[str, Any]]:
+    saved: dict[str, Any] = await import_scenario(client, auth)
+    scenario = await set_lightning(client, auth, saved["scenario"], True)
+    r = await client.post(
+        "/v1/playthroughs",
+        headers=auth,
+        json={"scenario_id": scenario["id"], "protagonist": {"name": "林川"}},
+    )
+    assert r.status_code == 202, r.text
+    created = r.json()
+    events = await read_events(client, created["events_url"], token)
+    opening = json.loads(events[-1].data)["turn"]
+    return created["playthrough"]["id"], opening
+
+
+async def play(
+    client: httpx.AsyncClient, auth: dict[str, str], token: str, pt_id: str, head: str
+) -> dict[str, Any]:
+    r = await client.post(
+        f"/v1/playthroughs/{pt_id}/turns",
+        headers={**auth, "Idempotency-Key": str(uuid.uuid4())},
+        json={"parent_turn_id": head, "action": {"source": "option", "option_id": "o1"}},
+    )
+    assert r.status_code == 201, r.text
+    events = await read_events(client, r.json()["events_url"], token)
+    return json.loads(events[-1].data)["turn"]
+
+
+async def test_a_lightning_turn_is_one_director_request(running: Running) -> None:
+    async with httpx.AsyncClient(base_url=running.base_url, timeout=30) as client:
+        account = await setup_account(client, running.fake)
+        token = account["token"]
+        auth = {"Authorization": f"Bearer {token}"}
+        pt_id, opening = await start_lightning(client, auth, token)
+        # 开局不调模型搭世界：最小设定
+        assert running.story.world_calls == 0
+        detail = (await client.get(f"/v1/playthroughs/{pt_id}", headers=auth)).json()
+        assert detail["playthrough"]["seed_source"] == "minimal"
+        assert opening["status"] == "committed"
+
+        head = opening["id"]
+        for _ in range(3):
+            turn = await play(client, auth, token, pt_id, head)
+            # 没有世界状态 agent：存好就是 committed，不等后台
+            assert turn["status"] == "committed"
+            head = turn["id"]
+
+        requests = [r.body for r in running.fake.app.chat_requests if r.body.get("stream")]
+        assert len(requests) == 4  # 开场加 3 回合，每回合一次请求
+        for body in requests:
+            assert "tools" not in body  # 不给查询工具
+            assert "<director-notes>" not in body["messages"][0]["content"]
+            assert "<world-state>" not in body["messages"][-1]["content"]
+        # 后一回合的请求一直到前一回合玩家的行动都一字不差（前缀缓存）
+        for prev, nxt in itertools.pairwise(requests[1:]):
+            assert nxt["messages"][: len(prev["messages"])] == prev["messages"]
