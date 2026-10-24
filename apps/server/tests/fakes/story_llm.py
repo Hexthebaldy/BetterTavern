@@ -11,7 +11,8 @@
 带 tools 的非流式请求是后台整理世界状态的 agent：每次直接调用 commit，只写一句摘要、不改世界状态。
 recall 打开时（--recall），导演收到召回工具会先查一次“火漆”，拿到结果再写；
 提示词里有 <chapter-turns> 的是章节整理，回一段固定的章节摘要和玩家画像（要并梗概时也回梗概）；
-有 <outline-source> 的是大纲修订：还没有大纲时回一版三拍的大纲，之后都回“不改”。
+有 <outline-source> 的是大纲修订：还没有大纲时回一版三拍的大纲，之后都回“不改”；
+最后一条消息要 <synopsis> 的是闪电模式的压缩，回一段固定的梗概。
 自定义端点默认被当成不能调用工具：要让后台整理跑起来，先在设置里测试一下这个模型。
 """
 
@@ -141,6 +142,7 @@ class StoryScript:
     state_calls: int = 0
     chapter_calls: int = 0
     outline_calls: int = 0
+    compress_calls: int = 0
 
     def reply(self, request: RecordedRequest) -> Reply:
         body = request.body if isinstance(request.body, dict) else {}
@@ -198,6 +200,13 @@ class StoryScript:
                 },
             }
             return JsonReply(completion("", tool_calls=[call], finish="tool_calls"))
+        if "<synopsis>" in str(messages[-1].get("content", "")):
+            # 压缩请求的开头是导演的上下文，只有最后一条是整理要求，所以只看最后一条
+            self.compress_calls += 1
+            synopsis = f"第 {self.compress_calls} 版：我在渡口等船，打听对岸的灯。"
+            text = f"<synopsis>\n{synopsis}\n</synopsis>"
+            usage = {"prompt_tokens": 900, "completion_tokens": 40, "prompt_cache_hit_tokens": 850}
+            return JsonReply(completion(text, usage=usage))
         prompt = "\n".join(str(m.get("content", "")) for m in body.get("messages", []))
         if "<chapter-turns>" in prompt:
             self.chapter_calls += 1

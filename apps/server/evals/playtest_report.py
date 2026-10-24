@@ -6,7 +6,8 @@
 - 统计导演和世界状态 agent 的用量、延迟，世界状态落后几回合，失败、跳过和被拒绝的修改；
 - 导演用召回工具的情况（哪些回合提供了工具、用了几轮、首字慢了多少）和召回题的结果；
 - 章节整理：写了几章、并进梗概几次，导演的上下文长度按回合段看稳不稳。
-大纲的分析在 playtest_outline.py。
+大纲的分析在 playtest_outline.py，花费和闪电模式的压缩在 playtest_lightning.py。
+闪电模式（lightning=True）没有世界状态：不因为世界状态没整理而判不合格，报告里不写世界状态那几节。
 """
 
 from __future__ import annotations
@@ -291,6 +292,7 @@ def summarize(
     probes: Sequence[ProbeResult] = (),
     tool_calls: Mapping[str, int] | None = None,
     summaries: Mapping[str, int] | None = None,
+    lightning: bool = False,
 ) -> dict[str, Any]:
     director = [r for r in runs if r.agent == DIRECTOR_AGENT and r.status == "ok"]
     state = [r for r in runs if r.agent == STATE_AGENT]
@@ -326,9 +328,10 @@ def summarize(
         reasons.append(f"检查点只过了 {passed_checks} / {len(checks)}")
     if issues:
         reasons.append(f"{len(issues)} 个回合出现了一致性问题")
-    if final_state_seq < head:
+    if final_state_seq < head and not lightning:
         reasons.append("世界状态没整理到最后一回合")
     return {
+        "mode": "lightning" if lightning else "standard",
         "verdict": {"passed": not reasons, "reasons": reasons},
         "options": options,
         "checks": {
@@ -409,7 +412,9 @@ def summarize(
 def markdown(
     summary: Mapping[str, Any], *, title: str, playthrough_id: str, extra: Sequence[str] = ()
 ) -> str:
-    """给人看的一页总结（中文）。extra 是别的模块写的几节（例如大纲），放在章节整理后面。"""
+    """给人看的一页总结（中文）。extra 是别的模块写的几节（例如大纲、花费），
+    普通模式放在章节整理后面；闪电模式没有章节整理和世界状态，只有导演、召回题和 extra。"""
+    lightning = summary.get("mode") == "lightning"
     d, s, lag, c, w = (
         summary["director"],
         summary["state"],
@@ -427,8 +432,13 @@ def markdown(
         "",
         f"- 存档：`{playthrough_id}`"
         "（日志查看工具里打开这局，逐回合看导演和世界状态 agent 的每一步）",
-        f"- 回合：{summary['turns']}；世界状态整理到第 {s['processed_to']} 回合"
-        + ("（已追上）" if s["caught_up"] else "（没追上）"),
+        f"- 回合：{summary['turns']}"
+        + (
+            "；闪电模式，没有世界状态"
+            if lightning
+            else f"；世界状态整理到第 {s['processed_to']} 回合"
+            + ("（已追上）" if s["caught_up"] else "（没追上）")
+        ),
         f"- 导演自己给出选项：{options['own']} / {options['total']}（{options['ratio']:.0%}，"
         f"要求至少 {OWN_OPTIONS_TARGET:.0%}）",
         f"- 检查点：通过 {checks['passed']} / {checks['total']}",
@@ -451,6 +461,10 @@ def markdown(
         f"输出 {d['output_tokens']}",
         "",
         *_recall_lines(summary["recall"]),
+    ]
+    if lightning:
+        return "\n".join([*lines, *extra])
+    lines += [
         *_memory_lines(summary["memory"]),
         *extra,
         "## 世界状态 agent",

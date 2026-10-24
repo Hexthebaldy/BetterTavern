@@ -12,6 +12,7 @@ import pytest
 from bettertavern.domain.memory.chapters import ChapterRule
 from bettertavern.infra.crypto.keyring import load_secrets, new_master_key_entry
 from bettertavern.providers import EndpointPolicy, ProviderHub
+from bettertavern.runtime.lightning_runner import LightningRunnerConfig
 from evals.playtest import ModelChoice, ReplayConfig, run_replay
 from tests.fakes.llm_server import RunningFakeLLM
 from tests.fakes.story_llm import StoryScript
@@ -117,3 +118,47 @@ async def test_director_recalls_through_the_real_stream_format(
     # 章节整理也跑了：写了章节摘要，导演的上下文里有回顾
     assert result.summary["memory"]["runs"].get("ok", 0) >= 1 and story.chapter_calls >= 1
     assert all(t.narrative for t in result.turns)
+
+
+async def test_lightning_replay_compresses_with_the_directors_model(
+    fake_llm: RunningFakeLLM, tmp_path: Path
+) -> None:
+    """闪电模式玩同一份剧本：只有导演，压缩的线很低，几回合就压一次梗概；
+    不跑世界状态 agent 和大纲，检查点不算，报告里有压缩和花费。"""
+    assert URL is not None
+    story = StoryScript(piece_delay=0.0)
+    fake_llm.app.default_reply = story.reply
+    policy = EndpointPolicy(allow_private=True)
+    secrets = load_secrets(
+        master_keys=new_master_key_entry("t1"),
+        auth_secret="s" * 40,
+        allow_dev_fallback=False,
+        data_dir=tmp_path,
+    )
+    model = ModelChoice("custom_openai", "fake-model", "sk-test-123456", base_url=fake_llm.base_url)
+    config = ReplayConfig(
+        director=model,
+        turns=6,
+        think_s=0.2,
+        settle_s=30.0,
+        lightning=True,
+        lightning_config=LightningRunnerConfig(compress_tokens=300, keep_tokens=100, keep_turns=2),
+    )
+    async with schema_engine(URL, pool_size=10) as engine:
+        hub = ProviderHub(policy=policy)
+        try:
+            result = await run_replay(
+                config, engine=engine, secrets=secrets, hub=hub, policy=policy, say=lambda _: None
+            )
+        finally:
+            await hub.aclose()
+    summary = result.summary
+    assert summary["mode"] == "lightning" and summary["verdict"]["passed"]
+    assert summary["turns"] == 7 and summary["director"]["runs"] == 7
+    assert summary["checks"]["total"] == 0
+    assert story.state_calls == 0 and story.outline_calls == 0 and story.chapter_calls == 0
+    compressed = summary["lightning"]
+    assert story.compress_calls >= 1
+    assert compressed["runs"] == {"ok": story.compress_calls}
+    assert compressed["synopsis_versions"] == story.compress_calls
+    assert summary["cost"]["by_agent"]["compressor"]["output_tokens"] == 40 * story.compress_calls

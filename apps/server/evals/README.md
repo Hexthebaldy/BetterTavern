@@ -49,6 +49,8 @@ uv run python -m evals.director_compliance --help
 | 章节整理 | 写了几章、几版全书梗概，失败的原因，每章耗时和用量；导演的上下文长度按 50 回合一段看（估算 token 的平均和最大、服务商算的平均输入、缓存命中），章节整理跟得上时应该稳定 |
 | 大纲 | 第一版依据到第几回合；之后改了几次、不改几次；世界状态 agent 说“要改”几次；修订的成功、失败、耗时和用量；每次修订依据到第几回合、改没改、改完以后进行中的那一拍、原因（`playtest_outline.py`） |
 | 大纲检查 | 剧本里 `outline` 写的检查：依据在某一段回合里的修订改了几次（至少、至多，第一版不算），这一段结束时正在用的那一版大纲里有没有出现某些词（玩家走偏以后大纲有没有跟上）。只看结果，不计入结论 |
+| 花费 | 这一局所有模型请求合计的输入、缓存命中、没命中缓存的输入、输出 token，按 agent 分开，再按回合平均（`playtest_lightning.py`）。同一份剧本用普通模式和闪电模式各跑一次，对照着看 |
+| 压缩（只有闪电模式） | 压了几次、失败的原因、写了几版梗概、覆盖到第几回合，每次耗时和用量；导演的上下文长度按 50 回合一段看，压缩跟得上时应该稳定 |
 
 ```bash
 DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash
@@ -58,6 +60,8 @@ DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --mo
 # 中途改道（阶段 5 的验收）：
 DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash \
     --scenario evals/datasets/m2/detour_60.yaml --turns 60
+# 闪电模式（只有导演，原文太长时压成梗概）：
+DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash --lightning
 # 后台整理用另一个模型：
 DEEPSEEK_API_KEY=sk-... GEMINI_API_KEY=... uv run python -m evals.playtest \
     --provider deepseek --model deepseek-flash --state-provider gemini --state-model gemini-3-flash
@@ -75,7 +79,11 @@ uv run python -m evals.playtest --help
 - 章节整理和大纲修订也在脚本里带的后台进程里跑；`--chapter-soft`、`--chapter-hard` 是切章的两条线（默认和服务端一样，8000、16000 token）。
   有了章节摘要以后，更早的回合不在导演的上下文里，召回题考的是召回工具和整理出来的记忆。
 - 开发环境的 worker 也开着时，两边一起从队列领任务，不会重复整理同一回合。
-- 报告写到 `reports/`（JSON 和一页中文总结，不入库）。
+- `--lightning` 用闪电模式玩（[agent-runtime.md 的“闪电模式”](../../../docs/agent-runtime.md#闪电模式)）：剧本设置打开闪电模式再开局，
+  没有世界状态，所以不跑检查点，结论里不算“世界状态没整理到最后一回合”；总结页没有世界状态那几节，换成压缩和花费。
+- 报告写到 `reports/`（JSON 和一页中文总结，不入库）。查库在 `playtest_analyse.py`，分析在 `playtest_report.py`、
+  `playtest_outline.py`、`playtest_lightning.py`。
 
 离线冒烟测试 `tests/e2e/test_playtest_offline.py` 用假模型服务把整条链路跑几回合，需要数据库（`make test-integration`），不需要密钥；
-其中一个用例把原文每 2 回合移出，假导演先调一次 `recall` 再写，检查工具调用走真实的流式格式也能跑通。
+其中一个用例把原文每 2 回合移出，假导演先调一次 `recall` 再写，检查工具调用走真实的流式格式也能跑通；
+另一个用闪电模式跑，压缩的线调得很低，几回合就压一次梗概。

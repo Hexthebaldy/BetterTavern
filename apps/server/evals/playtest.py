@@ -13,7 +13,12 @@
 --chapter-soft / --chapter-hard 调（默认和服务端一样，8000 / 16000 token）。
 
 跑完等世界状态、章节整理和大纲修订追上（最多 --settle 秒），然后用撤销记录倒推出每一回合的世界、
-逐回合检查，报告写到 reports/（JSON 和一页中文总结），见 playtest_report.py、playtest_outline.py。
+逐回合检查，报告写到 reports/（JSON 和一页中文总结）：查库在 playtest_analyse.py，
+分析在 playtest_report.py、playtest_outline.py、playtest_lightning.py。
+
+--lightning 用闪电模式玩同一份剧本：只有导演，原文太长时后台用导演的模型压成梗概
+（docs/agent-runtime.md 的“闪电模式”）。没有世界状态，所以不跑检查点；报告里有压缩和花费，
+和普通模式的报告对照着看省了多少（playtest_lightning.py）。
 
 用法（在 apps/server 下，数据库要先 make migrate）：
 
@@ -24,6 +29,10 @@
     DEEPSEEK_API_KEY=sk-... GEMINI_API_KEY=... uv run python -m evals.playtest \\
         --provider deepseek --model deepseek-flash \\
         --state-provider gemini --state-model gemini-3-flash --state-api-key-env GEMINI_API_KEY
+
+    # 闪电模式：
+    DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest \\
+        --provider deepseek --model deepseek-flash --lightning
 """
 
 from __future__ import annotations
@@ -50,48 +59,47 @@ from bettertavern.domain.memory.chapters import (
     CHAPTER_SOFT_TOKENS,
     ChapterRule,
 )
-from bettertavern.domain.world.records import FactRecord, RowChange, ThreadRecord, WorldRecords
 from bettertavern.infra.crypto.keyring import AppSecrets
-from bettertavern.infra.db.repositories import state as state_repo
-from bettertavern.infra.db.sqlutil import as_json
 from bettertavern.infra.queue.notify import PgNotifyListener
 from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.infra.queue.worker import JobWorker
 from bettertavern.providers import EndpointPolicy, ProviderHub
 from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.runtime.lightning_runner import LightningRunnerConfig
 from bettertavern.runtime.memory_runner import MemoryRunnerConfig
 from bettertavern.runtime.runner import RunnerConfig
 from bettertavern.runtime.state_runner import StateRunnerConfig
 from bettertavern.services.container import (
     Services,
+    build_lightning_runner,
     build_memory_runner,
     build_outline_runner,
     build_services,
     build_state_runner,
 )
+from bettertavern.services.lightning_jobs import LIGHTNING_JOB, lightning_handler
 from bettertavern.services.memory_jobs import MEMORY_JOB, memory_handler
 from bettertavern.services.outline_jobs import OUTLINE_JOB, outline_handler
 from bettertavern.services.playthrough_service import NewPlaythrough
 from bettertavern.services.route_inputs import RouteInput
+from bettertavern.services.scenario_service import ScenarioPatch
 from bettertavern.services.state_jobs import STATE_JOB, state_handler
 from bettertavern.services.turn_service import ActionInput
 
+from .playtest_analyse import ReplayResult, analyse, state_seq
 from .playtest_checks import (
     Check,
     RecallProbe,
-    evaluate_all,
-    evaluate_probes,
     parse_checks,
     parse_probes,
 )
+from .playtest_lightning import compress_lines, cost_lines
 from .playtest_outline import (
     OutlineWindow,
     outline_lines,
-    outline_summary,
     parse_windows,
-    revision_from_row,
 )
-from .playtest_report import RunFacts, TurnFacts, markdown, summarize, worlds_by_turn
+from .playtest_report import markdown
 
 EVALS_ROOT = Path(__file__).resolve().parent
 DEFAULT_SCENARIO = EVALS_ROOT / "datasets" / "m2" / "tavern_100.yaml"
@@ -151,15 +159,8 @@ class ReplayConfig:
     max_attempts: int = 3  # 一回合失败后最多试几次
     scenario_path: Path = DEFAULT_SCENARIO
     chapter_rule: ChapterRule = field(default_factory=ChapterRule)  # 切章的线
-
-
-@dataclass
-class ReplayResult:
-    playthrough_id: str
-    summary: dict[str, Any]
-    turns: list[TurnFacts]
-    runs: list[RunFacts]
-    failed_attempts: int
+    lightning: bool = False  # 闪电模式：只有导演，原文太长时后台压成梗概
+    lightning_config: LightningRunnerConfig = field(default_factory=LightningRunnerConfig)
 
 
 async def finish(services: Services, turn_id: str) -> None:
@@ -191,15 +192,6 @@ async def _route(services: Services, user_id: str, choice: ModelChoice, *, direc
             background=not director,
         ),
     )
-
-
-async def _state_seq(engine: AsyncEngine, playthrough_id: str) -> int:
-    async with engine.connect() as conn:
-        value = await conn.scalar(
-            text("SELECT state_seq FROM playthroughs WHERE id = CAST(:id AS uuid)"),
-            {"id": playthrough_id},
-        )
-    return int(value if value is not None else -1)
 
 
 async def _pending_jobs(engine: AsyncEngine, playthrough_id: str) -> int:
@@ -248,6 +240,9 @@ async def run_replay(
         config=MemoryRunnerConfig(rule=config.chapter_rule),
     )
     outline = build_outline_runner(engine=engine, secrets=secrets, hub=hub, policy=policy)
+    lightning = build_lightning_runner(
+        engine=engine, secrets=secrets, hub=hub, policy=policy, config=config.lightning_config
+    )
     # 和 worker 一样从队列领整理任务；开发环境的 worker 也开着时两边一起领，不会重复整理同一回合
     queue = PgJobQueue(engine)
     listener = PgNotifyListener(engine, queue.channel)
@@ -258,10 +253,11 @@ async def run_replay(
             STATE_JOB: state_handler(state),
             MEMORY_JOB: memory_handler(memory),
             OUTLINE_JOB: outline_handler(outline),
+            LIGHTNING_JOB: lightning_handler(lightning),
         },
         worker_id=f"playtest:{os.getpid()}",
         wakeup=listener.event,
-        kinds=[STATE_JOB, MEMORY_JOB, OUTLINE_JOB],
+        kinds=[STATE_JOB, MEMORY_JOB, OUTLINE_JOB, LIGHTNING_JOB],
     )
     stop = asyncio.Event()
     worker_task = asyncio.create_task(worker.run(stop))
@@ -282,6 +278,10 @@ async def run_replay(
         saved = await services.drafts.save(user.id, draft.draft.summary.id, new_scenario=True)
         assert saved.scenario is not None
         imported = saved.scenario
+        if config.lightning:
+            await services.scenarios.update(
+                user.id, imported.id, ScenarioPatch(setup={**imported.setup, "lightning": True})
+            )
         pt, opening = await services.playthroughs.create(
             user.id,
             NewPlaythrough(
@@ -326,8 +326,11 @@ async def run_replay(
                     raise RuntimeError(f"turn {n} failed {attempt} times: {code}")
                 # 一次比一次等得久：网络断一下时，连着重试几次都会失败
                 await asyncio.sleep(RETRY_WAIT_S * attempt)
-            behind = n - 1 - await _state_seq(engine, pt.id)
-            say(f"第 {n} 回合 · {shown[:40]} · 世界状态落后 {max(behind, 0)} 回合")
+            if config.lightning:
+                say(f"第 {n} 回合 · {shown[:40]}")
+            else:
+                behind = n - 1 - await state_seq(engine, pt.id)
+                say(f"第 {n} 回合 · {shown[:40]} · 世界状态落后 {max(behind, 0)} 回合")
             if config.think_s:
                 await asyncio.sleep(config.think_s)
         say("剧本跑完，等后台追上……")
@@ -343,210 +346,7 @@ async def run_replay(
         await worker_task
         await listener.stop()
         await services.runners.shutdown(5.0)
-    return await analyse(engine, pt.id, failed_attempts, scenario)
-
-
-# ---- 分析：从数据库查出这一局，交给 playtest_report ---------------------------------
-async def analyse(
-    engine: AsyncEngine, playthrough_id: str, failed_attempts: int, scenario: Scenario
-) -> ReplayResult:
-    async with engine.connect() as conn:
-        turn_rows = (
-            await conn.execute(
-                text(
-                    """SELECT seq, user_action, narrative, state_seq, options_source FROM turns
-                       WHERE playthrough_id = CAST(:pt AS uuid)
-                         AND status IN ('replied', 'committed')
-                       ORDER BY seq"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        turns = [
-            TurnFacts(
-                seq=int(r["seq"]),
-                source=str(as_json(r["user_action"], {}).get("source") or ""),
-                action=str(as_json(r["user_action"], {}).get("text") or ""),
-                narrative=r["narrative"],
-                state_seq=int(r["state_seq"]),
-                options_source=r["options_source"],
-            )
-            for r in turn_rows
-        ]
-        run_rows = (
-            await conn.execute(
-                text(
-                    """SELECT t.seq, r.agent, r.status, r.error_class, r.input_tokens,
-                              r.cached_tokens, r.output_tokens, r.latency_ms, r.ttft_ms, r.result
-                       FROM agent_runs r LEFT JOIN turns t ON t.id = r.turn_id
-                       WHERE r.playthrough_id = CAST(:pt AS uuid)
-                       ORDER BY r.created_at"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        runs = [
-            RunFacts(
-                seq=None if r["seq"] is None else int(r["seq"]),
-                agent=r["agent"],
-                status=r["status"],
-                error_class=r["error_class"],
-                input_tokens=int(r["input_tokens"] or 0),
-                cached_tokens=int(r["cached_tokens"] or 0),
-                output_tokens=int(r["output_tokens"] or 0),
-                latency_ms=r["latency_ms"],
-                ttft_ms=r["ttft_ms"],
-                result=as_json(r["result"], {}),
-            )
-            for r in run_rows
-        ]
-        patch_rows = (
-            await conn.execute(
-                text(
-                    """SELECT seq, target, before, after FROM state_patches
-                       WHERE playthrough_id = CAST(:pt AS uuid) ORDER BY seq, idx"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        tool_rows = (
-            await conn.execute(
-                text(
-                    """SELECT s.tool, count(*) AS n FROM agent_steps s
-                       JOIN agent_runs r ON r.id = s.run_id
-                       WHERE r.playthrough_id = CAST(:pt AS uuid) AND r.agent = 'director'
-                         AND s.kind = 'tool'
-                       GROUP BY s.tool ORDER BY s.tool"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        tool_calls = {str(r["tool"]): int(r["n"]) for r in tool_rows}
-        summary_rows = (
-            await conn.execute(
-                text(
-                    """SELECT kind, count(*) AS n FROM story_summaries
-                       WHERE playthrough_id = CAST(:pt AS uuid) GROUP BY kind ORDER BY kind"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        summary_counts = {str(r["kind"]): int(r["n"]) for r in summary_rows}
-        revision_rows = (
-            await conn.execute(
-                text(
-                    """SELECT based_on_seq, changed, content, reason FROM outline_revisions
-                       WHERE playthrough_id = CAST(:pt AS uuid) ORDER BY based_on_seq"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        revisions = [
-            revision_from_row(
-                int(r["based_on_seq"]), bool(r["changed"]), as_json(r["content"]), r["reason"]
-            )
-            for r in revision_rows
-        ]
-        reason_rows = (
-            await conn.execute(
-                text(
-                    """SELECT seq, outline_reason FROM turn_notes
-                       WHERE playthrough_id = CAST(:pt AS uuid) AND outline_reason <> ''
-                       ORDER BY seq"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        reasons = [(int(r["seq"]), str(r["outline_reason"])) for r in reason_rows]
-        patches: dict[int, list[RowChange]] = {}
-        for r in patch_rows:
-            patches.setdefault(int(r["seq"]), []).append(
-                RowChange(r["target"], as_json(r["before"]), as_json(r["after"]))
-            )
-        skipped = [
-            int(v)
-            for v in (
-                await conn.scalars(
-                    text(
-                        """SELECT seq FROM turn_notes
-                           WHERE playthrough_id = CAST(:pt AS uuid) AND skipped ORDER BY seq"""
-                    ),
-                    {"pt": playthrough_id},
-                )
-            ).all()
-        ]
-        current = await state_repo.load_records(conn, playthrough_id)
-        # 撤销记录里有被推翻的事实，倒推时要从完整的事实表出发
-        fact_rows = (
-            await conn.execute(
-                text(
-                    """SELECT id, text, entity_ids, visibility, known_by, status, superseded_by,
-                              superseded_seq, created_seq, source_turn_id
-                       FROM facts WHERE playthrough_id = CAST(:pt AS uuid)"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        facts = tuple(
-            FactRecord.from_json(
-                {
-                    **dict(r),
-                    "id": str(r["id"]),
-                    "entity_ids": [str(x) for x in r["entity_ids"] or ()],
-                    "known_by": [str(x) for x in r["known_by"] or ()],
-                }
-            )
-            for r in fact_rows
-        )
-        # 线索也一样：解开的也要，倒推时才能变回没解开
-        thread_rows = (
-            await conn.execute(
-                text(
-                    """SELECT id, kind, text, entity_ids, status, opened_seq, closed_seq,
-                              source_turn_id::text, answer, merged_into::text
-                       FROM threads WHERE playthrough_id = CAST(:pt AS uuid)"""
-                ),
-                {"pt": playthrough_id},
-            )
-        ).mappings()
-        threads = tuple(
-            ThreadRecord.from_json(
-                {
-                    **dict(r),
-                    "id": str(r["id"]),
-                    "entity_ids": [str(x) for x in r["entity_ids"] or ()],
-                }
-            )
-            for r in thread_rows
-        )
-    final_state_seq = await _state_seq(engine, playthrough_id)
-    final = WorldRecords(
-        entities=current.entities, links=current.links, facts=facts, threads=threads
-    )
-    worlds = worlds_by_turn(final, patches, final_state_seq)
-    summary = summarize(
-        turns,
-        runs,
-        worlds,
-        skipped=skipped,
-        final_state_seq=final_state_seq,
-        checks=evaluate_all(scenario.checks, worlds, final_state_seq),
-        protagonist=scenario.protagonist["name"],
-        probes=evaluate_probes(
-            scenario.probes,
-            {t.seq: t.narrative for t in turns},
-            {
-                r.seq: int(r.result.get("tool_rounds") or 0)
-                for r in runs
-                if r.agent == "director" and r.status == "ok" and r.seq is not None
-            },
-        ),
-        tool_calls=tool_calls,
-        summaries=summary_counts,
-    )
-    summary["outline"] = outline_summary(revisions, reasons, runs, scenario.outline)
-    summary["failed_turn_attempts"] = failed_attempts
-    return ReplayResult(playthrough_id, summary, turns, runs, failed_attempts)
+    return await analyse(engine, pt.id, failed_attempts, scenario, lightning=config.lightning)
 
 
 # ---- 命令行 ----------------------------------------------------------------------------
@@ -589,6 +389,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=CHAPTER_HARD_TOKENS,
         help="一直没有场景结束时，到这么多 token 硬切",
     )
+    parser.add_argument(
+        "--lightning", action="store_true", help="用闪电模式玩：只有导演，原文太长时压成梗概"
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR)
     return parser.parse_args(argv)
 
@@ -612,6 +415,7 @@ async def _main(args: argparse.Namespace) -> None:
         settle_s=args.settle,
         scenario_path=args.scenario,
         chapter_rule=ChapterRule(args.chapter_soft, args.chapter_hard),
+        lightning=args.lightning,
     )
     policy = endpoint_policy(settings)
     hub = provider_hub(settings, policy)
@@ -634,6 +438,7 @@ async def _main(args: argparse.Namespace) -> None:
         if config.state is None
         else {"provider": config.state.provider, "model": config.state.model},
         "playthrough_id": result.playthrough_id,
+        "mode": result.summary["mode"],
         "chapter_rule": asdict(config.chapter_rule),
         "summary": result.summary,
         "turns": [asdict(t) | {"narrative": len(t.narrative)} for t in result.turns],
@@ -645,7 +450,14 @@ async def _main(args: argparse.Namespace) -> None:
         result.summary,
         title=scenario.title,
         playthrough_id=result.playthrough_id,
-        extra=outline_lines(result.summary["outline"]),
+        extra=[
+            *(
+                compress_lines(result.summary)
+                if config.lightning
+                else outline_lines(result.summary["outline"])
+            ),
+            *cost_lines(result.summary["cost"]),
+        ],
     )
     base.with_suffix(".md").write_text(page, encoding="utf-8")
     print(page)
