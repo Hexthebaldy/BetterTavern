@@ -147,6 +147,25 @@ export function Loading({ label }: { label?: string }) {
   );
 }
 
+/** 下拉刷新时浮在列表顶上的“刷新中”胶囊（手势和转圈仍是系统的 RefreshControl） */
+export function RefreshPill() {
+  const c = useComic();
+  const { t } = useTranslation();
+  return (
+    <View style={styles.refreshRow} accessibilityLiveRegion="polite">
+      <View
+        style={[
+          styles.loadingPill,
+          { backgroundColor: c.paper, borderColor: c.ink, boxShadow: hardShadow(c.ink, comicDepth.iconButton) },
+        ]}
+      >
+        <Dots cell={6} />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: c.ink }}>{t("common.refreshing")}</Text>
+      </View>
+    </View>
+  );
+}
+
 /** 骨架屏的一条（圆头，灰） */
 export function SkeletonLine({
   width = "100%",
@@ -237,6 +256,7 @@ export function Mono({ children, style, numberOfLines, selectable }: TextProps) 
 }
 
 const styles = StyleSheet.create({
+  refreshRow: { alignItems: "center", paddingTop: 6, paddingBottom: 10 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.read },
   loadingPill: {
     flexDirection: "row",

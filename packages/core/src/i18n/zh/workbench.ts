@@ -6,6 +6,8 @@ export const workbench = {
     home: {
       prompt: "想做一个什么样的角色？",
       placeholder: "说一句就行，比如“民国当铺的掌柜，冷淡但讲规矩”",
+      /** 输入框里的占位：问题和例子连在一起（App 的工作台首页） */
+      composerPlaceholder: "想做一个什么样的角色？说一句就行，比如“民国当铺的掌柜，冷淡但讲规矩”",
       send: "开始",
       examplesLabel: "试试这些",
       /** 示例，用 | 分开 */
@@ -26,6 +28,7 @@ export const workbench = {
       loadFailed: "工作台没加载出来",
       sub: "和 agent 一起写角色卡",
       agentNote: "说一句，它先问几个问题，再给方案，你点头它才动手",
+      agentTip: "Agent 会先问清楚再动手",
       dropHere: "拖进来就导入",
       manualLong: "空白表单，自己写：名字、描述、开场白、世界书",
       manualHint: "（还没写）这个人第一次见到你时，会说什么？",

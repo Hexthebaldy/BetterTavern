@@ -2,7 +2,7 @@
  * 封面：角色卡有图片就显示图片（要带访问令牌才能取），没有图片时画一张几何封面。
  *
  * 几何封面的图形（5 种线条母题，按剧本 ID 确定性地选）在 @bettertavern/design 的 cover.ts，和网页端共用；
- * 这里按漫画颜色上色：灰底、墨线、蓝点。外面的墨线框和圆角（列表里 2 墨线、圆角 9）由放它的地方画；
+ * 这里按漫画颜色上色：灰底、墨线、蓝点。圆角默认 9；framed 时外面一圈 2 的墨线（列表、网格里的方形封面）。
  * 放在灰底上时用白底（surface="card"）。
  */
 
@@ -10,10 +10,10 @@ import { useEffect, useState } from "react";
 import { Image, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { coverArt, coverRadius } from "@bettertavern/design/cover";
+import { coverArt } from "@bettertavern/design/cover";
 
 import { useApp } from "../state/AppProvider.tsx";
-import { useComic, type ComicColors } from "../theme/index.ts";
+import { comicRadius, comicStroke, useComic, type ComicColors } from "../theme/index.ts";
 import { Icon } from "./icons.tsx";
 
 /** 几何封面的图形（@bettertavern/design 的 cover.ts）按当前的漫画颜色画出来 */
@@ -51,15 +51,18 @@ export function GeometricCover({
   height,
   surface = "grey",
   rounded,
+  framed,
   style,
 }: {
   seed: string;
   width: number;
   height: number;
-  /** 底色：grey 用于白底页面上，card 用于灰卡里 */
+  /** 底色：grey 用于白底上，card 用于灰底上 */
   surface?: "grey" | "card";
-  /** 指定圆角（嵌在卡片里时按“外层圆角 − 内边距”算） */
+  /** 圆角，默认 9；嵌在格子顶上时传 0 */
   rounded?: number;
+  /** 外面一圈 2 的墨线 */
+  framed?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const c = useComic();
@@ -69,10 +72,11 @@ export function GeometricCover({
         {
           width,
           height,
-          borderRadius: rounded ?? coverRadius(width, height),
+          borderRadius: rounded ?? comicRadius.cover,
           backgroundColor: surface === "card" ? c.paper : c.grey,
           overflow: "hidden",
         },
+        framed ? { borderWidth: comicStroke.control, borderColor: c.ink } : null,
         style,
       ]}
     >
@@ -91,6 +95,7 @@ export function Cover({
   height,
   surface,
   rounded,
+  framed,
   style,
 }: {
   seed: string;
@@ -99,6 +104,7 @@ export function Cover({
   height: number;
   surface?: "grey" | "card";
   rounded?: number;
+  framed?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const { api, authHeaders, serverUrl } = useApp();
@@ -121,7 +127,8 @@ export function Cover({
     };
   }, [blobId, authHeaders]);
 
-  const r = rounded ?? coverRadius(width, height);
+  const r = rounded ?? comicRadius.cover;
+  const frame = framed ? { borderWidth: comicStroke.control, borderColor: c.ink } : null;
   if (!blobId || failed) {
     return (
       <GeometricCover
@@ -130,6 +137,7 @@ export function Cover({
         height={height}
         surface={surface}
         rounded={rounded}
+        framed={framed}
         style={style}
       />
     );
@@ -146,6 +154,7 @@ export function Cover({
             alignItems: "center",
             justifyContent: "center",
           },
+          frame,
           style,
         ]}
       >
@@ -155,7 +164,7 @@ export function Cover({
   }
   return (
     <View
-      style={[{ width, height, borderRadius: r, overflow: "hidden", backgroundColor: c.grey2 }, style]}
+      style={[{ width, height, borderRadius: r, overflow: "hidden", backgroundColor: c.grey2 }, frame, style]}
     >
       <Image
         accessibilityIgnoresInvertColors

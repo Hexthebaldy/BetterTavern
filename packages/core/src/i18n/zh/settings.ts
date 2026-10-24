@@ -8,6 +8,7 @@ export const settings = {
       tools: "外部服务",
       account: "账户",
       probe: "连接测试",
+      addModel: "添加模型",
     },
     backTo: "返回{{page}}",
     detail: "设置详情",

@@ -40,6 +40,7 @@ export const common: Messages<typeof source> = {
     unknown: "Unknown",
     paste: "Paste",
     reload: "Reload",
+    refreshing: "Refreshing",
     listSeparator: ", ",
     clauseSeparator: "; ",
     comma: ", ",

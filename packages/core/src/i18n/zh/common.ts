@@ -39,6 +39,7 @@ export const common = {
     unknown: "未知",
     paste: "粘贴",
     reload: "重新加载",
+    refreshing: "刷新中",
     listSeparator: "、",
     /** 并列的几句话之间 */
     clauseSeparator: "；",

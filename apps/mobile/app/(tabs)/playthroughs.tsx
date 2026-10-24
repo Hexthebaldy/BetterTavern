@@ -1,7 +1,8 @@
 /**
- * 存档列表：每个存档一张灰色圆角卡片，最近玩过的在前。左滑或长按可以重命名、删除。
- * 手机上一行：左边 72 的方形封面，和右边“标题 + 状态胶囊 + 右端的更新时间”加两行摘要一样高。
+ * 存档列表（漫画风，docs/design/comic/mobile/png/02–04）：每个存档一个白底墨线的格子，最近玩过的在前，行间 12。
+ * 左滑或长按可以重命名、删除。卡片在 features/stories/StoryCards.tsx。
  * 封面跟着剧本：有图片就用图片，否则按剧本 ID 画几何封面。列表底部留出浮动标签栏的位置。
+ * 下拉刷新用系统的 RefreshControl，刷新时列表顶上浮一个“刷新中”胶囊。
  *
  * 平板（theme/layout.ts）：卡片排成网格，中屏 2 列、宽屏 3 列，间距 12；最近一个存档放大成主卡
  * （中屏占满一行、宽屏占两列，高两行）。中屏保留左滑；宽屏只用长按，卡片抬起、下方弹出菜单。
@@ -11,8 +12,7 @@
 import { useRouter } from "expo-router";
 import { useRef, type ReactNode } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Playthrough } from "@bettertavern/core/api/types";
@@ -31,8 +31,10 @@ import { Cover } from "../../src/components/Cover.tsx";
 import { SwipeRow } from "../../src/components/SwipeRow.tsx";
 import {
   Button,
+  EmptyPanel,
   LargeHeader,
   Notice,
+  RefreshPill,
   SkeletonLine,
   useOverlay,
   useTabBarSpace,
@@ -40,90 +42,43 @@ import {
 import { displayServer } from "../../src/features/settings/servers.ts";
 import {
   LiftedStory,
+  ROW_COVER,
   STORY_CARD_HEIGHT,
   STORY_HERO_PADDING,
   STORY_HERO_RADIUS,
   StoryCard,
   StoryHero,
-  StoryStatusPill,
+  StoryRow,
 } from "../../src/features/stories/StoryCards.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { font, radius, space, usePalette } from "../../src/theme/index.ts";
+import { comicRadius, comicStroke, font, space, useComic } from "../../src/theme/index.ts";
 
-/** 手机列表行的封面边长：标题行 24 + 间距 6 + 两行摘要 2 × 21 */
-const ROW_COVER = 72;
-
-function StoryRow({
-  story,
-  avatar,
-  onOpen,
-  onMenu,
-}: {
-  story: Playthrough;
-  avatar: string | null;
-  onOpen: () => void;
-  onMenu: () => void;
-}) {
-  const palette = usePalette();
-  const { t } = useTranslation();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityHint={t("stories.cardHint")}
-      onPress={onOpen}
-      onLongPress={onMenu}
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: pressed ? palette.bg3 : palette.bg2, transform: [{ scale: pressed ? 0.98 : 1 }] },
-      ]}
-    >
-      <Cover
-        seed={story.scenario_id ?? story.id}
-        blobId={avatar}
-        width={ROW_COVER}
-        height={ROW_COVER}
-        surface="card"
-      />
-      <View style={styles.rowBody}>
-        <View style={styles.rowTop}>
-          <Text numberOfLines={1} style={[styles.title, { color: palette.ink }]}>
-            {story.title}
-          </Text>
-          <StoryStatusPill story={story} />
-          <View style={{ flex: 1 }} />
-          <Text style={[styles.time, { color: palette.mut }]}>{formatRelative(story.updated_at)}</Text>
-        </View>
-        {story.head_excerpt ? (
-          <Text numberOfLines={2} style={[styles.excerpt, { color: palette.ink2 }]}>
-            {story.head_excerpt}
-          </Text>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-}
+/** 页面左右留边 */
+const SIDE = 20;
+/** 列表行之间 */
+const ROW_GAP = 12;
 
 function Skeleton() {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View
-      style={[styles.list, { gap: space.s }]}
+      style={[styles.list, { gap: ROW_GAP }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
       {[0.8, 0.5].map((opacity, i) => (
-        <View key={i} style={[styles.row, { opacity, backgroundColor: palette.bg2 }]}>
+        <View key={i} style={[styles.skeleton, { opacity, borderColor: c.ink, backgroundColor: c.paper }]}>
           <View
             style={{
               width: ROW_COVER,
               height: ROW_COVER,
-              borderRadius: radius.cover,
-              backgroundColor: palette.card,
+              borderRadius: comicRadius.cover,
+              backgroundColor: c.grey,
             }}
           />
-          <View style={[styles.rowBody, { gap: 10, paddingTop: 4 }]}>
+          <View style={{ flex: 1, gap: 10, paddingTop: 4 }}>
             <SkeletonLine strong width={i === 0 ? "45%" : "35%"} height={14} />
             <SkeletonLine strong width="90%" height={10} />
             {i === 0 ? <SkeletonLine strong width="70%" height={10} /> : null}
@@ -135,32 +90,23 @@ function Skeleton() {
 }
 
 function Empty({ onImport }: { onImport: () => void }) {
-  const palette = usePalette();
   const { t } = useTranslation();
   return (
-    <View style={[styles.empty, { backgroundColor: palette.bg2 }]}>
-      <Svg width="100%" height={150} viewBox="0 0 294 150" preserveAspectRatio="xMidYMid meet">
-        <Rect width={294} height={150} rx={24} fill={palette.card} />
-        <Path
-          d="M147 40c-14-10-34-14-60-14v84c26 0 46 4 60 14 14-10 34-14 60-14V26c-26 0-46 4-60 14z"
-          fill="none"
-          stroke={palette.ink}
-          strokeWidth={2}
-          strokeLinejoin="round"
+    <EmptyPanel
+      icon="story"
+      filled="story"
+      title={t("stories.emptyTitle")}
+      message={t("stories.emptyText")}
+      action={
+        <Button
+          label={t("stories.emptyAction")}
+          trailingIcon="arrowRight"
+          between
+          onPress={onImport}
+          style={{ marginTop: space.s }}
         />
-        <Path d="M147 40v84" stroke={palette.ink} strokeWidth={2} />
-        <Path
-          d="M104 56h28M104 70h22M162 56h28M162 70h20"
-          stroke={palette.line2}
-          strokeWidth={5}
-          strokeLinecap="round"
-        />
-        <Circle cx={214} cy={40} r={10} fill={palette.acc} />
-      </Svg>
-      <Text style={[styles.emptyTitle, { color: palette.ink }]}>{t("stories.emptyTitle")}</Text>
-      <Text style={[styles.emptyText, { color: palette.mut }]}>{t("stories.emptyText")}</Text>
-      <Button label={t("stories.emptyAction")} trailingIcon="arrowRight" between onPress={onImport} />
-    </View>
+      }
+    />
   );
 }
 
@@ -251,7 +197,7 @@ function StoryGrid({
 export default function PlaythroughsScreen() {
   const { api, serverUrl } = useApp();
   const router = useRouter();
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const { t } = useTranslation();
   const { data, error, loading, refreshing, reload, refresh, setData } = useAsync(async () => {
@@ -334,7 +280,7 @@ export default function PlaythroughsScreen() {
 
   if (!stories) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         {header}
         <View style={column ? { paddingLeft: column.left, paddingRight: column.right } : null}>
           <Skeleton />
@@ -344,11 +290,11 @@ export default function PlaythroughsScreen() {
             icon="offline"
             message={
               error instanceof ApiError && error.isNetwork ? (
-                <Text style={{ fontSize: 14, lineHeight: 20, color: palette.ink }}>
+                <Text style={{ fontSize: 14, lineHeight: 20, color: c.ink }}>
                   <Trans
                     i18nKey="stories.offline"
                     values={{ server: displayServer(serverUrl) }}
-                    components={{ mono: <Text style={{ fontFamily: font.mono }} /> }}
+                    components={{ mono: <Text style={{ fontFamily: font.monoMedium }} /> }}
                   />
                 </Text>
               ) : (
@@ -365,10 +311,10 @@ export default function PlaythroughsScreen() {
   }
   if (sides && column) {
     const refresh_ = (
-      <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={palette.mut} />
+      <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={c.ink} />
     );
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         {header}
         <ScrollView
           refreshControl={refresh_}
@@ -379,6 +325,7 @@ export default function PlaythroughsScreen() {
             paddingRight: sides.right,
           }}
         >
+          {refreshing ? <RefreshPill /> : null}
           {error ? (
             <View style={{ marginLeft: column.left - sides.left, marginRight: column.right - sides.right }}>
               <Notice
@@ -410,28 +357,31 @@ export default function PlaythroughsScreen() {
     );
   }
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+    <View style={{ flex: 1, backgroundColor: c.page }}>
       {header}
       <FlatList
         data={stories}
         keyExtractor={(s) => s.id}
         contentContainerStyle={[styles.list, { paddingBottom: bottomSpace }]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={palette.mut} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={c.ink} />
         }
         ListHeaderComponent={
-          error ? (
-            <Notice
-              icon="offline"
-              message={describeError(error)}
-              actionLabel={t("common.retry")}
-              onAction={() => void reload()}
-              style={{ marginBottom: space.s }}
-            />
-          ) : null
+          <>
+            {refreshing ? <RefreshPill /> : null}
+            {error ? (
+              <Notice
+                icon="offline"
+                message={describeError(error)}
+                actionLabel={t("common.retry")}
+                onAction={() => void reload()}
+                style={{ marginBottom: ROW_GAP }}
+              />
+            ) : null}
+          </>
         }
         ListEmptyComponent={<Empty onImport={() => router.navigate("/library")} />}
-        ItemSeparatorComponent={() => <View style={{ height: space.s }} />}
+        ItemSeparatorComponent={() => <View style={{ height: ROW_GAP }} />}
         renderItem={({ item }) => (
           <SwipeRow actions={swipeActions(item)}>
             <StoryRow
@@ -448,23 +398,14 @@ export default function PlaythroughsScreen() {
 }
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: space.list, paddingTop: space.s },
-  row: { flexDirection: "row", gap: 14, padding: 14, borderRadius: radius.option },
-  rowBody: { flex: 1, minWidth: 0, gap: 6 },
-  rowTop: { flexDirection: "row", alignItems: "center", gap: space.s },
-  title: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontWeight: "700" },
-  time: { fontFamily: font.mono, fontSize: 11.5 },
-  excerpt: { fontSize: 14, lineHeight: 21 },
-  empty: {
-    marginTop: space.s,
-    paddingTop: space.xl,
-    paddingHorizontal: space.page,
-    paddingBottom: space.page,
-    borderRadius: radius.sheet,
-    gap: space.l,
+  list: { paddingHorizontal: SIDE, paddingTop: space.xs },
+  skeleton: {
+    flexDirection: "row",
+    gap: 14,
+    padding: 12,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
-  emptyTitle: { fontSize: 22, lineHeight: 30, fontWeight: "700" },
-  emptyText: { fontSize: 15, lineHeight: 24 },
-  notice: { marginHorizontal: space.l, marginTop: space.l, borderRadius: radius.option },
+  notice: { marginHorizontal: SIDE, marginTop: ROW_GAP },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: gap.card },
 });

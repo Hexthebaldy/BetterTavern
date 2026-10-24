@@ -40,6 +40,7 @@ export const common: MessagesOtherOnly<typeof source> = {
     unknown: "不明",
     paste: "貼り付け",
     reload: "再読み込み",
+    refreshing: "更新中",
     listSeparator: "、",
     clauseSeparator: "／",
     comma: "、",

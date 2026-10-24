@@ -17,7 +17,9 @@ export type SettingsTarget =
   | { screen: "model"; id: string }
   | { screen: "tools" }
   | { screen: "account" }
-  | { screen: "probe" };
+  | { screen: "probe" }
+  /** 添加模型：只在宽屏设置的右栏里单独打开（左栏“模型”的加号）；手机上添加表单在模型页里 */
+  | { screen: "addModel" };
 
 export type SettingsNav = {
   /** 往下走一层 */
@@ -43,7 +45,7 @@ export function useSettingsNav(): SettingsNav {
         embedded: false,
         back: () => router.back(),
         open: (target) => {
-          if (target.screen === "models") router.push("/settings/models");
+          if (target.screen === "models" || target.screen === "addModel") router.push("/settings/models");
           else if (target.screen === "model")
             router.push({ pathname: "/settings/model/[id]", params: { id: target.id } });
           else if (target.screen === "tools") router.push("/settings/tools");

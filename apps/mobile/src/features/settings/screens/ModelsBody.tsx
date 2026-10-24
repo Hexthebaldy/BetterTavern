@@ -28,54 +28,66 @@ import {
 } from "../../../components/ui.tsx";
 import { useAsync } from "../../../hooks/useAsync.ts";
 import { useApp } from "../../../state/AppProvider.tsx";
-import { font, space, usePalette } from "../../../theme/index.ts";
+import { font, space, useComic, usePalette } from "../../../theme/index.ts";
 import { AddModelForm } from "../AddModelForm.tsx";
 import { SettingsBack, useSettingsNav } from "../nav.tsx";
 
-function ModelRow({ route, onPress }: { route: ModelRoute; onPress: () => void }) {
-  const palette = usePalette();
+/**
+ * 模型列表的一行：2 墨线的服务商圆标、模型名和用途标签（官方、导演、后台、工作台），下面一行是来源、Key 尾号和状态。
+ * selected：宽屏左栏里右栏正打开着这一个。
+ */
+export function ModelRow({
+  route,
+  onPress,
+  selected,
+}: {
+  route: ModelRoute;
+  onPress: () => void;
+  selected?: boolean;
+}) {
+  const c = useComic();
   const { t } = useTranslation();
+  const title = modelTitle(route);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t(route.is_director ? "models.rowLabelDirector" : "models.rowLabel", {
-        name: modelTitle(route),
-      })}
+      accessibilityLabel={t(route.is_director ? "models.rowLabelDirector" : "models.rowLabel", { name: title })}
+      accessibilityState={selected ? { selected } : undefined}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? palette.bg3 : "transparent" }]}
+      style={({ pressed }) => [
+        styles.row,
+        { backgroundColor: selected ? c.selected : pressed ? c.grey : "transparent" },
+        selected ? { boxShadow: `inset 3px 0 0 ${c.acc}` } : null,
+      ]}
     >
-      <ProviderMark provider={route.provider} tone={route.is_director ? "ink" : "card"} />
-      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        <Text
-          numberOfLines={1}
-          style={{
-            fontFamily: modelTitle(route) === route.model ? font.mono : undefined,
-            fontSize: modelTitle(route) === route.model ? 15 : 16,
-            lineHeight: 22,
-            fontWeight: "500",
-            color: palette.ink,
-          }}
-        >
-          {modelTitle(route)}
-        </Text>
-        <View style={styles.meta}>
+      <ProviderMark provider={route.provider} size={40} />
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <View style={styles.titleRow}>
           <Text
             numberOfLines={1}
-            style={{ flexShrink: 1, fontFamily: font.mono, fontSize: 12, color: palette.mut }}
+            style={[
+              styles.title,
+              { color: c.ink },
+              title === route.model ? { fontFamily: font.monoMedium, fontWeight: "normal", fontSize: 16 } : null,
+            ]}
           >
+            {title}
+          </Text>
+          {route.source === "platform" ? <Pill label={t("models.officialPill")} tone="card" height={20} /> : null}
+          {route.is_director ? <Pill label={t("models.directorPill")} tone="ink" height={20} /> : null}
+          {route.is_background ? <Pill label={t("models.backgroundPill")} tone="accSolid" height={20} /> : null}
+          {route.is_workbench ? <Pill label={t("models.workbenchPill")} tone="card" height={20} /> : null}
+        </View>
+        <View style={styles.meta}>
+          <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 13, color: c.mut }}>
             {modelMeta(route)}
           </Text>
-          <Status kind={statusKind(route.status)} label={modelStatusLabel(route.status)} />
+          {route.status !== "ok" ? (
+            <Status kind={statusKind(route.status)} label={modelStatusLabel(route.status)} height={20} />
+          ) : null}
         </View>
       </View>
-      {route.source === "platform" ? <Pill label={t("models.officialPill")} height={26} /> : null}
-      {route.is_background ? <Pill label={t("models.backgroundPill")} height={26} /> : null}
-      {route.is_workbench ? <Pill label={t("models.workbenchPill")} height={26} /> : null}
-      {route.is_director ? (
-        <Pill label={t("models.directorPill")} tone="acc" height={26} />
-      ) : (
-        <Icon name="chevronRight" size={18} color={palette.mut} />
-      )}
+      <Icon name="chevronRight" size={18} color={c.mut} />
     </Pressable>
   );
 }
@@ -185,6 +197,8 @@ const styles = StyleSheet.create({
   big: { fontSize: 32, lineHeight: 40, fontWeight: "700", letterSpacing: -0.64 },
   inset: { marginHorizontal: space.list },
   notice: { marginHorizontal: space.list, marginBottom: space.m, borderRadius: 22 },
-  row: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 72, padding: 14 },
+  row: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 66, paddingVertical: 10, paddingHorizontal: 14 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 0 },
+  title: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "800" },
   meta: { flexDirection: "row", alignItems: "center", gap: 6 },
 });

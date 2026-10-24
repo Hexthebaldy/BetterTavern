@@ -7,6 +7,8 @@ export const workbench: Messages<typeof source> = {
     home: {
       prompt: "What kind of character do you want?",
       placeholder: "One sentence is enough, e.g. “a cold but principled pawnshop owner in 1930s Shanghai”",
+      /** 输入框里的占位：问题和例子连在一起（App 的工作台首页） */
+      composerPlaceholder: "What kind of character do you want? One sentence is enough, e.g. “a cold but principled pawnshop owner in 1930s Shanghai”",
       send: "Start",
       examplesLabel: "Try one of these",
       examples:
@@ -26,6 +28,7 @@ export const workbench: Messages<typeof source> = {
       loadFailed: "The workbench didn't load",
       sub: "Write character cards with the agent",
       agentNote: "Say one line — it asks a few questions, proposes a plan, and only builds once you agree",
+      agentTip: "The agent asks before it writes",
       dropHere: "Drop a file here to import",
       manualLong: "A blank form you fill in: name, description, greeting, lorebook",
       manualHint: "(Not written yet) What does this person say the first time they meet you?",

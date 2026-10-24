@@ -7,6 +7,8 @@ export const workbench: MessagesOtherOnly<typeof source> = {
     home: {
       prompt: "どんなキャラクターを作りますか？",
       placeholder: "一言で大丈夫です。例：「民国時代の質屋の主人。無愛想だが筋は通す」",
+      /** 输入框里的占位：问题和例子连在一起（App 的工作台首页） */
+      composerPlaceholder: "どんなキャラクターを作りますか？一言で大丈夫です。例：「民国時代の質屋の主人。無愛想だが筋は通す」",
       send: "始める",
       examplesLabel: "例",
       examples:
@@ -26,6 +28,7 @@ export const workbench: MessagesOtherOnly<typeof source> = {
       loadFailed: "ワークベンチを読み込めませんでした",
       sub: "エージェントと一緒にキャラクターカードを書く",
       agentNote: "一言伝えると、いくつか質問して案を出し、了承してから書き始めます",
+      agentTip: "Agent は先に質問してから書きます",
       dropHere: "ここにドロップしてインポート",
       manualLong: "空のフォームに自分で書く：名前、説明、最初のメッセージ、ワールドブック",
       manualHint: "（未記入）この人は初めて会ったとき、何と言う？",

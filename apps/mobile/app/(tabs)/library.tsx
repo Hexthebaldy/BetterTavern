@@ -1,10 +1,13 @@
 /**
- * “剧本”页（同网页端 pages/library/LibraryPage.tsx）：剧本仓库和角色卡仓库两个标签，网格或列表显示。
+ * 库（漫画风，docs/design/comic/mobile/png/10–14）：剧本仓库和角色卡仓库两段，网格或列表显示。部件在
+ * features/library/LibraryParts.tsx。
  * - 剧本仓库右上角的加号：从角色卡仓库选一张或几张卡新建剧本；网格里长按、列表里左滑或长按可以重命名、删除；
  * - 角色卡仓库右上角：去工作台（新建和导入都在工作台）；长按可以在工作台里改、新建剧本、删除。
- * 顶上提示一次“新建和导入挪到了工作台”，关掉以后不再出现。
+ * 顶上提示一次“新建和导入挪到了工作台”，关掉以后不再出现。剧本的存档数取自存档列表。
  *
  * 平板（theme/layout.ts）：网格中屏 3 列，宽屏按内容宽度 ÷ 240 取整（最多 5 列），间距 16；列表视图限宽 640、居中。
+ * 宽屏（tablet/png/04–05）：侧栏里“剧本”“角色”是两块，所以这里不画两段切换，标题按 tab 写“剧本”或“角色”，
+ * 挪到工作台的提示只在“角色”出现；新建是带文字的主按钮。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -22,6 +25,7 @@ import {
   LargeHeader,
   Loading,
   Notice,
+  RefreshPill,
   Segmented,
   useOverlay,
   useTabBarSpace,
@@ -41,14 +45,14 @@ import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../src/state/PrefsProvider.tsx";
-import { radius, space, usePalette } from "../../src/theme/index.ts";
+import { space, useComic } from "../../src/theme/index.ts";
 
 type Tab = "scenarios" | "cards";
 
 export default function LibraryScreen() {
   const { api } = useApp();
   const router = useRouter();
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const params = useLocalSearchParams<{ tab?: string }>();
   const tab: Tab = params.tab === "cards" ? "cards" : "scenarios";
@@ -58,6 +62,8 @@ export default function LibraryScreen() {
   const nodes = useRef(new Map<string, View>());
   const scenarios = useAsync(() => api.scenarios.list(), [api]);
   const cards = useAsync(() => api.cards.list(), [api]);
+  // 每个剧本开了几个存档（接口里没有这个数，按存档列表数）
+  const stories = useAsync(() => api.playthroughs.list().catch(() => []), [api]);
   const cardActions = useCardActions();
   const { bottom: bottomSpace } = useTabBarSpace();
 
@@ -124,7 +130,7 @@ export default function LibraryScreen() {
       items,
       anchor: anchor ? { current: anchor } : undefined,
       lifted: anchor && tileWidth ? <LiftedTile item={item} width={tileWidth} /> : undefined,
-      liftedRadius: tileWidth ? 26 : undefined,
+      liftedRadius: tileWidth ? 12 : undefined,
     });
     if (tab === "cards") {
       const card = cards.data?.find((c) => c.id === item.id);
@@ -141,12 +147,16 @@ export default function LibraryScreen() {
   };
 
   const query = tab === "cards" ? cards : scenarios;
+  const savesOf = (id: string): number => (stories.data ?? []).filter((p) => p.scenario_id === id).length;
   const data: Item[] | undefined =
-    tab === "cards" ? cards.data?.map(cardItem) : scenarios.data?.map(scenarioItem);
+    tab === "cards"
+      ? cards.data?.map(cardItem)
+      : scenarios.data?.map((s) => scenarioItem(s, savesOf(s.id)));
   const open = tab === "cards" ? openCard : openScenario;
+  const title = expanded ? (tab === "cards" ? t("nav.characters") : t("nav.scenarios")) : t("nav.library");
   const header = (
     <>
-      <LargeHeader title={t("nav.library")}>
+      <LargeHeader title={title}>
         <HeaderControls
           view={libraryView}
           onView={setLibraryView}
@@ -156,38 +166,44 @@ export default function LibraryScreen() {
           labelled={expanded}
         />
       </LargeHeader>
-      <Segmented
-        hideLabel
-        label={t("library.tabs.label")}
-        value={tab}
-        height={40}
-        options={[
-          { value: "scenarios", label: t("library.tabs.scenarios"), count: scenarios.data?.length },
-          { value: "cards", label: t("library.tabs.cards"), count: cards.data?.length },
-        ]}
-        onChange={setTab}
-        style={styles.tabs}
-      />
+      {expanded ? null : (
+        <Segmented
+          hideLabel
+          label={t("library.tabs.label")}
+          value={tab}
+          height={44}
+          options={[
+            { value: "scenarios", label: t("library.tabs.scenarios"), count: scenarios.data?.length },
+            { value: "cards", label: t("library.tabs.cards"), count: cards.data?.length },
+          ]}
+          onChange={setTab}
+          style={styles.tabs}
+        />
+      )}
     </>
   );
   // 平板：网格从一级页的留白开始；列表、提示、空状态在居中的内容栏里（≤ 640）
   const sides = tabInsets(layoutSize);
   const column = sides ? centerColumn(width, sides) : null;
   const columnMargins = column ? { marginLeft: column.left, marginRight: column.right } : null;
-  const banner = !movedHintDismissed ? (
-    <Notice
-      tone="info"
-      message={t("library.moved")}
-      actionLabel={t("library.movedAction")}
-      onAction={goWorkbench}
-      onClose={dismissMovedHint}
-      style={[styles.banner, columnMargins]}
-    />
-  ) : null;
+  // 宽屏的提示只在“角色”出现
+  const banner =
+    !movedHintDismissed && (!expanded || tab === "cards") ? (
+      <Notice
+        tone="info"
+        icon="workbench"
+        message={t("library.moved")}
+        actionLabel={t("library.movedAction")}
+        onAction={goWorkbench}
+        onClose={dismissMovedHint}
+        link
+        style={[styles.banner, columnMargins]}
+      />
+    ) : null;
 
   if (!data) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         {header}
         {query.loading ? (
           <Loading />
@@ -205,11 +221,11 @@ export default function LibraryScreen() {
   if (data.length === 0) {
     const noCards = (cards.data?.length ?? 0) === 0;
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         {header}
         {banner}
         <View
-          style={column ? { paddingLeft: column.left - space.l, paddingRight: column.right - space.l } : null}
+          style={column ? { paddingLeft: column.left - 20, paddingRight: column.right - 20 } : null}
         >
           {tab === "cards" || noCards ? (
             <Empty
@@ -235,18 +251,16 @@ export default function LibraryScreen() {
 
   const grid = libraryView === "grid";
   const listInsets = sides ? (grid ? sides : column) : null;
-  const contentWidth = width - (listInsets ? listInsets.left + listInsets.right : space.list * 2);
+  const contentWidth = width - (listInsets ? listInsets.left + listInsets.right : SIDE * 2);
   const columns = grid ? libraryColumns(layoutSize, contentWidth) : 1;
-  const spacing = compact ? space.s : gap.library;
-  const tileWidth = compact
-    ? (width - space.list * 2 - space.s) / 2
-    : cellWidth(contentWidth, columns, spacing);
+  const spacing = compact ? (grid ? 14 : 12) : gap.library;
+  const tileWidth = compact ? (width - SIDE * 2 - spacing) / 2 : cellWidth(contentWidth, columns, spacing);
   const keep = (id: string) => (node: View | null) => {
     if (node) nodes.current.set(id, node);
     else nodes.current.delete(id);
   };
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+    <View style={{ flex: 1, backgroundColor: c.page }}>
       {header}
       {banner}
       {query.error ? (
@@ -274,10 +288,14 @@ export default function LibraryScreen() {
         refreshControl={
           <RefreshControl
             refreshing={query.refreshing}
-            onRefresh={() => void query.refresh()}
-            tintColor={palette.mut}
+            onRefresh={() => {
+              void query.refresh();
+              void stories.reload();
+            }}
+            tintColor={c.ink}
           />
         }
+        ListHeaderComponent={query.refreshing ? <RefreshPill /> : null}
         renderItem={({ item }) => {
           if (grid) {
             return (
@@ -319,8 +337,11 @@ export default function LibraryScreen() {
   );
 }
 
+/** 页面左右留边 */
+const SIDE = 20;
+
 const styles = StyleSheet.create({
-  tabs: { marginHorizontal: space.page, marginBottom: space.m },
-  list: { paddingHorizontal: space.list, paddingTop: space.s },
-  banner: { marginHorizontal: space.list, marginBottom: space.s, borderRadius: radius.option },
+  tabs: { marginHorizontal: SIDE, marginBottom: space.l },
+  list: { paddingHorizontal: SIDE, paddingTop: space.xs },
+  banner: { marginHorizontal: SIDE, marginBottom: space.l },
 });

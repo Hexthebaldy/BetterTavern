@@ -50,6 +50,7 @@ export function ListRow({
   mono,
   selected,
   danger,
+  detail,
   style,
 }: {
   title: string;
@@ -67,6 +68,8 @@ export function ListRow({
   selected?: boolean;
   /** 红字（删除、退出这一类） */
   danger?: boolean;
+  /** 标题下面自己画的一行（代替 subtitle） */
+  detail?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
   const c = useComic();
@@ -102,6 +105,7 @@ export function ListRow({
             {subtitle}
           </Text>
         ) : null}
+        {detail}
       </View>
       {trailing}
       {showChevron ? <Icon name="chevronRight" size={18} color={c.mut} /> : null}

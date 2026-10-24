@@ -22,7 +22,7 @@ import {
 } from "../theme/index.ts";
 import { Button, IconButton } from "./buttons.tsx";
 import { Halftone } from "./Halftone.tsx";
-import { Icon, type IconName } from "./icons.tsx";
+import { FilledIcon, Icon, type FilledIconName, type IconName } from "./icons.tsx";
 import { press } from "./press.ts";
 
 // ---- 提示条 ------------------------------------------------------------------------------
@@ -37,7 +37,8 @@ export function toneColors(tone: Tone, c: ComicColors) {
 
 /**
  * 提示条：白底 2.5 墨线的格子，图标按语气上色（三角 = 错误 / 警告，圆圈 i = 信息）。
- * 带操作时右边是一个同色的胶囊按钮（错误是红底）；带操作的不自动消失。floating 时带墨色投影 4（浮在页面顶上）。
+ * 带操作时右边是一个同色的胶囊按钮（错误是红底），link 时是一行蓝色粗字（“去看看”）；带操作的不自动消失。
+ * floating 时带墨色投影 4（浮在页面顶上）。
  */
 export function Notice({
   tone = "error",
@@ -48,6 +49,7 @@ export function Notice({
   onAction,
   onClose,
   floating,
+  link,
   style,
 }: {
   tone?: Tone;
@@ -59,6 +61,8 @@ export function Notice({
   onAction?: () => void;
   onClose?: () => void;
   floating?: boolean;
+  /** 操作写成一行蓝色粗字，不是按钮 */
+  link?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const c = useComic();
@@ -72,7 +76,7 @@ export function Notice({
       style={[
         styles.notice,
         { backgroundColor: c.paper, borderColor: c.ink },
-        action ? styles.noticeWithAction : null,
+        action && !link ? styles.noticeWithAction : null,
         title ? { alignItems: "flex-start" } : null,
         floating ? { boxShadow: hardShadow(c.ink, comicDepth.raised) } : null,
         style,
@@ -89,7 +93,11 @@ export function Notice({
           message
         )}
       </View>
-      {action ? (
+      {action && link ? (
+        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={8}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: c.acc }}>{actionLabel}</Text>
+        </Pressable>
+      ) : action ? (
         <Pressable
           accessibilityRole="button"
           onPress={onAction}
@@ -227,8 +235,56 @@ export function Tag({
 }
 
 /**
- * 加载失败：白底墨线的格子，上半是灰网点底，中间一个墨框的方块放红色图标；下面标题、说明、“重新加载”。
+ * 空状态和加载失败共用的大格子：白底 2.5 墨线，上半是网点底，中间一个墨线方块放图标（投影 4）；
+ * 下面标题、说明和一个按钮。
  */
+export function EmptyPanel({
+  icon,
+  filled,
+  iconColor,
+  title,
+  message,
+  action,
+  style,
+}: {
+  icon: IconName;
+  /** 用实心图标（主体填蓝）；只有 Tab 栏那几个图标有实心版 */
+  filled?: FilledIconName;
+  iconColor?: string;
+  title: string;
+  message: ReactNode;
+  action?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const c = useComic();
+  return (
+    <View style={[styles.panel, { backgroundColor: c.paper, borderColor: c.ink }, style]}>
+      <Halftone tone="ink" style={[styles.panelTop, { borderColor: c.ink }]}>
+        <View
+          style={[
+            styles.panelIcon,
+            { backgroundColor: c.paper, borderColor: c.ink, boxShadow: hardShadow(c.ink, comicDepth.raised) },
+          ]}
+        >
+          {filled ? <FilledIcon name={filled} size={36} /> : <Icon name={icon} size={32} color={iconColor ?? c.acc} />}
+        </View>
+      </Halftone>
+      <View style={styles.panelBody}>
+        <Text accessibilityRole="header" style={[ctype.title, { fontSize: 24, lineHeight: 30, color: c.ink }]}>
+          {title}
+        </Text>
+        {typeof message === "string" ? (
+          <Text style={{ fontSize: 15, lineHeight: 23, color: c.ink2 }}>{message}</Text>
+        ) : (
+          message
+        )}
+        {action}
+      </View>
+    </View>
+  );
+}
+
+/** 加载失败：同一种大格子，红色图标、标题、说明、“重新加载” */
 export function ErrorState({
   icon = "offline",
   title,
@@ -248,37 +304,25 @@ export function ErrorState({
   const c = useComic();
   const { t } = useTranslation();
   return (
-    <View
-      accessibilityRole="alert"
-      style={[styles.errorState, { backgroundColor: c.paper, borderColor: c.ink }, style]}
-    >
-      <Halftone tone="grey" style={[styles.errorTop, { borderColor: c.ink }]}>
-        <View
-          style={[
-            styles.errorIcon,
-            { backgroundColor: c.paper, borderColor: c.ink, boxShadow: hardShadow(c.ink, comicDepth.raised) },
-          ]}
-        >
-          <Icon name={icon} size={30} color={c.err} />
-        </View>
-      </Halftone>
-      <View style={styles.errorBody}>
-        <Text style={[ctype.title, { fontSize: 22, color: c.ink }]}>{title}</Text>
-        {typeof message === "string" ? (
-          <Text style={{ fontSize: 15, lineHeight: 23, color: c.ink2 }}>{message}</Text>
-        ) : (
-          message
-        )}
-        {onRetry ? (
-          <Button
-            label={t("common.reload")}
-            variant={primary ? "primary" : "secondary"}
-            icon="retry"
-            onPress={onRetry}
-            style={{ alignSelf: "stretch", marginTop: space.s }}
-          />
-        ) : null}
-      </View>
+    <View accessibilityRole="alert">
+      <EmptyPanel
+        icon={icon}
+        iconColor={c.err}
+        title={title}
+        message={message}
+        style={[{ marginHorizontal: 20 }, style]}
+        action={
+          onRetry ? (
+            <Button
+              label={t("common.reload")}
+              variant={primary ? "primary" : "secondary"}
+              icon="retry"
+              onPress={onRetry}
+              style={{ alignSelf: "stretch", marginTop: space.s }}
+            />
+          ) : null
+        }
+      />
     </View>
   );
 }
@@ -312,19 +356,18 @@ const styles = StyleSheet.create({
     borderRadius: comicRadius.chip,
   },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  errorState: {
-    marginHorizontal: 20,
+  panel: {
     borderWidth: comicStroke.frame,
     borderRadius: comicRadius.frame,
     overflow: "hidden",
   },
-  errorTop: {
+  panelTop: {
     height: 150,
     alignItems: "center",
     justifyContent: "center",
     borderBottomWidth: comicStroke.frame,
   },
-  errorIcon: {
+  panelIcon: {
     width: 80,
     height: 80,
     borderRadius: 18,
@@ -332,5 +375,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  errorBody: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 18, gap: 10 },
+  panelBody: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 18, gap: 10 },
 });

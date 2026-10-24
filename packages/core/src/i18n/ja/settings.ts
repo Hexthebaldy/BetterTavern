@@ -9,6 +9,7 @@ export const settings: MessagesOtherOnly<typeof source> = {
       tools: "外部サービス",
       account: "アカウント",
       probe: "接続テスト",
+      addModel: "モデルを追加",
     },
     backTo: "{{page}}に戻る",
     detail: "設定の詳細",

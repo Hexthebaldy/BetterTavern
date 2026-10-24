@@ -276,7 +276,12 @@ export function Chip({
     >
       {selected && check ? <Icon name="check" size={14} color={fg} strokeWidth={2.6} /> : null}
       {icon ? <Icon name={icon} size={15} color={fg} /> : null}
-      <Text style={{ fontSize: small ? 13 : 13.5, lineHeight: 18, fontWeight: "600", color: fg }}>{label}</Text>
+      <Text
+        numberOfLines={1}
+        style={{ flexShrink: 1, fontSize: small ? 13 : 13.5, lineHeight: 18, fontWeight: "600", color: fg }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -417,6 +422,7 @@ const styles = StyleSheet.create({
   },
   segment: { flex: 1, flexDirection: "row", gap: 5, alignItems: "center", justifyContent: "center" },
   chip: {
+    maxWidth: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,

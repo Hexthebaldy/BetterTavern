@@ -1,6 +1,11 @@
 /**
- * “剧本”页（app/(tabs)/library.tsx）的部件：页头的视图切换和加号、网格卡片、列表行、空状态。
- * 剧本仓库和角色卡仓库共用一种卡片（Item）。
+ * 库页（app/(tabs)/library.tsx）的部件（漫画风，docs/design/comic/mobile/png/10–14、tablet/png/04–05）：
+ * 页头的网格 / 列表切换和新建、网格卡片、列表行、空状态。剧本仓库和角色卡仓库共用一种卡片（Item）。
+ *
+ * - 网格卡片：白底 2.5 墨线的格子（圆角 12），封面在上（底边一道墨线），名字、两行简介、数量在下；
+ *   有没保存的草稿的角色卡在封面左上角标“草稿”。
+ * - 列表行：左边 2 墨线的方形封面，名字和右端的数量，下面两行简介。
+ * 按下换成灰底；长按从底部（平板上贴着卡片）弹出操作。
  */
 
 import { type Ref } from "react";
@@ -12,20 +17,36 @@ import { i18n } from "@bettertavern/core/i18n/index";
 import { cardOrigin } from "@bettertavern/core/workbench/labels";
 
 import { Cover } from "../../components/Cover.tsx";
-import { Button, Icon, type IconName } from "../../components/ui.tsx";
+import { Button, EmptyPanel, Icon, Pill, press, type IconName } from "../../components/ui.tsx";
 import type { LibraryView } from "../../state/PrefsProvider.tsx";
-import { radius, size, space, usePalette } from "../../theme/index.ts";
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  font,
+  space,
+  useComic,
+} from "../../theme/index.ts";
 
 /** 一格的内容 */
-export type Item = { id: string; title: string; summary: string; meta?: string; coverBlobId: string | null };
+export type Item = {
+  id: string;
+  title: string;
+  summary: string;
+  meta?: string;
+  coverBlobId: string | null;
+  /** 角色卡有没保存的草稿：封面上标“草稿” */
+  draft?: boolean;
+};
 
-export function scenarioItem(s: Scenario): Item {
+/** saves：用这个剧本开的存档有几个（取自存档列表） */
+export function scenarioItem(s: Scenario, saves: number): Item {
   const cast = s.cards.length > 1 ? s.cards.map((c) => c.name).join(i18n.t("common.listSeparator")) : "";
   return {
     id: s.id,
     title: s.name,
     summary: s.description_preview || cast,
-    meta: s.cards.length > 1 ? i18n.t("library.cardsIn", { count: s.cards.length }) : undefined,
+    meta: `${i18n.t("library.cardsIn", { count: s.cards.length })} · ${i18n.t("library.savesIn", { count: saves })}`,
     coverBlobId: s.cover_blob_id,
   };
 }
@@ -44,10 +65,11 @@ export function cardItem(c: CardSummary): Item {
     summary: c.description_preview || (c.creator ? i18n.t("library.byCreator", { creator: c.creator }) : ""),
     meta,
     coverBlobId: c.cover_blob_id,
+    draft: !!c.draft_id,
   };
 }
 
-// ---- 页头的视图切换和加号 -------------------------------------------------------------------
+// ---- 页头的视图切换和新建 -------------------------------------------------------------------
 
 export function HeaderControls({
   view,
@@ -62,12 +84,12 @@ export function HeaderControls({
   addLabel: string;
   addIcon: IconName;
   onAdd: () => void;
-  /** 宽屏：加号是带文字的胶囊 */
+  /** 宽屏：新建是带文字的主按钮 */
   labelled: boolean;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
-  const option = (value: LibraryView, icon: IconName, label: string) => {
+  const option = (value: LibraryView, icon: IconName, label: string, first: boolean) => {
     const on = view === value;
     return (
       <Pressable
@@ -77,10 +99,11 @@ export function HeaderControls({
         onPress={() => onView(value)}
         style={[
           styles.segButton,
-          on ? { backgroundColor: palette.card, boxShadow: palette.shadowLift } : null,
+          first ? null : { borderLeftWidth: comicStroke.control, borderLeftColor: c.ink },
+          { backgroundColor: on ? c.ink : c.paper },
         ]}
       >
-        <Icon name={icon} size={18} color={on ? palette.ink : palette.mut} />
+        <Icon name={icon} size={18} color={on ? c.paper : c.ink} />
       </Pressable>
     );
   };
@@ -89,32 +112,37 @@ export function HeaderControls({
       <View
         accessibilityRole="radiogroup"
         accessibilityLabel={t("library.view")}
-        style={[styles.seg, { backgroundColor: palette.bg2 }]}
+        style={[styles.seg, { borderColor: c.ink, backgroundColor: c.paper }]}
       >
-        {option("grid", "grid", t("library.grid"))}
-        {option("list", "list", t("library.list"))}
+        {option("grid", "grid", t("library.grid"), true)}
+        {option("list", "list", t("library.list"), false)}
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={addLabel}
-        onPress={onAdd}
-        style={({ pressed }) => [
-          labelled ? styles.addPill : styles.add,
-          { backgroundColor: palette.ink, transform: [{ scale: pressed ? 0.97 : 1 }] },
-        ]}
-      >
-        <Icon name={addIcon} size={labelled ? 18 : 22} color={palette.bg} />
-        {labelled ? (
-          <Text style={{ fontSize: 15, fontWeight: "500", color: palette.bg }}>{addLabel}</Text>
-        ) : null}
-      </Pressable>
+      {labelled ? (
+        <Button label={addLabel} icon={addIcon} onPress={onAdd} />
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={addLabel}
+          onPress={onAdd}
+          style={({ pressed }) => [
+            styles.add,
+            { backgroundColor: c.ink, borderColor: c.ink },
+            press(pressed, comicDepth.iconButton, c.acc),
+          ]}
+        >
+          <Icon name={addIcon} size={22} color={c.paper} />
+        </Pressable>
+      )}
     </View>
   );
 }
 
 // ---- 网格和列表 -----------------------------------------------------------------------------
 
-const TILE_PAD = 8;
+/** 网格卡片封面的高度：手机 116，平板 146（按 240 宽的格子） */
+function coverHeight(width: number): number {
+  return width >= 220 ? 146 : 116;
+}
 
 export function Tile({
   ref,
@@ -129,7 +157,7 @@ export function Tile({
   onPress: () => void;
   onLongPress: () => void;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <Pressable
@@ -140,11 +168,7 @@ export function Tile({
       onLongPress={onLongPress}
       style={({ pressed }) => [
         styles.tile,
-        {
-          width,
-          backgroundColor: pressed ? palette.bg3 : palette.bg2,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        },
+        { width, borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper },
       ]}
     >
       <TileBody item={item} width={width} />
@@ -152,10 +176,11 @@ export function Tile({
   );
 }
 
-/** 平板长按时抬起的卡片：内容和网格卡片一样，底色由菜单画成白色 */
+/** 平板长按时抬起的卡片：内容和网格卡片一样 */
 export function LiftedTile({ item, width }: { item: Item; width: number }) {
+  const c = useComic();
   return (
-    <View style={[styles.tile, { flex: 1 }]}>
+    <View style={[styles.tile, { flex: 1, borderColor: c.ink, backgroundColor: c.paper }]}>
       <TileBody item={item} width={width} />
     </View>
   );
@@ -163,27 +188,24 @@ export function LiftedTile({ item, width }: { item: Item; width: number }) {
 
 /** 网格卡片里的封面和文字 */
 function TileBody({ item, width }: { item: Item; width: number }) {
-  const palette = usePalette();
-  const coverWidth = width - TILE_PAD * 2;
+  const c = useComic();
+  const { t } = useTranslation();
+  const inner = width - comicStroke.frame * 2;
   return (
     <>
-      <Cover
-        seed={item.id}
-        blobId={item.coverBlobId}
-        width={coverWidth}
-        height={(coverWidth * 76) / 96}
-        surface="card"
-        rounded={18}
-      />
+      <View style={[styles.tileCover, { borderBottomColor: c.ink }]}>
+        <Cover seed={item.id} blobId={item.coverBlobId} width={inner} height={coverHeight(width)} rounded={0} />
+        {item.draft ? <Pill tone="ink" label={t("library.draftChip")} style={styles.draft} /> : null}
+      </View>
       <View style={styles.tileMeta}>
-        <Text numberOfLines={1} style={[styles.name, { color: palette.ink }]}>
+        <Text numberOfLines={1} style={[styles.name, { color: c.ink }]}>
           {item.title}
         </Text>
-        <Text numberOfLines={2} style={[styles.summary, { color: palette.mut }]}>
+        <Text numberOfLines={2} style={[styles.summary, { color: c.ink2 }]}>
           {item.summary}
         </Text>
         {item.meta ? (
-          <Text numberOfLines={1} style={[styles.meta, { color: palette.mut }]}>
+          <Text numberOfLines={1} style={[styles.meta, { color: c.mut }]}>
             {item.meta}
           </Text>
         ) : null}
@@ -203,7 +225,7 @@ export function Row({
   onPress: () => void;
   onLongPress: () => void;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <Pressable
       ref={ref}
@@ -212,28 +234,24 @@ export function Row({
       onLongPress={onLongPress}
       style={({ pressed }) => [
         styles.row,
-        { backgroundColor: pressed ? palette.bg3 : palette.bg2, transform: [{ scale: pressed ? 0.98 : 1 }] },
+        { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper },
       ]}
     >
-      <Cover
-        seed={item.id}
-        blobId={item.coverBlobId}
-        width={size.cover}
-        height={size.cover}
-        surface="card"
-      />
+      <Cover seed={item.id} blobId={item.coverBlobId} width={60} height={60} framed />
       <View style={{ flex: 1, minWidth: 0, gap: space.xs }}>
-        <Text numberOfLines={1} style={[styles.rowTitle, { color: palette.ink }]}>
-          {item.title}
-        </Text>
-        <Text numberOfLines={2} style={[styles.rowSummary, { color: palette.ink2 }]}>
+        <View style={styles.rowTop}>
+          <Text numberOfLines={1} style={[styles.rowTitle, { color: c.ink }]}>
+            {item.title}
+          </Text>
+          {item.meta ? (
+            <Text numberOfLines={1} style={[styles.rowMeta, { color: c.mut }]}>
+              {item.meta}
+            </Text>
+          ) : null}
+        </View>
+        <Text numberOfLines={2} style={[styles.rowSummary, { color: c.ink2 }]}>
           {item.summary}
         </Text>
-        {item.meta ? (
-          <Text numberOfLines={1} style={[styles.meta, { color: palette.mut }]}>
-            {item.meta}
-          </Text>
-        ) : null}
       </View>
     </Pressable>
   );
@@ -254,48 +272,62 @@ export function Empty({
   actionIcon: IconName;
   onAction: () => void;
 }) {
-  const palette = usePalette();
   return (
     <View style={styles.emptyWrap}>
-      <View style={[styles.emptyBody, { backgroundColor: palette.bg2 }]}>
-        <Text style={[styles.emptyTitle, { color: palette.ink }]}>{title}</Text>
-        <View style={styles.note}>
-          <View style={[styles.noteIcon, { backgroundColor: palette.card }]}>
-            <Icon name="card" size={18} color={palette.ink2} />
-          </View>
-          <Text style={{ flex: 1, paddingTop: 5, fontSize: 14, lineHeight: 22, color: palette.ink2 }}>{note}</Text>
-        </View>
-        <Button label={actionLabel} trailingIcon={actionIcon} between onPress={onAction} />
-      </View>
+      <EmptyPanel
+        icon="library"
+        filled="library"
+        title={title}
+        message={note}
+        action={
+          <Button
+            label={actionLabel}
+            trailingIcon={actionIcon}
+            between
+            onPress={onAction}
+            style={{ marginTop: space.s }}
+          />
+        }
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  controls: { flexDirection: "row", alignItems: "center", gap: space.s },
-  seg: { flexDirection: "row", gap: 2, padding: 3, borderRadius: 22 },
-  segButton: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
-  add: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  addPill: {
+  controls: { flexDirection: "row", alignItems: "center", gap: 10 },
+  seg: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    height: 44,
-    paddingLeft: 14,
-    paddingRight: 18,
-    borderRadius: 22,
+    height: 40,
+    borderWidth: comicStroke.control,
+    borderRadius: 11,
+    overflow: "hidden",
   },
-  tile: { padding: TILE_PAD, borderRadius: 26 },
-  tileMeta: { paddingTop: 10, paddingHorizontal: space.s, paddingBottom: space.s, gap: 3 },
-  name: { fontSize: 16, lineHeight: 22, fontWeight: "700" },
-  summary: { fontSize: 12.5, lineHeight: 18, minHeight: 36 },
-  meta: { fontSize: 11.5, lineHeight: 16 },
-  row: { flexDirection: "row", gap: 14, padding: 14, borderRadius: radius.option },
-  rowTitle: { fontSize: 17, lineHeight: 24, fontWeight: "700" },
-  rowSummary: { fontSize: 14, lineHeight: 21 },
-  emptyWrap: { paddingHorizontal: space.l, paddingTop: space.s, gap: 10 },
-  emptyBody: { paddingVertical: space.page, paddingHorizontal: 20, borderRadius: 26, gap: space.l },
-  emptyTitle: { fontSize: 22, lineHeight: 30, fontWeight: "700" },
-  note: { flexDirection: "row", gap: space.m, alignItems: "flex-start" },
-  noteIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  segButton: { width: 42, alignItems: "center", justifyContent: "center" },
+  add: {
+    width: 44,
+    height: 44,
+    borderRadius: comicRadius.iconButton,
+    borderWidth: comicStroke.control,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tile: { borderWidth: comicStroke.frame, borderRadius: comicRadius.frame, overflow: "hidden" },
+  tileCover: { borderBottomWidth: comicStroke.frame },
+  draft: { position: "absolute", left: 8, top: 8 },
+  tileMeta: { paddingTop: 10, paddingHorizontal: 12, paddingBottom: 12, gap: 4 },
+  name: { fontSize: 17, lineHeight: 22, fontWeight: "900" },
+  summary: { fontSize: 13, lineHeight: 20, minHeight: 40 },
+  meta: { fontFamily: font.monoMedium, fontSize: 11, lineHeight: 15 },
+  row: {
+    flexDirection: "row",
+    gap: 14,
+    padding: 12,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+  },
+  rowTop: { flexDirection: "row", alignItems: "center", gap: space.s },
+  rowTitle: { flex: 1, fontSize: 18, lineHeight: 24, fontWeight: "900" },
+  rowMeta: { fontFamily: font.monoMedium, fontSize: 11.5, lineHeight: 16 },
+  rowSummary: { fontSize: 14, lineHeight: 22 },
+  emptyWrap: { paddingHorizontal: 20, paddingTop: space.xs },
 });

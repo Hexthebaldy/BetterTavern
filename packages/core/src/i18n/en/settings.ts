@@ -9,6 +9,7 @@ export const settings: Messages<typeof source> = {
       tools: "External services",
       account: "Account",
       probe: "Connection test",
+      addModel: "Add a model",
     },
     backTo: "Back to {{page}}",
     detail: "Settings details",

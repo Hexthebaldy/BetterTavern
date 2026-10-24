@@ -14,7 +14,7 @@ import { useState, type CSSProperties, type ElementType, type ReactNode } from "
 import { useBlobUrl } from "../data/blobs.ts";
 import styles from "./comic.module.css";
 import { cx } from "./controls.tsx";
-import { isDarkTone, portraitGlyph, portraitTone, type PanelTone } from "./portrait.ts";
+import { isDarkTone, portraitGlyph, portraitTone, type PanelTone } from "@bettertavern/design/portrait";
 
 export type { PanelTone };
 

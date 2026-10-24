@@ -7,7 +7,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { DraftSummary } from "@bettertavern/core/api/types";
@@ -15,14 +15,17 @@ import { formatRelative } from "@bettertavern/core/utils/format";
 import { cardOrigin } from "@bettertavern/core/workbench/labels";
 import { draftStatus } from "@bettertavern/core/workbench/progress";
 
-import { Cover } from "../../src/components/Cover.tsx";
+import { Portrait } from "../../src/components/Portrait.tsx";
 import {
+  Chip,
+  Group,
+  GroupLabel,
   Icon,
-  IconButton,
   LargeHeader,
+  ListRow,
   Notice,
   Page,
-  SectionHeader,
+  press,
   useOverlay,
   useTabBarSpace,
   type IconName,
@@ -30,8 +33,16 @@ import {
 import { useCardImport } from "../../src/features/workbench/useCardImport.ts";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { radius, space, usePalette } from "../../src/theme/index.ts";
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  font,
+  space,
+  useComic,
+} from "../../src/theme/index.ts";
 
+/** 导入、手动新建：白底墨线的格子，左上一个灰底墨线的图标方块 */
 function Entry({
   icon,
   title,
@@ -45,7 +56,7 @@ function Entry({
   busy?: boolean;
   onPress: () => void;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <Pressable
       accessibilityRole="button"
@@ -54,15 +65,32 @@ function Entry({
       onPress={onPress}
       style={({ pressed }) => [
         styles.entry,
-        { backgroundColor: pressed ? palette.bg3 : palette.bg2, opacity: busy ? 0.6 : 1 },
+        { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper, opacity: busy ? 0.6 : 1 },
       ]}
     >
-      <View style={[styles.entryIcon, { backgroundColor: palette.card }]}>
-        <Icon name={icon} size={20} color={palette.ink} />
+      <View style={[styles.entryIcon, { borderColor: c.ink, backgroundColor: c.grey }]}>
+        <Icon name={icon} size={18} color={c.ink} />
       </View>
-      <Text style={{ fontSize: 16, fontWeight: "600", color: palette.ink }}>{title}</Text>
-      <Text style={{ fontSize: 13, lineHeight: 19, color: palette.mut }}>{note}</Text>
+      <Text style={{ fontSize: 17, lineHeight: 22, fontWeight: "900", color: c.ink }}>{title}</Text>
+      <Text style={{ fontSize: 13, lineHeight: 20, color: c.mut }}>{note}</Text>
     </Pressable>
+  );
+}
+
+/** 草稿、角色卡一行下面的小字：agent 在忙时是蓝色，前面一个蓝点 */
+function RowStatus({ text, time, busy }: { text: string; time: string; busy: boolean }) {
+  const c = useComic();
+  return (
+    <View style={styles.status}>
+      {busy ? <View style={[styles.dot, { backgroundColor: c.acc }]} /> : null}
+      <Text
+        numberOfLines={1}
+        style={{ flexShrink: 1, fontSize: 12.5, fontWeight: busy ? "700" : "400", color: busy ? c.acc : c.mut }}
+      >
+        {text}
+      </Text>
+      <Text style={{ fontSize: 12.5, color: c.mut }}>· {time}</Text>
+    </View>
   );
 }
 
@@ -70,7 +98,7 @@ export default function WorkbenchScreen() {
   const { api } = useApp();
   const router = useRouter();
   const overlay = useOverlay();
-  const palette = usePalette();
+  const c = useComic();
   const { t, i18n } = useTranslation();
   const { bottom } = useTabBarSpace();
   const drafts = useAsync(() => api.workbench.list(), [api]);
@@ -140,56 +168,53 @@ export default function WorkbenchScreen() {
       }}
       contentStyle={styles.content}
     >
-      <Text style={[styles.prompt, { color: palette.ink }]}>{t("workbench.home.prompt")}</Text>
       {importer.problem ? (
         <Notice title={importer.problem.title} message={importer.problem.message} onClose={importer.dismiss} />
       ) : null}
       {problem ? <Notice message={problem} onClose={() => setProblem(null)} /> : null}
-      <View style={[styles.composer, { backgroundColor: palette.bg2 }]}>
+      <View style={[styles.composer, { borderColor: c.ink, backgroundColor: c.paper }]}>
         <TextInput
           accessibilityLabel={t("workbench.home.prompt")}
-          placeholder={t("workbench.home.placeholder")}
-          placeholderTextColor={palette.mut}
+          placeholder={t("workbench.home.composerPlaceholder")}
+          placeholderTextColor={c.mut}
           value={text}
           multiline
           maxLength={8000}
           onChangeText={setText}
-          style={[styles.input, { color: palette.ink }]}
+          style={[styles.input, { color: c.ink }]}
         />
-        <View style={{ alignItems: "flex-end" }}>
-          <IconButton
-            icon="send"
-            label={t("workbench.home.send")}
-            tone="plain"
-            color={palette.bg}
-            diameter={36}
-            size={18}
+        <View style={styles.composerBar}>
+          <View style={[styles.tip, { borderColor: c.ink }]}>
+            <Icon name="workbench" size={14} color={c.ink} />
+            <Text numberOfLines={1} style={{ fontSize: 12.5, fontWeight: "600", color: c.ink }}>
+              {t("workbench.home.agentTip")}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("workbench.home.send")}
+            accessibilityState={{ disabled: !text.trim() || starting }}
             disabled={!text.trim() || starting}
             onPress={() => void start()}
-            style={{ backgroundColor: palette.ink }}
-          />
+            style={({ pressed }) => [
+              styles.send,
+              text.trim() && !starting
+                ? [{ backgroundColor: c.ink, borderColor: c.ink }, press(pressed, comicDepth.iconButton, c.acc)]
+                : { backgroundColor: c.disabled, borderColor: c.disabled },
+            ]}
+          >
+            <Icon name="send" size={18} color={c.paper} />
+          </Pressable>
         </View>
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 6 }}
-        accessibilityLabel={t("workbench.home.examplesLabel")}
-      >
+      <GroupLabel style={styles.label}>{t("workbench.home.examplesLabel")}</GroupLabel>
+      <View style={styles.examples} accessibilityLabel={t("workbench.home.examplesLabel")}>
         {t("workbench.home.examples")
           .split("|")
           .map((example) => (
-            <Text
-              key={example}
-              accessibilityRole="button"
-              onPress={() => setText(example)}
-              numberOfLines={1}
-              style={[styles.example, { borderColor: palette.line, color: palette.ink2 }]}
-            >
-              {example}
-            </Text>
+            <Chip key={example} label={example} onPress={() => setText(example)} />
           ))}
-      </ScrollView>
+      </View>
       <View style={styles.entries}>
         <Entry
           icon="import"
@@ -209,68 +234,67 @@ export default function WorkbenchScreen() {
 
       {draftList.length ? (
         <>
-          <SectionHeader title={t("workbench.home.drafts")} style={styles.section} />
-          {draftList.map((draft) => (
-            <Pressable
-              key={draft.id}
-              accessibilityRole="button"
-              accessibilityHint={t("workbench.home.deleteDraft")}
-              onPress={() => openDraft(draft.id)}
-              onLongPress={() => void remove(draft)}
-              style={({ pressed }) => [styles.row, { backgroundColor: pressed ? palette.bg3 : palette.bg2 }]}
-            >
-              <Cover seed={draft.id} blobId={draft.cover_blob_id} width={44} height={44} surface="card" />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text numberOfLines={1} style={[styles.rowTitle, { color: palette.ink }]}>
-                  {draft.name || draft.character_name || t("workbench.home.untitled")}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={{ fontSize: 12.5, color: draft.agent_status !== "idle" ? palette.acc : palette.mut }}
-                >
-                  {draftStatus(draft)} · {formatRelative(draft.updated_at)}
-                </Text>
-              </View>
-              <Icon name="chevronRight" size={18} color={palette.mut} />
-            </Pressable>
-          ))}
+          <View style={styles.labelRow}>
+            <GroupLabel style={styles.labelInRow}>{t("workbench.home.drafts")}</GroupLabel>
+            <Text style={{ fontFamily: font.monoMedium, fontSize: 13, color: c.mut }}>{draftList.length}</Text>
+          </View>
+          <Group>
+            {draftList.map((draft) => {
+              const names = [draft.name, draft.character_name].filter(
+                (n, i, all): n is string => !!n && all.indexOf(n) === i,
+              );
+              const title = names.join(" · ") || t("workbench.home.untitled");
+              return (
+                <ListRow
+                  key={draft.id}
+                  title={title}
+                  leading={
+                    <Portrait
+                      name={draft.character_name || draft.name || title}
+                      seed={draft.id}
+                      blobId={draft.cover_blob_id}
+                      size={40}
+                    />
+                  }
+                  detail={
+                    <RowStatus
+                      text={draftStatus(draft)}
+                      time={formatRelative(draft.updated_at)}
+                      busy={draft.agent_status !== "idle"}
+                    />
+                  }
+                  onPress={() => openDraft(draft.id)}
+                  onLongPress={() => void remove(draft)}
+                />
+              );
+            })}
+          </Group>
         </>
       ) : null}
 
       {recent.length ? (
         <>
-          <SectionHeader
-            title={t("workbench.home.recent")}
-            meta={
-              <Text
-                accessibilityRole="link"
-                onPress={() => router.push({ pathname: "/library", params: { tab: "cards" } })}
-                style={{ fontSize: 13, color: palette.acc }}
-              >
-                {t("workbench.home.allCards")}
-              </Text>
-            }
-            style={styles.section}
-          />
-          {recent.map((card) => (
-            <Pressable
-              key={card.id}
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: "/card/[id]", params: { id: card.id } })}
-              style={({ pressed }) => [styles.row, { backgroundColor: pressed ? palette.bg3 : palette.bg2 }]}
+          <View style={styles.labelRow}>
+            <GroupLabel style={styles.labelInRow}>{t("workbench.home.recent")}</GroupLabel>
+            <Text
+              accessibilityRole="link"
+              onPress={() => router.push({ pathname: "/library", params: { tab: "cards" } })}
+              style={{ fontSize: 14, fontWeight: "700", color: c.acc }}
             >
-              <Cover seed={card.id} blobId={card.cover_blob_id} width={44} height={44} surface="card" />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text numberOfLines={1} style={[styles.rowTitle, { color: palette.ink }]}>
-                  {card.name}
-                </Text>
-                <Text numberOfLines={1} style={{ fontSize: 12.5, color: palette.mut }}>
-                  {cardOrigin(card)} · {formatRelative(card.updated_at)}
-                </Text>
-              </View>
-              <Icon name="chevronRight" size={18} color={palette.mut} />
-            </Pressable>
-          ))}
+              {t("workbench.home.allCards")}
+            </Text>
+          </View>
+          <Group>
+            {recent.map((card) => (
+              <ListRow
+                key={card.id}
+                title={card.name}
+                subtitle={`${cardOrigin(card)} · ${formatRelative(card.updated_at)}`}
+                leading={<Portrait name={card.name} seed={card.id} blobId={card.cover_blob_id} size={40} />}
+                onPress={() => router.push({ pathname: "/card/[id]", params: { id: card.id } })}
+              />
+            ))}
+          </Group>
         </>
       ) : null}
       {drafts.error && !drafts.data ? (
@@ -286,23 +310,61 @@ export default function WorkbenchScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: space.l, gap: space.m },
-  prompt: { fontSize: 22, lineHeight: 30, fontWeight: "700", paddingTop: space.s },
-  composer: { borderRadius: radius.sheet, padding: 14, gap: space.s },
-  input: { minHeight: 72, maxHeight: 160, fontSize: 15, lineHeight: 24, textAlignVertical: "top" },
-  example: {
-    maxWidth: 280,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-    fontSize: 13,
+  content: { paddingHorizontal: 20, gap: 14 },
+  composer: {
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+    padding: 14,
+    gap: 10,
   },
-  entries: { flexDirection: "row", gap: space.m },
-  entry: { flex: 1, padding: 16, borderRadius: radius.card, gap: 6 },
-  entryIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 4 },
-  section: { paddingHorizontal: 0, paddingBottom: 0, paddingTop: space.l },
-  row: { flexDirection: "row", alignItems: "center", gap: space.m, padding: 10, borderRadius: radius.option },
-  rowTitle: { fontSize: 15, lineHeight: 21, fontWeight: "600" },
+  input: { minHeight: 72, maxHeight: 160, fontSize: 16, lineHeight: 25, textAlignVertical: "top" },
+  composerBar: { flexDirection: "row", alignItems: "center", gap: space.s },
+  tip: {
+    flexShrink: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    height: 30,
+    paddingHorizontal: 10,
+    borderWidth: comicStroke.chip,
+    borderRadius: 8,
+    marginRight: "auto",
+  },
+  send: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: comicStroke.control,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  label: { paddingHorizontal: 4, paddingTop: space.xs, paddingBottom: 0 },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: space.s,
+    paddingRight: 4,
+  },
+  labelInRow: { paddingHorizontal: 4, paddingTop: 0, paddingBottom: 0 },
+  examples: { flexDirection: "row", flexWrap: "wrap", gap: space.s },
+  entries: { flexDirection: "row", gap: 14 },
+  entry: {
+    flex: 1,
+    padding: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+    gap: 4,
+  },
+  entryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    borderWidth: comicStroke.control,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  status: { flexDirection: "row", alignItems: "center", gap: 5, minWidth: 0 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
 });

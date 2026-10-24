@@ -10,15 +10,15 @@ import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
 import { providerLogo } from "@bettertavern/design/providerLogos";
 
-import { font, onColor, usePalette } from "../theme/index.ts";
-import { Field, Icon, type FieldProps } from "./ui.tsx";
+import { comicDepth, comicStroke, font, onColor, useComic } from "../theme/index.ts";
+import { Field, Icon, press, type FieldProps } from "./ui.tsx";
 
 export type MarkTone = "ink" | "acc" | "card" | "grey";
 
 /**
- * 服务商的圆形标记：有标志的画标志（@bettertavern/design 的 providerLogos.ts，品牌原色；单色标志用当前文字颜色；
- * 带渐变的路径按渐变填，例如 Gemini），没有的（自定义端点）写 { }。ink = 正在用作导演，acc = 选中的服务商。
- * 有标志时选中也不把圆涂成蓝色（DeepSeek 的蓝色标志会看不见），选中靠图块自己的浅蓝底和描边。
+ * 服务商的圆形标记：2 墨线的圆，有标志的画标志（@bettertavern/design 的 providerLogos.ts，品牌原色；单色标志用当前
+ * 文字颜色；带渐变的路径按渐变填，例如 Gemini），没有的（自定义端点）写 { }。ink = 墨底（放在墨底的导演模型格上时
+ * 描边是纸色），acc = 选中的服务商。有标志时选中也不把圆涂成蓝色（DeepSeek 的蓝色标志会看不见），选中靠图块自己的蓝框。
  */
 export function ProviderMark({
   provider,
@@ -29,23 +29,27 @@ export function ProviderMark({
   size?: number;
   tone?: MarkTone;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const logo = providerLogo(provider);
   // 渐变的 id 在整个页面里要唯一：同一页上可能有好几个同一家的标记
   const gradientId = useId().replace(/[^\w-]/g, "");
   const shown: MarkTone = logo && tone === "acc" ? "card" : tone;
-  const bg =
-    shown === "ink"
-      ? palette.ink
-      : shown === "acc"
-        ? palette.acc
-        : shown === "grey"
-          ? palette.bg2
-          : palette.card;
-  const fg = shown === "ink" ? palette.bg : shown === "acc" ? onColor : palette.ink;
-  const glyph = Math.round(size * 0.56);
+  const bg = shown === "ink" ? c.ink : shown === "acc" ? c.acc : shown === "grey" ? c.grey : c.paper;
+  const fg = shown === "ink" ? c.paper : shown === "acc" ? onColor : c.ink;
+  const glyph = Math.round(size * 0.5);
   return (
-    <View style={[styles.mark, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
+    <View
+      style={[
+        styles.mark,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: bg,
+          borderColor: shown === "ink" ? c.paper : c.ink,
+        },
+      ]}
+    >
       {logo ? (
         <Svg width={glyph} height={glyph} viewBox={logo.viewBox}>
           <Defs>
@@ -89,7 +93,7 @@ export function ProviderMark({
 
 /** API Key 输入框：等宽、隐藏输入，框里右侧一个“粘贴”胶囊 */
 export function KeyField(props: Omit<FieldProps, "trailing" | "trailingWidth" | "mono" | "secureTextEntry">) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const paste = async (): Promise<void> => {
     const text = (await Clipboard.getStringAsync().catch(() => "")).trim();
@@ -110,11 +114,12 @@ export function KeyField(props: Omit<FieldProps, "trailing" | "trailingWidth" | 
           onPress={() => void paste()}
           style={({ pressed }) => [
             styles.paste,
-            { backgroundColor: palette.ink, transform: [{ scale: pressed ? 0.97 : 1 }] },
+            { backgroundColor: c.ink, borderColor: c.ink },
+            press(pressed, comicDepth.iconButton, c.acc),
           ]}
         >
-          <Icon name="paste" size={16} color={palette.bg} />
-          <Text style={{ fontSize: 13.5, color: palette.bg }}>{t("common.paste")}</Text>
+          <Icon name="paste" size={16} color={c.paper} />
+          <Text style={{ fontSize: 13.5, fontWeight: "700", color: c.paper }}>{t("common.paste")}</Text>
         </Pressable>
       }
     />
@@ -122,12 +127,13 @@ export function KeyField(props: Omit<FieldProps, "trailing" | "trailingWidth" | 
 }
 
 const styles = StyleSheet.create({
-  mark: { alignItems: "center", justifyContent: "center" },
+  mark: { alignItems: "center", justifyContent: "center", borderWidth: comicStroke.control },
   paste: {
-    height: 40,
+    height: 36,
     paddingLeft: 10,
     paddingRight: 14,
-    borderRadius: 20,
+    borderRadius: 18,
+    borderWidth: comicStroke.control,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,

@@ -1,11 +1,11 @@
 /**
- * 平板上的存档卡片（设计稿 T03、T04）：网格里的小卡，以及最近一个存档放大成的主卡。
- * 数据和手机上的列表项一样；手机仍用 app/(tabs)/playthroughs.tsx 里的单列卡片。
- * 两种卡片的第一行都是：标题、紧跟着的状态胶囊（已完结、正在写…），右端是更新时间。
+ * 存档的卡片（漫画风，docs/design/comic/mobile/png/02、tablet/png/02）：手机列表的一行、平板网格的小卡、
+ * 最近一个存档放大成的主卡。都是白底 2.5 墨线的格子（圆角 12），封面 2 墨线；按下换成灰底，主卡带墨色投影 6。
+ * 每张卡的标题行是标题和右端的更新时间，状态标在标题下面，最新一段用宋体。
  *
- * - 小卡：高 184，第一行左边是 56 的方形封面；下面是最新一段的开头，最多 4 行，正好填满卡片；
- * - 主卡：中屏占满一行、宽屏占两列，高两行；方形封面撑满卡片的高度（边长 = 卡片高 − 上下内边距），
- *   右边第一行标题 26，下面最新一段用宋体 18/32，行数按封面的高度算，和封面一样高。整张卡都能点，没有按钮。
+ * - 手机的一行：左边 72 的方形封面，右边标题、状态标和两行摘要；
+ * - 小卡：高 184，第一行左边 56 的方形封面，下面最新一段最多 4 行；
+ * - 主卡：中屏占满一行、宽屏占两列高两行；方形封面撑满卡片的高度，右边标题 28、最新一段宋体 18/32。
  * 长按时卡片抬起、下方弹出菜单（overlay.tsx 的 CardMenu），抬起的那张就是 lifted 再画一遍的同一张卡。
  */
 
@@ -18,46 +18,57 @@ import { storyStatus } from "@bettertavern/core/play/storyStatus";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { Cover } from "../../components/Cover.tsx";
-import { Pill } from "../../components/ui.tsx";
-import { font, radius, serifFor, size, space, usePalette } from "../../theme/index.ts";
+import { Pill, press } from "../../components/ui.tsx";
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  font,
+  serifFor,
+  useComic,
+} from "../../theme/index.ts";
 
+/** 手机列表行的封面边长 */
+export const ROW_COVER = 72;
 /** 小卡的高度；主卡高两格加中间的间距 */
 export const STORY_CARD_HEIGHT = 184;
 /** 主卡的内边距；封面边长 = 主卡高 − 2 × 内边距 */
-export const STORY_HERO_PADDING = space.page;
+export const STORY_HERO_PADDING = 22;
+export const STORY_HERO_RADIUS = comicRadius.frame;
+const SMALL_COVER = 56;
 
-/** 状态胶囊，放在标题右边（Pill 默认贴着顶，这里在一行里居中） */
+/** 状态标：正在写（蓝底加点）、已完结（墨底加旗子）、开场还没有写好（白底琥珀框） */
 export function StoryStatusPill({ story }: { story: Playthrough }) {
   const status = storyStatus(story);
-  if (status?.kind === "writing") return <Pill tone="acc" dot label={status.label} style={styles.pill} />;
-  if (status?.kind === "noOpening")
-    return <Pill tone="warn" icon="untested" label={status.label} style={styles.pill} />;
-  if (status?.kind === "ended")
-    return <Pill tone="card" icon="flag" label={status.label} style={styles.pill} />;
+  if (status?.kind === "writing") return <Pill tone="accSolid" dot label={status.label} />;
+  if (status?.kind === "noOpening") return <Pill tone="warn" icon="untested" label={status.label} />;
+  if (status?.kind === "ended") return <Pill tone="ink" icon="flag" label={status.label} />;
   return null;
 }
 
-/** 第一行：标题、状态胶囊，右端是更新时间 */
-function TitleRow({ story, large }: { story: Playthrough; large?: boolean }) {
-  const palette = usePalette();
+/** 标题和右端的更新时间，下面是状态标 */
+function TitleBlock({ story, size }: { story: Playthrough; size: "row" | "card" | "hero" }) {
+  const c = useComic();
   return (
-    <View style={[styles.titleRow, large ? null : { flex: 1 }]}>
-      <Text numberOfLines={1} style={[large ? styles.heroTitle : styles.title, { color: palette.ink }]}>
-        {story.title}
-      </Text>
+    <View style={styles.titleBlock}>
+      <View style={styles.titleRow}>
+        <Text numberOfLines={1} style={[size === "hero" ? styles.heroTitle : styles.title, { color: c.ink }]}>
+          {story.title}
+        </Text>
+        <Text style={[styles.time, { color: c.mut }]}>{formatRelative(story.updated_at)}</Text>
+      </View>
       <StoryStatusPill story={story} />
-      <View style={{ flex: 1 }} />
-      <Text style={[styles.time, { color: palette.mut }]}>{formatRelative(story.updated_at)}</Text>
     </View>
   );
 }
 
-/** 卡片外壳：灰卡、按下缩小；ref 给长按菜单量位置 */
+/** 卡片外壳：白底墨线的格子，按下换成灰底（主卡往投影方向挪）；ref 给长按菜单量位置 */
 function Shell({
   ref,
   story,
   onOpen,
   onMenu,
+  hot,
   style,
   children,
 }: {
@@ -65,10 +76,12 @@ function Shell({
   story: Playthrough;
   onOpen: () => void;
   onMenu: () => void;
+  /** 主卡：墨色投影 6 */
+  hot?: boolean;
   style: StyleProp<ViewStyle>;
   children: ReactNode;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <Pressable
@@ -79,12 +92,45 @@ function Shell({
       onPress={onOpen}
       onLongPress={onMenu}
       style={({ pressed }) => [
+        styles.frame,
         style,
-        { backgroundColor: pressed ? palette.bg3 : palette.bg2, transform: [{ scale: pressed ? 0.98 : 1 }] },
+        { borderColor: c.ink, backgroundColor: pressed && !hot ? c.grey : c.paper },
+        hot ? press(pressed, comicDepth.dialog, c.ink) : null,
       ]}
     >
       {children}
     </Pressable>
+  );
+}
+
+/** 手机列表的一行 */
+export function StoryRow({
+  story,
+  avatar,
+  onOpen,
+  onMenu,
+}: {
+  story: Playthrough;
+  avatar: string | null;
+  onOpen: () => void;
+  onMenu: () => void;
+}) {
+  const c = useComic();
+  return (
+    <Shell story={story} onOpen={onOpen} onMenu={onMenu} style={styles.row}>
+      <Cover seed={story.scenario_id ?? story.id} blobId={avatar} width={ROW_COVER} height={ROW_COVER} framed />
+      <View style={styles.rowBody}>
+        <TitleBlock story={story} size="row" />
+        {story.head_excerpt ? (
+          <Text
+            numberOfLines={2}
+            style={[styles.excerpt, { color: c.ink2, fontFamily: serifFor(story.language) }]}
+          >
+            {story.head_excerpt}
+          </Text>
+        ) : null}
+      </View>
+    </Shell>
   );
 }
 
@@ -119,21 +165,24 @@ export function StoryCard({
 
 /** 小卡里面的内容：长按菜单抬起的卡片也画这个 */
 export function StoryCardBody({ story, avatar }: { story: Playthrough; avatar: string | null }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <>
       <View style={styles.top}>
         <Cover
           seed={story.scenario_id ?? story.id}
           blobId={avatar}
-          width={size.cover}
-          height={size.cover}
-          surface="card"
+          width={SMALL_COVER}
+          height={SMALL_COVER}
+          framed
         />
-        <TitleRow story={story} />
+        <TitleBlock story={story} size="card" />
       </View>
       {story.head_excerpt ? (
-        <Text numberOfLines={4} style={[styles.excerpt, { color: palette.ink2 }]}>
+        <Text
+          numberOfLines={4}
+          style={[styles.cardExcerpt, { color: c.ink2, fontFamily: serifFor(story.language) }]}
+        >
           {story.head_excerpt}
         </Text>
       ) : null}
@@ -163,7 +212,7 @@ export function StoryHero({
   onMenu: () => void;
 }) {
   return (
-    <Shell ref={ref} story={story} onOpen={onOpen} onMenu={onMenu} style={[styles.hero, { width, height }]}>
+    <Shell ref={ref} story={story} onOpen={onOpen} onMenu={onMenu} hot style={[styles.hero, { width, height }]}>
       <StoryHeroBody story={story} avatar={avatar} coverSize={coverSize} />
     </Shell>
   );
@@ -179,12 +228,9 @@ export function StoryHeroBody({
   avatar: string | null;
   coverSize: number;
 }) {
-  const palette = usePalette();
-  // 摘要的行数：封面高度减去标题行和间距，按 32 的行高能放几行
-  const lines = Math.max(
-    2,
-    Math.floor((coverSize - HERO_TITLE_LINE - space.m - space.xs) / HERO_EXCERPT_LINE),
-  );
+  const c = useComic();
+  // 摘要的行数：封面高度减去标题块，按 32 的行高能放几行
+  const lines = Math.max(2, Math.floor((coverSize - HERO_TITLE_BLOCK) / HERO_EXCERPT_LINE));
   return (
     <>
       <Cover
@@ -192,15 +238,15 @@ export function StoryHeroBody({
         blobId={avatar}
         width={coverSize}
         height={coverSize}
-        surface="card"
-        rounded={radius.option}
+        rounded={comicRadius.frame}
+        framed
       />
       <View style={styles.heroBody}>
-        <TitleRow story={story} large />
+        <TitleBlock story={story} size="hero" />
         {story.head_excerpt ? (
           <Text
             numberOfLines={lines}
-            style={[styles.heroExcerpt, { color: palette.narr, fontFamily: serifFor(story.language) }]}
+            style={[styles.heroExcerpt, { color: c.ink, fontFamily: serifFor(story.language) }]}
           >
             {story.head_excerpt}
           </Text>
@@ -210,7 +256,7 @@ export function StoryHeroBody({
   );
 }
 
-/** 长按菜单里抬起的卡片：内容和卡片一样，底色由菜单画成白色 */
+/** 长按菜单里抬起的卡片：内容和卡片一样 */
 export function LiftedStory({
   story,
   avatar,
@@ -221,47 +267,37 @@ export function LiftedStory({
   /** 主卡的封面边长；小卡不传 */
   hero?: number;
 }) {
+  const c = useComic();
+  const frame = { borderColor: c.ink, backgroundColor: c.paper };
   return hero ? (
-    <View style={[styles.hero, { flex: 1 }]}>
+    <View style={[styles.frame, styles.hero, frame, { flex: 1 }]}>
       <StoryHeroBody story={story} avatar={avatar} coverSize={hero} />
     </View>
   ) : (
-    <View style={[styles.card, { flex: 1 }]}>
+    <View style={[styles.frame, styles.card, frame, { flex: 1 }]}>
       <StoryCardBody story={story} avatar={avatar} />
     </View>
   );
 }
 
-export const STORY_HERO_RADIUS = radius.group;
-
-const HERO_TITLE_LINE = 34;
+/** 主卡标题块的高度（标题 36 + 间距 + 状态标 22）和摘要的行高 */
+const HERO_TITLE_BLOCK = 72;
 const HERO_EXCERPT_LINE = 32;
 
 const styles = StyleSheet.create({
-  card: { padding: space.l, borderRadius: radius.option, gap: space.m, overflow: "hidden" },
-  top: { flexDirection: "row", alignItems: "center", gap: 14 },
-  titleRow: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: space.s },
-  title: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontWeight: "700" },
-  pill: { alignSelf: "center", flexShrink: 0 },
-  time: { fontFamily: font.mono, fontSize: 11.5 },
-  excerpt: { fontSize: 14, lineHeight: 21 },
-  hero: {
-    flexDirection: "row",
-    gap: space.page,
-    padding: STORY_HERO_PADDING,
-    borderRadius: radius.group,
-  },
-  heroBody: { flex: 1, minWidth: 0, gap: space.m },
-  heroTitle: {
-    flexShrink: 1,
-    fontSize: 26,
-    lineHeight: HERO_TITLE_LINE,
-    fontWeight: "700",
-    letterSpacing: -0.26,
-  },
-  heroExcerpt: {
-    marginTop: space.xs,
-    fontSize: 18,
-    lineHeight: HERO_EXCERPT_LINE,
-  },
+  frame: { borderWidth: comicStroke.frame, borderRadius: comicRadius.frame, overflow: "hidden" },
+  row: { flexDirection: "row", gap: 14, padding: 12 },
+  rowBody: { flex: 1, minWidth: 0, gap: 6, paddingTop: 1 },
+  card: { padding: 14, gap: 10 },
+  top: { flexDirection: "row", alignItems: "center", gap: 12 },
+  titleBlock: { flex: 1, minWidth: 0, gap: 4 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 },
+  title: { flex: 1, fontSize: 18, lineHeight: 24, fontWeight: "900", letterSpacing: -0.2 },
+  time: { fontFamily: font.monoMedium, fontSize: 11.5, lineHeight: 16 },
+  excerpt: { fontSize: 14, lineHeight: 22 },
+  cardExcerpt: { fontSize: 14, lineHeight: 23 },
+  hero: { flexDirection: "row", gap: 22, padding: STORY_HERO_PADDING, overflow: "visible" },
+  heroBody: { flex: 1, minWidth: 0, gap: 14 },
+  heroTitle: { flex: 1, fontSize: 28, lineHeight: 36, fontWeight: "900", letterSpacing: -0.5 },
+  heroExcerpt: { fontSize: 18, lineHeight: HERO_EXCERPT_LINE },
 });
