@@ -13,7 +13,7 @@ import { i18n } from "@bettertavern/core/i18n/index";
 import { STYLE_IDS, type StyleId } from "@bettertavern/core/workbench/labels";
 
 import { Button, Icon, useOverlay } from "../../components/ui.tsx";
-import { usePalette } from "../../theme/index.ts";
+import { useComic } from "../../theme/index.ts";
 import { chat } from "./chatStyles.ts";
 
 function coverText(plan: Plan): string {
@@ -27,17 +27,17 @@ function coverText(plan: Plan): string {
 }
 
 function Section({ heading, children }: { heading: string; children: string }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View style={{ gap: 4 }}>
-      <Text style={[chat.heading, { color: palette.mut }]}>{heading}</Text>
-      <Text style={[chat.body, { color: palette.ink }]}>{children}</Text>
+      <Text style={[chat.heading, { color: c.mut }]}>{heading}</Text>
+      <Text style={[chat.body, { color: c.ink }]}>{children}</Text>
     </View>
   );
 }
 
 function PlanBody({ plan }: { plan: Plan }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <>
@@ -54,17 +54,17 @@ function PlanBody({ plan }: { plan: Plan }) {
       <Section heading={t("workbench.plan.cover")}>{coverText(plan)}</Section>
       {plan.sources.length ? (
         <View style={{ gap: 4 }}>
-          <Text style={[chat.heading, { color: palette.mut }]}>{t("workbench.plan.sources")}</Text>
+          <Text style={[chat.heading, { color: c.mut }]}>{t("workbench.plan.sources")}</Text>
           {plan.sources.map((source) => (
             <Pressable key={source.url} accessibilityRole="link" onPress={() => void Linking.openURL(source.url)}>
-              <Text numberOfLines={1} style={{ fontSize: 13, color: palette.acc }}>
+              <Text numberOfLines={1} style={{ fontSize: 13, color: c.acc }}>
                 {source.title || source.url}
               </Text>
             </Pressable>
           ))}
         </View>
       ) : null}
-      <Text style={[chat.cardMeta, { color: palette.mut }]}>{t("workbench.plan.estimate", plan.estimate)}</Text>
+      <Text style={[chat.cardMeta, { color: c.mut }]}>{t("workbench.plan.estimate", plan.estimate)}</Text>
     </>
   );
 }
@@ -78,7 +78,7 @@ export function PlanCard({
   active: boolean;
   onReply: (reply: { approved: true; name?: string } | { approved: false; text: string }) => Promise<void>;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const overlay = useOverlay();
   const [names, setNames] = useState(plan.names);
@@ -125,32 +125,32 @@ export function PlanCard({
   if (!active && !expanded) {
     return (
       <Pressable accessibilityRole="button" onPress={() => setExpanded(true)} style={chat.summaryLine}>
-        <Icon name="bulb" size={14} color={palette.mut} />
-        <Text style={[chat.summaryLabel, { color: palette.ink2 }]}>{t("workbench.plan.title")}</Text>
-        <Text numberOfLines={1} style={[chat.summaryText, { color: palette.mut }]}>
+        <Icon name="bulb" size={14} color={c.mut} />
+        <Text style={[chat.summaryLabel, { color: c.ink2 }]}>{t("workbench.plan.title")}</Text>
+        <Text numberOfLines={1} style={[chat.summaryText, { color: c.mut }]}>
           {[plan.names[0], plan.pitch].filter(Boolean).join(" · ")}
         </Text>
-        <Text style={[chat.link, { color: palette.acc }]}>{t("workbench.questions.expand")}</Text>
+        <Text style={[chat.link, { color: c.acc }]}>{t("workbench.questions.expand")}</Text>
       </Pressable>
     );
   }
   return (
     <>
-      <View style={[chat.card, { backgroundColor: palette.bg2 }]}>
+      <View style={[chat.card, { borderColor: c.ink, backgroundColor: c.paper }]}>
         <View style={chat.cardHead}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Icon name="bulb" size={15} color={palette.ink} />
-            <Text style={[chat.cardTitle, { color: palette.ink }]}>{t("workbench.plan.title")}</Text>
+            <Icon name="bulb" size={15} color={c.ink} />
+            <Text style={[chat.cardTitle, { color: c.ink }]}>{t("workbench.plan.title")}</Text>
           </View>
           {!active ? (
             <Pressable accessibilityRole="button" onPress={() => setExpanded(false)} hitSlop={8}>
-              <Text style={[chat.link, { color: palette.acc }]}>{t("common.collapse")}</Text>
+              <Text style={[chat.link, { color: c.acc }]}>{t("common.collapse")}</Text>
             </Pressable>
           ) : null}
         </View>
         {active ? (
           <View style={{ gap: 6 }}>
-            <Text style={[chat.heading, { color: palette.mut }]}>
+            <Text style={[chat.heading, { color: c.mut }]}>
               {t("workbench.plan.names")} · {t("workbench.plan.namesHint")}
             </Text>
             <View style={chat.choices}>
@@ -164,24 +164,24 @@ export function PlanCard({
                     onPress={() => setName(candidate)}
                     style={[
                       chat.choice,
-                      { backgroundColor: on ? palette.ink : palette.card, borderColor: on ? palette.ink : palette.line },
+                      { backgroundColor: on ? c.ink : c.paper, borderColor: on ? c.ink : c.ink },
                     ]}
                   >
-                    <Text style={[chat.choiceText, { color: on ? palette.bg : palette.ink }]}>{candidate}</Text>
+                    <Text style={[chat.choiceText, { color: on ? c.paper : c.ink }]}>{candidate}</Text>
                   </Pressable>
                 );
               })}
               <Pressable
                 accessibilityRole="button"
                 onPress={() => void ownName()}
-                style={[chat.choice, { backgroundColor: palette.card, borderColor: palette.line }]}
+                style={[chat.choice, chat.dashed, { borderColor: c.ink }]}
               >
-                <Text style={[chat.choiceText, { color: palette.ink2 }]}>{t("workbench.plan.ownName")}</Text>
+                <Text style={[chat.choiceText, { color: c.mut }]}>{t("workbench.plan.ownName")}</Text>
               </Pressable>
             </View>
           </View>
         ) : (
-          <Text style={{ fontSize: 20, lineHeight: 28, fontWeight: "700", color: palette.ink }}>
+          <Text style={{ fontSize: 20, lineHeight: 28, fontWeight: "900", color: c.ink }}>
             {plan.names.join(" / ")}
           </Text>
         )}

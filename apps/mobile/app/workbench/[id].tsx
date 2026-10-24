@@ -31,7 +31,7 @@ import { CheckBody, PreviewSheet } from "../../src/features/workbench/PreviewShe
 import { useCardForm, type AutosaveStatus } from "../../src/features/workbench/useCardForm.ts";
 import { useDraftSession } from "../../src/features/workbench/useDraftSession.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
-import { space, usePalette } from "../../src/theme/index.ts";
+import { comicStroke, space, useComic } from "../../src/theme/index.ts";
 
 function autosaveText(status: AutosaveStatus): string | null {
   switch (status.kind) {
@@ -52,7 +52,7 @@ export default function DraftScreen() {
   const { api } = useApp();
   const router = useRouter();
   const overlay = useOverlay();
-  const palette = usePalette();
+  const c = useComic();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const session = useDraftSession(id);
@@ -76,7 +76,7 @@ export default function DraftScreen() {
 
   if (!state) {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         {session.error ? (
           <ErrorState
             title={t("cardEdit.loadFailed")}
@@ -195,23 +195,23 @@ export default function DraftScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <View style={[styles.header, { paddingTop: insets.top + space.xs }]}>
+    <View style={{ flex: 1, backgroundColor: c.page }}>
+      <View style={[styles.header, { paddingTop: insets.top + space.xs, borderBottomColor: c.ink }]}>
         <View style={styles.row}>
-          <IconButton icon="back" label={t("workbench.header.backToHome")} onPress={() => router.back()} />
+          <IconButton icon="back" label={t("workbench.header.backToHome")} diameter={38} onPress={() => router.back()} />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={[styles.title, { color: palette.ink }]}>
+            <Text numberOfLines={1} style={[styles.title, { color: c.ink }]}>
               {title}
             </Text>
             <Text
               numberOfLines={1}
-              style={{ fontSize: 12, color: form.status.kind === "failed" && manual ? palette.err : palette.mut }}
+              style={{ fontSize: 12, color: form.status.kind === "failed" && manual ? c.err : c.mut }}
             >
               {subtitle}
             </Text>
           </View>
-          <IconButton icon="eye" label={t("workbench.header.preview")} onPress={() => setPreview(true)} />
-          <IconButton icon="more" label={t("workbench.header.more")} onPress={() => void more()} />
+          <IconButton icon="eye" label={t("workbench.header.preview")} diameter={38} onPress={() => setPreview(true)} />
+          <IconButton icon="more" label={t("workbench.header.more")} diameter={38} onPress={() => void more()} />
         </View>
         <View style={styles.row}>
           <Segmented
@@ -231,14 +231,22 @@ export default function DraftScreen() {
             busy={saving}
             disabled={running}
             onPress={() => void save(false)}
-            style={{ minHeight: 40, height: 40, paddingHorizontal: space.l }}
+            small
           />
         </View>
         {manual ? null : (
-          <Text numberOfLines={1} style={{ fontSize: 11.5, color: palette.mut, paddingHorizontal: space.xs }}>
-            {steps
-              .map((step) => (step.state === "doing" ? `● ${step.label}` : step.state === "done" ? `✓ ${step.label}` : step.label))
-              .join("  ·  ")}
+          // 需求 — 方案 — 动手 — 检查：做完的墨色，正在做的蓝色，还没到的灰色
+          <Text numberOfLines={1} style={styles.steps}>
+            {steps.map((step, i) => {
+              const color = step.state === "doing" ? c.acc : step.state === "done" ? c.ink : c.mut;
+              return (
+                <Text key={step.label}>
+                  {i > 0 ? <Text style={{ color: c.grey2 }}>{"  —  "}</Text> : null}
+                  <Text style={{ color: step.state === "todo" ? c.disabledLine : color }}>● </Text>
+                  <Text style={{ color, fontWeight: step.state === "doing" ? "700" : "400" }}>{step.label}</Text>
+                </Text>
+              );
+            })}
           </Text>
         )}
       </View>
@@ -290,7 +298,13 @@ export default function DraftScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: space.m, paddingBottom: space.s, gap: space.s },
+  header: {
+    paddingHorizontal: space.m,
+    paddingBottom: 10,
+    gap: 10,
+    borderBottomWidth: comicStroke.frame,
+  },
   row: { flexDirection: "row", alignItems: "center", gap: space.s },
-  title: { fontSize: 16, lineHeight: 22, fontWeight: "700" },
+  title: { fontSize: 17, lineHeight: 22, fontWeight: "900" },
+  steps: { fontSize: 13, lineHeight: 18, paddingHorizontal: space.xs },
 });

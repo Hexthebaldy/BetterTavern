@@ -1,23 +1,26 @@
 /**
  * 改动对比（同网页端 pages/workbench/ChangesCard.tsx）：写好以后接着改时，agent 给出一处处改动，
- * 红底删除线是原文，绿底是改后的。“全部采用 / 逐条看 / 都不要”；逐条看时每处有“采用”“不要”。
+ * 半透明酒红底加删除线是原文，半透明深绿底是改后的，中间一个向下的箭头（和网页一样）。
+ * “全部采用 / 逐条看 / 都不要”；逐条看时每处有“采用”“不要”。
  * 采用时那一处已经被手动改过的，服务端标成“已经手动改过，没采用”。
  */
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Hunk } from "@bettertavern/core/api/types";
 import { hunkTargetLabel } from "@bettertavern/core/workbench/labels";
 
 import { Button, Icon, Pill, useOverlay } from "../../components/ui.tsx";
-import { usePalette } from "../../theme/index.ts";
+import { comicStroke, useComic } from "../../theme/index.ts";
 import { chat } from "./chatStyles.ts";
 import type { Decision } from "./useDraftSession.ts";
 
 const STATE_TONE = { accepted: "ok", rejected: "grey", stale: "warn", pending: "grey" } as const;
+/** 底色的透明度：18%（#RRGGBBAA 的 AA） */
+const TINT = "2E";
 
 function HunkView({
   hunk,
@@ -30,40 +33,48 @@ function HunkView({
   busy: boolean;
   onDecide: (decision: Decision) => void;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const decided = hunk.state !== "pending";
+  const before = { color: c.wine, backgroundColor: `${c.wine}${TINT}`, textDecorationColor: c.wine };
   return (
     <View
       style={[
         chat.card,
-        { backgroundColor: palette.card, gap: 8, opacity: decided && hunk.state !== "accepted" ? 0.6 : 1 },
+        {
+          borderWidth: comicStroke.control,
+          borderColor: c.ink,
+          backgroundColor: c.paper,
+          gap: 8,
+          opacity: decided && hunk.state !== "accepted" ? 0.6 : 1,
+        },
       ]}
     >
       <View style={chat.cardHead}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}>
-          <Icon name="write" size={13} color={palette.ink} />
-          <Text style={[chat.cardTitle, { color: palette.ink }]} numberOfLines={1}>
+          <Icon name="write" size={13} color={c.ink} />
+          <Text style={[chat.cardTitle, { color: c.ink }]} numberOfLines={1}>
             {hunkTargetLabel(hunk.target)}
           </Text>
         </View>
         {decided ? (
           <Pill label={t(`workbench.changes.states.${hunk.state}`)} tone={STATE_TONE[hunk.state]} />
         ) : hunk.summary ? (
-          <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: palette.mut }}>
+          <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 12, color: c.mut }}>
             {hunk.summary}
           </Text>
         ) : null}
       </View>
+      {hunk.before ? <Text style={[chat.before, before]}>{hunk.before}</Text> : null}
       {hunk.before ? (
-        <Text style={[chat.before, { color: palette.err, backgroundColor: palette.errBg }]}>{hunk.before}</Text>
+        <View style={styles.arrow}>
+          <Icon name="down" size={14} color={c.mut} />
+        </View>
       ) : null}
       {hunk.after === null ? (
-        <Text style={[chat.before, { color: palette.err, backgroundColor: palette.errBg }]}>
-          {t("workbench.changes.deleted")}
-        </Text>
+        <Text style={[chat.before, before]}>{t("workbench.changes.deleted")}</Text>
       ) : (
-        <Text style={[chat.after, { color: palette.ink, backgroundColor: palette.okBg }]}>{hunk.after}</Text>
+        <Text style={[chat.after, { color: c.ink, backgroundColor: `${c.forest}${TINT}` }]}>{hunk.after}</Text>
       )}
       {reviewing && !decided ? (
         <View style={[chat.actions, { justifyContent: "flex-end" }]}>
@@ -72,13 +83,13 @@ function HunkView({
             variant="secondary"
             disabled={busy}
             onPress={() => onDecide({ reject: [hunk.id] })}
-            style={{ minHeight: 40, height: 40 }}
+            small
           />
           <Button
             label={t("workbench.changes.accept")}
             disabled={busy}
             onPress={() => onDecide({ accept: [hunk.id] })}
-            style={{ minHeight: 40, height: 40 }}
+            small
           />
         </View>
       ) : null}
@@ -97,7 +108,7 @@ export function ChangesCard({
   active: boolean;
   onDecide: (decision: Decision) => Promise<void>;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const overlay = useOverlay();
   const [reviewing, setReviewing] = useState(false);
@@ -121,14 +132,14 @@ export function ChangesCard({
 
   return (
     <>
-      {intro ? <Text style={[chat.agentText, { color: palette.ink }]}>{intro}</Text> : null}
-      <View style={[chat.card, { backgroundColor: palette.bg2 }]}>
+      {intro ? <Text style={[chat.agentText, { color: c.ink }]}>{intro}</Text> : null}
+      <View style={[chat.card, { borderColor: c.ink, backgroundColor: c.paper }]}>
         <View style={chat.cardHead}>
-          <Text style={[chat.cardTitle, { color: palette.ink }]}>
+          <Text style={[chat.cardTitle, { color: c.ink }]}>
             {t("workbench.changes.title", { count: hunks.length })}
           </Text>
           {!open && pending < hunks.length ? (
-            <Text style={[chat.cardMeta, { color: palette.mut }]}>
+            <Text style={[chat.cardMeta, { color: c.mut }]}>
               {t("workbench.changes.decided", { accepted })}
             </Text>
           ) : null}
@@ -171,3 +182,8 @@ export function ChangesCard({
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  /** 原文和改后中间的箭头：压在两块的接缝上 */
+  arrow: { alignSelf: "center", marginVertical: -6 },
+});

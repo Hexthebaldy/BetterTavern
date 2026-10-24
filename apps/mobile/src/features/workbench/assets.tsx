@@ -15,7 +15,7 @@ import type { Asset } from "@bettertavern/core/api/types";
 
 import { Icon, useOverlay } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
-import { usePalette } from "../../theme/index.ts";
+import { comicDepth, comicRadius, comicStroke, hardShadow, useComic } from "../../theme/index.ts";
 import type { DraftSession } from "./useDraftSession.ts";
 
 /** 带登录凭据取的图片；取不到时什么都不画 */
@@ -57,7 +57,7 @@ export function AssetTile({
   onPress?: () => void;
   label: string;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const height = (width * 4) / 3;
   return (
@@ -69,8 +69,8 @@ export function AssetTile({
       onPress={onPress}
       style={[
         styles.tile,
-        { width, height, backgroundColor: palette.bg3 },
-        selected ? { borderWidth: 3, borderColor: palette.acc } : null,
+        { width, height, backgroundColor: c.grey, borderColor: selected ? c.acc : c.ink },
+        selected ? { borderWidth: comicStroke.frame, boxShadow: hardShadow(c.acc, comicDepth.focus) } : null,
       ]}
     >
       <BlobImage blobId={asset.blob_id} style={{ width: "100%", height: "100%" }} />
@@ -80,8 +80,8 @@ export function AssetTile({
         </View>
       ) : null}
       {selected ? (
-        <View style={[styles.check, { backgroundColor: palette.acc }]}>
-          <Icon name="check" size={13} color="#fff" />
+        <View style={[styles.check, { backgroundColor: c.acc }]}>
+          <Icon name="check" size={13} color={c.onAcc} />
         </View>
       ) : null}
     </Pressable>
@@ -153,7 +153,7 @@ export function useCoverActions(draftId: string, session: DraftSession) {
 export type CoverActions = ReturnType<typeof useCoverActions>;
 
 const styles = StyleSheet.create({
-  tile: { borderRadius: 12, overflow: "hidden" },
+  tile: { borderRadius: comicRadius.cover, borderWidth: comicStroke.control, overflow: "hidden" },
   license: {
     position: "absolute",
     left: 6,

@@ -12,7 +12,7 @@ import { i18n } from "@bettertavern/core/i18n/index";
 import { moveEntry, newEntry, type EntryDraft } from "@bettertavern/core/scenario/cardEdit";
 
 import { Button, Field, Icon, IconButton, Pill, Toggle } from "../../components/ui.tsx";
-import { radius, space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, font, space, useComic } from "../../theme/index.ts";
 
 function entryTitle(entry: EntryDraft): string {
   const name = entry.name.trim();
@@ -30,10 +30,10 @@ function Switch({
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View style={styles.switchRow}>
-      <Text style={{ flex: 1, fontSize: 15, color: palette.ink }}>{label}</Text>
+      <Text style={{ flex: 1, fontSize: 15, color: c.ink }}>{label}</Text>
       <Toggle label={label} value={value} onChange={onChange} />
     </View>
   );
@@ -49,7 +49,7 @@ export function BookEditor({
   /** 服务端或本地检查给出的错误，按 field（book.3.content 之类）取 */
   errorFor: (field: string) => string | null;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const [open, setOpen] = useState<string | null>(null);
 
@@ -70,7 +70,7 @@ export function BookEditor({
         const errors = [errorFor(`${where}.name`), errorFor(`${where}.keys`), errorFor(`${where}.content`)];
         const broken = errors.some(Boolean);
         return (
-          <View key={entry.key} style={[styles.entry, { backgroundColor: palette.bg2 }]}>
+          <View key={entry.key} style={[styles.entry, { backgroundColor: c.paper, borderColor: c.ink }]}>
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded }}
@@ -78,14 +78,14 @@ export function BookEditor({
               onPress={() => setOpen(expanded ? null : entry.key)}
               style={styles.head}
             >
-              <Text style={[styles.index, { color: palette.mut }]}>{i + 1}</Text>
+              <Text style={[styles.index, { color: c.mut }]}>{i + 1}</Text>
               <Text
                 numberOfLines={1}
                 style={{
                   flex: 1,
                   fontSize: 15,
-                  fontWeight: "500",
-                  color: entry.enabled ? palette.ink : palette.mut,
+                  fontWeight: "700",
+                  color: entry.enabled ? c.ink : c.mut,
                 }}
               >
                 {entryTitle(entry)}
@@ -95,14 +95,13 @@ export function BookEditor({
               {!entry.enabled ? (
                 <Pill tone="card" label={t("cardEdit.disabled")} style={styles.pill} />
               ) : null}
-              <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} color={palette.mut} />
+              <Icon name={expanded ? "chevronUp" : "chevronDown"} size={18} color={c.mut} />
             </Pressable>
             {expanded ? (
               <View style={styles.body}>
                 <Field
                   label={t("cardEdit.entryName")}
                   optional
-                  onGrey
                   value={entry.name}
                   onChangeText={(name) => update(i, { name })}
                   error={errors[0]}
@@ -110,7 +109,6 @@ export function BookEditor({
                 <Field
                   label={t("cardEdit.keywords")}
                   optional
-                  onGrey
                   value={entry.keys}
                   onChangeText={(keys) => update(i, { keys })}
                   hint={t("cardEdit.hints.list")}
@@ -118,7 +116,6 @@ export function BookEditor({
                 />
                 <Field
                   label={t("cardEdit.content")}
-                  onGrey
                   multiline
                   boxHeight={140}
                   value={entry.content}
@@ -174,7 +171,7 @@ export function BookEditor({
 
 const styles = StyleSheet.create({
   list: { gap: space.s },
-  entry: { borderRadius: radius.card, overflow: "hidden" },
+  entry: { borderRadius: comicRadius.frame, borderWidth: comicStroke.frame, overflow: "hidden" },
   head: {
     flexDirection: "row",
     alignItems: "center",
@@ -184,9 +181,9 @@ const styles = StyleSheet.create({
   },
   /** Pill 默认贴着顶，在这一行里要居中 */
   pill: { alignSelf: "center" },
-  index: { width: 24, fontSize: 13, fontVariant: ["tabular-nums"] },
+  index: { width: 24, fontFamily: font.monoMedium, fontSize: 13 },
   body: { gap: space.m, paddingHorizontal: space.l, paddingBottom: space.l },
   switchRow: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 40 },
   actions: { flexDirection: "row", alignItems: "center", gap: space.s },
-  delete: { height: 44, paddingHorizontal: space.l },
+  delete: { paddingHorizontal: space.l },
 });

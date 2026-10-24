@@ -17,7 +17,7 @@ import { canTalk } from "@bettertavern/core/workbench/progress";
 import { awaitedMessage, type WorkbenchState } from "@bettertavern/core/workbench/session";
 
 import { Button, Dots, Icon, IconButton, useOverlay } from "../../components/ui.tsx";
-import { radius, space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 import { chat } from "./chatStyles.ts";
 import { AgentRow, MessageView, type MessageActions } from "./Messages.tsx";
 import type { DraftSession } from "./useDraftSession.ts";
@@ -32,7 +32,7 @@ function unfinished(state: WorkbenchState): boolean {
 }
 
 function Live({ state, stopping, onStop }: { state: WorkbenchState; stopping: boolean; onStop: () => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const writingTool = !state.tool || state.tool.name === "write_field" || state.tool.name === "lore_upsert";
   const working =
@@ -43,27 +43,27 @@ function Live({ state, stopping, onStop }: { state: WorkbenchState; stopping: bo
       label={stopping ? t("workbench.chat.stopping") : t("workbench.chat.stop")}
       icon="stop"
       variant="secondary"
-      onGrey
       disabled={stopping}
       onPress={onStop}
-      style={{ minHeight: 36, height: 36, alignSelf: "flex-start" }}
+      small
+      style={{ alignSelf: "flex-start" }}
     />
   );
   return (
     <AgentRow>
-      {state.speaking ? <Text style={[chat.agentText, { color: palette.ink }]}>{state.speaking}</Text> : null}
+      {state.speaking ? <Text style={[chat.agentText, { color: c.ink }]}>{state.speaking}</Text> : null}
       {working || !state.speaking ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Dots color={palette.mut} cell={5} />
-          <Text style={{ fontSize: 13, color: palette.mut }}>{working ?? t("workbench.chat.thinking")}</Text>
+          <Dots color={c.mut} cell={5} />
+          <Text style={{ fontSize: 13, color: c.mut }}>{working ?? t("workbench.chat.thinking")}</Text>
         </View>
       ) : null}
       {state.todos.length ? (
-        <View style={[chat.card, { backgroundColor: palette.bg2 }]}>
+        <View style={[chat.card, { borderColor: c.ink, backgroundColor: c.paper }]}>
           <View style={chat.cardHead}>
-            <Text style={[chat.cardTitle, { color: palette.ink }]}>
+            <Text style={[chat.cardTitle, { color: c.ink }]}>
               {t("workbench.status.running")}{" "}
-              <Text style={{ color: palette.mut, fontWeight: "400" }}>
+              <Text style={{ color: c.mut, fontWeight: "400" }}>
                 {done} / {state.todos.length}
               </Text>
             </Text>
@@ -77,23 +77,23 @@ function Live({ state, stopping, onStop }: { state: WorkbenchState; stopping: bo
                 key={todo.key}
                 style={[
                   styles.todo,
-                  doing ? { backgroundColor: palette.card } : null,
+                  doing ? { backgroundColor: c.selected } : null,
                 ]}
               >
                 <View
                   style={[
                     styles.mark,
                     {
-                      borderColor: doneItem ? palette.ink : doing ? palette.acc : palette.line2,
-                      backgroundColor: doneItem ? palette.ink : doing ? palette.acc : "transparent",
+                      borderColor: doneItem ? c.ink : doing ? c.acc : c.ink,
+                      backgroundColor: doneItem ? c.ink : doing ? c.acc : "transparent",
                     },
                   ]}
                 >
-                  {doneItem ? <Icon name="check" size={11} color={palette.bg} /> : null}
+                  {doneItem ? <Icon name="check" size={11} color={c.paper} /> : null}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, color: doneItem || doing ? palette.ink : palette.mut }}>{todo.text}</Text>
-                  {todo.detail ? <Text style={{ fontSize: 12, color: palette.mut }}>{todo.detail}</Text> : null}
+                  <Text style={{ fontSize: 14, color: doneItem || doing ? c.ink : c.mut }}>{todo.text}</Text>
+                  {todo.detail ? <Text style={{ fontSize: 12, color: c.mut }}>{todo.detail}</Text> : null}
                 </View>
               </View>
             );
@@ -117,7 +117,7 @@ export function AgentPane({
   pickCover: (asset: Asset) => Promise<boolean>;
   bottomInset: number;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const overlay = useOverlay();
   const [text, setText] = useState("");
@@ -237,7 +237,7 @@ export function AgentPane({
       >
         {state.messages.length === 0 && state.draft.draft.origin !== "agent" ? (
           <AgentRow>
-            <Text style={[chat.agentText, { color: palette.mut }]}>{finished ? t("workbench.chat.emptyEdit") : t("workbench.chat.emptyManual")}</Text>
+            <Text style={[chat.agentText, { color: c.mut }]}>{finished ? t("workbench.chat.emptyEdit") : t("workbench.chat.emptyManual")}</Text>
           </AgentRow>
         ) : null}
         {state.messages.map((message, i) => (
@@ -258,7 +258,8 @@ export function AgentPane({
             variant="secondary"
             busy={resuming}
             onPress={() => void onResume()}
-            style={{ minHeight: 40, height: 40, alignSelf: "flex-start" }}
+            small
+            style={{ alignSelf: "flex-start" }}
           />
         ) : null}
         {suggestions.length ? (
@@ -268,23 +269,24 @@ export function AgentPane({
                 key={suggestion}
                 accessibilityRole="button"
                 onPress={() => setText(suggestion)}
-                style={[styles.suggestion, { borderColor: palette.line, color: palette.ink2 }]}
+                style={[styles.suggestion, { borderColor: c.ink, color: c.ink, backgroundColor: c.paper }]}
               >
                 {suggestion}
               </Text>
             ))}
           </ScrollView>
         ) : null}
-        <View style={[styles.composer, { backgroundColor: palette.bg2 }]}>
+        <View style={[styles.composer, { backgroundColor: c.paper, borderColor: c.ink }]}>
           <TextInput
             accessibilityLabel={t("workbench.chat.placeholder")}
             placeholder={placeholder}
-            placeholderTextColor={palette.mut}
+            placeholderTextColor={c.mut}
             value={text}
             multiline
             maxLength={8000}
             onChangeText={setText}
-            style={[styles.input, { color: palette.ink }]}
+            selectionColor={c.acc}
+            style={[styles.input, { color: c.ink }]}
           />
           <IconButton
             icon="send"
@@ -292,10 +294,10 @@ export function AgentPane({
             diameter={36}
             size={18}
             tone="plain"
-            color={palette.bg}
+            color={c.paper}
             disabled={!text.trim() || sending || running}
             onPress={() => void submit()}
-            style={{ backgroundColor: palette.ink }}
+            style={{ backgroundColor: c.ink }}
           />
         </View>
       </View>
@@ -305,13 +307,13 @@ export function AgentPane({
 
 const styles = StyleSheet.create({
   transcript: { paddingHorizontal: space.l, paddingTop: space.m, paddingBottom: space.l, gap: space.l },
-  todo: { flexDirection: "row", gap: 10, alignItems: "flex-start", padding: 6, borderRadius: 12 },
+  todo: { flexDirection: "row", gap: 10, alignItems: "flex-start", padding: 6, borderRadius: comicRadius.tag },
   mark: {
     width: 18,
     height: 18,
     marginTop: 1,
     borderRadius: 9,
-    borderWidth: 1.5,
+    borderWidth: comicStroke.control,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -319,19 +321,21 @@ const styles = StyleSheet.create({
   suggestion: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 9,
+    borderWidth: comicStroke.control,
     overflow: "hidden",
-    fontSize: 13,
+    fontSize: 13.5,
+    fontWeight: "700",
   },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: space.s,
     paddingLeft: space.l,
-    paddingRight: 6,
-    paddingVertical: 6,
+    paddingRight: 5,
+    paddingVertical: 5,
     borderRadius: 24,
+    borderWidth: comicStroke.frame,
   },
   input: { flex: 1, maxHeight: 140, paddingVertical: 8, fontSize: 15, lineHeight: 22 },
 });

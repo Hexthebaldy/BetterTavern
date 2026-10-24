@@ -2,6 +2,7 @@
  * 卡片预览（同网页端 pages/workbench/PreviewPane.tsx 和手动模式的检查栏），从页头的“预览”打开的整屏面板：
  * - Agent 模式三个标签：卡片（正在写的字段蓝底实时出字，待采用的改动绿框）、资料（每条用在哪里）、图片（点一下当封面）；
  * - 手动模式：检查（问题清单，点一下回到那一节）、字数、开场在阅读页里的样子。
+ * 漫画风：每一块是白底 2 墨线的格子；正在写的一块是浅蓝底蓝框，待采用的改动是深绿框。
  */
 
 import { useState, type ReactNode } from "react";
@@ -21,7 +22,7 @@ import { fieldList } from "@bettertavern/core/workbench/labels";
 import { awaitedMessage, type WorkbenchState } from "@bettertavern/core/workbench/session";
 
 import { Icon, Pill, Segmented, Sheet } from "../../components/ui.tsx";
-import { font, space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, font, space, useComic } from "../../theme/index.ts";
 import { AssetTile, BlobImage, type CoverActions } from "./assets.tsx";
 
 type Tab = "card" | "notes" | "images";
@@ -41,12 +42,12 @@ function pendingFields(state: WorkbenchState): { fields: Map<string, string>; ot
 }
 
 export function IssueList({ issues, onPick }: { issues: readonly Issue[]; onPick?: (issue: Issue) => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const sorted = [...issues].sort((a, b) => (a.level === b.level ? 0 : a.level === "error" ? -1 : 1));
   return (
     <View style={{ gap: 6 }}>
       {sorted.map((issue, i) => {
-        const color = issue.level === "error" ? palette.err : palette.warn;
+        const color = issue.level === "error" ? c.err : c.warn;
         return (
           <Pressable
             key={`${issue.field}:${issue.code}:${i}`}
@@ -74,36 +75,36 @@ function Block({
   text: string;
   tone?: "writing" | "change";
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
-  const accent = tone === "writing" ? palette.acc : tone === "change" ? palette.ok : palette.mut;
+  const accent = tone === "writing" ? c.acc : tone === "change" ? c.forest : c.mut;
   return (
     <View
       style={[
         styles.block,
         {
-          backgroundColor: tone === "writing" ? palette.accBg : palette.card,
-          borderColor: tone === "change" ? palette.ok : "transparent",
+          backgroundColor: tone === "writing" ? c.selected : c.paper,
+          borderColor: tone === "writing" ? c.acc : tone === "change" ? c.forest : c.ink,
         },
       ]}
     >
       <View style={styles.blockHead}>
-        <Text style={{ fontSize: 11.5, color: accent }}>{label}</Text>
-        {meta ? <Text style={{ fontSize: 11.5, color: accent }}>{meta}</Text> : null}
+        <Text style={{ fontSize: 12, fontWeight: "700", color: accent }}>{label}</Text>
+        {meta ? <Text style={{ fontSize: 12, color: accent }}>{meta}</Text> : null}
       </View>
       {text.trim() || tone === "writing" ? (
-        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink }} numberOfLines={tone ? undefined : 8}>
+        <Text style={{ fontSize: 14, lineHeight: 22, color: c.ink }} numberOfLines={tone ? undefined : 8}>
           {text}
         </Text>
       ) : (
-        <Text style={{ fontSize: 13, color: palette.mut }}>{t("workbench.preview.empty")}</Text>
+        <Text style={{ fontSize: 13, color: c.mut }}>{t("workbench.preview.empty")}</Text>
       )}
     </View>
   );
 }
 
 function CardBody({ state, onOpenCover }: { state: WorkbenchState; onOpenCover: () => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const { card, draft } = state.draft;
   const pending = pendingFields(state);
@@ -138,23 +139,23 @@ function CardBody({ state, onOpenCover }: { state: WorkbenchState; onOpenCover: 
         accessibilityRole="button"
         accessibilityLabel={t("workbench.cover.change")}
         onPress={onOpenCover}
-        style={[styles.cover, { backgroundColor: palette.card, borderColor: palette.line2 }]}
+        style={[styles.cover, { backgroundColor: c.paper, borderColor: c.ink }]}
       >
         {draft.cover_blob_id ? (
           <BlobImage blobId={draft.cover_blob_id} style={StyleSheet.absoluteFill} />
         ) : (
           <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-            <Icon name="image" size={16} color={palette.mut} />
-            <Text style={{ color: palette.mut, fontSize: 13 }}>{t("workbench.cover.title")}</Text>
+            <Icon name="image" size={16} color={c.mut} />
+            <Text style={{ color: c.mut, fontSize: 13 }}>{t("workbench.cover.title")}</Text>
           </View>
         )}
       </Pressable>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <Text style={{ fontSize: 24, fontWeight: "800", color: palette.ink }}>
+        <Text style={{ fontSize: 24, fontWeight: "900", color: c.ink }}>
           {(writing?.target === "field:name" ? writing.text : card.name) || t("workbench.home.untitled")}
         </Text>
         {draft.name && draft.name !== card.name ? (
-          <Text style={{ fontSize: 12.5, color: palette.mut }}>{draft.name}</Text>
+          <Text style={{ fontSize: 12.5, color: c.mut }}>{draft.name}</Text>
         ) : null}
       </View>
       {card.tags.length ? (
@@ -192,24 +193,24 @@ function CardBody({ state, onOpenCover }: { state: WorkbenchState; onOpenCover: 
 }
 
 function NotesBody({ state }: { state: WorkbenchState }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const notes = state.draft.notes;
-  if (!notes.length) return <Text style={styles.empty}>{t("workbench.preview.noNotes")}</Text>;
+  if (!notes.length) return <Text style={[styles.empty, { color: c.mut }]}>{t("workbench.preview.noNotes")}</Text>;
   return (
     <>
       {notes.map((note) => (
-        <View key={note.id} style={[styles.block, { backgroundColor: palette.card, gap: 6 }]}>
+        <View key={note.id} style={[styles.block, { backgroundColor: c.paper, borderColor: c.ink, gap: 6 }]}>
           <Text
             accessibilityRole="link"
             numberOfLines={1}
             onPress={() => void Linking.openURL(note.url)}
-            style={{ fontSize: 14, fontWeight: "600", color: palette.ink }}
+            style={{ fontSize: 14, fontWeight: "700", color: c.ink }}
           >
             {note.title || note.url}
           </Text>
-          <Text style={{ fontFamily: font.mono, fontSize: 11, color: palette.mut }}>{note.site}</Text>
-          <Text style={{ fontSize: 13, lineHeight: 20, color: palette.ink2 }}>{note.text}</Text>
+          <Text style={{ fontFamily: font.mono, fontSize: 11, color: c.mut }}>{note.site}</Text>
+          <Text style={{ fontSize: 13, lineHeight: 20, color: c.ink2 }}>{note.text}</Text>
           {note.used_in.length ? (
             <Pill label={t("workbench.preview.usedIn", { fields: fieldList(note.used_in) })} tone="acc" />
           ) : null}
@@ -221,7 +222,7 @@ function NotesBody({ state }: { state: WorkbenchState }) {
 
 /** 手动模式：检查、字数、开场在阅读页里的样子 */
 export function CheckBody({ card, issues, onPick }: { card: CardDraft; issues: Issue[]; onPick: (issue: Issue) => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const lengths = TEXT_FIELDS.filter((f) => card[f].trim())
     .map((f) => `${fieldLabel(f)} ${charCount(card[f].trim())}`)
@@ -233,25 +234,25 @@ export function CheckBody({ card, issues, onPick }: { card: CardDraft; issues: I
       {issues.length ? (
         <IssueList issues={issues} onPick={onPick} />
       ) : (
-        <View style={[styles.ok, { backgroundColor: palette.okBg }]}>
-          <Icon name="check" size={14} color={palette.ok} />
-          <Text style={{ color: palette.ok, fontSize: 13 }}>{t("workbench.preview.checkOk")}</Text>
+        <View style={[styles.ok, { backgroundColor: c.paper, borderColor: c.forest }]}>
+          <Icon name="check" size={14} color={c.forest} />
+          <Text style={{ color: c.forest, fontSize: 13, fontWeight: "700" }}>{t("workbench.preview.checkOk")}</Text>
         </View>
       )}
       {lengths ? <Block label={t("workbench.preview.lengths")} text={lengths} /> : null}
       {opening.trim() ? (
         <>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: palette.ink, paddingTop: space.s }}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: c.ink, paddingTop: space.s }}>
             {t("workbench.preview.openingPreview")}
           </Text>
-          <View style={[styles.block, { backgroundColor: palette.card }]}>
-            <Text style={{ fontFamily: font.serif, fontSize: 16, lineHeight: 28, color: palette.narr }}>
+          <View style={[styles.block, { backgroundColor: c.paper, borderColor: c.ink }]}>
+            <Text style={{ fontFamily: font.serif, fontSize: 16, lineHeight: 28, color: c.ink }}>
               {opening.trim()}
             </Text>
           </View>
         </>
       ) : null}
-      <Text style={{ fontSize: 12, lineHeight: 18, color: palette.mut }}>
+      <Text style={{ fontSize: 12, lineHeight: 18, color: c.mut }}>
         {t("cardEdit.notice", { user: "{{user}}", char: "{{char}}" })}
       </Text>
     </>
@@ -274,7 +275,7 @@ export function PreviewSheet({
   /** 手动模式：显示检查（由调用方画好） */
   manual?: ReactNode;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("card");
   return (
@@ -299,7 +300,7 @@ export function PreviewSheet({
           style={{ marginHorizontal: space.l, marginBottom: space.s }}
         />
       )}
-      <ScrollView contentContainerStyle={styles.scroll} style={{ backgroundColor: palette.sheet }}>
+      <ScrollView contentContainerStyle={styles.scroll} style={{ backgroundColor: c.page }}>
         {manual ?? (
           <>
             {tab === "card" ? <CardBody state={state} onOpenCover={onOpenCover} /> : null}
@@ -319,7 +320,7 @@ export function PreviewSheet({
                   ))}
                 </View>
               ) : (
-                <Text style={styles.empty}>{t("workbench.preview.noImages")}</Text>
+                <Text style={[styles.empty, { color: c.mut }]}>{t("workbench.preview.noImages")}</Text>
               )
             ) : null}
           </>
@@ -333,22 +334,28 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: space.l, paddingBottom: 48, gap: space.s },
   cover: {
     height: 180,
-    borderRadius: 20,
+    borderRadius: comicRadius.frame,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
+    borderWidth: comicStroke.control,
     borderStyle: "dashed",
   },
   block: {
-    borderRadius: 16,
+    borderRadius: comicRadius.frame,
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 4,
-    borderWidth: 1.5,
-    borderColor: "transparent",
+    borderWidth: comicStroke.control,
   },
   blockHead: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
-  empty: { paddingVertical: 32, textAlign: "center", fontSize: 13, opacity: 0.6 },
-  ok: { flexDirection: "row", alignItems: "center", gap: 6, padding: 10, borderRadius: 12 },
+  empty: { paddingVertical: 32, textAlign: "center", fontSize: 13 },
+  ok: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    padding: 10,
+    borderRadius: comicRadius.frame,
+    borderWidth: comicStroke.control,
+  },
 });

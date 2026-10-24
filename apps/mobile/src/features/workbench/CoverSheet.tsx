@@ -14,7 +14,7 @@ import type { Draft } from "@bettertavern/core/api/types";
 import { Button, Chip, Field, Notice, Sheet } from "../../components/ui.tsx";
 import { useAsync } from "../../hooks/useAsync.ts";
 import { useApp } from "../../state/AppProvider.tsx";
-import { space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 import { AssetTile, BlobImage, type CoverActions } from "./assets.tsx";
 
 const STYLES = ["none", "ink", "oil", "film", "flat"] as const;
@@ -33,7 +33,7 @@ export function CoverSheet({
   onGenerated: () => Promise<void>;
   onClose: () => void;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const { api } = useApp();
   const routes = useAsync(() => api.tools.list(), [api]);
@@ -80,12 +80,12 @@ export function CoverSheet({
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.current}>
           {current ? (
-            <BlobImage blobId={current} style={[styles.thumb, { backgroundColor: palette.bg2 }]} />
+            <BlobImage blobId={current} style={[styles.thumb, { backgroundColor: c.grey, borderColor: c.ink }]} />
           ) : (
-            <View style={[styles.thumb, { backgroundColor: palette.bg2 }]} />
+            <View style={[styles.thumb, { backgroundColor: c.grey, borderColor: c.ink }]} />
           )}
           <View style={{ flex: 1, gap: space.s }}>
-            <Text style={{ fontSize: 13, color: palette.mut }}>
+            <Text style={{ fontSize: 13, color: c.mut }}>
               {current ? t("workbench.cover.selected") : t("workbench.cover.none")}
             </Text>
             <Button
@@ -94,20 +94,22 @@ export function CoverSheet({
               variant="secondary"
               busy={uploading}
               onPress={() => void upload()}
-              style={{ minHeight: 40, height: 40, alignSelf: "flex-start" }}
+              small
+              style={{ alignSelf: "flex-start" }}
             />
             {current ? (
               <Button
                 label={t("workbench.cover.remove")}
                 variant="text"
                 onPress={() => void cover.remove()}
-                style={{ minHeight: 36, height: 36, alignSelf: "flex-start" }}
+                small
+                style={{ alignSelf: "flex-start" }}
               />
             ) : null}
           </View>
         </View>
 
-        <View style={[styles.generate, { backgroundColor: palette.bg2 }]}>
+        <View style={[styles.generate, { backgroundColor: c.paper, borderColor: c.ink }]}>
           {service ? (
             <>
               <Field
@@ -115,28 +117,26 @@ export function CoverSheet({
                 placeholder={t("workbench.cover.promptPlaceholder")}
                 multiline
                 boxHeight={84}
-                onGrey
                 value={prompt}
                 maxLength={1000}
                 onChangeText={setPrompt}
               />
-              <Text style={[styles.label, { color: palette.mut }]}>{t("workbench.cover.style")}</Text>
+              <Text style={[styles.label, { color: c.ink }]}>{t("workbench.cover.style")}</Text>
               <View style={styles.row}>
                 {STYLES.map((id) => (
                   <Chip
                     key={id}
                     small
-                    onGrey
                     label={t(`workbench.cover.styles.${id}`)}
                     selected={style === id}
                     onPress={() => setStyle(id)}
                   />
                 ))}
               </View>
-              <Text style={[styles.label, { color: palette.mut }]}>{t("workbench.cover.count")}</Text>
+              <Text style={[styles.label, { color: c.ink }]}>{t("workbench.cover.count")}</Text>
               <View style={styles.row}>
                 {COUNTS.map((n) => (
-                  <Chip key={n} small onGrey label={String(n)} selected={count === n} onPress={() => setCount(n)} />
+                  <Chip key={n} small label={String(n)} selected={count === n} onPress={() => setCount(n)} />
                 ))}
               </View>
               {problem ? <Notice message={problem} onClose={() => setProblem(null)} /> : null}
@@ -147,12 +147,12 @@ export function CoverSheet({
                 disabled={!prompt.trim()}
                 onPress={() => void generate()}
               />
-              <Text style={{ fontSize: 12, color: palette.mut }}>
+              <Text style={{ fontSize: 12, color: c.mut }}>
                 {t("workbench.cover.using", { service: service.label || service.provider })}
               </Text>
             </>
           ) : routes.loading ? null : (
-            <Text style={{ fontSize: 13, lineHeight: 20, color: palette.mut }}>{t("workbench.cover.noService")}</Text>
+            <Text style={{ fontSize: 13, lineHeight: 20, color: c.mut }}>{t("workbench.cover.noService")}</Text>
           )}
         </View>
 
@@ -178,8 +178,8 @@ export function CoverSheet({
 const styles = StyleSheet.create({
   content: { paddingHorizontal: space.l, paddingBottom: 48, gap: space.l },
   current: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
-  thumb: { width: 96, height: 144, borderRadius: 14 },
-  generate: { padding: 14, borderRadius: 18, gap: 10 },
-  label: { fontSize: 12.5 },
-  row: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  thumb: { width: 96, height: 144, borderRadius: comicRadius.cover, borderWidth: comicStroke.control },
+  generate: { padding: 14, borderRadius: comicRadius.frame, borderWidth: comicStroke.frame, gap: 10 },
+  label: { fontSize: 13.5, fontWeight: "700" },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: space.s },
 });

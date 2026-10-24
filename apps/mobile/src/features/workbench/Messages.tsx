@@ -1,6 +1,6 @@
 /**
  * 对话记录的一条（同网页端 pages/workbench/Messages.tsx），按 kind 画：
- * 用户的话是右边的气泡；agent 的话、问卷、方案、改动、图片、进度、查资料、出错在左边，前面是 agent 的头像。
+ * 用户的话是右边灰底墨框的气泡；agent 的话、问卷、方案、改动、图片、进度、查资料、出错在左边，前面是墨底圆形的 agent 头像。
  * 交卷、回复方案是收起的一行（“✓ 答了 6 题 悬疑 · 民国……”）。
  */
 
@@ -14,7 +14,7 @@ import { fieldList, runErrorText } from "@bettertavern/core/workbench/labels";
 import { answersSummary } from "@bettertavern/core/workbench/questionnaire";
 
 import { Icon, Notice, type IconName } from "../../components/ui.tsx";
-import { space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 import { AssetTile } from "./assets.tsx";
 import { ChangesCard } from "./ChangesCard.tsx";
 import { chat } from "./chatStyles.ts";
@@ -34,11 +34,11 @@ export type MessageActions = {
 };
 
 export function AgentRow({ children, avatar = true }: { children: ReactNode; avatar?: boolean }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View style={styles.agentRow}>
-      <View style={[styles.avatar, { backgroundColor: avatar ? palette.ink : "transparent" }]}>
-        {avatar ? <Icon name="workbench" size={15} color={palette.bg} /> : null}
+      <View style={[styles.avatar, { backgroundColor: avatar ? c.ink : "transparent" }]}>
+        {avatar ? <Icon name="workbench" size={16} color={c.paper} /> : null}
       </View>
       <View style={styles.agentBody}>{children}</View>
     </View>
@@ -46,15 +46,15 @@ export function AgentRow({ children, avatar = true }: { children: ReactNode; ava
 }
 
 function SummaryLine({ label, text, icon = "check" }: { label: string; text?: string; icon?: IconName }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View style={chat.summaryLine}>
-      <Icon name={icon} size={14} color={palette.mut} />
-      <Text style={[chat.summaryLabel, { color: palette.ink2, flexShrink: 1 }]} numberOfLines={2}>
+      <Icon name={icon} size={14} color={c.mut} />
+      <Text style={[chat.summaryLabel, { color: c.ink2, flexShrink: 1 }]} numberOfLines={2}>
         {label}
       </Text>
       {text ? (
-        <Text numberOfLines={1} style={[chat.summaryText, { color: palette.mut }]}>
+        <Text numberOfLines={1} style={[chat.summaryText, { color: c.mut }]}>
           {text}
         </Text>
       ) : null}
@@ -63,7 +63,7 @@ function SummaryLine({ label, text, icon = "check" }: { label: string; text?: st
 }
 
 function ResearchView({ content }: { content: { searches: string[]; pages: string[]; images: number } }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const text =
@@ -72,16 +72,16 @@ function ResearchView({ content }: { content: { searches: string[]; pages: strin
   return (
     <>
       <Pressable accessibilityRole="button" onPress={() => setOpen((o) => !o)} style={chat.summaryLine}>
-        <Icon name="search" size={14} color={palette.mut} />
-        <Text style={[chat.summaryText, { color: palette.mut }]}>{text}</Text>
-        <Text style={[chat.link, { color: palette.acc }]}>
+        <Icon name="search" size={14} color={c.mut} />
+        <Text style={[chat.summaryText, { color: c.mut }]}>{text}</Text>
+        <Text style={[chat.link, { color: c.acc }]}>
           {open ? t("common.collapse") : t("workbench.questions.expand")}
         </Text>
       </Pressable>
       {open ? (
         <View style={{ gap: 2 }}>
           {content.searches.map((query) => (
-            <Text key={`q:${query}`} style={{ fontSize: 13, color: palette.mut }}>
+            <Text key={`q:${query}`} style={{ fontSize: 13, color: c.mut }}>
               {query}
             </Text>
           ))}
@@ -90,7 +90,7 @@ function ResearchView({ content }: { content: { searches: string[]; pages: strin
               key={`p:${url}`}
               numberOfLines={1}
               onPress={() => void Linking.openURL(url)}
-              style={{ fontSize: 13, color: palette.acc }}
+              style={{ fontSize: 13, color: c.acc }}
             >
               {url}
             </Text>
@@ -108,7 +108,7 @@ function ImagesView({
   content: { asset_ids: string[]; purpose: "cover_candidates" | "references"; note: string };
   actions: MessageActions;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const assets = content.asset_ids
     .map((id) => actions.assets.find((a) => a.id === id))
@@ -116,7 +116,7 @@ function ImagesView({
   const cover = content.purpose === "cover_candidates";
   return (
     <>
-      <Text style={[chat.agentText, { color: palette.ink }]}>
+      <Text style={[chat.agentText, { color: c.ink }]}>
         {content.note || t(cover ? "workbench.messages.coverCandidates" : "workbench.messages.images")}
       </Text>
       {assets.length ? (
@@ -146,15 +146,17 @@ function progressText(content: { fields: string[]; lore: { added: number }; cove
 }
 
 function UserMessage({ message, actions }: { message: WorkbenchMessage; actions: MessageActions }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   switch (message.kind) {
     case "text":
       return (
         <View style={styles.userRow}>
-          <Text selectable style={[styles.bubble, { backgroundColor: palette.bg2, color: palette.ink }]}>
-            {message.content.text}
-          </Text>
+          <View style={[styles.bubble, { backgroundColor: c.option, borderColor: c.ink }]}>
+            <Text selectable style={[styles.bubbleText, { color: c.ink }]}>
+              {message.content.text}
+            </Text>
+          </View>
         </View>
       );
     case "answers": {
@@ -183,13 +185,13 @@ function UserMessage({ message, actions }: { message: WorkbenchMessage; actions:
 }
 
 function AgentContent({ message, actions }: { message: WorkbenchMessage; actions: MessageActions }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const active = actions.awaitedSeq === message.seq;
   switch (message.kind) {
     case "text":
       return (
-        <Text selectable style={[chat.agentText, { color: palette.ink }]}>
+        <Text selectable style={[chat.agentText, { color: c.ink }]}>
           {message.content.text}
         </Text>
       );
@@ -222,9 +224,9 @@ function AgentContent({ message, actions }: { message: WorkbenchMessage; actions
         <>
           {text ? <SummaryLine label={t("workbench.messages.progress", { fields: text })} /> : null}
           {content.stopped ? (
-            <Text style={[chat.muted, { color: palette.mut }]}>{t("workbench.messages.progressStopped")}</Text>
+            <Text style={[chat.muted, { color: c.mut }]}>{t("workbench.messages.progressStopped")}</Text>
           ) : !content.complete ? (
-            <Text style={[chat.muted, { color: palette.mut }]}>{t("workbench.messages.progressIncomplete")}</Text>
+            <Text style={[chat.muted, { color: c.mut }]}>{t("workbench.messages.progressIncomplete")}</Text>
           ) : null}
         </>
       );
@@ -261,15 +263,15 @@ export const MessageView = memo(function MessageView({
 
 const styles = StyleSheet.create({
   agentRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
-  avatar: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  agentBody: { flex: 1, minWidth: 0, gap: 10, paddingTop: 3 },
+  avatar: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  agentBody: { flex: 1, minWidth: 0, gap: 10, paddingTop: 4 },
   userRow: { flexDirection: "row", justifyContent: "flex-end", paddingLeft: 48 },
   bubble: {
-    paddingHorizontal: 16,
+    flexShrink: 1,
+    paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 20,
-    overflow: "hidden",
-    fontSize: 15,
-    lineHeight: 22,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.option,
   },
+  bubbleText: { fontSize: 15, lineHeight: 23 },
 });

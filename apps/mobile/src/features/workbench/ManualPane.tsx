@@ -23,7 +23,7 @@ import {
 } from "@bettertavern/core/scenario/cardEdit";
 
 import { Button, Chip, Field, IconButton, Notice, SectionHeader, useColumnStyle } from "../../components/ui.tsx";
-import { space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 import { BlobImage } from "./assets.tsx";
 import { BookEditor } from "./BookEditor.tsx";
 import type { CardForm } from "./useCardForm.ts";
@@ -53,7 +53,7 @@ export const ManualPane = forwardRef<
   ManualPaneHandle,
   { form: CardForm; draft: Draft; showEmpty: boolean; onOpenCover: () => void; bottomInset: number }
 >(function ManualPane({ form: state, draft, showEmpty, onOpenCover, bottomInset }, ref) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const column = useColumnStyle();
   const { form, update, issues } = state;
@@ -116,20 +116,21 @@ export const ManualPane = forwardRef<
         {heading("cover")}
         <View style={styles.coverRow}>
           {draft.draft.cover_blob_id ? (
-            <BlobImage blobId={draft.draft.cover_blob_id} style={[styles.coverThumb, { backgroundColor: palette.bg2 }]} />
+            <BlobImage blobId={draft.draft.cover_blob_id} style={[styles.coverThumb, { backgroundColor: c.grey, borderColor: c.ink }]} />
           ) : (
-            <View style={[styles.coverThumb, { backgroundColor: palette.bg2 }]} />
+            <View style={[styles.coverThumb, { backgroundColor: c.grey, borderColor: c.ink }]} />
           )}
           <View style={{ flex: 1, gap: space.s }}>
             {draft.draft.cover_blob_id ? null : (
-              <Text style={{ fontSize: 13, color: palette.mut }}>{t("workbench.cover.none")}</Text>
+              <Text style={{ fontSize: 13, color: c.mut }}>{t("workbench.cover.none")}</Text>
             )}
             <Button
               label={t("workbench.cover.change")}
               icon="image"
               variant="secondary"
               onPress={onOpenCover}
-              style={{ minHeight: 40, height: 40, alignSelf: "flex-start" }}
+              small
+              style={{ alignSelf: "flex-start" }}
             />
           </View>
         </View>
@@ -170,7 +171,7 @@ export const ManualPane = forwardRef<
         {textField("first_mes", 160, t("cardEdit.hints.first_mes"))}
 
         {heading("greetings", greetings.length ? t("cardEdit.entries", { count: greetings.length }) : undefined)}
-        <Text style={[styles.note, { color: palette.mut }]}>{t("cardEdit.hints.greetings")}</Text>
+        <Text style={[styles.note, { color: c.mut }]}>{t("cardEdit.hints.greetings")}</Text>
         {errorFor("alternate_greetings") ? <Notice message={errorFor("alternate_greetings") ?? ""} /> : null}
         {greetings.map((greeting, i) => (
           <View key={greeting.key} style={{ gap: 4 }}>
@@ -220,7 +221,8 @@ export const ManualPane = forwardRef<
           variant="secondary"
           disabled={greetings.length >= CARD_LIMITS.greetings}
           onPress={() => update({ greetings: [...greetings, newGreeting()] })}
-          style={{ minHeight: 40, height: 40, alignSelf: "flex-start" }}
+          small
+          style={{ alignSelf: "flex-start" }}
         />
 
         {heading("speech")}
@@ -231,7 +233,7 @@ export const ManualPane = forwardRef<
         {textField("creator_notes", 100, t("cardEdit.hints.creator_notes"))}
 
         {heading("book", t("cardEdit.entries", { count: form.book.length }))}
-        <Text style={[styles.note, { color: palette.mut }]}>{t("cardEdit.bookNote")}</Text>
+        <Text style={[styles.note, { color: c.mut }]}>{t("cardEdit.bookNote")}</Text>
         {errorFor("book") ? <Notice message={errorFor("book") ?? ""} /> : null}
         <BookEditor book={form.book} onChange={(book) => update({ book })} errorFor={errorFor} />
       </ScrollView>
@@ -246,6 +248,6 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 0, paddingBottom: 0, paddingTop: space.l },
   note: { fontSize: 13, lineHeight: 20, marginTop: -space.s },
   coverRow: { flexDirection: "row", alignItems: "center", gap: space.l },
-  coverThumb: { width: 84, height: 126, borderRadius: 14 },
+  coverThumb: { width: 84, height: 126, borderRadius: comicRadius.cover, borderWidth: comicStroke.control },
   greetingTools: { flexDirection: "row", justifyContent: "flex-end", gap: 4 },
 });
