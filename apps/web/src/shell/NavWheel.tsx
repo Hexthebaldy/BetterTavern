@@ -6,13 +6,15 @@
  *   存档、剧本、角色、工作台、模型、设置。当前页那块墨底；指着的那块蓝网点、往外弹出 14，旁边冒一个说明气泡。
  *   靠边时先把圆心挪到离每条边至少 204 的地方，挪完以后要等鼠标动一下才开始高亮（免得一展开就选中光标底下那块）。
  *   选哪块只看方向：光标离圆心超过内半径就按角度算。
- * - 收起：鼠标离开圆盘 1 秒后（中途回来不收）；Esc、点页面别处、进了新页面立刻收起。收起时圆盘缩回去、淡出（0.22 秒）。
+ * - 收起：鼠标离开圆盘 0.3 秒后（中途回来不收）；Esc、点页面别处、进了新页面立刻收起。收起时圆盘缩回去、淡出（0.22 秒）。
  * - 拖动：在圆上按住 0.4 秒拿起来（放大 1.12、投影加深、原地留一个虚线圈），松手停在那里；离左右边 40 以内贴边。
  *   展开以后圆心可能已经挪开了，所以在圆盘上任何地方按住 0.4 秒也能拿起来，圆跳到光标底下；点一下扇区还是进入那一页。
  *   位置存在浏览器里（偏好的 wheel），窗口变了按比例换算再夹回窗口里。
  * - 键盘：Q 打开或收起；展开时 1–6 直接去，方向键在六块之间转，Enter 进去，Esc 收起。
  *   Q 和 1–6 是单键快捷键，跟着设置里的开关走，光标在输入框里时不响应；方向键、Enter、Esc 一直可用。
  * - 无障碍：圆是按钮（aria-haspopup="menu"、aria-expanded），六块是 menu / menuitem，打开时焦点落在当前页那一块。
+ *   用键盘打开（Q，或焦点在圆上按 Enter）的，收起时焦点回到打开前的地方（原来没有焦点就不留焦点，免得圆上多一圈焦点环）；
+ *   用鼠标打开、再用 Tab 走进去的，收起时焦点回到圆。
  *   开了“减少动态效果”时不做弹出和位移的动画（CSS 里的时长变成 0）。
  */
 
@@ -138,6 +140,10 @@ export function NavWheel() {
   const armAt = useRef<Point | null>(null);
   const lastPointer = useRef<Point | null>(null);
   const opened = useRef<{ by: OpenedBy; at: number }>({ by: "tap", at: 0 });
+  /** 这一次是不是用键盘打开的，打开时焦点原来在哪（null：原来没有焦点，在页面本身上）。
+   *  opened.by 会跟着之后的鼠标、方向键变，不能拿来判断 */
+  const keyOpened = useRef(false);
+  const returnFocus = useRef<HTMLElement | null>(null);
   const menuId = useId();
   const patternId = useId();
 
@@ -154,7 +160,8 @@ export function NavWheel() {
   };
 
   const closeWheel = useCallback(
-    (focusHub = false) => {
+    /** restoreFocus：焦点在轮盘里时收起（Esc、Q），把焦点送回去 */
+    (restoreFocus = false) => {
       window.clearTimeout(openTimer.current);
       window.clearTimeout(closeTimer.current);
       openTimer.current = 0;
@@ -164,7 +171,15 @@ export function NavWheel() {
       setHovered(null);
       if (animate) setClosing(true);
       else setCenter(null);
-      if (focusHub) hubButton.current?.focus({ preventScroll: true });
+      if (restoreFocus) {
+        if (keyOpened.current) {
+          // 键盘打开的：回到打开前的地方；原来没有焦点就把焦点从轮盘里拿走（不落到圆上）
+          const back = returnFocus.current;
+          if (back?.isConnected) back.focus({ preventScroll: true });
+          else if (document.activeElement instanceof HTMLElement && root.current?.contains(document.activeElement))
+            document.activeElement.blur();
+        } else hubButton.current?.focus({ preventScroll: true });
+      }
     },
     [setOpen, setHovered],
   );
@@ -179,6 +194,11 @@ export function NavWheel() {
     // （圆盘出现时浏览器会补发一次坐标不变的 pointermove，不能当成鼠标离开了圆盘）
     armed.current = by === "tap" || (by === "hover" && !moved);
     armAt.current = lastPointer.current;
+    keyOpened.current = by === "key";
+    if (by === "key") {
+      const before = document.activeElement;
+      returnFocus.current = before instanceof HTMLElement && before !== document.body ? before : null;
+    }
     opened.current = { by, at: performance.now() };
     setCounted(true);
     setClosing(false);
@@ -216,7 +236,7 @@ export function NavWheel() {
     items.current[hovered]?.focus({ preventScroll: true });
   }, [open, hovered]);
 
-  // ---- 展开时：鼠标在圆盘上就高亮指着的那块，离开 1 秒收起；点页面别处收起 ----
+  // ---- 展开时：鼠标在圆盘上就高亮指着的那块，离开 0.3 秒收起；点页面别处收起 ----
   useEffect(() => {
     if (!open || !center) return;
     const onMove = (event: PointerEvent): void => {
