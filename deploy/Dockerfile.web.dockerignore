@@ -1,0 +1,15 @@
+# deploy/Dockerfile.web 的构建上下文（仓库根目录）只放这几样：依赖清单、网页端、共用包、nginx 配置。
+# 依赖目录、构建产物、测试结果和密钥都不进
+*
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!apps/web
+!packages
+!deploy/nginx.web.conf
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+apps/web/test-results
+apps/web/playwright-report

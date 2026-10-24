@@ -91,9 +91,10 @@ BetterTavern/                           # Python 包名 bettertavern
 │   ├── core/                           # 手机端和网页端共用的纯逻辑：接口客户端、SSE、会话、回合状态机、界面文字
 │   └── design/                         # 共用的设计数据：色板、主题、尺寸、布局函数、图标、封面、标志
 ├── deploy/
-│   ├── docker-compose.yml              # api、worker、postgres、一次性的 migrate
+│   ├── docker-compose.yml              # 自己部署全套：api、worker、postgres、web、一次性的 migrate
 │   ├── docker-compose.dev.yml          # 开发用的 Postgres
 │   ├── Dockerfile.server
+│   ├── Dockerfile.web                  # 自己部署时的网页容器（nginx 发网页、转发接口，配置是 nginx.web.conf）
 │   └── nginx.example.conf              # 反向代理示例（网页和接口同源，SSE 关闭缓冲）
 ├── docs/                               # 本目录
 └── scripts/

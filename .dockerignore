@@ -1,4 +1,5 @@
-# 构建上下文是仓库根目录：密钥、虚拟环境、依赖目录和缓存都不能进镜像
+# 服务端镜像（deploy/Dockerfile.server）的构建上下文是仓库根目录：密钥、虚拟环境、依赖目录和缓存都不能进镜像。
+# 网页镜像的规则在 deploy/Dockerfile.web.dockerignore
 **/.env
 **/.env.*
 !**/.env.example

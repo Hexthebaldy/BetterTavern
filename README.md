@@ -47,17 +47,17 @@ BetterTavern 是一个第一人称的互动小说应用。导入一张 SillyTave
 ```bash
 git clone https://github.com/Hexthebaldy/BetterTavern.git
 cd BetterTavern
-docker compose -f deploy/docker-compose.yml run --rm migrate bettertavern keygen
-```
-
-上一步输出两行（`MASTER_KEYS`、`AUTH_SECRET`），把它们写进 `deploy/.env`，然后：
-
-```bash
+docker compose -f deploy/docker-compose.yml run --rm --no-deps migrate bettertavern keygen >> deploy/.env
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
-- 会起 `postgres`、`api`、`worker` 三个常驻容器，`migrate` 建完表就退出。
-- `api` 只监听本机的 `127.0.0.1:8000`。要从别的设备访问，放在带 TLS 的反向代理后面，示例配置是 `deploy/nginx.example.conf`（网页和接口放在同一个域名下，SSE 不能被缓冲）。
+第一条生成两个密钥（`MASTER_KEYS`、`AUTH_SECRET`）写进 `deploy/.env`，第二条构建并启动。起来以后浏览器打开 http://localhost:8080 就能注册、使用。
+
+- 会起 `postgres`、`api`、`worker`、`web` 四个常驻容器，`migrate` 建完表就退出。`web` 发网页，并把接口请求转给 `api`。
+- 默认只有这台电脑自己能打开。要让手机和别的电脑连，在 `deploy/.env` 里加一行 `WEB_BIND=0.0.0.0`，再执行一次 `up -d`；
+  它们用 `http://<这台电脑的局域网 IP>:8080` 访问，手机 App 的服务器地址也填这个。这是不加密的 http，只在家里或信得过的局域网这样做。端口用 `WEB_PORT` 改。
+- 要从外网访问：在前面放一层带 TLS 的反向代理，转到 `8080`，并在 `deploy/.env` 里加 `AUTH_COOKIE_SECURE=true`（网页登录的 Cookie 只走 https）。
+- 已经在用 bettertavern.com 的网页时，登录页底部的“服务器 › 更改”可以直接跳到自己服务器的网页。账户和数据不会带过去，要在自己的服务器上重新注册。
 - **备份 `MASTER_KEYS`**：已保存的模型 Key 是用它加密的，丢了就解不开，只能重新填写。
 
 ### 从源码运行（开发用）
@@ -83,7 +83,7 @@ make web
 
 浏览器打开 http://localhost:5173 。正式部署时用 `make web-build` 生成 `apps/web/dist`，由反向代理和接口放在同一个域名下。
 
-**手机**：Android 直接装[项目主页](https://devyangcooking.cn/)上的安装包（点“下载 Android 版”），打开后在登录页底部填上服务器地址（比如 `http://192.168.1.10:8000`）。
+**手机**：Android 直接装[项目主页](https://devyangcooking.cn/)上的安装包（点“下载 Android 版”），打开后在登录页底部填上服务器地址（用 Docker 部署的是 `http://192.168.1.10:8080` 这样，从源码运行的是 `:8000`）。
 安装时手机会提示允许浏览器或文件管理器安装应用。iPhone 还没有安装包，按下面的步骤用 Expo Go 打开（Android 也可以这样用）：
 
 ```bash
@@ -216,7 +216,7 @@ cd apps/mobile && npm start
 
 ## 7 常见问题
 
-**手机连不上服务器。**先在手机浏览器里打开 `http://<电脑的局域网 IP>:8000/health`，打不开说明网络不通（不在同一个网络、防火墙、IP 变了）。排查步骤见 [apps/mobile/README.md](apps/mobile/README.md)。
+**手机连不上服务器。**先在手机浏览器里打开 `http://<电脑的局域网 IP>:8000/health`（用 Docker 部署的是 `:8080`），打不开说明网络不通（不在同一个网络、防火墙、IP 变了）。排查步骤见 [apps/mobile/README.md](apps/mobile/README.md)。
 
 **添加模型时提示地址“解析到内网或保留地址”。**本机开着 Clash 等代理的 fake-ip 模式时，所有域名都会解析到保留地址。把模型服务的域名加进代理的 fake-ip-filter，或者在自己用的服务器上设 `ALLOW_PRIVATE_ENDPOINTS=true`。
 

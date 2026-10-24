@@ -75,7 +75,7 @@ make web
 
 打开 http://localhost:5173 。开发服务器把 `/v1`、`/health`、`/ready` 转给 http://localhost:8000 的后端，网页和接口同源，
 不用配跨域，Cookie 登录也能用；后端在别的地址时设环境变量 `BT_API_URL`。设计和实现说明见 [client.md 第 4 节](client.md)。
-部署时 `make web-build` 生成 `apps/web/dist`，由反向代理和接口放在同一个域名下（见 `deploy/nginx.example.conf`）。
+部署时 `make web-build` 生成 `apps/web/dist`，由反向代理和接口放在同一个域名下（见 `deploy/nginx.example.conf`）；用 `deploy/docker-compose.yml` 自己部署时，`web` 容器把这两件事都做了（`deploy/Dockerfile.web`）。
 线上服务（bettertavern.com）的部署用 `scripts/deploy.sh`，步骤见 [ops.md](ops.md)。
 
 没有模型 Key 也能从导入一路玩下去：起一个假模型服务，在“添加模型”里选“自定义兼容端点”，端点填 `http://127.0.0.1:8020/v1`，

@@ -1,0 +1,22 @@
+# 自己部署时的网页容器（deploy/docker-compose.yml 的 web）：构建网页端，用 nginx 发静态文件，
+# 并把 /v1、/health、/ready 转给 api 容器（网页和接口同源，Cookie 登录才能用）。
+# 构建上下文是仓库根目录；要进镜像的文件见 Dockerfile.web.dockerignore（根目录的 .dockerignore 是给服务端镜像的）。
+# 线上的 bettertavern.com 不用它：网页在本机构建，传到服务器上的 nginx（scripts/deploy.sh）。
+FROM node:22-alpine AS build
+
+WORKDIR /src
+# 先只拷依赖清单装依赖，改代码时这一层能用缓存。只装网页端和它用到的两个共用包的依赖
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY apps/web/package.json apps/web/
+COPY packages/core/package.json packages/core/
+COPY packages/design/package.json packages/design/
+RUN npm ci --workspace apps/web --no-audit --no-fund
+
+COPY packages/ packages/
+COPY apps/web/ apps/web/
+RUN npm run build --workspace apps/web
+
+FROM nginx:1.27-alpine
+COPY deploy/nginx.web.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /src/apps/web/dist /usr/share/nginx/html
+EXPOSE 80

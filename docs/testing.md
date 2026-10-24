@@ -169,7 +169,8 @@ make vis
 文档同步测试读的是 `docs/` 下的文档，对照的是运行时的 OpenAPI 和真实数据库里的表结构，不读源码。
 
 CI（`.github/workflows/ci.yml`，GitHub Actions）：每次推送和每个 PR 跑服务端的 ruff、pyright、import-linter 和全部 pytest（带一个 Postgres 服务容器，
-所以集成和端到端测试都会跑），以及前端的类型检查、`node --test`、`check-i18n` 和网页构建。推送到 `m1` 并且都通过时构建服务端镜像，
+所以集成和端到端测试都会跑），以及前端的类型检查、`node --test`、`check-i18n` 和网页构建；还会照 README 用 `deploy/docker-compose.yml` 起一整套，
+确认网页、接口和网页登录都能从 `web` 容器（8080）访问。推送到 `m1` 并且都通过时构建服务端镜像，
 线上部署用的就是它（[ops.md](ops.md)）。网页端到端（Playwright）要本机的 Chrome 和开发数据库，不在 CI 里跑，发布前在本机跑 `make web-e2e`。
 
 ### 评估（`evals/`）

@@ -1,4 +1,5 @@
-# 每次推送和每个 PR：服务端的检查和测试（真实 Postgres）、前端的类型检查和测试。
+# 每次推送和每个 PR：服务端的检查和测试（真实 Postgres）、前端的类型检查和测试，
+# 以及按 README 用 Docker 自己部署一整套能不能起来。
 # 推送到 m1 并且都通过时，构建服务端镜像推到 GHCR：
 #   ghcr.io/hexthebaldy/bettertavern-server:sha-<提交号前 12 位>   ← scripts/deploy.sh 部署的就是它
 #   ghcr.io/hexthebaldy/bettertavern-server:m1                     ← 这个分支最新的一版
@@ -77,6 +78,43 @@ jobs:
         run: npm test
       - name: 网页端能构建
         run: npm run build --workspace apps/web
+
+  # 照 README 的步骤用 deploy/docker-compose.yml 起一整套（本机构建镜像），确认网页、接口、网页登录都从 web 容器走得通
+  selfhost:
+    name: 自己部署
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - uses: actions/checkout@v7
+      - name: 生成密钥、构建、启动
+        run: |
+          docker compose run --rm --no-deps migrate bettertavern keygen >> .env
+          test "$(grep -c -E '^(MASTER_KEYS|AUTH_SECRET)=' .env)" = 2
+          docker compose up -d
+      - name: 等 api 起来
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/health; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: 网页、接口和 Cookie 登录都走 8080
+        run: |
+          curl -fsS http://127.0.0.1:8080/login | grep -q '<div id="root">'
+          asset=$(curl -fsS http://127.0.0.1:8080/ | grep -o '/assets/index-[^"]*\.js' | head -1)
+          test -n "$asset"
+          curl -fsS -o /dev/null "http://127.0.0.1:8080$asset"
+          headers=$(curl -fsS -D - -o /dev/null -X POST http://127.0.0.1:8080/v1/auth/register \
+            -H 'Content-Type: application/json' -H 'X-Auth-Mode: cookie' \
+            -d '{"email":"selfhost@example.com","password":"selfhost-pass-1"}')
+          cookie=$(echo "$headers" | grep -i '^set-cookie: bt_refresh=')
+          # 默认是 http，Cookie 不能带 Secure，否则浏览器不存
+          if echo "$cookie" | grep -qi 'secure'; then echo "Cookie 带了 Secure" >&2; exit 1; fi
+      - name: 出错时的日志
+        if: failure()
+        run: docker compose logs --tail 100
 
   image:
     name: 构建镜像
