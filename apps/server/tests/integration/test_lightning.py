@@ -1,6 +1,7 @@
 """闪电模式的后台压缩（真实 Postgres，模型用可编排的假厂商）：每回合存好放一个压缩任务，
-不到阈值不调模型；到了阈值把较早的回合压成一版梗概，导演的上下文换成梗概加之后的原文；
-压缩请求的开头和导演上一回合的请求一样；回退删掉回退点之后写的梗概。"""
+不到阈值不调模型；到了阈值把较早的回合压成一版梗概，导演的上下文换成梗概加之后的原文，
+并且有了召回工具；压缩请求的开头和导演上一回合的请求一样（连工具说明也一样）；
+回退删掉回退点之后写的梗概。"""
 
 from __future__ import annotations
 
@@ -98,7 +99,9 @@ async def test_old_turns_are_compressed_into_a_synopsis(game: Game) -> None:
     assert f"截至第{last}回合的梗概" in request.messages[0].content
     assert f"第{last + 1}段叙述" in request.messages[2].content
     assert not any(f"第{last}段叙述" in m.content for m in request.messages)
-    assert request.tools is None
+    # 更早的回合压进了梗概：和普通模式一样给导演召回工具
+    assert request.tools is not None
+    assert [t.name for t in request.tools] == ["recall", "read_turn", "lookup"]
 
     # 再压一次：新梗概是旧梗概加上之后的回合
     while await summarized(game) == last:
@@ -108,7 +111,12 @@ async def test_old_turns_are_compressed_into_a_synopsis(game: Game) -> None:
         assert head < 20, "一直没有第二次压缩"
     second = await synopses(game)
     assert len(second) == 2 and second[1][2] == await summarized(game)
-    assert "<recap> 里的全书梗概和" in game.adapter.requests[-1].messages[-1].content
+    compress_request = game.adapter.requests[-1]
+    assert "<recap> 里的全书梗概和" in compress_request.messages[-1].content
+    # 导演这时带着召回工具：压缩请求带上一样的工具说明，但不许调用，开头才对得上
+    director_request = game.adapter.requests[-2]
+    assert compress_request.tools == director_request.tools
+    assert compress_request.tool_choice == "none" and director_request.tool_choice is None
 
 
 async def compress_once(game: Game) -> int:

@@ -13,9 +13,9 @@
 章节摘要之前的回合不在上下文里，导演用召回工具查（第 7 节“召回”）。超过有效窗口 95% 时只截断
 发送视图，从最旧的回合开始丢，至少保留最近 2 个回合，直到不超过 90%：这是整理跟不上时的保护。
 
-闪电模式（ctx.header.mode，docs/agent-runtime.md 的“闪电模式”）：回顾里只有一版梗概，最后一条消息里
-只有玩家行动（没有状态块和大纲），和下一回合历史里这一回合的写法一字不差，所以下一回合的请求
-一直到这一回合的行动都能命中前缀缓存。
+闪电模式（ctx.header.mode，docs/agent-runtime.md 的“闪电模式”）：system 里多一节卡的原文
+（开局时的快照），回顾里只有一版梗概，最后一条消息里没有状态块和大纲。下一回合的请求
+以这一回合的请求开头（最后一条行动里的召回提示除外），整段命中前缀缓存。
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import math
 from dataclasses import dataclass, field
+from typing import Any
 
 from bettertavern.domain.memory.outline import Beat
 from bettertavern.domain.memory.thresholds import EMERGENCY_LINE, emergency_budget
@@ -126,7 +127,28 @@ class ContextAssembler:
             boundaries=sanitize_for_fence(prefs.boundaries),
             length=prefs.length,
             lightning=is_lightning(ctx.header.mode),
+            cards=self.card_source(ctx),
         )
+
+    def card_source(self, ctx: TurnContext) -> list[dict[str, Any]]:
+        """闪电模式的系统提示里放卡的原文（开局时的快照）：没有世界状态，人物和世界照它写。
+        普通模式不放：这些内容开局时已经整理进世界状态，状态块按需带进来。"""
+        if not is_lightning(ctx.header.mode) or ctx.cards is None:
+            return []
+        return [
+            {
+                "name": sanitize_for_fence(card.name),
+                "description": sanitize_for_fence(card.description),
+                "personality": sanitize_for_fence(card.personality),
+                "scenario": sanitize_for_fence(card.scenario),
+                "examples": sanitize_for_fence(card.examples),
+                "lore": [
+                    {"name": sanitize_for_fence(e.name), "content": sanitize_for_fence(e.content)}
+                    for e in card.lore
+                ],
+            }
+            for card in ctx.cards.cards
+        ]
 
     def recap(self, ctx: TurnContext) -> RenderedPrompt | None:
         """<recap> 回顾：全书梗概、最近几章的章节摘要、玩家画像；还没有任何记忆时为 None。"""

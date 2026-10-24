@@ -36,7 +36,7 @@ class ScenarioSetup:
     style: str = ""
     boundaries: str = ""
     opening: Opening | None = None
-    # 闪电模式：这个剧本开的新故事只有导演、不整理世界状态（domain/story/mode.py）；
+    # 闪电模式：这个剧本开的新故事不在后台整理世界状态（domain/story/mode.py）；
     # 已经开始的故事不受影响
     lightning: bool = False
 

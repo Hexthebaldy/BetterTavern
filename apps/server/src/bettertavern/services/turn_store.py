@@ -18,6 +18,7 @@ from bettertavern.domain.scenario.setup import ScenarioSetup, greetings_of
 from bettertavern.domain.story.language import unnamed_protagonist
 from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
+from bettertavern.domain.world.card_source import CardSource
 from bettertavern.domain.world.plan import plan_world
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import (
@@ -276,7 +277,12 @@ class PgTurnStore:
         )
 
     async def save_world(
-        self, header: TurnHeader, seed: Seed, source: str, run: AgentRunRecord | None
+        self,
+        header: TurnHeader,
+        seed: Seed,
+        source: str,
+        run: AgentRunRecord | None,
+        cards: CardSource | None = None,
     ) -> int:
         async with self._engine.begin() as conn:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id, lock=True)
@@ -287,12 +293,27 @@ class PgTurnStore:
             await story_repo.set_world_built(
                 conn,
                 header.playthrough_id,
-                seed=seed.model_dump(mode="json"),
+                seed=seed_json(seed, cards),
                 seed_source=source,
             )
             if run is not None:
                 await insert_run(conn, header, run)
         return count
+
+
+def seed_json(seed: Seed, cards: CardSource | None) -> dict[str, Any]:
+    """playthroughs.seed：开局设定，加上卡的原文快照（cards 键，不是模型输出的一部分）"""
+    data: dict[str, Any] = seed.model_dump(mode="json")
+    if cards is not None:
+        data["cards"] = cards.model_dump(mode="json")
+    return data
+
+
+def cards_of(seed: Any) -> CardSource | None:
+    """从 playthroughs.seed 取卡的原文快照；这个功能上线前开局的存档没有"""
+    if not isinstance(seed, dict) or not isinstance(seed.get("cards"), dict):
+        return None
+    return CardSource.model_validate(seed["cards"])
 
 
 async def _scenario_cards(
@@ -374,4 +395,5 @@ async def load_turn_context(
         memory=memory,
         outline=slice_of(outline) if outline is not None else None,
         opening_greeting=greeting,
+        cards=cards_of(pt.seed),
     )

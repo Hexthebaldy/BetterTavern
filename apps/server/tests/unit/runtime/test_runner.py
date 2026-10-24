@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import replace
 
 import pytest
 
 from bettertavern.domain.routing import RouteParams, RouteTask
-from bettertavern.domain.scenario.card import CharacterCard
+from bettertavern.domain.scenario.card import CharacterCard, LoreEntry
 from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.infra.db.repositories.story import RUNNER_LOST_ERROR
 from bettertavern.providers import CancelToken, ProviderError, ProviderHub
@@ -48,6 +49,7 @@ async def run_turn(
     seq: int = 1,
     world_ready: bool = True,
     language: str = "zh",
+    mode: str = "standard",
 ) -> list[tuple[str, dict[str, object]]]:
     runner = TurnRunner(
         store=store,
@@ -57,7 +59,8 @@ async def run_turn(
         config=CONFIG,
     )
     stream = EventStream("turn-1")
-    await runner.run(header(seq, world_ready=world_ready, language=language), stream, CancelToken())
+    turn = replace(header(seq, world_ready=world_ready, language=language), mode=mode)
+    await runner.run(turn, stream, CancelToken())
     return [(e.event, json.loads(e.data)) for e in stream.snapshot()]
 
 
@@ -414,6 +417,38 @@ async def test_opening_builds_world_and_falls_back_to_minimal_seed() -> None:
     assert seed.protagonist.name == "林川"
     final_prompt = adapters["fake"].requests[-1].messages[-1].content
     assert "<opening-brief>" in final_prompt and "外乡人？" in final_prompt
+
+
+async def test_lightning_opening_builds_the_world_and_keeps_the_card_text() -> None:
+    """闪电模式开局和普通模式一样请 WorldBuilder 搭世界；卡的原文存成快照，导演的系统提示里有它"""
+    hub, adapters = scripted_hub("fake")
+    seed = {"world": {"title": "雨夜", "setting": "灰石镇"}, "protagonist": {"name": "林川"}}
+    adapters["fake"].completions.append(result(json.dumps(seed, ensure_ascii=False)))
+    adapters["fake"].streams.append(StreamScript(pieces(GOOD)))
+    card = CharacterCard(
+        spec="card_v2",
+        name="阿苓",
+        description="{{char}} 是酒馆帮工，认识 {{user}}",
+        book=(LoreEntry(keys=("火漆",), content="商会的火漆是黑色的"),),
+    )
+    store = FakeStore(
+        world_input=WorldBuildInput(
+            card=card,
+            protagonist_name="林川",
+            protagonist_summary="",
+            preferences=Preferences(),
+            cards=(card,),
+        )
+    )
+    store.action = PlayerAction("opening", "")
+    routes = FakeRoutes({RouteTask.DIRECTOR: make_route()})
+    await run_turn(store, routes, hub, seq=0, world_ready=False, mode="lightning")
+    _, source, _ = store.saved_world[0]
+    assert source == "world_builder"
+    assert store.cards is not None and not store.cards.truncated
+    assert store.cards.cards[0].description == "阿苓 是酒馆帮工，认识 林川"
+    system = adapters["fake"].requests[-1].messages[0].content
+    assert "阿苓 是酒馆帮工，认识 林川" in system and "商会的火漆是黑色的" in system
 
 
 async def test_pool_shutdown_cancels_slow_turns() -> None:

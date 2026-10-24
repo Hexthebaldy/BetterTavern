@@ -16,8 +16,8 @@ director_loop.py）→ 修复阶梯 → 一个事务提交 → options.ready、t
 下一回合不等它：状态块开头写明截至第几回合，之后的变化以上下文里的原文为准
 （docs/agent-runtime.md 第 3 节）。
 
-闪电模式（header.mode，docs/agent-runtime.md 的“闪电模式”）：开局不调 WorldBuilder，直接用最小设定；
-导演不给召回工具；提交后回合直接是 committed，不整理世界状态。
+闪电模式（header.mode，docs/agent-runtime.md 的“闪电模式”）：开局、导演都和普通模式一样，
+只是提交后回合直接是 committed，不整理世界状态。开局时存下卡的原文，导演的系统提示里放它。
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ import structlog
 from bettertavern.domain.memory.thresholds import overflow_retry_budget
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.story.mode import is_lightning
+from bettertavern.domain.world.card_source import CardSource, snapshot_cards
 from bettertavern.domain.world.seed import ProtagonistSeed, Seed, minimal_seed
 from bettertavern.providers import (
     CancelToken,
@@ -59,6 +60,7 @@ from .ports import (
     TurnHeader,
     TurnOutcome,
     TurnStore,
+    WorldBuildInput,
 )
 from .prompts import PromptBook, PromptLibrary
 from .protocol.structured import StructuredOutputError
@@ -343,13 +345,8 @@ class TurnRunner:
         log.info("world.build.started")
         await self._publish(stream, "world.building", {})
         inp = await self._store.world_build_input(header)
-        # 闪电模式不调模型搭世界：只用角色卡文字搭最小设定，开局更快、更省
-        route = (
-            None
-            if is_lightning(header.mode)
-            else await self._routes.resolve(
-                header.user_id, RouteTask.WORLD_BUILDER, header.playthrough_id
-            )
+        route = await self._routes.resolve(
+            header.user_id, RouteTask.WORLD_BUILDER, header.playthrough_id
         )
         seed: Seed | None = None
         source = "minimal"
@@ -404,7 +401,8 @@ class TurnRunner:
                         name=inp.protagonist_name, summary=inp.protagonist_summary
                     )
                 )
-        count = await self._store.save_world(header, seed, source, run)
+        cards = self._card_source(inp)
+        count = await self._store.save_world(header, seed, source, run, cards)
         # source=minimal 表示 WorldBuilder 没成功（或没配模型），退回只用角色卡文字搭的最小世界
         log.info(
             "world.build.done",
@@ -419,6 +417,15 @@ class TurnRunner:
 
     def _elapsed_ms(self, started: float) -> int:
         return int((self._clock() - started) * 1000)
+
+    def _card_source(self, inp: WorldBuildInput) -> CardSource | None:
+        """卡的原文快照：闪电模式放进导演的系统提示（docs/agent-runtime.md 的“闪电模式”）"""
+        if not inp.cards:
+            return None
+        cards = snapshot_cards(inp.cards, protagonist_name=inp.protagonist_name)
+        if cards.truncated:
+            log.warning("world.cards_truncated", cards=len(cards.cards), chars=cards.chars())
+        return cards
 
     async def _learn_window(self, header: TurnHeader, route: ResolvedRoute, window: int) -> None:
         """记下学到的窗口；记不下来（数据库出错）也不影响这一轮用它重试。"""
@@ -494,9 +501,8 @@ class TurnRunner:
                 failure = failure_from_provider(error)
                 raise TurnFailed(dataclasses.replace(failure, runs=[run])) from error
 
-    def _offers_recall(self, header: TurnHeader, route: ResolvedRoute) -> bool:
-        """闪电模式不给召回工具：它查的是世界状态 agent 写的回合标签，工具说明本身也占 token"""
-        return self._recall is not None and route.caps.tools and not is_lightning(header.mode)
+    def _offers_recall(self, route: ResolvedRoute) -> bool:
+        return self._recall is not None and route.caps.tools
 
     def _assemble(
         self,
@@ -511,7 +517,7 @@ class TurnRunner:
             ctx,
             window,
             budget=budget,
-            recall=self._offers_recall(header, route),
+            recall=self._offers_recall(route),
         )
 
     async def _call_director(
@@ -527,11 +533,7 @@ class TurnRunner:
         """导演走执行循环：有不在上下文里的旧回合时提供召回工具（director_loop.py）。"""
         prompts = self._prompts_for(header)
         recall: RecallContext | None = None
-        if (
-            self._recall is not None
-            and self._offers_recall(header, route)
-            and context.recall_before > 0
-        ):
+        if self._recall is not None and self._offers_recall(route) and context.recall_before > 0:
             recall = RecallContext(
                 store=self._recall,
                 playthrough_id=header.playthrough_id,

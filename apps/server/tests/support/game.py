@@ -3,7 +3,7 @@
 导演用流式脚本（director()），世界状态 agent 用一次回复里的一串工具调用（calls()）；
 章节整理由假模型按请求里的回合号回复（chapter_reply()），切章的线很低，几回合就切一章；
 大纲修订由假模型按请求里的原因回复（outline_reply()）。
-new_game(lightning=True) 开一局闪电模式：开局不调模型搭世界，压缩由假模型按请求里的回合号回复
+new_game(lightning=True) 开一局闪电模式：开局一样搭世界，压缩由假模型按请求里的回合号回复
 （compress_reply()），压缩的线也很低。
 """
 
@@ -202,7 +202,7 @@ async def new_game(
     url: str, tmp_path: Path, *, rollback_limit: int = 1, lightning: bool = False
 ) -> AsyncIterator[Game]:
     """注册、配好导演、导入角色卡、开局并等开场写完（世界状态还没整理）。
-    lightning：剧本打开闪电模式再开局（开局不调模型搭世界）。"""
+    lightning：剧本打开闪电模式再开局。"""
     async with schema_engine(url, pool_size=10) as engine:
         hub, adapters = scripted_hub("fake")
         secrets = load_secrets(
@@ -270,8 +270,7 @@ async def new_game(
                     ),
                     {"id": scenario.id},
                 )
-        else:
-            adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))
+        adapter.completions.append(result(json.dumps(SEED, ensure_ascii=False)))
         adapter.streams.append(StreamScript(director(0)))
         pt, opening = await services.playthroughs.create(
             user.id, NewPlaythrough(scenario_id=scenario.id, protagonist_name="林川")

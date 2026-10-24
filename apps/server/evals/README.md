@@ -60,7 +60,7 @@ DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --mo
 # 中途改道（阶段 5 的验收）：
 DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash \
     --scenario evals/datasets/m2/detour_60.yaml --turns 60
-# 闪电模式（只有导演，原文太长时压成梗概）：
+# 闪电模式（不在后台整理世界状态，原文太长时压成梗概）：
 DEEPSEEK_API_KEY=sk-... uv run python -m evals.playtest --provider deepseek --model deepseek-flash --lightning
 # 后台整理用另一个模型：
 DEEPSEEK_API_KEY=sk-... GEMINI_API_KEY=... uv run python -m evals.playtest \

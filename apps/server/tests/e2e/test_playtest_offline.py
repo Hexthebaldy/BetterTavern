@@ -123,7 +123,7 @@ async def test_director_recalls_through_the_real_stream_format(
 async def test_lightning_replay_compresses_with_the_directors_model(
     fake_llm: RunningFakeLLM, tmp_path: Path
 ) -> None:
-    """闪电模式玩同一份剧本：只有导演，压缩的线很低，几回合就压一次梗概；
+    """闪电模式玩同一份剧本：不整理世界状态，压缩的线很低，几回合就压一次梗概；
     不跑世界状态 agent 和大纲，检查点不算，报告里有压缩和花费。"""
     assert URL is not None
     story = StoryScript(piece_delay=0.0)

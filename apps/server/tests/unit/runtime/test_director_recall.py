@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -141,6 +142,28 @@ async def test_no_tools_while_the_whole_story_is_in_context() -> None:
     assert request.tools is None
     assert "director.recalling" not in [e for e, _ in events]
     assert store.committed[0].runs[0].result["recall_before"] == 0
+
+
+async def test_lightning_offers_the_same_tools_once_old_turns_are_compressed() -> None:
+    """闪电模式和普通模式一样：原文之前有压成梗概的回合时，给导演召回工具"""
+    hub, adapters = scripted_hub("fake")
+    adapters["fake"].streams.append(StreamScript([GOOD]))
+    memory = StoryMemory(synopsis="林川在灰石镇打听火漆。", summarized_seq=9)
+    store = FakeStore(history=history(25)[10:], memory=memory)
+    runner = TurnRunner(
+        store=store,
+        routes=FakeRoutes({RouteTask.DIRECTOR: make_route()}),
+        hub=hub,
+        prompts=PromptBook(),
+        config=CONFIG,
+        recall=recall_store(),
+    )
+    await runner.run(replace(header(25), mode="lightning"), EventStream("turn-1"), CancelToken())
+    [request] = adapters["fake"].requests
+    assert request.tools is not None
+    assert [t.name for t in request.tools] == ["recall", "read_turn", "lookup"]
+    assert "从第 10 回合开始" in request.messages[-1].content
+    assert store.committed[0].runs[0].result["recall_before"] == 10
 
 
 async def test_no_tools_for_models_that_cannot_call_them() -> None:

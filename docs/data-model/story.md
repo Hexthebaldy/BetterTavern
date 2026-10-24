@@ -21,10 +21,10 @@
 | `title` | text | 否 |  | 标题，默认用剧本名，最多 80 字 |
 | `status` | text | 否 | `'building'` | `building` 表示世界还没建好，`active` 表示开局构建已完成，`ended` 表示已经写完结局（见下文“状态”） |
 | `language` | text | 否 | `'zh'` | 给 agent 的提示词用哪种语言：`zh` / `en` / `ja`。开局时由客户端按界面语言传来，之后不变（见 [i18n.md](../i18n.md) 第 4 节） |
-| `mode` | text | 否 | `'standard'` | 怎么玩：`standard`（导演加后台整理世界状态、章节摘要、大纲）/ `lightning`（闪电模式：只有导演，不整理世界状态、不写大纲，原文超过阈值时压成一版梗概，见 [agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)）。开局时从剧本的 `setup.lightning` 拷过来，之后不变。迁移 `0024` 加的，已有的存档都是 `standard` |
+| `mode` | text | 否 | `'standard'` | 怎么玩：`standard`（导演加后台整理世界状态、章节摘要、大纲）/ `lightning`（闪电模式：和普通模式一样开局、写叙述，只是后台不整理世界状态、不写章节摘要和大纲，原文超过阈值时压成一版梗概，见 [agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)）。开局时从剧本的 `setup.lightning` 拷过来，之后不变。迁移 `0024` 加的，已有的存档都是 `standard` |
 | `settings` | jsonb | 否 | `'{}'` | 主角和偏好设置，结构见下文“JSON 列” |
 | `seed` | jsonb | 是 |  | 开局设定（WorldBuilder 或最小 Seed 的输出），结构见下文“JSON 列”；世界建好时写入 |
-| `seed_source` | text | 是 |  | `world_builder` 表示由模型生成。`minimal` 表示没有用模型生成：模型失败或超时、没有可用的路由、闪电模式（开局不调模型搭世界）时只用卡片原文；剧本已被删除时设定里只有主角 |
+| `seed_source` | text | 是 |  | `world_builder` 表示由模型生成。`minimal` 表示没有用模型生成：模型失败或超时、没有可用的路由时只用卡片原文；剧本已被删除时设定里只有主角。闪电模式开局也和普通模式一样搭世界 |
 | `head_turn_id` | uuid | 是 |  | 无外键，指向 `turns.id`：活跃链的头部 |
 | `timeline_epoch` | integer | 否 | `0` | 时间线纪元，回退时加 1。回合记下发起时的值，提交时如果不一致，结果就作废；世界状态 agent 写入时也要求它没变 |
 | `state_seq` | integer | 否 | `-1` | 世界状态已整理到第几回合；-1 表示还没整理过任何回合（还是开局时的样子）。世界状态 agent 写入时用带条件的 UPDATE 从 N-1 改成 N（见下文“带围栏的提交”）。迁移 `0011` 把已有的存档设成活跃链上最新的回合，不回头整理旧回合 |
@@ -127,6 +127,21 @@
 ```
 
 数量上限：`characters` 12 个，`locations` 12 个，`items` 16 个，`organizations` 8 个，`facts` 40 条。字段长度上限见 `seed.py`；模型输出超长时截断，不会被拒绝。
+
+开局设定里还有一个 `cards` 键：开局时剧本里每张卡的原文快照（`domain/world/card_source.py`），由代码写入，不是模型输出的一部分。闪电模式把它放进导演的系统提示（[agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)），普通模式现在不读。宏（`{{user}}`、`{{char}}`）已经换成主角名和角色名；世界书里停用的、没有内容的条目不存。整份最多 15000 字，超出时依次去掉世界书里不是常驻的条目、截短对话示例、去掉常驻条目、截短场景、性格、描述（都从最后一张卡往前），`truncated` 记为 `true`。这个功能上线（2026-10-25）前开局的存档没有这个键。
+
+```jsonc
+"cards": {
+  "cards": [
+    {
+      "name": "阿苓", "description": "…", "personality": "…", "scenario": "…",
+      "examples": "…",                                                  // 对话示例（mes_example）
+      "lore": [{ "name": "火漆", "content": "…", "constant": true }]    // 卡里的世界书，name 最多 80 字
+    }
+  ],
+  "truncated": false
+}
+```
 
 ### `turns.user_action`
 

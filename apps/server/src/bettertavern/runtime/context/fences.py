@@ -24,6 +24,8 @@ FENCE_TAGS = (
     "chapter-turns",
     "outline",
     "outline-source",
+    "card-source",
+    "synopsis",
 )
 
 _NAMES = "|".join(re.escape(t) for t in FENCE_TAGS)

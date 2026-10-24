@@ -113,16 +113,18 @@ async def play(
     return json.loads(events[-1].data)["turn"]
 
 
-async def test_a_lightning_turn_is_one_director_request(running: Running) -> None:
+async def test_a_lightning_turn_is_a_standard_one_without_the_world_state(
+    running: Running,
+) -> None:
     async with httpx.AsyncClient(base_url=running.base_url, timeout=30) as client:
         account = await setup_account(client, running.fake)
         token = account["token"]
         auth = {"Authorization": f"Bearer {token}"}
         pt_id, opening = await start_lightning(client, auth, token)
-        # 开局不调模型搭世界：最小设定
-        assert running.story.world_calls == 0
+        # 开局和普通模式一样请 WorldBuilder 搭世界
+        assert running.story.world_calls == 1
         detail = (await client.get(f"/v1/playthroughs/{pt_id}", headers=auth)).json()
-        assert detail["playthrough"]["seed_source"] == "minimal"
+        assert detail["playthrough"]["seed_source"] == "world_builder"
         assert opening["status"] == "committed"
 
         head = opening["id"]
@@ -135,8 +137,13 @@ async def test_a_lightning_turn_is_one_director_request(running: Running) -> Non
         requests = [r.body for r in running.fake.app.chat_requests if r.body.get("stream")]
         assert len(requests) == 4  # 开场加 3 回合，每回合一次请求
         for body in requests:
-            assert "tools" not in body  # 不给查询工具
-            assert "<director-notes>" not in body["messages"][0]["content"]
+            # 原文都还在上下文里，没有要查的旧回合：不给工具
+            assert "tools" not in body
+            system = body["messages"][0]["content"]
+            # 隐藏备注和普通模式一样；卡的原文整段在 system 里，宏换成了名字
+            assert "<director-notes>" in system and "<card-source>" in system
+            assert "阿苓 是灰石镇酒馆的帮工" in system and "雨夜，林川 推门走进" in system
+            assert "北境商会的火漆是黑色的" in system and "地图？我可没有" in system
             assert "<world-state>" not in body["messages"][-1]["content"]
         # 后一回合的请求一直到前一回合玩家的行动都一字不差（前缀缓存）
         for prev, nxt in itertools.pairwise(requests[1:]):

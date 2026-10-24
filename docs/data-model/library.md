@@ -166,7 +166,7 @@
   "protagonist": { "name": "宝玉", "summary": "荣国府的二公子" },          // 默认主角；name 最多 40 字，summary 最多 400 字
   "preferences": { "length": "medium", "style": "", "boundaries": "" },  // 默认偏好，含义同开局时的偏好
   "opening": { "card_id": "…", "greeting": 0 },                          // 用哪张卡的哪条开场白：0 是 first_mes，1 起是备选开场白；为 null 时由导演写开场
-  "lightning": false                                                      // 闪电模式：这个剧本开的新故事只有导演、不整理世界状态（playthroughs.mode）；只影响之后开始的故事
+  "lightning": false                                                      // 闪电模式：这个剧本开的新故事不在后台整理世界状态（playthroughs.mode）；只影响之后开始的故事
 }
 ```
 

@@ -3,6 +3,8 @@
 
 省钱靠前缀缓存：请求的开头就是导演下一回合会发的那一段（规则和设定、回顾、原文），只是最后一条消息
 换成整理要求。导演上一回合的请求是这段开头的前缀，所以开头那一大段都能命中服务商的缓存。
+导演那边带着召回工具时（tools，由调用方给），这里也带上同样的工具说明、不许调用（tool_choice=none）：
+工具说明在服务商那里排在消息前面，少了它整段缓存都对不上。
 用导演的模型，不开推理；输出是 <synopsis> 标签里的文字，一次拿到，不走结构化输出阶梯。
 压到第几回合由代码按长度定（domain/memory/lightning.py），写入数据库由调用方
 （runtime/lightning_runner.py）做。
@@ -108,6 +110,7 @@ async def compress(
     *,
     window: int,
     steps: StepLog,
+    tools: Sequence[ToolSpec] | None = None,
     negative_cache: NegativeCapabilityCache | None = None,
 ) -> Compressed:
     del negative_cache  # 和其他 agent 的签名一致；这里没有要降级的能力
@@ -124,6 +127,8 @@ async def compress(
             temperature=route.temperature,
             # 推理只会多花钱：能关就关
             reasoning=ReasoningConfig(enabled=False) if caps.reasoning.control != "none" else None,
+            tools=tools or None,
+            tool_choice="none" if tools else None,
         )
         args = {"model": route.model, "last_seq": last_seq}
         started = time.perf_counter()

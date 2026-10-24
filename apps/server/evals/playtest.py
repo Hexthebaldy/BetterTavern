@@ -16,7 +16,7 @@
 逐回合检查，报告写到 reports/（JSON 和一页中文总结）：查库在 playtest_analyse.py，
 分析在 playtest_report.py、playtest_outline.py、playtest_lightning.py。
 
---lightning 用闪电模式玩同一份剧本：只有导演，原文太长时后台用导演的模型压成梗概
+--lightning 用闪电模式玩同一份剧本：不在后台整理世界状态，原文太长时后台用导演的模型压成梗概
 （docs/agent-runtime.md 的“闪电模式”）。没有世界状态，所以不跑检查点；报告里有压缩和花费，
 和普通模式的报告对照着看省了多少（playtest_lightning.py）。
 
@@ -159,7 +159,7 @@ class ReplayConfig:
     max_attempts: int = 3  # 一回合失败后最多试几次
     scenario_path: Path = DEFAULT_SCENARIO
     chapter_rule: ChapterRule = field(default_factory=ChapterRule)  # 切章的线
-    lightning: bool = False  # 闪电模式：只有导演，原文太长时后台压成梗概
+    lightning: bool = False  # 闪电模式：不在后台整理世界状态，原文太长时后台压成梗概
     lightning_config: LightningRunnerConfig = field(default_factory=LightningRunnerConfig)
 
 
@@ -390,7 +390,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="一直没有场景结束时，到这么多 token 硬切",
     )
     parser.add_argument(
-        "--lightning", action="store_true", help="用闪电模式玩：只有导演，原文太长时压成梗概"
+        "--lightning", action="store_true", help="用闪电模式玩：不整理世界状态，原文太长时压成梗概"
     )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR)
     return parser.parse_args(argv)

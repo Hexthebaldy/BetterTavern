@@ -14,6 +14,7 @@ from bettertavern.domain.memory.outline import Beat, Outline, OutlineSlice
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.scenario.card import CharacterCard
 from bettertavern.domain.story.turn import PlayerAction, TurnOption
+from bettertavern.domain.world.card_source import CardSource
 from bettertavern.domain.world.records import RowChange, WorldRecords
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import ThreadView, WorldSnapshot
@@ -102,6 +103,9 @@ class TurnContext:
     outline: OutlineSlice | None = None  # 大纲里导演要看的那一部分；还没有大纲时为空
     # 剧本设置里选了用卡片的开场白开场时，开场回合的叙述就是它（宏已经换好）；否则为空，由导演写
     opening_greeting: str = ""
+    # 开局时卡的原文快照（domain/world/card_source.py）：闪电模式放进导演的系统提示；
+    # 开局前、以及这个功能上线前开局的存档没有
+    cards: CardSource | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,9 +191,15 @@ class TurnStore(Protocol):
     async def world_build_input(self, header: TurnHeader) -> WorldBuildInput: ...
 
     async def save_world(
-        self, header: TurnHeader, seed: Seed, source: str, run: AgentRunRecord | None
+        self,
+        header: TurnHeader,
+        seed: Seed,
+        source: str,
+        run: AgentRunRecord | None,
+        cards: CardSource | None = None,
     ) -> int:
-        """写入开局世界（实体、关系、事实），playthrough 置为 active。返回实体数量。"""
+        """写入开局世界（实体、关系、事实）和卡的原文快照，playthrough 置为 active。
+        返回实体数量。"""
         ...
 
 

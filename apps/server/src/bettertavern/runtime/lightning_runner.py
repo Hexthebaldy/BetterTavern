@@ -33,6 +33,8 @@ from bettertavern.providers.limiter import LimiterTimeout
 
 from .agent import StepLog
 from .agents.compressor import AGENT, EmptySynopsis, compress
+from .agents.director import SPEC as DIRECTOR_SPEC
+from .agents.director_tools import REGISTRY as DIRECTOR_TOOLS
 from .context.tokens import estimate_tokens
 from .ports import (
     AgentRunRecord,
@@ -125,6 +127,13 @@ class LightningRunner:
         first_seq = work.context.history[0].seq
         steps = StepLog()
         prompts = self._prompts.get(work.context.header.language)
+        # 原文之前已经有压过的回合时，导演每回合都带着召回工具（runner.py 的 _offers_recall）：
+        # 压缩请求带上一样的工具说明，开头才和导演的请求一样
+        tools = (
+            DIRECTOR_TOOLS.specs(DIRECTOR_SPEC, prompts)
+            if route.caps.tools and first_seq > 0
+            else None
+        )
         try:
             async with asyncio.timeout(self.config.timeout_s):
                 written = await compress(
@@ -135,6 +144,7 @@ class LightningRunner:
                     prompts,
                     window=window,
                     steps=steps,
+                    tools=tools,
                     negative_cache=self._hub.negative_cache,
                 )
         except TimeoutError:

@@ -184,6 +184,14 @@ class StoryScript:
             items.append(sse(chunk(usage=usage, no_choices=True)))
             items.append(DONE)
             return StreamReply(items)
+        if "<synopsis>" in str(messages[-1].get("content", "")):
+            # 压缩请求的开头是导演的上下文，只有最后一条是整理要求，所以只看最后一条；
+            # 导演有召回工具时它也带着同样的工具说明，所以要在“带工具的是世界状态 agent”之前认出来
+            self.compress_calls += 1
+            synopsis = f"第 {self.compress_calls} 版：我在渡口等船，打听对岸的灯。"
+            text = f"<synopsis>\n{synopsis}\n</synopsis>"
+            usage = {"prompt_tokens": 900, "completion_tokens": 40, "prompt_cache_hit_tokens": 850}
+            return JsonReply(completion(text, usage=usage))
         if body.get("tools"):
             self.state_calls += 1
             arguments = {
@@ -200,13 +208,6 @@ class StoryScript:
                 },
             }
             return JsonReply(completion("", tool_calls=[call], finish="tool_calls"))
-        if "<synopsis>" in str(messages[-1].get("content", "")):
-            # 压缩请求的开头是导演的上下文，只有最后一条是整理要求，所以只看最后一条
-            self.compress_calls += 1
-            synopsis = f"第 {self.compress_calls} 版：我在渡口等船，打听对岸的灯。"
-            text = f"<synopsis>\n{synopsis}\n</synopsis>"
-            usage = {"prompt_tokens": 900, "completion_tokens": 40, "prompt_cache_hit_tokens": 850}
-            return JsonReply(completion(text, usage=usage))
         prompt = "\n".join(str(m.get("content", "")) for m in body.get("messages", []))
         if "<chapter-turns>" in prompt:
             self.chapter_calls += 1
