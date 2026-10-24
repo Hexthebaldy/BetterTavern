@@ -296,7 +296,7 @@ apps/mobile/
 | 界面 | React 19，浏览器的 DOM 和 CSS | 不用 react-native-web：链接、表单自动填充、`:focus-visible`、悬停、右键菜单、拖放、选中复制都是浏览器原生的 |
 | 路由 | react-router 7 | `/login`、`/register`、`/verify`、`/forgot`、`/terms`、`/privacy`、`/rules`、`/playthroughs`、`/scenarios`、`/characters`、`/scenario/:id`、`/scenario/:id/edit`、`/card/:id`、`/workbench`、`/workbench/d/:id`、`/play/:id`、`/models`、`/models/:id`、`/settings`、`/settings/tools`、`/dev/probe`。和 App 不再一一对应：剧本和角色分开，模型从设置里拿出来，外部服务是设置的子页面；旧地址 `/library`、`/tools`、`/settings/models`、`/settings/model/:id`、`/settings/account` 跳到新地址 |
 | 服务端数据 | TanStack Query | 没有下拉刷新：回到标签页、窗口回到前台时自动刷新 |
-| 样式 | CSS Modules + CSS 变量 | 变量名同 `docs/design/ui/web/tokens.css`，加上漫画版的描边、硬投影（`--x*` 墨色、`--b*` 蓝色）、三种网点底和圆角（`theme/tokens.css`）；色板由 `ThemeProvider` 从 `@bettertavern/design` 写到 `<html>` 上，夜间模式墨和纸对调、蓝用 `#8597FF` |
+| 样式 | CSS Modules + CSS 变量 | 变量名同 `docs/design/ui/web/tokens.css`，加上漫画版的描边、硬投影（`--x*` 墨色、`--b*` 蓝色）、三种网点底和圆角（`theme/tokens.css`）；色板由 `ThemeProvider` 从 `@bettertavern/design` 写到 `<html>` 上，夜间模式墨和纸对调、蓝用 `#8597FF`；页面底色是网页端单独的 `--page`（很浅的灰 `#F8F8F5`，夜间 `#0B0B0D`），白格子放在上面分得开，色板里 App 共用的 `--bg` 不动 |
 | 字体 | 自己托管 | 标题的思源宋体 900、标签和键帽的 IBM Plex Mono 500 / 700（`@fontsource`，按 unicode-range 切片，`theme/fonts.ts`）；正文的宋体和黑体用系统字体 |
 | 共用 | `@bettertavern/core`、`@bettertavern/design` | 接口客户端、SSE、会话、回合状态机、色板、布局函数、图标和封面的数据，和 App 是同一份代码（见第 3 节的“目录”） |
 

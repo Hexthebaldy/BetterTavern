@@ -11,7 +11,7 @@ body {
 }
 body {
   min-height: 100vh;
-  background: var(--bg);
+  background: var(--page);
   color: var(--ink);
   font-size: 15px;
   line-height: 22px;

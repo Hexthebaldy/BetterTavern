@@ -2,7 +2,7 @@
 
 .page {
   min-height: 100vh;
-  background: var(--bg);
+  background: var(--page);
   color: var(--ink);
 }
 .header {
@@ -17,7 +17,7 @@
   max-width: 920px;
   margin: 0 auto;
   padding: 16px 24px;
-  background: var(--paper);
+  background: var(--page);
 }
 .brand {
   display: inline-flex;

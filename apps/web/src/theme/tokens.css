@@ -175,6 +175,8 @@
   --frame: var(--ink); /* 格子、按钮、气泡、键帽的描边 */
   --shade: var(--ink); /* 硬投影的颜色 */
   --paper: var(--bg); /* 白格子、气泡、旁白框的底 */
+  /* 页面底色：很浅的灰，白格子放在上面分得开（只有网页端有；色板里的 --bg 是 App 共用的，不改） */
+  --page: #f8f8f5;
   --on-ink: var(--bg); /* 墨底上的字 */
   --on-acc: #ffffff; /* 蓝底上的字 */
   --deep: #1b34a6; /* 深蓝：蓝按钮按下 */
@@ -217,6 +219,7 @@
   --r-chip: 6px;
 }
 [data-scheme="dark"] {
+  --page: #0b0b0d;
   --on-acc: #111113;
   --deep: #5b70e8;
   --sky: #2f55f4;
@@ -226,6 +229,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-scheme]) {
+    --page: #0b0b0d;
     --on-acc: #111113;
     --deep: #5b70e8;
     --sky: #2f55f4;
@@ -321,7 +325,7 @@
 /* ================= 浏览器全局样式 ================= */
 
 html {
-  background: var(--bg);
+  background: var(--page);
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

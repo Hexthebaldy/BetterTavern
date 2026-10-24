@@ -7,7 +7,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--paper);
+  background: var(--page);
 }
 .deskPanel {
   display: none;
@@ -402,6 +402,7 @@
   .formPanel {
     min-height: 720px;
     padding: 0;
+    background: var(--paper);
     border: var(--bw) solid var(--frame);
     border-radius: var(--r-frame);
     overflow: hidden;
