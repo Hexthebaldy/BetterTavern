@@ -1,12 +1,16 @@
 /**
  * 浮起的面板（Sheet）和面板里的菜单。页面经 ui.tsx 引用；对话框、浮条和 useOverlay() 在 overlay.tsx。
  *
- * 手机上是底部面板：四周离屏幕边缘 8，圆角 32，顶部一根 40×5 的拖拽条；点遮罩、下拉或 Android 返回键关闭。
+ * 漫画风（docs/design/comic/mobile/README.md）：
+ * 手机上是贴着屏幕底边的底部面板：底色同页面，2.5 墨线（底边没有），上沿圆角 26，顶部一根 44×5 的墨色拖拽条；
+ * 点遮罩、下拉或 Android 返回键关闭。
  * 平板（中屏、宽屏）上按 theme/layout.ts 的 overlayPresentation 换形态，内容不变：
- * - kind="choice"（默认：服务器、外观、编辑密钥……）→ 居中对话框：宽 ≤ 480，圆角 32，没有拖拽条，右上角关闭，点遮罩关闭；
- * - kind="menu"（阅读页“更多”）→ 贴着 anchor 按钮弹出：宽 340，圆角 28，右边缘和按钮对齐，底边在按钮
- *   （或 above）的顶边上方 8，上面放不下就放到按钮下方；不加遮罩，点外面关闭；量不到按钮的位置时退回居中对话框；
- * - full（世界状态）→ 从右侧滑出：宽 400，上、下、右各留 8，圆角 32，有遮罩。
+ * - kind="choice"（默认：服务器、外观、编辑密钥……）→ 居中对话框：宽 ≤ 480，白底 2.5 墨线，圆角 18，投影 6，
+ *   没有拖拽条，右上角关闭，点遮罩关闭；
+ * - kind="menu"（阅读页“更多”）→ 贴着 anchor 按钮弹出：宽 340，白底 2.5 墨线，圆角 14，投影 6，右边缘和按钮对齐，
+ *   底边在按钮（或 above）的顶边上方 8，上面放不下就放到按钮下方；不加遮罩，点外面关闭；量不到按钮的位置时退回居中对话框；
+ * - full（世界状态）→ 从右侧滑出：宽 400，上、下、右各留 8，底色同页面，2.5 墨线，圆角 16，有遮罩。
+ * 面板里的菜单和表面在 menu.tsx。
  * 面板里有输入框时，键盘弹出后面板跟着浮到键盘上方（useKeyboardLift），输入框不会被盖住。
  * 有面板开着时，useOverlay() 的对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）。
  * 面板的 Modal 什么时候挂上、拿掉由 useGatedModal 决定（gatedModal.ts）：iOS 上要等别的 Modal 被收回才挂上，
@@ -43,10 +47,18 @@ import { overlayPresentation, pane, popoverFrame, type OverlayKind } from "@bett
 
 import { useKeyboardLift } from "../hooks/useKeyboardLift.ts";
 import { useLayout } from "../hooks/useLayout.ts";
-import { BaseSurface, radius, space, useIsDark, usePalette } from "../theme/index.ts";
+import {
+  BaseSurface,
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  ctype,
+  hardShadow,
+  space,
+  useComic,
+} from "../theme/index.ts";
+import { IconButton } from "./buttons.tsx";
 import { useGatedModal } from "./gatedModal.ts";
-import { Icon, type IconName } from "./icons.tsx";
-import { IconButton } from "./primitives.tsx";
 
 /** iOS 的 Modal 默认只支持竖屏：iPad 横着时打开会被转回竖屏，所以所有方向都要列上（手机仍受 Info.plist 限制） */
 export const MODAL_ORIENTATIONS: ModalProps["supportedOrientations"] = [
@@ -144,7 +156,7 @@ export function Sheet({
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const insets = useSafeAreaInsets();
   const { size, width: windowWidth, height: windowHeight } = useLayout();
   const progress = useRef(new Animated.Value(0)).current;
@@ -213,10 +225,10 @@ export function Sheet({
 
   const titleRow = title ? (
     <View style={styles.sheetTitleRow}>
-      <Text accessibilityRole="header" style={[styles.sheetTitle, { color: palette.ink }]}>
+      <Text accessibilityRole="header" style={[ctype.sheetTitle, { flex: 1, color: c.ink }]}>
         {title}
       </Text>
-      <IconButton icon="close" label={t("common.close")} size={18} diameter={36} onPress={onClose} />
+      <IconButton icon="close" label={t("common.close")} size={18} diameter={38} onPress={onClose} />
     </View>
   ) : null;
 
@@ -225,7 +237,7 @@ export function Sheet({
       style={[
         StyleSheet.absoluteFill,
         {
-          backgroundColor: presentation === "popover" ? "transparent" : palette.scrim,
+          backgroundColor: presentation === "popover" ? "transparent" : c.scrim,
           opacity: progress,
         },
       ]}
@@ -256,9 +268,10 @@ export function Sheet({
           style={[
             styles.sheet,
             {
-              backgroundColor: palette.sheet,
+              backgroundColor: c.page,
+              borderColor: c.ink,
               // 键盘弹出时贴着键盘，不再给 Home 指示条留位置
-              paddingBottom: keyboardHeight > 0 ? space.l : Math.max(insets.bottom - space.s, space.l),
+              paddingBottom: keyboardHeight > 0 ? space.l : Math.max(insets.bottom, space.l),
               transform: [{ translateY }],
             },
             full ? styles.sheetFull : null,
@@ -266,7 +279,7 @@ export function Sheet({
           ]}
         >
           <View {...pan.panHandlers}>
-            <View style={[styles.handle, { backgroundColor: palette.line2 }]} />
+            <View style={[styles.handle, { backgroundColor: c.ink }]} />
             {header ?? titleRow ?? <View style={{ height: space.xs }} />}
           </View>
           {children}
@@ -284,7 +297,8 @@ export function Sheet({
           style={[
             styles.sidePanel,
             {
-              backgroundColor: palette.sheet,
+              backgroundColor: c.page,
+              borderColor: c.ink,
               transform: [
                 {
                   translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [pane.world + 24, 0] }),
@@ -322,8 +336,9 @@ export function Sheet({
             left: frame.left,
             top: frame.top,
             width: frame.width,
-            backgroundColor: palette.sheet,
-            boxShadow: palette.shadowFloat,
+            backgroundColor: c.paper,
+            borderColor: c.ink,
+            boxShadow: hardShadow(c.ink, comicDepth.dialog),
             opacity: progress,
             transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
           },
@@ -348,8 +363,9 @@ export function Sheet({
           style={[
             styles.dialog,
             {
-              backgroundColor: palette.sheet,
-              boxShadow: palette.shadowFloat,
+              backgroundColor: c.paper,
+              borderColor: c.ink,
+              boxShadow: hardShadow(c.ink, comicDepth.dialog),
               opacity: progress,
               transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) }],
             },
@@ -358,7 +374,7 @@ export function Sheet({
         >
           {header ?? titleRow ?? (
             <View style={styles.dialogClose}>
-              <IconButton icon="close" label={t("common.close")} size={18} diameter={36} onPress={onClose} />
+              <IconButton icon="close" label={t("common.close")} size={18} diameter={38} onPress={onClose} />
             </View>
           )}
           {children}
@@ -386,117 +402,27 @@ export function Sheet({
   );
 }
 
-// ---- 面板里的表面和菜单 ---------------------------------------------------------------------
-
-type Surfaces = { inset: string; raised: string; fill: string; onFill: string };
-
-const SurfacesContext = createContext<Surfaces | null>(null);
-
-/**
- * 面板里再嵌一层的底色（深色下面板比页面亮，不能直接用 bg2）：
- * - inset：凹下去的分组（浅色 bg2，深色 bg）；raised：分组里选中的那一格（浅色白，深色 bg3）
- * - fill：直接放在面板上的灰色块，比如阅读页的选项、次要按钮（浅色 bg2，深色 bg3）
- * - onFill：fill 块里再嵌的小块，比如世界状态卡片里的图标圆、关系标签（面板的颜色）
- * 灰底的面板（平板上停靠和滑出的世界状态）用 PanelSurfaces 换成“灰底白卡”。
- */
-export function useSheetSurfaces(): Surfaces {
-  const palette = usePalette();
-  const dark = useIsDark();
-  const override = useContext(SurfacesContext);
-  if (override) return override;
-  return dark
-    ? { inset: palette.bg, raised: palette.bg3, fill: palette.bg3, onFill: palette.sheet }
-    : { inset: palette.bg2, raised: palette.card, fill: palette.bg2, onFill: palette.sheet };
-}
-
-/** 灰底（bg2）面板里的表面：卡片是白色 card，凹下去的分组是 bg3（深色 bg） */
-export function PanelSurfaces({ children }: { children: ReactNode }) {
-  const palette = usePalette();
-  const dark = useIsDark();
-  const value = useMemo<Surfaces>(
-    () =>
-      dark
-        ? { inset: palette.bg, raised: palette.bg3, fill: palette.card, onFill: palette.bg2 }
-        : { inset: palette.bg3, raised: palette.card, fill: palette.card, onFill: palette.bg2 },
-    [dark, palette],
-  );
-  return <SurfacesContext.Provider value={value}>{children}</SurfacesContext.Provider>;
-}
-
-/** 直接放在页面上的表面（阅读页故事流末尾的选项）：灰卡是 bg2，灰卡里的小圆是白色 card */
-export function PageSurfaces({ children }: { children: ReactNode }) {
-  const palette = usePalette();
-  const value = useMemo<Surfaces>(
-    () => ({ inset: palette.bg2, raised: palette.card, fill: palette.bg2, onFill: palette.card }),
-    [palette],
-  );
-  return <SurfacesContext.Provider value={value}>{children}</SurfacesContext.Provider>;
-}
-
-/** 面板里的一组菜单（凹下去的圆角卡片） */
-export function MenuGroup({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const { inset } = useSheetSurfaces();
-  return <View style={[styles.menuGroup, { backgroundColor: inset }, style]}>{children}</View>;
-}
-
-/** 面板里的一行菜单项 */
-export function MenuItem({
-  icon,
-  label,
-  onPress,
-  danger,
-  disabled,
-}: {
-  icon: IconName;
-  label: string;
-  onPress: () => void;
-  danger?: boolean;
-  /** 暂时不能用：变淡，点了没反应 */
-  disabled?: boolean;
-}) {
-  const palette = usePalette();
-  const color = danger ? palette.err : palette.ink;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.menuItem,
-        {
-          backgroundColor: pressed ? palette.bg3 : "transparent",
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-          opacity: disabled ? 0.4 : 1,
-        },
-      ]}
-    >
-      <Icon name={icon} color={color} />
-      <Text style={{ fontSize: 16, lineHeight: 22, color }}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   host: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, justifyContent: "flex-end" },
   sheet: {
-    marginHorizontal: space.s,
-    marginBottom: space.s,
-    borderRadius: radius.sheet,
+    borderTopLeftRadius: comicRadius.sheet,
+    borderTopRightRadius: comicRadius.sheet,
+    borderWidth: comicStroke.frame,
+    borderBottomWidth: 0,
     overflow: "hidden",
   },
   /** 从状态栏下方一直到底：离状态栏 36 */
   sheetFull: { flex: 1, marginTop: space.xxl - space.s, paddingBottom: 0 },
-  handle: { alignSelf: "center", width: 40, height: 5, borderRadius: 2.5, marginTop: 10 },
+  handle: { alignSelf: "center", width: 44, height: 5, borderRadius: 3, marginTop: 10 },
   sheetTitleRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
     paddingTop: space.m,
     paddingBottom: space.m,
-    paddingLeft: space.page - 4,
+    paddingLeft: 20,
     paddingRight: space.l,
   },
-  sheetTitle: { flex: 1, fontSize: 20, lineHeight: 28, fontWeight: "700" },
   dialogHost: {
     position: "absolute",
     top: 0,
@@ -511,27 +437,24 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: pane.dialog,
     maxHeight: "100%",
-    borderRadius: radius.sheet,
+    borderRadius: comicRadius.dialog,
+    borderWidth: comicStroke.frame,
     paddingBottom: space.l,
     overflow: "hidden",
   },
   dialogClose: { alignItems: "flex-end", paddingTop: space.m, paddingRight: space.l },
   popover: {
     position: "absolute",
-    borderRadius: radius.group,
+    borderRadius: comicRadius.menu,
+    borderWidth: comicStroke.frame,
     paddingTop: space.xs,
     paddingBottom: space.s,
-    overflow: "hidden",
   },
   side: { position: "absolute", right: space.s, width: pane.world },
-  sidePanel: { flex: 1, borderRadius: radius.sheet, overflow: "hidden" },
-  menuGroup: { borderRadius: 26, padding: space.xs },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    height: 56,
-    paddingHorizontal: space.l,
-    borderRadius: radius.card,
+  sidePanel: {
+    flex: 1,
+    borderRadius: comicRadius.panel,
+    borderWidth: comicStroke.frame,
+    overflow: "hidden",
   },
 });

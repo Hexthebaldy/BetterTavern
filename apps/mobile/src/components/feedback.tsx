@@ -1,5 +1,5 @@
 /**
- * 反馈：提示条、胶囊标签（状态、“我”、“导演”、上下文长度）、加载失败。页面经 ui.tsx 引用。
+ * 反馈（漫画风）：提示条、小标签（状态、“我”、“导演”、上下文长度）、加载失败。页面经 ui.tsx 引用。
  * 红 / 绿 / 琥珀只表示状态，并且一定配图标（三角、对勾、虚线圆、叉），不能只靠颜色区分。
  */
 
@@ -7,23 +7,37 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { font, onColor, radius, space, usePalette, type Palette } from "../theme/index.ts";
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  ctype,
+  font,
+  hardShadow,
+  onColor,
+  space,
+  useComic,
+  usePalette,
+  type ComicColors,
+} from "../theme/index.ts";
+import { Button, IconButton } from "./buttons.tsx";
+import { Halftone } from "./Halftone.tsx";
 import { Icon, type IconName } from "./icons.tsx";
-import { Button, IconButton } from "./primitives.tsx";
+import { press } from "./press.ts";
 
 // ---- 提示条 ------------------------------------------------------------------------------
 
 export type Tone = "error" | "info" | "warn";
 
-export function toneColors(tone: Tone, palette: Palette) {
-  if (tone === "error") return { fg: palette.err, bg: palette.errBg, icon: "alert" as const };
-  if (tone === "warn") return { fg: palette.warn, bg: palette.warnBg, icon: "alert" as const };
-  return { fg: palette.acc, bg: palette.accBg, icon: "info" as const };
+export function toneColors(tone: Tone, c: ComicColors) {
+  if (tone === "error") return { fg: c.err, action: c.danger, icon: "alert" as const };
+  if (tone === "warn") return { fg: c.warn, action: c.warn, icon: "alert" as const };
+  return { fg: c.acc, action: c.acc, icon: "info" as const };
 }
 
 /**
- * 提示条：圆角 20 的色卡，三角 = 错误 / 警告，圆圈 i = 信息。
- * 带操作时右边是一个同色的胶囊按钮；带操作的不自动消失。floating 时带投影（浮在页面顶上）。
+ * 提示条：白底 2.5 墨线的格子，图标按语气上色（三角 = 错误 / 警告，圆圈 i = 信息）。
+ * 带操作时右边是一个同色的胶囊按钮（错误是红底）；带操作的不自动消失。floating 时带墨色投影 4（浮在页面顶上）。
  */
 export function Notice({
   tone = "error",
@@ -47,9 +61,9 @@ export function Notice({
   floating?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
-  const c = toneColors(tone, palette);
+  const tc = toneColors(tone, c);
   const action = actionLabel && onAction;
   return (
     <View
@@ -57,20 +71,20 @@ export function Notice({
       accessibilityLiveRegion="polite"
       style={[
         styles.notice,
-        { backgroundColor: c.bg },
+        { backgroundColor: c.paper, borderColor: c.ink },
         action ? styles.noticeWithAction : null,
         title ? { alignItems: "flex-start" } : null,
-        floating ? { boxShadow: palette.shadowFloat } : null,
+        floating ? { boxShadow: hardShadow(c.ink, comicDepth.raised) } : null,
         style,
       ]}
     >
       <View style={title ? { marginTop: 1 } : null}>
-        <Icon name={icon ?? c.icon} size={20} color={c.fg} />
+        <Icon name={icon ?? tc.icon} size={20} color={tc.fg} />
       </View>
       <View style={{ flex: 1 }}>
-        {title ? <Text style={[styles.text, { color: palette.ink, fontWeight: "500" }]}>{title}</Text> : null}
+        {title ? <Text style={[styles.text, { color: c.ink, fontWeight: "700" }]}>{title}</Text> : null}
         {typeof message === "string" ? (
-          <Text style={[styles.text, { color: title ? palette.ink2 : palette.ink }]}>{message}</Text>
+          <Text style={[styles.text, { color: title ? c.ink2 : c.ink }]}>{message}</Text>
         ) : (
           message
         )}
@@ -81,10 +95,13 @@ export function Notice({
           onPress={onAction}
           style={({ pressed }) => [
             styles.action,
-            { backgroundColor: c.fg, transform: [{ scale: pressed ? 0.97 : 1 }] },
+            { backgroundColor: tc.action, borderColor: c.ink },
+            press(pressed, comicDepth.iconButton, c.ink),
           ]}
         >
-          <Text style={{ fontSize: 13.5, fontWeight: "500", color: onColor }}>{actionLabel}</Text>
+          <Text style={{ fontSize: 13.5, fontWeight: "700", color: tone === "info" ? c.onAcc : onColor }}>
+            {actionLabel}
+          </Text>
         </Pressable>
       ) : null}
       {onClose ? (
@@ -92,49 +109,48 @@ export function Notice({
           icon="close"
           label={t("common.close")}
           size={16}
-          diameter={36}
+          diameter={34}
           tone="plain"
           onPress={onClose}
-          style={{ backgroundColor: palette.closeOnTint, marginVertical: -6 }}
+          style={{ marginVertical: -6 }}
         />
       ) : null}
     </View>
   );
 }
 
-// ---- 胶囊标签 ----------------------------------------------------------------------------
+// ---- 小标签 ------------------------------------------------------------------------------
 
 export type PillTone = "acc" | "accSolid" | "ink" | "ok" | "warn" | "err" | "grey" | "card";
 
-function pillColors(tone: PillTone, palette: Palette): { bg: string; fg: string } {
+/** 底色、字色，和白底标签的描边色（有描边的是白底配同色线框） */
+function pillColors(tone: PillTone, c: ComicColors, ok: string): { bg: string; fg: string; line?: string } {
   switch (tone) {
     case "acc":
-      return { bg: palette.accBg, fg: palette.acc };
     case "accSolid":
-      return { bg: palette.acc, fg: onColor };
+      return { bg: c.acc, fg: c.onAcc };
     case "ink":
-      return { bg: palette.ink, fg: palette.bg };
+      return { bg: c.ink, fg: c.paper };
     case "ok":
-      return { bg: palette.okBg, fg: palette.ok };
+      return { bg: c.paper, fg: ok, line: ok };
     case "warn":
-      return { bg: palette.warnBg, fg: palette.warn };
+      return { bg: c.paper, fg: c.warn, line: c.warn };
     case "err":
-      return { bg: palette.errBg, fg: palette.err };
+      return { bg: c.paper, fg: c.err, line: c.err };
     case "grey":
-      return { bg: palette.bg2, fg: palette.ink };
     case "card":
-      return { bg: palette.card, fg: palette.ink };
+      return { bg: c.paper, fg: c.ink, line: c.ink };
   }
 }
 
-/** 胶囊标签：状态、“我”、“导演”、上下文长度。dot 是前面的小圆点（“正在写下一段”） */
+/** 小标签（圆角 6，粗体小字）：状态、“我”、“导演”、上下文长度。dot 是前面的小圆点（“正在写下一段”） */
 export function Pill({
   label,
   tone = "grey",
   icon,
   dot,
   mono,
-  height = 24,
+  height = 22,
   style,
 }: {
   label: ReactNode;
@@ -145,8 +161,9 @@ export function Pill({
   height?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const c = useComic();
   const palette = usePalette();
-  const c = pillColors(tone, palette);
+  const pc = pillColors(tone, c, palette.ok);
   const fontSize = height <= 20 ? 11 : height >= 28 ? 13 : 12;
   return (
     <View
@@ -154,21 +171,21 @@ export function Pill({
         styles.pill,
         {
           height,
-          borderRadius: height / 2,
-          backgroundColor: c.bg,
-          paddingLeft: icon || dot ? 8 : 10,
-          paddingRight: 10,
+          backgroundColor: pc.bg,
+          paddingLeft: icon || dot ? 7 : 8,
+          paddingRight: 8,
+          boxShadow: pc.line ? `inset 0 0 0 ${comicStroke.chip}px ${pc.line}` : undefined,
         },
         style,
       ]}
     >
-      {dot ? <View style={[styles.dot, { backgroundColor: c.fg }]} /> : null}
-      {icon ? <Icon name={icon} size={height <= 24 ? 13 : 15} color={c.fg} strokeWidth={2.2} /> : null}
+      {dot ? <View style={[styles.dot, { backgroundColor: pc.fg }]} /> : null}
+      {icon ? <Icon name={icon} size={height <= 24 ? 13 : 15} color={pc.fg} strokeWidth={2.4} /> : null}
       <Text
         numberOfLines={1}
         style={[
-          { fontSize, color: c.fg, fontWeight: tone === "grey" || tone === "card" ? "400" : "500" },
-          mono ? { fontFamily: font.mono, fontWeight: "400" } : null,
+          { fontSize, color: pc.fg, fontWeight: "700" },
+          mono ? { fontFamily: font.monoMedium, fontWeight: "normal" } : null,
         ]}
       >
         {label}
@@ -186,7 +203,7 @@ export function Status({ kind, label, height }: { kind: StatusKind; label: strin
   return <Pill label={label} tone={tone} icon={icon} height={height} />;
 }
 
-/** 小标签：solid = 蓝底白字（“我”），soft = 浅蓝（“导演”“新”），ink = 黑底，plain = 灰底（128K） */
+/** 小标签：solid = 蓝底（“我”），soft = 白底蓝框（“导演”“新”），ink = 墨底，plain = 白底墨框等宽（128K） */
 export function Tag({
   label,
   variant = "plain",
@@ -194,12 +211,24 @@ export function Tag({
   label: string;
   variant?: "solid" | "soft" | "ink" | "plain";
 }) {
-  const tone: PillTone =
-    variant === "solid" ? "accSolid" : variant === "soft" ? "acc" : variant === "ink" ? "ink" : "grey";
-  return <Pill label={label} tone={tone} height={22} mono={variant === "plain"} />;
+  const c = useComic();
+  if (variant === "soft") {
+    return (
+      <Pill
+        label={label}
+        tone="card"
+        height={20}
+        style={{ boxShadow: `inset 0 0 0 ${comicStroke.chip}px ${c.acc}` }}
+      />
+    );
+  }
+  const tone: PillTone = variant === "solid" ? "accSolid" : variant === "ink" ? "ink" : "grey";
+  return <Pill label={label} tone={tone} height={20} mono={variant === "plain"} />;
 }
 
-/** 加载失败：一张灰卡，红色圆形图标、标题、说明、“重新加载” */
+/**
+ * 加载失败：白底墨线的格子，上半是灰网点底，中间一个墨框的方块放红色图标；下面标题、说明、“重新加载”。
+ */
 export function ErrorState({
   icon = "offline",
   title,
@@ -216,35 +245,40 @@ export function ErrorState({
   primary?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
-    <View accessibilityRole="alert" style={[styles.errorState, { backgroundColor: palette.bg2 }, style]}>
-      <View style={[styles.errorIcon, { backgroundColor: palette.errBg }]}>
-        <Icon name={icon} size={26} color={palette.err} />
+    <View
+      accessibilityRole="alert"
+      style={[styles.errorState, { backgroundColor: c.paper, borderColor: c.ink }, style]}
+    >
+      <Halftone tone="grey" style={[styles.errorTop, { borderColor: c.ink }]}>
+        <View
+          style={[
+            styles.errorIcon,
+            { backgroundColor: c.paper, borderColor: c.ink, boxShadow: hardShadow(c.ink, comicDepth.raised) },
+          ]}
+        >
+          <Icon name={icon} size={30} color={c.err} />
+        </View>
+      </Halftone>
+      <View style={styles.errorBody}>
+        <Text style={[ctype.title, { fontSize: 22, color: c.ink }]}>{title}</Text>
+        {typeof message === "string" ? (
+          <Text style={{ fontSize: 15, lineHeight: 23, color: c.ink2 }}>{message}</Text>
+        ) : (
+          message
+        )}
+        {onRetry ? (
+          <Button
+            label={t("common.reload")}
+            variant={primary ? "primary" : "secondary"}
+            icon="retry"
+            onPress={onRetry}
+            style={{ alignSelf: "stretch", marginTop: space.s }}
+          />
+        ) : null}
       </View>
-      <Text
-        style={{ fontSize: 20, lineHeight: 28, fontWeight: "700", color: palette.ink, textAlign: "center" }}
-      >
-        {title}
-      </Text>
-      {typeof message === "string" ? (
-        <Text style={{ fontSize: 14, lineHeight: 22, color: palette.mut, textAlign: "center" }}>
-          {message}
-        </Text>
-      ) : (
-        message
-      )}
-      {onRetry ? (
-        <Button
-          label={t("common.reload")}
-          variant={primary ? "primary" : "secondary"}
-          onGrey
-          icon="retry"
-          onPress={onRetry}
-          style={{ alignSelf: "stretch", marginTop: space.s }}
-        />
-      ) : null}
     </View>
   );
 }
@@ -254,29 +288,49 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: space.l,
-    paddingVertical: 14,
-    borderRadius: radius.card,
+    paddingLeft: 14,
+    paddingRight: 10,
+    paddingVertical: 10,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
   noticeWithAction: { paddingVertical: 6, paddingRight: 6 },
-  text: { fontSize: 14, lineHeight: 21 },
+  text: { fontSize: 14, lineHeight: 20 },
   action: {
-    height: 40,
+    height: 36,
     paddingHorizontal: 14,
-    borderRadius: 20,
+    borderRadius: 18,
+    borderWidth: comicStroke.control,
     alignItems: "center",
     justifyContent: "center",
   },
-  pill: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    borderRadius: comicRadius.chip,
+  },
   dot: { width: 6, height: 6, borderRadius: 3 },
   errorState: {
-    marginHorizontal: space.l,
-    paddingTop: space.xl,
-    paddingHorizontal: space.page - 4,
-    paddingBottom: space.page - 4,
-    borderRadius: radius.sheet,
-    alignItems: "center",
-    gap: space.m,
+    marginHorizontal: 20,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+    overflow: "hidden",
   },
-  errorIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
+  errorTop: {
+    height: 150,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomWidth: comicStroke.frame,
+  },
+  errorIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 18,
+    borderWidth: comicStroke.frame,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorBody: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 18, gap: 10 },
 });

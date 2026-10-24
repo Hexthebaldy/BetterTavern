@@ -221,7 +221,7 @@ export function AccountBody() {
             ) : null}
           </View>
         </View>
-        <Group inset={14}>
+        <Group>
           <View style={styles.kv}>
             <Text style={[styles.key, { color: palette.mut }]}>{t("account.email")}</Text>
             <Text style={{ flex: 1, fontSize: 15, color: palette.ink }} selectable>

@@ -1,15 +1,15 @@
 /**
- * 界面「白 / 柔线 / 大圆角」的设计 token，取自 docs/design/ui/tokens.ts。
+ * 界面的设计 token：漫画风（docs/design/comic/mobile/），和网页端同一套。
  *
- * 纯白页面，内容放在浅灰圆角卡片里；按钮、标签、分段控件是胶囊；分区靠灰卡和留白，不画黑线。
- * 层级靠“灰卡放在白底上”：页面 bg，卡片和输入框 bg2，卡片里再嵌一层用 bg3 或白色的 card。
- * 阴影只给浮起来的东西（Tab 栏、底部面板、提示浮条、弹出菜单）。
- * 状态靠换底色：未选中浅灰，选中黑底或浅蓝底加 2px 蓝色内描边，聚焦一圈 2px acc，按下缩到 97%，禁用不透明度 0.3。
- * 红 / 绿 / 琥珀只表示错误 / 可用 / 警告，并且一定配图标。
+ * 浅灰的页面底色上放白底墨线的格子；描边 2.5（格子、按钮、选项、面板）/ 2（输入框、图标按钮、封面、小控件）/
+ * 1.5（小标签、分隔线）。只用硬投影（一像素一层叠出来，hardShadow），不用模糊阴影：图标按钮 2，按钮、选项、
+ * Tab 栏、菜单、浮条 4，对话框 6；主按钮和选中、聚焦的东西是蓝色投影。列表行和普通格子不加投影。
+ * 按下时往投影的方向挪、投影缩短（components/press.ts），不缩放、不改透明度。不能点的按钮变灰、没有投影。
+ * 蓝给可以点的和“你”；红只表示删除和出错，琥珀只表示警告，都配图标。不用渐变、插画、纸纹。
  *
- * 颜色和投影随主题变：色板、主题表在 @bettertavern/design 的 palettes.ts、themes.ts，页面用 usePalette() 取当前主题的色板。
- * 圆角、字号、间距、尺寸不随主题变，在 @bettertavern/design 的 tokens.ts（和网页端共用）；这里统一转出，页面只从这里导入。
- * 字体族名是 React Native 加载字体用的键，只在手机端，在 fonts.ts（正文宋体按语言选也在那里）。
+ * 颜色随主题变：漫画颜色在 @bettertavern/design 的 comic.ts（useComic() 取当前主题那一套），
+ * 色板（palettes.ts，usePalette()）还留着给没有换掉的地方。描边、圆角、投影层数不随主题变。
+ * 字号在 comicType.ts；字体族名是 React Native 加载字体用的键，只在手机端，在 fonts.ts（正文宋体按语言选也在那里）。
  */
 
 export { lightPalette, darkPalette, type Palette } from "@bettertavern/design/palettes";
@@ -24,10 +24,18 @@ export {
   type ThemeSetting,
 } from "@bettertavern/design/themes";
 export {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  hardShadow,
+  type ComicColors,
+} from "@bettertavern/design/comic";
+export {
   BaseSurface,
   RaisedSurface,
   raisedPalette,
   ThemeProvider,
+  useComic,
   useIsDark,
   usePalette,
   useTheme,
@@ -35,4 +43,5 @@ export {
 
 export { onColor, radius, size, space, stroke, type } from "@bettertavern/design/tokens";
 
+export { ctype } from "./comicType.ts";
 export { font, serifFor } from "./fonts.ts";

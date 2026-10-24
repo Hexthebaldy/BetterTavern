@@ -8,17 +8,17 @@ import { useTranslation } from "react-i18next";
 import { Easing } from "react-native";
 
 import { TAB_FADE_MS, TabBar } from "../../src/components/ui.tsx";
-import { usePalette } from "../../src/theme/index.ts";
+import { useComic } from "../../src/theme/index.ts";
 
 export default function TabsLayout() {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: palette.bg },
+        sceneStyle: { backgroundColor: c.page },
         animation: "fade",
         transitionSpec: {
           animation: "timing",

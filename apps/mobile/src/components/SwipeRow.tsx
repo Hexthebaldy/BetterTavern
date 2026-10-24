@@ -1,5 +1,5 @@
 /**
- * 左滑露出操作的列表卡片（重命名、删除）：卡片往左移，右边露出两个圆角方块按钮。
+ * 左滑露出操作的列表卡片（重命名、删除）：卡片往左移，右边露出两个白底墨线的方块按钮（删除是红底）。
  * 左滑到底也不会直接删除，操作仍然要经过确认。
  * 长按和读屏的“操作”菜单给出同样的选项，照顾不习惯左滑的人。同一时间只有一行是打开的。
  */
@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { onColor, usePalette } from "../theme/index.ts";
+import { comicRadius, comicStroke, onColor, useComic } from "../theme/index.ts";
 import { Icon, type IconName } from "./icons.tsx";
 
 export type SwipeAction = {
@@ -24,7 +24,7 @@ const GAP = 8;
 let closeOpenRow: (() => void) | null = null;
 
 export function SwipeRow({ actions, children }: { actions: SwipeAction[]; children: ReactNode }) {
-  const palette = usePalette();
+  const c = useComic();
   const width = actions.length * (ACTION_WIDTH + GAP);
   const x = useRef(new Animated.Value(0)).current;
   const offset = useRef(0);
@@ -98,13 +98,13 @@ export function SwipeRow({ actions, children }: { actions: SwipeAction[]; childr
             style={({ pressed }) => [
               styles.action,
               {
-                backgroundColor: a.danger ? palette.err : palette.bg2,
-                transform: [{ scale: pressed ? 0.97 : 1 }],
+                borderColor: c.ink,
+                backgroundColor: a.danger ? c.danger : pressed ? c.grey : c.paper,
               },
             ]}
           >
-            <Icon name={a.icon} color={a.danger ? onColor : palette.ink} />
-            <Text style={{ fontSize: 12, color: a.danger ? onColor : palette.ink }}>{a.label}</Text>
+            <Icon name={a.icon} color={a.danger ? onColor : c.ink} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: a.danger ? onColor : c.ink }}>{a.label}</Text>
           </Pressable>
         ))}
       </Animated.View>
@@ -128,5 +128,12 @@ const styles = StyleSheet.create({
     gap: GAP,
     paddingLeft: GAP,
   },
-  action: { width: ACTION_WIDTH, borderRadius: 24, alignItems: "center", justifyContent: "center", gap: 6 },
+  action: {
+    width: ACTION_WIDTH,
+    borderRadius: comicRadius.frame,
+    borderWidth: comicStroke.frame,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+  },
 });

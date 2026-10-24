@@ -2,7 +2,8 @@
  * 封面：角色卡有图片就显示图片（要带访问令牌才能取），没有图片时画一张几何封面。
  *
  * 几何封面的图形（5 种线条母题，按剧本 ID 确定性地选）在 @bettertavern/design 的 cover.ts，和网页端共用；
- * 这里按色板上色。封面是圆角方块（圆角 16 起，越大越圆）；放在灰卡里时用白色 card 底（surface="card"）。
+ * 这里按漫画颜色上色：灰底、墨线、蓝点。外面的墨线框和圆角（列表里 2 墨线、圆角 9）由放它的地方画；
+ * 放在灰底上时用白底（surface="card"）。
  */
 
 import { useEffect, useState } from "react";
@@ -12,11 +13,11 @@ import Svg, { Circle, Path } from "react-native-svg";
 import { coverArt, coverRadius } from "@bettertavern/design/cover";
 
 import { useApp } from "../state/AppProvider.tsx";
-import { usePalette, type Palette } from "../theme/index.ts";
+import { useComic, type ComicColors } from "../theme/index.ts";
 import { Icon } from "./icons.tsx";
 
-/** 几何封面的图形（@bettertavern/design 的 cover.ts）按当前色板画出来 */
-function Shapes({ seed, w, h, p }: { seed: string; w: number; h: number; p: Palette }) {
+/** 几何封面的图形（@bettertavern/design 的 cover.ts）按当前的漫画颜色画出来 */
+function Shapes({ seed, w, h, p }: { seed: string; w: number; h: number; p: ComicColors }) {
   const art = coverArt(seed, w, h);
   const line = {
     stroke: p.ink,
@@ -26,7 +27,7 @@ function Shapes({ seed, w, h, p }: { seed: string; w: number; h: number; p: Pale
     strokeLinejoin: "round" as const,
   };
   const soft = {
-    stroke: p.line2,
+    stroke: p.line,
     strokeWidth: art.softStrokeWidth,
     fill: "none",
     strokeLinecap: "round" as const,
@@ -61,7 +62,7 @@ export function GeometricCover({
   rounded?: number;
   style?: StyleProp<ViewStyle>;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View
       style={[
@@ -69,14 +70,14 @@ export function GeometricCover({
           width,
           height,
           borderRadius: rounded ?? coverRadius(width, height),
-          backgroundColor: surface === "card" ? palette.card : palette.bg2,
+          backgroundColor: surface === "card" ? c.paper : c.grey,
           overflow: "hidden",
         },
         style,
       ]}
     >
       <Svg width={width} height={height} accessible={false}>
-        <Shapes seed={seed} w={width} h={height} p={palette} />
+        <Shapes seed={seed} w={width} h={height} p={c} />
       </Svg>
     </View>
   );
@@ -101,7 +102,7 @@ export function Cover({
   style?: StyleProp<ViewStyle>;
 }) {
   const { api, authHeaders, serverUrl } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const [headers, setHeaders] = useState<Record<string, string> | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -141,20 +142,20 @@ export function Cover({
             width,
             height,
             borderRadius: r,
-            backgroundColor: palette.bg3,
+            backgroundColor: c.grey2,
             alignItems: "center",
             justifyContent: "center",
           },
           style,
         ]}
       >
-        <Icon name="image" size={Math.min(28, height / 3)} color={palette.mut} />
+        <Icon name="image" size={Math.min(28, height / 3)} color={c.mut} />
       </View>
     );
   }
   return (
     <View
-      style={[{ width, height, borderRadius: r, overflow: "hidden", backgroundColor: palette.bg3 }, style]}
+      style={[{ width, height, borderRadius: r, overflow: "hidden", backgroundColor: c.grey2 }, style]}
     >
       <Image
         accessibilityIgnoresInvertColors

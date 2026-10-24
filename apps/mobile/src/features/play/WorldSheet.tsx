@@ -145,8 +145,6 @@ function WorldHeader({
         value={tab}
         options={tabs}
         onChange={onTab}
-        trackColor={surfaces.inset}
-        selectedColor={surfaces.raised}
         style={styles.tabs}
       />
     </View>

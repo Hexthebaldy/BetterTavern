@@ -5,7 +5,15 @@
  * 只有数据，手机端（react-native-svg）和网页端（<svg>）各自按这份数据画。
  */
 
-export type Paint = { solid?: boolean; bare?: boolean; dash?: string };
+export type Paint = {
+  solid?: boolean;
+  bare?: boolean;
+  dash?: string;
+  /** 只在实心图标（FILLED_ICONS）里用：body 填蓝，hole 填纸色（挖空的地方） */
+  fill?: "body" | "hole";
+  /** 只在实心图标里用：这一段的描边用纸色（画在蓝色主体上的线） */
+  line?: "hole";
+};
 export type Part =
   | ({ d: string } & Paint)
   /** x, y, 宽, 高, 圆角 */
@@ -133,3 +141,39 @@ export const ICONS = {
 } satisfies Record<string, Part[]>;
 
 export type IconName = keyof typeof ICONS;
+
+/**
+ * Tab 栏和平板侧栏选中时的实心图标（docs/design/comic）：同一个图标的主体填蓝，墨色描边不变，挖空的地方是纸色。
+ * 几何取自 docs/design/comic/mobile/source/MobSpec.dc.html、tablet/source/Tab*.dc.html 里 Tab 栏和侧栏的 SVG。
+ */
+export const FILLED_ICONS = {
+  story: [
+    { d: "M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2z", fill: "body" },
+    { d: "M12 6.5v13" },
+  ],
+  library: [
+    { rect: [6, 3, 12, 18, 3], fill: "body" },
+    { circle: [12, 10, 2.5], fill: "hole" },
+    { d: "M8.8 16.5c.7-1.5 1.8-2.3 3.2-2.3s2.5.8 3.2 2.3", fill: "hole" },
+  ],
+  card: [{ rect: [4, 3, 16, 18, 3], fill: "body" }, { d: "M8 8h8M8 12h8M8 16h5", line: "hole" }],
+  workbench: [
+    { d: "M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z", fill: "body" },
+    {
+      d: "M18.5 15.5c.2 1.4.9 2.1 2.3 2.3-1.4.2-2.1.9-2.3 2.3-.2-1.4-.9-2.1-2.3-2.3 1.4-.2 2.1-.9 2.3-2.3z",
+      fill: "body",
+    },
+  ],
+  director: [
+    { rect: [3, 9, 18, 12, 3], fill: "body" },
+    { d: "M3.5 9l2-5h14l-1.5 5z", fill: "body" },
+    { d: "M10 4L8.5 9M15.5 4L14 9" },
+  ],
+  settings: [
+    { d: "M4 7h9M17 7h3M4 17h3M11 17h9" },
+    { circle: [15, 7, 2.6], fill: "body" },
+    { circle: [9, 17, 2.6], fill: "body" },
+  ],
+} satisfies Partial<Record<IconName, Part[]>>;
+
+export type FilledIconName = keyof typeof FILLED_ICONS;

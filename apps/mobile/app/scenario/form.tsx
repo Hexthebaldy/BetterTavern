@@ -15,7 +15,6 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { CardDetail, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
 
-import { Toggle } from "../../src/components/controls.tsx";
 import { Cover } from "../../src/components/Cover.tsx";
 import {
   ErrorState,
@@ -26,6 +25,7 @@ import {
   Notice,
   Pill,
   SectionHeader,
+  Toggle,
   useColumnStyle,
   useOverlay,
 } from "../../src/components/ui.tsx";

@@ -1,12 +1,12 @@
 /**
  * 浮层：对话框、墨色浮条、菜单，以及给页面用的 useOverlay()（确认、输入、菜单、浮条）。面板本身在 sheet.tsx。
  *
- * 对话框是居中的白色圆角卡片（宽 ≤ 480），上方一个圆形图标写清后果；删除用红色，揭示秘密之类的提醒用琥珀色。
+ * 对话框是居中的白底墨线格子（宽 ≤ 480，投影 6），上方一个方块图标写清后果；删除用红色，揭示秘密之类的提醒用琥珀色。
  * 有面板开着时，对话框画在最上面那个面板的 Modal 里（iOS 不能在 Modal 之上再从根上弹 Modal）；
  * 没有面板开着时，对话框、平板的卡片菜单自己带 Modal，经 useGatedModal 等别的 Modal 被 iOS 收回才挂上（gatedModal.ts）。
- * 墨色胶囊浮条贴着标签栏上方浮起，3 秒后自动消失（带操作的多留一会儿）；平板上宽 ≤ 480，
+ * 浮条是白底墨线的格子加投影 4，贴着标签栏上方浮起，3 秒后自动消失（带操作的多留一会儿）；平板上宽 ≤ 480，
  * 中屏在底部 Tab 栏上方居中，宽屏在内容区（x ≥ 124）底部居中。
- * 菜单在手机上是底部面板；平板上长按卡片时，卡片抬起（放大 3%，白底加投影），下方弹出宽 240 的菜单，背景加浅遮罩。
+ * 菜单在手机上是底部面板；平板上长按卡片时，卡片抬起（放大 3%，投影 8），下方弹出宽 240 的菜单，背景加浅遮罩。
  */
 
 import {
@@ -27,12 +27,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { cardMenuFrame, toastFrame } from "@bettertavern/design/layout";
 
 import { useLayout } from "../hooks/useLayout.ts";
-import { BaseSurface, radius, space, useIsDark, usePalette } from "../theme/index.ts";
+import {
+  BaseSurface,
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  hardShadow,
+  space,
+  useComic,
+} from "../theme/index.ts";
 import { tabBarTop } from "./bars.tsx";
 import { Dialog, type DialogTone } from "./dialog.tsx";
 import { useGatedModal } from "./gatedModal.ts";
 import { Icon, type IconName } from "./icons.tsx";
-import { MenuGroup, MenuItem, MODAL_ORIENTATIONS, OutletContext, Sheet, type Outlets } from "./sheet.tsx";
+import { MenuGroup, MenuItem } from "./menu.tsx";
+import { MODAL_ORIENTATIONS, OutletContext, Sheet, type Outlets } from "./sheet.tsx";
 
 // ---- useOverlay -------------------------------------------------------------------------
 
@@ -64,7 +73,7 @@ export type MenuOptions = {
   anchor?: RefObject<View | null>;
   /** 平板上：抬起的卡片画成什么（通常就是卡片本身） */
   lifted?: ReactNode;
-  /** 抬起的卡片的圆角，默认和故事卡片一样 24 */
+  /** 抬起的卡片的圆角，默认和格子一样 12 */
   liftedRadius?: number;
 };
 
@@ -239,7 +248,7 @@ function PromptDialog({
   onDraft: (text: string) => void;
   onSettle: (value: string | null) => void;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const text = draft.trim();
   // 先收起键盘再关对话框：输入框带着焦点被拿掉的话，iOS 会把键盘留在屏幕上，页面上又没有输入框能让它收回去
@@ -264,13 +273,18 @@ function PromptDialog({
         autoFocus
         maxLength={options.maxLength}
         placeholder={options.placeholder}
-        placeholderTextColor={palette.mut}
+        placeholderTextColor={c.mut}
         accessibilityLabel={options.label}
         returnKeyType="done"
         onSubmitEditing={() => (text || options.optional) && finish(text)}
         style={[
           styles.promptInput,
-          { color: palette.ink, backgroundColor: palette.bg2, boxShadow: `inset 0 0 0 2px ${palette.acc}` },
+          {
+            color: c.ink,
+            backgroundColor: c.paper,
+            borderColor: c.acc,
+            boxShadow: hardShadow(c.acc, comicDepth.focus),
+          },
         ]}
       />
     </Dialog>
@@ -313,7 +327,8 @@ function Menu({
 
 type Rect = { x: number; y: number; width: number; height: number };
 
-const CARD_MENU_ITEM = 52;
+/** 菜单一行的高度和行之间的线（menu.tsx） */
+const CARD_MENU_ITEM = 54;
 
 /** 平板上长按卡片：卡片抬起（放大 3%，白底加投影），下方弹出宽 240 的菜单，背景加浅遮罩；点外面关闭 */
 function CardMenu({
@@ -327,8 +342,7 @@ function CardMenu({
   onSettle: (key: string | null) => void;
   onUnplaceable: () => void;
 }) {
-  const palette = usePalette();
-  const dark = useIsDark();
+  const c = useComic();
   const insets = useSafeAreaInsets();
   const { width, height } = useLayout();
   // 量出的卡片位置，连同是为哪一次的菜单量的：换了菜单要重新量，量好之前不挂 Modal
@@ -361,7 +375,8 @@ function CardMenu({
 
   if (!modal.mounted || !placed) return null;
   const card = placed.rect;
-  const menuHeight = options.items.length * CARD_MENU_ITEM + space.s * 2;
+  const n = options.items.length;
+  const menuHeight = n * CARD_MENU_ITEM + Math.max(0, n - 1) * comicStroke.chip + comicStroke.frame * 2;
   const frame = cardMenuFrame(card, { width, height }, menuHeight, insets.bottom);
   return (
     <Modal
@@ -377,7 +392,7 @@ function CardMenu({
         <Animated.View
           style={[
             StyleSheet.absoluteFill,
-            { backgroundColor: dark ? "rgba(0,0,0,0.4)" : "rgba(20,20,20,0.18)", opacity: progress },
+            { backgroundColor: c.scrimLight, opacity: progress },
           ]}
         >
           <Pressable
@@ -395,13 +410,12 @@ function CardMenu({
             style={[
               styles.lifted,
               {
-                borderRadius: options.liftedRadius ?? radius.option,
+                borderRadius: options.liftedRadius ?? comicRadius.frame,
                 left: card.x,
                 top: card.y,
                 width: card.width,
                 height: card.height,
-                backgroundColor: palette.card,
-                boxShadow: palette.shadowFloat,
+                boxShadow: hardShadow(c.ink, comicDepth.lift),
                 transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
               },
             ]}
@@ -417,21 +431,23 @@ function CardMenu({
               left: frame.left,
               top: frame.top,
               width: frame.width,
-              backgroundColor: palette.card,
-              boxShadow: palette.shadowFloat,
+              borderRadius: comicRadius.menu,
+              boxShadow: hardShadow(c.ink, comicDepth.raised),
               opacity: progress,
             },
           ]}
         >
-          {options.items.map((item) => (
-            <MenuItem
-              key={item.key}
-              icon={item.icon}
-              label={item.label}
-              danger={item.danger}
-              onPress={() => onSettle(item.key)}
-            />
-          ))}
+          <MenuGroup>
+            {options.items.map((item) => (
+              <MenuItem
+                key={item.key}
+                icon={item.icon}
+                label={item.label}
+                danger={item.danger}
+                onPress={() => onSettle(item.key)}
+              />
+            ))}
+          </MenuGroup>
         </Animated.View>
       </BaseSurface>
     </Modal>
@@ -451,7 +467,7 @@ function MenuSheet({
   const shown = options ?? last.current;
   return (
     <Sheet visible={options !== null} onClose={() => onSettle(null)} title={shown?.title}>
-      <MenuGroup style={{ marginHorizontal: space.s }}>
+      <MenuGroup style={{ marginHorizontal: 18 }}>
         {shown?.items.map((item) => (
           <MenuItem
             key={item.key}
@@ -467,7 +483,7 @@ function MenuSheet({
 }
 
 function Toast({ message, options, onDone }: { message: string; options: ToastOptions; onDone: () => void }) {
-  const palette = usePalette();
+  const c = useComic();
   const insets = useSafeAreaInsets();
   const { size, width } = useLayout();
   const frame = toastFrame(size, width);
@@ -481,11 +497,16 @@ function Toast({ message, options, onDone }: { message: string; options: ToastOp
       style={[
         styles.toast,
         frame ? { left: frame.left, right: undefined, width: frame.width } : null,
-        { bottom, backgroundColor: palette.ink, boxShadow: palette.shadowFloat },
+        {
+          bottom,
+          backgroundColor: c.paper,
+          borderColor: c.ink,
+          boxShadow: hardShadow(c.ink, comicDepth.raised),
+        },
       ]}
     >
-      <Icon name={options.icon ?? "checkCircle"} size={18} color={palette.bg} />
-      <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, color: palette.bg }} numberOfLines={2}>
+      <Icon name={options.icon ?? "checkCircle"} size={18} color={c.acc} />
+      <Text style={{ flex: 1, fontSize: 14.5, lineHeight: 21, color: c.ink }} numberOfLines={2}>
         {message}
       </Text>
       {options.actionLabel && options.onAction ? (
@@ -495,9 +516,12 @@ function Toast({ message, options, onDone }: { message: string; options: ToastOp
             options.onAction?.();
             onDone();
           }}
-          style={[styles.toastAction, { backgroundColor: palette.arrowBg }]}
+          style={({ pressed }) => [
+            styles.toastAction,
+            { backgroundColor: pressed ? c.ink2 : c.ink, borderColor: c.ink },
+          ]}
         >
-          <Text style={{ fontSize: 14, fontWeight: "500", color: palette.bg }}>{options.actionLabel}</Text>
+          <Text style={{ fontSize: 13.5, fontWeight: "700", color: c.paper }}>{options.actionLabel}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -506,32 +530,35 @@ function Toast({ message, options, onDone }: { message: string; options: ToastOp
 
 const styles = StyleSheet.create({
   lifted: { position: "absolute", overflow: "hidden" },
-  cardMenu: { position: "absolute", borderRadius: radius.group, padding: space.s },
+  cardMenu: { position: "absolute" },
   promptInput: {
     alignSelf: "stretch",
-    height: 52,
-    borderRadius: radius.input,
-    paddingHorizontal: space.l,
+    height: 50,
+    borderRadius: comicRadius.input,
+    borderWidth: comicStroke.frame,
+    paddingHorizontal: 14,
     fontSize: 16,
     marginTop: space.xs,
   },
   toast: {
     position: "absolute",
-    left: space.page,
-    right: space.page,
-    minHeight: 52,
-    borderRadius: 26,
+    left: space.l,
+    right: space.l,
+    minHeight: 50,
+    borderRadius: comicRadius.menu,
+    borderWidth: comicStroke.frame,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     paddingVertical: 6,
-    paddingLeft: 18,
+    paddingLeft: space.l,
     paddingRight: 6,
   },
   toastAction: {
-    height: 40,
+    height: 36,
     paddingHorizontal: 14,
-    borderRadius: 20,
+    borderRadius: 18,
+    borderWidth: comicStroke.control,
     alignItems: "center",
     justifyContent: "center",
   },

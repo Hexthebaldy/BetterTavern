@@ -1,9 +1,9 @@
 /**
- * 输入控件：输入框、分段、标签、勾选、单选、开关。页面经 ui.tsx 引用。
+ * 输入控件（漫画风）：输入框、分段、标签、勾选、单选、开关。页面经 ui.tsx 引用。
  *
  * 能列举的选项做成标签、勾选或分段；只有名字、密钥、自由行动这几处保留输入框。
- * 输入框填色无边；聚焦 = 一圈 2px acc，错误 = 浅红底加 1.5px 红圈和说明。
- * 选中 = 黑底，或浅蓝底加 2px 蓝色内描边；分段控件的选中项是浮起的白色胶囊。
+ * 输入框白底 2 墨线，圆角 12；聚焦时 2.5 蓝框加蓝投影 3；出错时红边、浅红底，下面一行红字。
+ * 分段是 2 墨线的方块条，选中的一段墨底白字；标签、勾选、开关都是 2 墨线，选中墨底或蓝底。
  */
 
 import { forwardRef, useState, type ReactNode } from "react";
@@ -19,7 +19,18 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { font, onColor, radius, size, space, type, usePalette } from "../theme/index.ts";
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  ctype,
+  font,
+  hardShadow,
+  onColor,
+  size,
+  space,
+  useComic,
+} from "../theme/index.ts";
 import { Icon, type IconName } from "./icons.tsx";
 
 // ---- 输入框 ------------------------------------------------------------------------------
@@ -36,7 +47,7 @@ export type FieldProps = TextInputProps & {
   hintIcon?: IconName;
   error?: string | null;
   mono?: boolean;
-  /** 放在灰卡上：输入框改用白色 card 底 */
+  /** 旧样式里放在灰卡上时用；漫画风的输入框都是白底，不再起作用 */
   onGrey?: boolean;
   /** 输入框里右侧的按钮（显示密码、随机、粘贴） */
   trailing?: ReactNode;
@@ -59,7 +70,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
     hintIcon,
     error,
     mono,
-    onGrey,
+    onGrey: _onGrey,
     trailing,
     trailingWidth = 52,
     boxHeight,
@@ -72,38 +83,33 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
   },
   ref,
 ) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const multiline = !!input.multiline;
   const count = `${input.value?.length ?? 0} / ${input.maxLength ?? 0}`;
-  const bg = !editable ? palette.bg3 : error ? palette.errBg : onGrey ? palette.card : palette.bg2;
-  const ring = !editable
-    ? undefined
-    : error
-      ? `inset 0 0 0 1.5px ${palette.err}`
-      : focused
-        ? `inset 0 0 0 2px ${palette.acc}`
-        : undefined;
+  const bg = !editable ? c.grey : error ? c.errField : c.paper;
+  const border = !editable ? c.line2 : error ? c.err : focused ? c.acc : c.ink;
+  const ring = editable && focused ? hardShadow(error ? c.err : c.acc, comicDepth.focus) : undefined;
   return (
     <View style={[styles.field, style]}>
       {hideLabel ? null : (
         <View style={styles.labelRow}>
-          <Text style={[type.label, { color: palette.ink2, flex: 1 }]}>
+          <Text style={[ctype.label, { color: c.ink, flex: 1 }]}>
             {label}
             {optional ? (
-              <Text style={{ color: palette.mut, fontWeight: "400" }}> {t("common.optional")}</Text>
+              <Text style={{ color: c.mut, fontWeight: "500", fontSize: 12.5 }}> {t("common.optional")}</Text>
             ) : null}
           </Text>
           {counter && input.maxLength && !multiline ? (
-            <Text style={[styles.count, { color: palette.mut }]}>{count}</Text>
+            <Text style={[styles.count, { color: c.mut }]}>{count}</Text>
           ) : null}
         </View>
       )}
       <View>
         <TextInput
           ref={ref}
-          placeholderTextColor={palette.mut}
+          placeholderTextColor={c.mut}
           accessibilityLabel={label}
           editable={editable}
           onFocus={(e) => {
@@ -117,28 +123,33 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
           {...input}
           style={[
             styles.input,
-            { borderRadius: onGrey ? 16 : radius.input },
             multiline ? [styles.multiline, { height: boxHeight ?? 100 }] : null,
-            mono ? { fontFamily: font.mono, fontSize: 15 } : null,
+            mono ? { fontFamily: font.monoMedium, fontSize: 15 } : null,
             trailing ? { paddingRight: trailingWidth + 8 } : null,
-            { color: editable ? palette.ink : palette.mut, backgroundColor: bg, boxShadow: ring },
+            {
+              color: editable ? c.ink : c.mut,
+              backgroundColor: bg,
+              borderColor: border,
+              borderWidth: focused && editable ? comicStroke.frame : comicStroke.control,
+              boxShadow: ring,
+            },
           ]}
         />
         {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
         {counter && input.maxLength && multiline ? (
-          <Text style={[styles.count, styles.innerCount, { color: palette.mut }]}>{count}</Text>
+          <Text style={[styles.count, styles.innerCount, { color: c.mut }]}>{count}</Text>
         ) : null}
       </View>
       {below}
       {error ? (
         <View style={styles.message}>
-          <Icon name="alertCircle" size={15} color={palette.err} />
-          <Text style={[styles.messageText, { color: palette.err }]}>{error}</Text>
+          <Icon name="alertCircle" size={15} color={c.err} />
+          <Text style={[styles.messageText, { color: c.err }]}>{error}</Text>
         </View>
       ) : hint ? (
         <View style={styles.message}>
-          {hintIcon ? <Icon name={hintIcon} size={14} color={palette.mut} /> : null}
-          <Text style={[styles.hint, { color: palette.mut }]}>{hint}</Text>
+          {hintIcon ? <Icon name={hintIcon} size={14} color={c.mut} /> : null}
+          <Text style={[styles.hint, { color: c.mut }]}>{hint}</Text>
         </View>
       ) : null}
     </View>
@@ -147,7 +158,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
 
 // ---- 分段 -------------------------------------------------------------------------------
 
-/** 几个互斥选项：凹进去的灰色轨道，选中项是浮起的白色胶囊 */
+/** 几个互斥选项：2 墨线的方块条，段与段之间一道墨线，选中的一段墨底白字 */
 export function Segmented<T extends string>({
   label,
   hideLabel,
@@ -155,9 +166,7 @@ export function Segmented<T extends string>({
   options,
   onChange,
   mono,
-  height = 48,
-  trackColor,
-  selectedColor,
+  height = 40,
   style,
 }: {
   label?: string;
@@ -167,27 +176,22 @@ export function Segmented<T extends string>({
   options: { value: T; label: string; icon?: IconName; count?: number | string }[];
   onChange: (value: T) => void;
   mono?: boolean;
-  /** 整条轨道的高度 */
+  /** 整条的高度 */
   height?: number;
-  trackColor?: string;
-  selectedColor?: string;
   style?: StyleProp<ViewStyle>;
 }) {
-  const palette = usePalette();
-  const inner = height - 8;
+  const c = useComic();
   return (
     <View style={[styles.field, style]}>
-      {label && !hideLabel ? (
-        <Text style={[type.label, styles.label, { color: palette.ink2 }]}>{label}</Text>
-      ) : null}
+      {label && !hideLabel ? <Text style={[ctype.label, styles.label, { color: c.ink }]}>{label}</Text> : null}
       <View
-        style={[styles.segmented, { borderRadius: height / 2, backgroundColor: trackColor ?? palette.bg3 }]}
+        style={[styles.segmented, { height, backgroundColor: c.paper, borderColor: c.ink }]}
         accessibilityRole="radiogroup"
         accessibilityLabel={label}
       >
-        {options.map((option) => {
+        {options.map((option, i) => {
           const selected = option.value === value;
-          const fg = selected ? palette.ink : palette.ink2;
+          const fg = selected ? c.paper : c.ink;
           return (
             <Pressable
               key={option.value}
@@ -195,27 +199,24 @@ export function Segmented<T extends string>({
               accessibilityState={{ selected }}
               accessibilityLabel={option.label}
               onPress={() => onChange(option.value)}
-              style={[
+              style={({ pressed }) => [
                 styles.segment,
-                { height: inner, borderRadius: inner / 2 },
-                selected
-                  ? { backgroundColor: selectedColor ?? palette.card, boxShadow: palette.shadowLift }
-                  : null,
+                i > 0 ? { borderLeftWidth: comicStroke.control, borderLeftColor: c.ink } : null,
+                { backgroundColor: selected ? c.ink : pressed ? c.grey : "transparent" },
               ]}
             >
               {option.icon ? <Icon name={option.icon} size={16} color={fg} /> : null}
               <Text
                 numberOfLines={1}
                 style={[
-                  { fontSize: mono ? 14 : 14.5, color: fg },
-                  mono ? { fontFamily: selected ? font.monoMedium : font.mono } : null,
-                  selected && !mono ? { fontWeight: "600" } : null,
+                  { fontSize: 14, fontWeight: "600", color: fg },
+                  mono ? { fontFamily: font.monoMedium, fontWeight: "normal" } : null,
                 ]}
               >
                 {option.label}
               </Text>
               {option.count !== undefined ? (
-                <Text style={{ fontFamily: font.mono, fontSize: 11, color: palette.mut }}>
+                <Text style={{ fontFamily: font.monoMedium, fontSize: 11, color: selected ? c.sky : c.mut }}>
                   {option.count}
                 </Text>
               ) : null}
@@ -229,7 +230,7 @@ export function Segmented<T extends string>({
 
 // ---- 标签 -------------------------------------------------------------------------------
 
-/** 可点的胶囊标签。选中时黑底，check 为真时前面加一个对勾 */
+/** 可点的标签：2 墨线的圆角块，选中时墨底白字，check 为真时前面加一个对勾；muted（“+ 自定义”）是虚线框蓝字 */
 export function Chip({
   label,
   selected = false,
@@ -250,12 +251,12 @@ export function Chip({
   small?: boolean;
   /** “+ 自定义”这类入口，用蓝字 */
   muted?: boolean;
-  /** 放在灰卡上：未选中时用白色 card 底 */
+  /** 旧样式里放在灰卡上时用；漫画风的标签都是白底，不再起作用 */
   onGrey?: boolean;
 }) {
-  const palette = usePalette();
-  const fg = selected ? palette.bg : muted ? palette.acc : palette.ink;
-  const h = small ? 34 : size.chip;
+  const c = useComic();
+  const fg = selected ? c.paper : muted ? c.acc : c.ink;
+  const h = small ? 30 : 34;
   return (
     <Pressable
       accessibilityRole={check ? "checkbox" : "button"}
@@ -266,57 +267,48 @@ export function Chip({
         styles.chip,
         {
           height: h,
-          borderRadius: h / 2,
-          paddingHorizontal: small ? 12 : space.l,
-          backgroundColor: selected
-            ? palette.ink
-            : pressed
-              ? palette.bg3
-              : onGrey
-                ? palette.card
-                : palette.bg2,
-          transform: [{ scale: pressed ? 0.97 : 1 }],
+          paddingHorizontal: small ? 10 : 12,
+          borderColor: c.ink,
+          borderStyle: muted && !selected ? "dashed" : "solid",
+          backgroundColor: selected ? c.ink : pressed ? c.grey : c.paper,
         },
       ]}
     >
-      {selected && check ? <Icon name="check" size={14} color={fg} strokeWidth={2.4} /> : null}
+      {selected && check ? <Icon name="check" size={14} color={fg} strokeWidth={2.6} /> : null}
       {icon ? <Icon name={icon} size={15} color={fg} /> : null}
-      <Text style={{ fontSize: small ? 13 : 14, lineHeight: 18, color: fg }}>{label}</Text>
+      <Text style={{ fontSize: small ? 13 : 13.5, lineHeight: 18, fontWeight: "600", color: fg }}>{label}</Text>
     </Pressable>
   );
 }
 
 // ---- 勾选、单选、开关 ----------------------------------------------------------------------
 
-/** 22 的圆角勾选框：勾上是蓝底白勾 */
+/** 22 的勾选框：2 墨线，圆角 6；勾上是蓝底白勾 */
 export function CheckMark({ checked }: { checked: boolean }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View
       style={[
         styles.box,
-        { borderRadius: 7 },
-        checked
-          ? { backgroundColor: palette.acc }
-          : { backgroundColor: palette.card, boxShadow: `inset 0 0 0 1.75px ${palette.line2}` },
+        { borderRadius: comicRadius.chip, borderColor: c.ink, backgroundColor: checked ? c.acc : c.paper },
       ]}
     >
-      {checked ? <Icon name="check" size={14} color={onColor} strokeWidth={2.6} /> : null}
+      {checked ? <Icon name="check" size={14} color={c.onAcc} strokeWidth={2.8} /> : null}
     </View>
   );
 }
 
-/** 22 的单选圈：选中是 7px 的蓝色内圈 */
+/** 22 的单选圈：2 墨线；选中是 7 的蓝圈，外面一圈墨线 */
 export function RadioMark({ selected }: { selected: boolean }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <View
       style={[
         styles.box,
-        { borderRadius: 11 },
-        {
-          boxShadow: selected ? `inset 0 0 0 7px ${palette.acc}` : `inset 0 0 0 1.75px ${palette.line2}`,
-        },
+        { borderRadius: 11, backgroundColor: c.paper },
+        selected
+          ? { borderWidth: 7, borderColor: c.acc, boxShadow: `0 0 0 2px ${c.ink}` }
+          : { borderColor: c.ink },
       ]}
     />
   );
@@ -331,10 +323,10 @@ export function Checkbox({
   label: string;
   checked: boolean;
   onToggle: () => void;
-  /** “其他…”入口：前面是浅蓝底的加号，不是勾选框 */
+  /** “其他…”入口：前面是虚线框里的蓝色加号，不是勾选框 */
   plus?: boolean;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <Pressable
       accessibilityRole={plus ? "button" : "checkbox"}
@@ -343,20 +335,25 @@ export function Checkbox({
       style={styles.checkRow}
     >
       {plus ? (
-        <View style={[styles.box, { borderRadius: 7, backgroundColor: palette.accBg }]}>
-          <Icon name="plus" size={14} color={palette.acc} strokeWidth={2.2} />
+        <View
+          style={[
+            styles.box,
+            { borderRadius: comicRadius.chip, borderColor: c.acc, borderStyle: "dashed", backgroundColor: c.paper },
+          ]}
+        >
+          <Icon name="plus" size={14} color={c.acc} strokeWidth={2.6} />
         </View>
       ) : (
         <CheckMark checked={checked} />
       )}
-      <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, color: plus ? palette.acc : palette.ink }}>
+      <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, color: plus ? c.acc : c.ink }}>
         {label}
       </Text>
     </Pressable>
   );
 }
 
-/** 开关：全圆的轨道和白色滑块，打开时蓝色 */
+/** 开关：2 墨线的胶囊，墨色圆钮；打开是蓝底、白钮加一圈墨线 */
 export function Toggle({
   value,
   onChange,
@@ -366,7 +363,7 @@ export function Toggle({
   onChange: (value: boolean) => void;
   label: string;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <Pressable
       accessibilityRole="switch"
@@ -374,49 +371,66 @@ export function Toggle({
       accessibilityState={{ checked: value }}
       onPress={() => onChange(!value)}
       hitSlop={8}
-      style={[styles.track, { backgroundColor: value ? palette.acc : palette.line2 }]}
+      style={[styles.track, { borderColor: c.ink, backgroundColor: value ? c.acc : c.paper }]}
     >
-      <View style={[styles.knob, { left: value ? 22 : 2, boxShadow: palette.shadowKnob }]} />
+      <View
+        style={[
+          styles.knob,
+          value
+            ? { left: 23, backgroundColor: onColor, boxShadow: `0 0 0 2px ${c.ink}` }
+            : { left: 3, backgroundColor: c.ink },
+        ]}
+      />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   field: { gap: space.s },
-  labelRow: { flexDirection: "row", alignItems: "baseline", gap: space.s, paddingHorizontal: space.xs },
-  label: { paddingLeft: space.xs },
-  count: { fontFamily: font.mono, fontSize: 12, lineHeight: 16 },
-  innerCount: { position: "absolute", right: 12, bottom: 10, fontSize: 11 },
+  labelRow: { flexDirection: "row", alignItems: "baseline", gap: space.s, paddingHorizontal: 2 },
+  label: { paddingLeft: 2 },
+  count: { fontFamily: font.monoMedium, fontSize: 12, lineHeight: 16 },
+  innerCount: { position: "absolute", right: 14, bottom: 10, fontSize: 11 },
   input: {
-    minHeight: size.input,
-    paddingHorizontal: space.l,
+    minHeight: 50,
+    borderRadius: comicRadius.input,
+    paddingHorizontal: 14,
     paddingVertical: 0,
     fontSize: 16,
   },
   multiline: {
-    paddingTop: 14,
+    paddingTop: 12,
     paddingBottom: 26,
-    borderRadius: 18,
     fontSize: 15,
-    lineHeight: 24,
+    lineHeight: 23,
     textAlignVertical: "top",
   },
-  trailing: { position: "absolute", right: 6, top: 0, bottom: 0, justifyContent: "center" },
-  message: { flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: space.xs },
+  trailing: { position: "absolute", right: 4, top: 0, bottom: 0, justifyContent: "center" },
+  message: { flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 2 },
   messageText: { fontSize: 13, lineHeight: 18, flex: 1 },
-  hint: { fontSize: 12.5, lineHeight: 18, flex: 1 },
-  segmented: { flexDirection: "row", padding: 4, gap: 4 },
-  segment: { flex: 1, flexDirection: "row", gap: 5, alignItems: "center", justifyContent: "center" },
-  chip: { flexDirection: "row", alignItems: "center", gap: 6 },
-  box: { width: 22, height: 22, alignItems: "center", justifyContent: "center" },
-  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: size.touch },
-  track: { width: 51, height: 31, borderRadius: 15.5 },
-  knob: {
-    position: "absolute",
-    top: 2,
-    width: 27,
-    height: 27,
-    borderRadius: 13.5,
-    backgroundColor: onColor,
+  hint: { fontSize: 13, lineHeight: 20, flex: 1 },
+  segmented: {
+    flexDirection: "row",
+    borderWidth: comicStroke.control,
+    borderRadius: 11,
+    overflow: "hidden",
   },
+  segment: { flex: 1, flexDirection: "row", gap: 5, alignItems: "center", justifyContent: "center" },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: comicStroke.control,
+    borderRadius: 9,
+  },
+  box: {
+    width: 22,
+    height: 22,
+    borderWidth: comicStroke.control,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: size.touch },
+  track: { width: 50, height: 30, borderRadius: 15, borderWidth: comicStroke.control },
+  knob: { position: "absolute", top: 3, width: 20, height: 20, borderRadius: 10 },
 });

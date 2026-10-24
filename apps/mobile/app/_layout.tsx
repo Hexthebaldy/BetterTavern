@@ -19,7 +19,7 @@ import { OverlayProvider } from "../src/components/ui.tsx";
 import { installDiagnostics } from "../src/observability/setup.ts";
 import { AppProvider, useApp } from "../src/state/AppProvider.tsx";
 import { PrefsProvider, usePrefs } from "../src/state/PrefsProvider.tsx";
-import { font, ThemeProvider as AppThemeProvider, useIsDark, usePalette } from "../src/theme/index.ts";
+import { font, ThemeProvider as AppThemeProvider, useComic, useIsDark } from "../src/theme/index.ts";
 import { lockPhonesToPortrait } from "../src/utils/orientation.ts";
 
 void SplashScreen.preventAutoHideAsync();
@@ -67,7 +67,7 @@ function Themed({ children }: { children: ReactNode }) {
 
 function RootNavigator() {
   const { status } = useApp();
-  const palette = usePalette();
+  const c = useComic();
   const dark = useIsDark();
 
   const theme = useMemo<Theme>(() => {
@@ -76,20 +76,21 @@ function RootNavigator() {
       ...base,
       colors: {
         ...base.colors,
-        primary: palette.ink,
-        background: palette.bg,
-        card: palette.bg,
-        text: palette.ink,
-        border: palette.line,
+        primary: c.ink,
+        // 页面底色：切页、转场时不闪白
+        background: c.page,
+        card: c.page,
+        text: c.ink,
+        border: c.ink,
       },
     };
-  }, [dark, palette]);
+  }, [dark, c]);
 
   const signedIn = status === "signedIn";
   return (
     <ThemeProvider value={theme}>
       <StatusBar style={dark ? "light" : "dark"} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.bg } }}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.page } }}>
         <Stack.Screen name="index" />
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" />

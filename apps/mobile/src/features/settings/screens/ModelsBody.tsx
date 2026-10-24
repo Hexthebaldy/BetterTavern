@@ -158,7 +158,7 @@ export function ModelsBody() {
           />
         ) : null}
         {routes.length > 0 ? (
-          <Group inset={70} style={styles.inset}>
+          <Group style={styles.inset}>
             {routes.map((r) => (
               <ModelRow key={r.id} route={r} onPress={() => nav.open({ screen: "model", id: r.id })} />
             ))}

@@ -37,7 +37,7 @@ import { useLayout } from "../hooks/useLayout.ts";
 import { font, size, space, type, useIsDark, usePalette } from "../theme/index.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { Logo } from "./Logo.tsx";
-import { IconButton } from "./primitives.tsx";
+import { IconButton } from "./buttons.tsx";
 
 /**
  * 标签栏离屏幕底边的距离。有 Home 指示条的机型按设计稿放在 28（指示条上方，不挡手势）；

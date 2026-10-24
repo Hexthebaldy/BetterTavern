@@ -1,21 +1,10 @@
 /**
- * 基本部件：页面容器、加载、文字、按钮、分组卡与列表行、分区标题。页面经 ui.tsx 引用。
+ * 基本部件：页面容器、加载、骨架、文字。页面经 ui.tsx 引用；按钮在 buttons.tsx，分组和列表行在 rows.tsx。
  */
 
-import {
-  Children,
-  createContext,
-  Fragment,
-  isValidElement,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-  type Ref,
-} from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -29,8 +18,15 @@ import {
 import { pane } from "@bettertavern/design/layout";
 
 import { useLayout } from "../hooks/useLayout.ts";
-import { font, onColor, radius, size, space, type, usePalette } from "../theme/index.ts";
-import { Icon, type IconName } from "./icons.tsx";
+import {
+  comicDepth,
+  comicStroke,
+  ctype,
+  font,
+  hardShadow,
+  space,
+  useComic,
+} from "../theme/index.ts";
 
 // ---- 页面 -------------------------------------------------------------------------------
 
@@ -71,10 +67,10 @@ export function Page({
   /** 盖在滚动内容上面、不随它滚动的东西（宽屏设置的右栏） */
   overlay?: ReactNode;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const column = useColumnStyle(maxWidth);
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+    <View style={{ flex: 1, backgroundColor: c.page }}>
       {header}
       <ScrollView
         style={{ flex: 1 }}
@@ -82,7 +78,7 @@ export function Page({
         keyboardShouldPersistTaps="handled"
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={refreshing ?? false} onRefresh={onRefresh} tintColor={palette.mut} />
+            <RefreshControl refreshing={refreshing ?? false} onRefresh={onRefresh} tintColor={c.ink} />
           ) : undefined
         }
       >
@@ -95,13 +91,13 @@ export function Page({
 
 /** 整页居中的状态 */
 export function Centered({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const palette = usePalette();
-  return <View style={[styles.centered, { backgroundColor: palette.bg }, style]}>{children}</View>;
+  const c = useComic();
+  return <View style={[styles.centered, { backgroundColor: c.page }, style]}>{children}</View>;
 }
 
 /** 三个圆点：通用加载。依次加深，表示“在动”，不代表进度 */
 export function Dots({ color, cell = 6, gap = 4 }: { color?: string; cell?: number; gap?: number }) {
-  const palette = usePalette();
+  const c = useComic();
   const [step, setStep] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setStep((s) => (s + 1) % 3), 320);
@@ -117,7 +113,7 @@ export function Dots({ color, cell = 6, gap = 4 }: { color?: string; cell?: numb
             width: cell,
             height: cell,
             borderRadius: cell / 2,
-            backgroundColor: color ?? palette.ink,
+            backgroundColor: color ?? c.ink,
             opacity: levels[(i - step + 3) % 3],
           }}
         />
@@ -126,24 +122,32 @@ export function Dots({ color, cell = 6, gap = 4 }: { color?: string; cell?: numb
   );
 }
 
+/** 整页加载：白底墨框的小胶囊里三个点（和下拉刷新的“刷新中”一样） */
 export function Loading({ label }: { label?: string }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <Centered>
       <View
-        style={[styles.loadingPill, { backgroundColor: palette.bg2 }]}
+        style={[
+          styles.loadingPill,
+          {
+            backgroundColor: c.paper,
+            borderColor: c.ink,
+            boxShadow: hardShadow(c.ink, comicDepth.iconButton),
+          },
+        ]}
         accessibilityRole="progressbar"
         accessibilityLabel={label ?? t("common.loading")}
       >
         <Dots />
-        {label ? <Text style={{ fontSize: 13, color: palette.mut }}>{label}</Text> : null}
+        {label ? <Text style={{ fontSize: 13, fontWeight: "600", color: c.ink }}>{label}</Text> : null}
       </View>
     </Centered>
   );
 }
 
-/** 骨架屏的一条（圆头） */
+/** 骨架屏的一条（圆头，灰） */
 export function SkeletonLine({
   width = "100%",
   height = 12,
@@ -153,11 +157,9 @@ export function SkeletonLine({
   height?: number;
   strong?: boolean;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   return (
-    <View
-      style={{ width, height, borderRadius: height / 2, backgroundColor: strong ? palette.bg3 : palette.bg2 }}
-    />
+    <View style={{ width, height, borderRadius: height / 2, backgroundColor: strong ? c.grey2 : c.grey }} />
   );
 }
 
@@ -170,26 +172,28 @@ type TextProps = {
   selectable?: boolean;
 };
 
+/** 面板、格子里的大标题 */
 export function Title({ children, style, numberOfLines }: TextProps) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <Text
       accessibilityRole="header"
       numberOfLines={numberOfLines}
-      style={[type.title, { color: palette.ink }, style]}
+      style={[ctype.title, { color: c.ink }, style]}
     >
       {children}
     </Text>
   );
 }
 
+/** 格子和列表里的标题 */
 export function Heading({ children, style, numberOfLines }: TextProps) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <Text
       accessibilityRole="header"
       numberOfLines={numberOfLines}
-      style={[type.rowTitle, { color: palette.ink }, style]}
+      style={[ctype.frameTitle, { color: c.ink }, style]}
     >
       {children}
     </Text>
@@ -197,12 +201,12 @@ export function Heading({ children, style, numberOfLines }: TextProps) {
 }
 
 export function Body({ children, style, numberOfLines, selectable }: TextProps) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <Text
       numberOfLines={numberOfLines}
       selectable={selectable}
-      style={[type.body, { color: palette.ink }, style]}
+      style={[ctype.body, { color: c.ink }, style]}
     >
       {children}
     </Text>
@@ -210,9 +214,9 @@ export function Body({ children, style, numberOfLines, selectable }: TextProps) 
 }
 
 export function Caption({ children, style, numberOfLines }: TextProps) {
-  const palette = usePalette();
+  const c = useComic();
   return (
-    <Text numberOfLines={numberOfLines} style={[type.caption, { color: palette.mut }, style]}>
+    <Text numberOfLines={numberOfLines} style={[ctype.caption, { color: c.mut }, style]}>
       {children}
     </Text>
   );
@@ -220,333 +224,16 @@ export function Caption({ children, style, numberOfLines }: TextProps) {
 
 /** 等宽元信息：时间、计数、Key 尾号、上下文窗口 */
 export function Mono({ children, style, numberOfLines, selectable }: TextProps) {
-  const palette = usePalette();
+  const c = useComic();
   return (
     <Text
       numberOfLines={numberOfLines}
       selectable={selectable}
-      style={[type.meta, { fontFamily: font.mono, color: palette.mut }, style]}
+      style={[ctype.meta, { fontFamily: font.monoMedium, color: c.mut }, style]}
     >
       {children}
     </Text>
   );
-}
-
-// ---- 按钮 -------------------------------------------------------------------------------
-
-export type ButtonVariant = "primary" | "secondary" | "text" | "danger" | "dangerSolid";
-
-/**
- * 胶囊按钮，高 52。推进流程的主按钮用 between + trailingIcon：文字靠左，右侧嵌一个 36 的半透明圆放箭头。
- * 按下缩到 97% 并加深一档；禁用不透明度 0.3。
- */
-export function Button({
-  label,
-  onPress,
-  variant = "primary",
-  disabled,
-  busy,
-  icon,
-  trailingIcon,
-  between,
-  onGrey,
-  style,
-  accessibilityHint,
-  accessibilityLabel,
-  children,
-}: {
-  label: string;
-  onPress: () => void;
-  variant?: ButtonVariant;
-  disabled?: boolean;
-  busy?: boolean;
-  /** 文字前的图标 */
-  icon?: IconName;
-  /** 文字后的图标；between 时放进右侧的半透明圆里 */
-  trailingIcon?: IconName;
-  /** 文字靠左、图标靠右（推进流程时像在翻下一页） */
-  between?: boolean;
-  /** 放在灰卡上：次要按钮改用白色 card 底 */
-  onGrey?: boolean;
-  style?: StyleProp<ViewStyle>;
-  accessibilityHint?: string;
-  accessibilityLabel?: string;
-  /** 替换文字部分（比如两行的按钮） */
-  children?: ReactNode;
-}) {
-  const palette = usePalette();
-  const inactive = !!disabled || !!busy;
-  const look: Record<ButtonVariant, { bg: string; fg: string; pressed: string }> = {
-    primary: { bg: palette.pri, fg: palette.onPri, pressed: palette.ink2 },
-    secondary: { bg: onGrey ? palette.card : palette.bg2, fg: palette.ink, pressed: palette.bg3 },
-    text: { bg: "transparent", fg: palette.acc, pressed: palette.bg2 },
-    danger: { bg: palette.errBg, fg: palette.err, pressed: palette.errBg },
-    dangerSolid: { bg: palette.err, fg: onColor, pressed: palette.err },
-  };
-  const c = look[variant];
-  const arrowInCircle = between && trailingIcon;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: inactive, busy: !!busy }}
-      disabled={inactive}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        variant === "text" && styles.textButton,
-        between && styles.between,
-        arrowInCircle ? styles.withArrow : null,
-        {
-          backgroundColor: pressed && !inactive ? c.pressed : c.bg,
-          opacity: disabled && !busy ? 0.3 : 1,
-          transform: [{ scale: pressed && !inactive ? 0.97 : 1 }],
-        },
-        style,
-      ]}
-    >
-      {busy ? (
-        <Dots color={c.fg} />
-      ) : (
-        <>
-          {icon ? <Icon name={icon} size={20} color={c.fg} /> : null}
-          {children ?? <Text style={[type.button, { color: c.fg }]}>{label}</Text>}
-          {arrowInCircle ? (
-            <View
-              style={[
-                styles.arrow,
-                { backgroundColor: variant === "primary" ? palette.arrowBg : palette.bg3 },
-              ]}
-            >
-              <Icon name={trailingIcon} size={18} color={c.fg} />
-            </View>
-          ) : trailingIcon ? (
-            <Icon name={trailingIcon} size={20} color={c.fg} />
-          ) : null}
-        </>
-      )}
-    </Pressable>
-  );
-}
-
-export type IconButtonTone = "grey" | "plain" | "card";
-
-/**
- * 圆形图标按钮。默认是 40 的灰色圆底（导航按钮），热区仍是 44。
- * plain 透明底（输入框里的显示密码）；card 白底加投影（叠在封面图上）。
- */
-export function IconButton({
-  ref,
-  icon,
-  label,
-  onPress,
-  color,
-  size: iconSize = 22,
-  diameter = size.navButton,
-  tone = "grey",
-  disabled,
-  badge,
-  style,
-}: {
-  /** 量按钮位置用（平板上贴着按钮弹出的菜单） */
-  ref?: Ref<View>;
-  icon: IconName;
-  label: string;
-  onPress: () => void;
-  color?: string;
-  size?: number;
-  diameter?: number;
-  tone?: IconButtonTone;
-  disabled?: boolean;
-  /** 右上角的蓝色小圆点 */
-  badge?: boolean;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const palette = usePalette();
-  const bg = tone === "grey" ? palette.bg2 : tone === "card" ? palette.card : "transparent";
-  const slop = Math.max(0, (size.touch - diameter) / 2);
-  return (
-    <Pressable
-      ref={ref}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      hitSlop={slop}
-      style={({ pressed }) => [
-        {
-          width: diameter,
-          height: diameter,
-          borderRadius: diameter / 2,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: pressed ? (tone === "plain" ? palette.bg2 : palette.bg3) : bg,
-          opacity: disabled ? 0.3 : 1,
-          transform: [{ scale: pressed ? 0.97 : 1 }],
-        },
-        tone === "card" ? { boxShadow: palette.shadowButton } : null,
-        style,
-      ]}
-    >
-      <Icon name={icon} size={iconSize} color={color ?? palette.ink} />
-      {badge ? (
-        <View style={[styles.badge, { backgroundColor: palette.acc, borderColor: palette.bg }]} />
-      ) : null}
-    </Pressable>
-  );
-}
-
-// ---- 分组卡与列表行 ------------------------------------------------------------------------
-
-/**
- * 分组卡：浅灰圆角卡片里放几行，行之间用页面底色的细线隔开（不画外框）。
- * inset 是分隔线左边的缩进（行首有 40 的图标时是 68）。
- */
-export function Group({
-  children,
-  inset = 68,
-  style,
-}: {
-  children: ReactNode;
-  inset?: number;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const palette = usePalette();
-  const rows = Children.toArray(children).filter((c) => isValidElement(c));
-  return (
-    <View style={[styles.group, { backgroundColor: palette.bg2 }, style]}>
-      {rows.map((row, i) => (
-        <Fragment key={isValidElement(row) && row.key != null ? row.key : i}>
-          {i > 0 ? <View style={[styles.sep, { backgroundColor: palette.bg, marginLeft: inset }]} /> : null}
-          {row}
-        </Fragment>
-      ))}
-    </View>
-  );
-}
-
-/** 列表行左边的 40 圆形图标格（在灰卡上是白底） */
-export function RowIcon({ name, tone }: { name: IconName; tone?: "ink" | "acc" }) {
-  const palette = usePalette();
-  const bg = tone === "ink" ? palette.ink : tone === "acc" ? palette.accBg : palette.card;
-  const fg = tone === "ink" ? palette.bg : tone === "acc" ? palette.acc : palette.ink;
-  return (
-    <View style={[styles.rowIcon, { backgroundColor: bg }]}>
-      <Icon name={name} size={20} color={fg} />
-    </View>
-  );
-}
-
-/** 分组卡里的一行；按下时底色加深一档 */
-export function ListRow({
-  title,
-  subtitle,
-  subtitleColor,
-  leading,
-  trailing,
-  onPress,
-  onLongPress,
-  chevron,
-  mono,
-  selected,
-  style,
-}: {
-  title: string;
-  subtitle?: string;
-  subtitleColor?: string;
-  leading?: ReactNode;
-  trailing?: ReactNode;
-  onPress?: () => void;
-  onLongPress?: () => void;
-  /** 默认可点的行显示右箭头 */
-  chevron?: boolean;
-  /** 标题用等宽字（模型名之类） */
-  mono?: boolean;
-  /** 两栏页面里右栏正打开着这一项：白底加 2px 蓝色内描边 */
-  selected?: boolean;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const palette = usePalette();
-  const showChevron = chevron ?? !!onPress;
-  return (
-    <Pressable
-      accessibilityRole={onPress ? "button" : undefined}
-      accessibilityState={selected ? { selected } : undefined}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      disabled={!onPress && !onLongPress}
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: pressed ? palette.bg3 : "transparent" },
-        selected
-          ? [
-              styles.rowSelected,
-              { backgroundColor: palette.card, boxShadow: `inset 0 0 0 2px ${palette.acc}` },
-            ]
-          : null,
-        style,
-      ]}
-    >
-      {leading}
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.rowTitle,
-            { color: palette.ink },
-            mono ? { fontFamily: font.mono, fontSize: 15 } : null,
-          ]}
-        >
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text numberOfLines={2} style={[styles.rowSubtitle, { color: subtitleColor ?? palette.mut }]}>
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
-      {trailing}
-      {showChevron ? <Icon name="chevronRight" size={18} color={palette.mut} /> : null}
-    </Pressable>
-  );
-}
-
-/** 分区标题：19/26 粗体，右边一行浅色说明；标题下不画线 */
-export function SectionHeader({
-  title,
-  meta,
-  style,
-}: {
-  title: string;
-  meta?: ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const palette = usePalette();
-  return (
-    <View style={[styles.section, style]}>
-      <Text accessibilityRole="header" style={[type.section, { color: palette.ink, flex: 1 }]}>
-        {title}
-      </Text>
-      {typeof meta === "string" ? <Text style={{ fontSize: 12.5, color: palette.mut }}>{meta}</Text> : meta}
-    </View>
-  );
-}
-
-/** 一组设置项上方的小标题 */
-export function GroupLabel({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const palette = usePalette();
-  return (
-    <View style={[styles.groupLabel, style]}>
-      <Text style={{ fontSize: 13, lineHeight: 18, color: palette.mut }}>{children}</Text>
-    </View>
-  );
-}
-
-export function Rule({ style }: { style?: StyleProp<ViewStyle> }) {
-  const palette = usePalette();
-  return <View style={[{ height: 1, backgroundColor: palette.line }, style]} />;
 }
 
 const styles = StyleSheet.create({
@@ -555,52 +242,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.s,
-    height: 36,
-    paddingHorizontal: space.l,
-    borderRadius: 18,
-  },
-  button: {
-    minHeight: size.button,
-    paddingHorizontal: 22,
-    borderRadius: radius.pill,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: space.s,
-  },
-  textButton: { minHeight: size.touch, paddingHorizontal: space.m },
-  between: { justifyContent: "space-between" },
-  withArrow: { paddingLeft: space.page, paddingRight: space.s },
-  arrow: {
-    width: size.buttonArrow,
-    height: size.buttonArrow,
-    borderRadius: size.buttonArrow / 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badge: { position: "absolute", top: 1, right: 1, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
-  group: { borderRadius: 26, overflow: "hidden" },
-  sep: { height: 1.5, marginRight: 14 },
-  rowIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    minHeight: 64,
-    paddingVertical: 10,
+    height: 32,
     paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: comicStroke.control,
   },
-  /** 选中的行缩进 4 画成圆角块，内边距少 4，外面看总尺寸不变 */
-  rowSelected: { margin: 4, paddingVertical: 6, paddingHorizontal: 10, minHeight: 56, borderRadius: 22 },
-  rowTitle: { fontSize: 16, lineHeight: 22 },
-  rowSubtitle: { fontSize: 12.5, lineHeight: 18, marginTop: 1 },
-  section: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    paddingTop: 26,
-    paddingBottom: 10,
-    paddingHorizontal: space.page,
-    gap: space.m,
-  },
-  groupLabel: { paddingTop: 18, paddingBottom: space.s, paddingHorizontal: space.page },
 });

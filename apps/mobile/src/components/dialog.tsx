@@ -1,6 +1,7 @@
 /**
- * 对话框：居中的圆角卡片，上方一个圆形图标写清后果，下面并排“取消 / 确认”两个胶囊按钮。
- * 删除用红色，揭示秘密之类的提醒用琥珀色。一般经 useOverlay() 弹出（overlay.tsx），不直接用。
+ * 对话框（漫画风）：居中的白底 2.5 墨线格子，圆角 18、投影 6；标题、说明靠左，下面并排“取消 / 确认”两个按钮，
+ * 写清后果的图标放在确认按钮里。删除的确认按钮是红底，揭示秘密之类的提醒标题前加琥珀色图标。
+ * 一般经 useOverlay() 弹出（overlay.tsx），不直接用。
  * 平板上宽不超过 480，居中。
  * 非 inline 时自己带一个 Modal，什么时候挂上、拿掉由 useGatedModal 决定（gatedModal.ts）：
  * iOS 上等别的 Modal 被收回才挂上；关闭时 visible 先变 false（淡出），等 iOS 确认收回才拿掉。
@@ -8,11 +9,20 @@
 
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, View } from "react-native";
 
 import { pane } from "@bettertavern/design/layout";
 
-import { onColor, radius, space, type, usePalette } from "../theme/index.ts";
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  ctype,
+  hardShadow,
+  space,
+  useComic,
+} from "../theme/index.ts";
+import { Button } from "./buttons.tsx";
 import { useGatedModal } from "./gatedModal.ts";
 import { Icon, type IconName } from "./icons.tsx";
 import { MODAL_ORIENTATIONS } from "./sheet.tsx";
@@ -22,7 +32,7 @@ export type DialogTone = "danger" | "warn" | "default";
 type DialogProps = {
   visible: boolean;
   tone?: DialogTone;
-  /** 标题上方的圆形图标；删除默认是垃圾桶 */
+  /** 确认按钮里的图标；删除默认是垃圾桶 */
   icon?: IconName;
   title: string;
   message?: string;
@@ -40,12 +50,12 @@ type DialogProps = {
 };
 
 export function Dialog({ visible, inline, onCancel, ...card }: DialogProps) {
-  const palette = usePalette();
+  const c = useComic();
   const modal = useGatedModal(visible && !inline, "dialog");
   const body = (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[styles.dialogHost, { backgroundColor: palette.scrim }]}
+      style={[styles.dialogHost, { backgroundColor: c.scrim }]}
     >
       <DialogCard {...card} onCancel={onCancel} />
     </KeyboardAvoidingView>
@@ -79,61 +89,41 @@ function DialogCard({
   onCancel,
   onConfirm,
 }: Omit<DialogProps, "visible" | "inline">) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
-  const accent = tone === "danger" ? palette.err : tone === "warn" ? palette.warn : palette.ink;
-  const accentBg = tone === "danger" ? palette.errBg : tone === "warn" ? palette.warnBg : palette.bg2;
   const shownIcon = icon ?? (tone === "danger" ? "trash" : undefined);
-  const confirmBg = tone === "danger" ? palette.err : palette.ink;
-  const confirmFg = tone === "danger" ? onColor : palette.bg;
   return (
     <View
       accessibilityRole="alert"
       accessibilityViewIsModal
-      style={[styles.dialog, { backgroundColor: palette.card }]}
+      style={[
+        styles.dialog,
+        { backgroundColor: c.paper, borderColor: c.ink, boxShadow: hardShadow(c.ink, comicDepth.dialog) },
+      ]}
     >
       <View style={styles.dialogBody}>
-        {shownIcon ? (
-          <View style={[styles.dialogIcon, { backgroundColor: accentBg }]}>
-            <Icon name={shownIcon} size={24} color={accent} />
-          </View>
-        ) : null}
-        <Text style={[styles.dialogTitle, { color: palette.ink }]}>{title}</Text>
-        {message ? <Text style={[styles.dialogMessage, { color: palette.ink2 }]}>{message}</Text> : null}
+        <View style={styles.titleRow}>
+          {tone === "warn" ? <Icon name="alert" size={22} color={c.warn} /> : null}
+          <Text style={[ctype.sheetTitle, { flex: 1, color: c.ink }]}>{title}</Text>
+        </View>
+        {message ? <Text style={[styles.dialogMessage, { color: c.ink2 }]}>{message}</Text> : null}
         {children}
       </View>
       <View style={styles.dialogButtons}>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label={cancelLabel ?? t("common.cancel")}
+          variant="secondary"
           onPress={onCancel}
-          style={({ pressed }) => [
-            styles.dialogButton,
-            {
-              backgroundColor: pressed ? palette.bg3 : palette.bg2,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-            },
-          ]}
-        >
-          <Text style={[type.button, { fontWeight: "400", color: palette.ink }]}>
-            {cancelLabel ?? t("common.cancel")}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !!confirmDisabled }}
+          style={styles.dialogButton}
+        />
+        <Button
+          label={confirmLabel}
+          variant={tone === "danger" ? "dangerSolid" : "primary"}
+          icon={shownIcon}
           disabled={confirmDisabled}
           onPress={onConfirm}
-          style={({ pressed }) => [
-            styles.dialogButton,
-            {
-              backgroundColor: confirmBg,
-              opacity: confirmDisabled ? 0.3 : 1,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-            },
-          ]}
-        >
-          <Text style={[type.button, { color: confirmFg }]}>{confirmLabel}</Text>
-        </Pressable>
+          style={styles.dialogButton}
+        />
       </View>
     </View>
   );
@@ -145,16 +135,16 @@ const styles = StyleSheet.create({
   dialog: {
     width: "100%",
     maxWidth: pane.dialog,
-    borderRadius: radius.sheet,
-    paddingTop: 26,
-    paddingHorizontal: 18,
-    paddingBottom: 18,
-    gap: 18,
+    borderRadius: comicRadius.dialog,
+    borderWidth: comicStroke.frame,
+    paddingTop: 22,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 16,
   },
-  dialogBody: { alignItems: "center", gap: 10 },
-  dialogIcon: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
-  dialogTitle: { fontSize: 20, lineHeight: 28, fontWeight: "700", textAlign: "center" },
-  dialogMessage: { fontSize: 14, lineHeight: 22, textAlign: "center" },
-  dialogButtons: { flexDirection: "row", gap: space.s },
-  dialogButton: { flex: 1, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
+  dialogBody: { gap: 12 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: space.s },
+  dialogMessage: { fontSize: 14.5, lineHeight: 23 },
+  dialogButtons: { flexDirection: "row", gap: space.m },
+  dialogButton: { flex: 1, minHeight: 46, paddingHorizontal: space.m },
 });
