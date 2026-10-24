@@ -123,12 +123,14 @@ function PlayPage({ id }: { id: string }) {
     [overlay, t, rollback, queries],
   );
 
-  // ---- 世界状态：从右侧滑出（手机宽度是底部面板），只在这一页里开关；右栏的人物和刚记下的也取它 ----
+  // ---- 世界状态：从右侧滑出（手机宽度是底部面板），只在这一页里开关；右栏的人物和刚记下的也取它。
+  // 闪电模式没有世界状态：不取，也不显示“世界”按钮、W 键和右栏 ----
+  const lightning = state.mode === "lightning";
   const [worldOpen, setWorldOpen] = useState(false);
   const toggleWorld = useCallback(() => setWorldOpen((open) => !open), []);
   const closeWorld = useCallback(() => setWorldOpen(false), []);
   const head = headTurn(state);
-  const world = useWorld(id, { version: head?.id ?? null, headSeq: head?.seq ?? null });
+  const world = useWorld(id, { version: head?.id ?? null, headSeq: head?.seq ?? null, enabled: !lightning });
 
   // ---- 回想：默认最近几段，L 看全部 ----
   const [recapAll, setRecapAll] = useState(false);
@@ -274,7 +276,7 @@ function PlayPage({ id }: { id: string }) {
       } else if (event.key === "/" && canAct(s) && s.turns.length > 0 && !w) {
         event.preventDefault();
         setWriting(true);
-      } else if (event.key.toLowerCase() === "w") {
+      } else if (event.key.toLowerCase() === "w" && !lightning) {
         event.preventDefault();
         toggleWorld();
       } else if (event.key.toLowerCase() === "l") {
@@ -284,7 +286,7 @@ function PlayPage({ id }: { id: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [singleKeys, controls, jumpToLatest, toggleWorld, toggleRecap]);
+  }, [singleKeys, controls, jumpToLatest, toggleWorld, toggleRecap, lightning]);
 
   const sub = [scenario.data?.name, state.protagonist ? t("play.iAm", { name: state.protagonist }) : null]
     .filter(Boolean)
@@ -304,14 +306,16 @@ function PlayPage({ id }: { id: string }) {
       <h1 className={styles.title}>{shownTitle}</h1>
       {sub ? <span className={styles.sub}>{sub}</span> : null}
       <div className={styles.tools} role="toolbar" aria-label={t("play.toolbar")}>
-        <HeaderTool
-          icon="world"
-          label={t("play.worldShort")}
-          kbd={wide ? "W" : undefined}
-          aria-keyshortcuts="W"
-          active={worldOpen}
-          onClick={toggleWorld}
-        />
+        {lightning ? null : (
+          <HeaderTool
+            icon="world"
+            label={t("play.worldShort")}
+            kbd={wide ? "W" : undefined}
+            aria-keyshortcuts="W"
+            active={worldOpen}
+            onClick={toggleWorld}
+          />
+        )}
         {wide && state.turns.length > 5 ? (
           <HeaderTool
             icon="history"
@@ -342,7 +346,7 @@ function PlayPage({ id }: { id: string }) {
     { keys: ["A", "B", "C"], label: t("play.hints.pick") },
     { keys: ["/"], label: t("play.hints.write") },
     { keys: ["L"], label: t("play.hints.recap") },
-    { keys: ["W"], label: t("play.hints.world") },
+    ...(lightning ? [] : [{ keys: ["W"], label: t("play.hints.world") }]),
     { keys: ["End"], label: t("play.hints.latest") },
     { keys: ["Q"], label: t("play.hints.wheel") },
   ];
@@ -389,7 +393,7 @@ function PlayPage({ id }: { id: string }) {
             />
           )}
         </div>
-        <CastColumn view={world.query.data} onOpenWorld={() => setWorldOpen(true)} />
+        {lightning ? null : <CastColumn view={world.query.data} onOpenWorld={() => setWorldOpen(true)} />}
       </div>
       <div className={styles.jump} data-shown={away || undefined} aria-hidden={!away}>
         <IconButton

@@ -15,15 +15,21 @@ import { useApp } from "../../state/AppProvider.tsx";
  * 取世界状态、揭示秘密。version 变了（写完新的一段、回退）就重新取；
  * 后台还没整理到最新一段（headSeq）时每隔一会儿再取，整理到了就停（worldRefreshDelay）。
  */
-export type Head = { version: string | null; headSeq: number | null };
+export type Head = {
+  version: string | null;
+  headSeq: number | null;
+  /** false 时不取（闪电模式没有世界状态） */
+  enabled?: boolean;
+};
 
-export function useWorld(playthroughId: string, { version, headSeq }: Head) {
+export function useWorld(playthroughId: string, { version, headSeq, enabled = true }: Head) {
   const { api } = useApp();
   const overlay = useOverlay();
   const [revealed, setRevealed] = useState(false);
   const query = useQuery({
     queryKey: ["world", playthroughId, revealed, version],
     queryFn: () => api.playthroughs.world(playthroughId, revealed),
+    enabled,
     placeholderData: (previous) => previous,
     refetchInterval: (q) => worldRefreshDelay(q.state.data, headSeq) ?? false,
   });

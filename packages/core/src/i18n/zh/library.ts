@@ -113,6 +113,7 @@ export const library = {
     exportFailed: "导出失败：{{error}}",
   },
   scenario: {
+    lightningBadge: "闪电",
     cards: "角色卡",
     lead: "主角色",
     setup: "剧本设置",
@@ -151,6 +152,8 @@ export const library = {
     protagonistSummary: "主角是谁",
     opening: "开场",
     openingHint: "用卡里的开场白开场，导演不重写；也可以让导演根据设定写一个",
+    lightning: "闪电模式",
+    lightningHint: "花费 token 更少，无世界状态功能，叙事表现有所下降。",
     openingDirector: "导演来写",
     greetingFirst: "{{card}} · 开场白",
     greetingAlt: "{{card}} · 备选开场白 {{n}}",

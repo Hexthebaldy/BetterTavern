@@ -411,6 +411,17 @@
   font-family: var(--font-display);
   font-weight: 900;
 }
+/* 闪电模式：说明在左、开关在右，整行都能点 */
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+}
+.switchRow .formHint {
+  margin-top: 0;
+}
 .formHint {
   margin-top: -4px;
   font-size: 13px;

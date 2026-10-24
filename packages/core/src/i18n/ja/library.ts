@@ -114,6 +114,7 @@ export const library: MessagesOtherOnly<typeof source> = {
     exportFailed: "書き出せませんでした：{{error}}",
   },
   scenario: {
+    lightningBadge: "ライトニング",
     cards: "キャラクターカード",
     lead: "主要キャラクター",
     setup: "シナリオの設定",
@@ -152,6 +153,8 @@ export const library: MessagesOtherOnly<typeof source> = {
     protagonistSummary: "主人公は何者か",
     opening: "冒頭",
     openingHint: "カードの最初のメッセージをそのまま冒頭に使います。設定から監督に書いてもらうこともできます",
+    lightning: "ライトニングモード",
+    lightningHint: "トークンの消費が少なくなります。世界の状態の機能はなく、物語の表現は少し落ちます。",
     openingDirector: "監督が書く",
     greetingFirst: "{{card}} · 最初のメッセージ",
     greetingAlt: "{{card}} · 別の挨拶 {{n}}",

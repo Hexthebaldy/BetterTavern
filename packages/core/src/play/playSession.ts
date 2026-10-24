@@ -142,6 +142,7 @@ export class PlaySession {
         protagonist: detail.playthrough.protagonist_name,
         scenarioId: detail.playthrough.scenario_id,
         language: detail.playthrough.language,
+        mode: detail.playthrough.mode,
         rollbacksLeft: detail.playthrough.rollbacks_left,
       });
       const pending = this.state.pending;

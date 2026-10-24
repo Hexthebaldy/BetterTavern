@@ -135,7 +135,9 @@ export default function PlayScreen() {
     lastMode.current = worldMode;
   }, [worldMode, worldDocked]);
 
-  const docked = worldMode === "dock" && worldOpen;
+  // 闪电模式没有世界状态：不显示世界状态的入口和面板
+  const lightning = state.mode === "lightning";
+  const docked = worldMode === "dock" && worldOpen && !lightning;
   const toggleWorld = (): void => {
     if (worldMode === "dock") {
       setWorldOpen(!worldOpen);
@@ -338,7 +340,7 @@ export default function PlayScreen() {
             onSend={send}
             away={away}
             onJumpToLatest={() => feed.current?.jumpToLatest()}
-            onOpenWorld={toggleWorld}
+            onOpenWorld={lightning ? undefined : toggleWorld}
             onOpenMore={() => setMoreOpen(true)}
             worldActive={docked}
             moreActive={moreOpen}
@@ -350,7 +352,7 @@ export default function PlayScreen() {
       </View>
       {docked ? <WorldDock onClose={closeWorld} playthroughId={id} headSeq={head?.seq ?? null} /> : null}
       <WorldSheet
-        visible={worldOpen && worldMode !== "dock"}
+        visible={worldOpen && worldMode !== "dock" && !lightning}
         onClose={closeWorld}
         playthroughId={id}
         headSeq={head?.seq ?? null}
@@ -366,7 +368,7 @@ export default function PlayScreen() {
         onClose={() => setMoreOpen(false)}
         anchor={moreButton}
         onRename={() => void rename()}
-        onWorld={() => {
+        onWorld={lightning ? undefined : () => {
           setMoreOpen(false);
           // 停靠时世界状态是页面的一部分，直接展开；否则打开世界状态面板，
           // 它会等“更多”面板被 iOS 收回再挂上（useGatedModal）

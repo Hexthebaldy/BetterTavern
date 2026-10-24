@@ -66,6 +66,8 @@ export type PlayState = {
   scenarioId: string | null;
   /** 这一局的语言（开局时定下，和提示词同一种）：正文按它选字体；加载前按中文 */
   language: Playthrough["language"];
+  /** lightning：闪电模式，没有世界状态（不显示世界状态的入口）；开局时定下，加载前按普通 */
+  mode: Playthrough["mode"];
   /** 这个存档还能回退几次（加载后才有） */
   rollbacksLeft: number;
   turns: StoryTurn[];
@@ -84,6 +86,7 @@ export type PlayEvent =
       protagonist?: string;
       scenarioId?: string | null;
       language?: Playthrough["language"];
+      mode?: Playthrough["mode"];
       rollbacksLeft?: number;
     }
   | { type: "load_failed"; error: TurnError }
@@ -102,6 +105,7 @@ export const initialPlayState: PlayState = {
   protagonist: "",
   scenarioId: null,
   language: "zh",
+  mode: "standard",
   rollbacksLeft: 0,
   turns: [],
   pending: null,
@@ -154,6 +158,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
         protagonist: event.protagonist ?? state.protagonist,
         scenarioId: event.scenarioId !== undefined ? event.scenarioId : state.scenarioId,
         language: event.language ?? state.language,
+        mode: event.mode ?? state.mode,
         rollbacksLeft: event.rollbacksLeft ?? state.rollbacksLeft,
         turns,
         error: null,

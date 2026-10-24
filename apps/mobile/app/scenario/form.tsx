@@ -15,6 +15,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { CardDetail, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
 
+import { Toggle } from "../../src/components/controls.tsx";
 import { Cover } from "../../src/components/Cover.tsx";
 import {
   ErrorState,
@@ -51,6 +52,7 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
   const [name, setName] = useState(scenario?.name ?? "");
   const [values, setValues] = useState<StartValues | null>(null);
   const [opening, setOpening] = useState<Opening>(scenario?.setup.opening ?? null);
+  const [lightning, setLightning] = useState(scenario?.setup.lightning ?? false);
   const [details, setDetails] = useState<Map<string, CardDetail>>(new Map());
   // 取过的卡（取不到的也算），不反复取
   const requested = useRef(new Set<string>());
@@ -103,7 +105,7 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
       protagonist: { name: values.name, summary: values.summary },
       preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
       opening,
-      lightning: scenario?.setup.lightning ?? false,
+      lightning,
     };
     try {
       if (scenario) {
@@ -278,6 +280,14 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
               );
             })}
           </View>
+
+          <SectionHeader title={t("newScenario.lightning")} style={styles.section} />
+          <View style={styles.switchRow}>
+            <Text style={[styles.hint, styles.switchHint, { color: palette.mut }]}>
+              {t("newScenario.lightningHint")}
+            </Text>
+            <Toggle value={lightning} onChange={setLightning} label={t("newScenario.lightning")} />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -314,6 +324,8 @@ export default function ScenarioFormScreen() {
 }
 
 const styles = StyleSheet.create({
+  switchRow: { flexDirection: "row", alignItems: "center", gap: space.l },
+  switchHint: { flex: 1 },
   content: { paddingHorizontal: space.page, paddingTop: space.s, paddingBottom: 56, gap: space.m },
   section: { paddingHorizontal: 0, paddingBottom: 0, paddingTop: space.l },
   hint: { fontSize: 13, lineHeight: 20, marginTop: -space.s },

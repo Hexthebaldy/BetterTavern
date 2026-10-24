@@ -120,6 +120,7 @@ export const library: Messages<typeof source> = {
     exportFailed: "Couldn't export: {{error}}",
   },
   scenario: {
+    lightningBadge: "Lightning",
     cards: "Character cards",
     lead: "Main character",
     setup: "Scenario settings",
@@ -159,6 +160,8 @@ export const library: Messages<typeof source> = {
     protagonistSummary: "Who the protagonist is",
     opening: "Opening",
     openingHint: "Start with a greeting from a card, as written; or let the director write one from the setting",
+    lightning: "Lightning mode",
+    lightningHint: "Uses fewer tokens. There's no world state, and the storytelling is somewhat weaker.",
     openingDirector: "The director writes it",
     greetingFirst: "{{card}} · greeting",
     greetingAlt: "{{card}} · alternate greeting {{n}}",

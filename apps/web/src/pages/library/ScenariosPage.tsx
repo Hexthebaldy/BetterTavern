@@ -273,6 +273,7 @@ function ScenarioHero({
       </div>
       <div className={styles.heroBody}>
         <div className={styles.metaRow}>
+          {scenario.setup.lightning ? <Pill tone="acc" label={t("scenario.lightningBadge")} /> : null}
           {meta.genre ? <Pill tone="card" label={meta.genre} /> : null}
           <span className={styles.meta}>{meta.counts}</span>
         </div>
@@ -330,10 +331,15 @@ function ScenarioTile({
   slot: Slot;
   onMenu: (place: MenuPlace) => void;
 }) {
+  const { t } = useTranslation();
   const context = useContextMenu(onMenu);
   const { scenario } = entry;
   const meta = useMeta(entry);
   const wide = kind === "wide";
+  // 题材那一行：闪电模式的剧本在前面写“闪电”
+  const genre = [scenario.setup.lightning ? t("scenario.lightningBadge") : "", meta.genre]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <Link
       to={scenarioPath(scenario)}
@@ -347,9 +353,9 @@ function ScenarioTile({
         className={wide ? styles.coverLeft : styles.coverTop}
       />
       <span className={styles.tileBody}>
-        {wide && meta.genre ? <span className={styles.genre}>{meta.genre}</span> : null}
+        {wide && genre ? <span className={styles.genre}>{genre}</span> : null}
         <span className={cx(styles.tileTitle, !wide && styles.tileTitleSmall)}>{scenario.name}</span>
-        {!wide && meta.genre ? <span className={cx(styles.genre, styles.genreSmall)}>{meta.genre}</span> : null}
+        {!wide && genre ? <span className={cx(styles.genre, styles.genreSmall)}>{genre}</span> : null}
         {scenario.description_preview ? (
           <span className={cx(styles.tileText, !wide && styles.tileTextSmall)}>{scenario.description_preview}</span>
         ) : null}

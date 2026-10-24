@@ -16,7 +16,7 @@ import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { CardDetail, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
 
 import { Cover } from "../../components/Cover.tsx";
-import { Button, cx, Dots, Field, IconButton, Notice, Pill } from "../../components/controls.tsx";
+import { Button, cx, Dots, Field, IconButton, Notice, Pill, Toggle } from "../../components/controls.tsx";
 import { scenarioPath } from "../../data/scenarioActions.ts";
 import { scenariosKey, useCards } from "../../data/scenarios.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -46,6 +46,7 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
   const [name, setName] = useState(scenario?.name ?? "");
   const [values, setValues] = useState<StartValues | null>(null);
   const [opening, setOpening] = useState<Opening>(scenario?.setup.opening ?? null);
+  const [lightning, setLightning] = useState(scenario?.setup.lightning ?? false);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -96,7 +97,7 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
       protagonist: { name: values.name, summary: values.summary },
       preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
       opening,
-      lightning: scenario?.setup.lightning ?? false,
+      lightning,
     };
     try {
       if (scenario) {
@@ -291,6 +292,12 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
           );
         })}
       </div>
+
+      <h2 className={styles.formSection}>{t("newScenario.lightning")}</h2>
+      <label className={styles.switchRow}>
+        <span className={styles.formHint}>{t("newScenario.lightningHint")}</span>
+        <Toggle checked={lightning} onChange={setLightning} aria-label={t("newScenario.lightning")} />
+      </label>
     </div>
   );
 }

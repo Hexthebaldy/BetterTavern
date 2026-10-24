@@ -185,7 +185,8 @@ export function MoreSheet({
   visible: boolean;
   onClose: () => void;
   onRename: () => void;
-  onWorld: () => void;
+  /** 不传时不显示“世界”（闪电模式没有世界状态） */
+  onWorld?: () => void;
   onEnd: () => void;
   /** 写结局：ready 可以写；busy 暂时不能（生成中、开场没写好、失败等着重试）；ended 已经写完了，不显示 */
   ending: "ready" | "busy" | "ended";
@@ -207,7 +208,7 @@ export function MoreSheet({
         <SizeControl />
         <MenuGroup style={{ marginTop: space.xs }}>
           <MenuItem icon="write" label={t("reading.renameSave")} onPress={onRename} />
-          <MenuItem icon="world" label={t("play.world")} onPress={onWorld} />
+          {onWorld ? <MenuItem icon="world" label={t("play.world")} onPress={onWorld} /> : null}
           {rollback !== "none" ? (
             <MenuItem
               icon="back"

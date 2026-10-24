@@ -42,7 +42,8 @@ type Props = {
   /** 离开了最新位置 */
   away: boolean;
   onJumpToLatest: () => void;
-  onOpenWorld: () => void;
+  /** 不传时不显示世界按钮（闪电模式没有世界状态），原处留一个同样大小的空位，中间不跑偏 */
+  onOpenWorld?: () => void;
   onOpenMore: () => void;
   /** 世界状态停靠着（平板宽屏）：世界按钮显示为选中，再点一次收起 */
   worldActive?: boolean;
@@ -162,12 +163,16 @@ function Bar({
           />
         ) : (
           <View style={styles.row}>
-            <ToolButton
-              icon="world"
-              label={worldActive ? t("play.worldHide") : t("play.world")}
-              active={worldActive}
-              onPress={onOpenWorld}
-            />
+            {onOpenWorld ? (
+              <ToolButton
+                icon="world"
+                label={worldActive ? t("play.worldHide") : t("play.world")}
+                active={worldActive}
+                onPress={onOpenWorld}
+              />
+            ) : (
+              <View style={{ width: 44, height: 44 }} />
+            )}
             <View style={styles.middle}>
               {middle}
               <JumpButton shown={away} live={live} onPress={onJumpToLatest} />

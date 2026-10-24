@@ -88,6 +88,7 @@ export function SaveCell({
           <div className={styles.tags}>
             {writing ? <StatusPill story={story} /> : <Pill tone="ink" label={t("stories.resume")} />}
             <Pill tone="acc" label={tag} />
+            {story.mode === "lightning" ? <Pill tone="card" label={t("scenario.lightningBadge")} /> : null}
             {writing ? null : <StatusPill story={story} />}
             <span className={styles.label}>{time}</span>
           </div>
@@ -131,6 +132,9 @@ export function SaveCell({
           )}
           {!small && !writing ? <h2 className={styles.title}>{story.title}</h2> : null}
           {!writing ? <StatusPill story={story} /> : null}
+          {!small && story.mode === "lightning" ? (
+            <Pill tone="card" label={t("scenario.lightningBadge")} />
+          ) : null}
         </div>
         {small || writing ? <h2 className={cx(styles.title, writing && styles.titleLarge)}>{story.title}</h2> : null}
         {story.head_excerpt ? (
