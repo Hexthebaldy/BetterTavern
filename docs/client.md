@@ -309,13 +309,17 @@ apps/mobile/
   `SessionManager` 和 App 是同一个，网页传给它的“存储”就是这次刷新，刷新令牌是 `null`。
 - 访问令牌快过期时照常刷新，浏览器自动带上 Cookie；几个标签页各自刷新，Cookie 是共用的。
 - 退出时先请服务端吊销并删掉 Cookie，再本地退出：服务端没收到时 Cookie 还在，刷新页面会重新登录上。
-- 网页和接口必须同源（开发时 Vite 转发，部署时反向代理），所以网页没有 App 登录页底部的“服务器”入口。
+- 网页和接口必须同源（开发时 Vite 转发，部署时反向代理），所以网页不能像 App 那样只换服务器地址。
+  登录、注册页底部的服务器行写着现在的网站，点“更改”是**跳到另一台服务器自己的网页**（`pages/auth/ServerSwitch.tsx`）：
+  对话框里列出官方服务（不在官方时）和最近打开过的地址（这个网站的 localStorage `bt.servers`，最多 5 个），也能输入新地址；
+  地址只认 http、https，不带账号密码，路径丢掉（网页只能部署在根路径）；“打开”跳到那边的 `/login`。
+  地址只能自己填，不从链接参数带进来，免得被做成钓鱼链接。https 的官方页面请求不了局域网的 http 地址，所以跳之前不检查那边是不是 BetterTavern。
 
 ### 页面
 
 | 地址 | 页面 |
 | --- | --- |
-| `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交；宽屏左边是插画区。注册要勾选“已满 18 岁并同意协议” |
+| `/login`、`/register` | 登录、注册（W01、W02）：真正的 `<form>` 和 `autocomplete`，打开时焦点在邮箱，Enter 提交；宽屏左边是插画区。注册要勾选“已满 18 岁并同意协议”。底部的服务器行可以跳到别的服务器的网页（见上面的“登录：Cookie 模式”） |
 | `/verify`、`/forgot` | 验证邮箱、找回密码，同 App 的 `(auth)/verify`、`(auth)/forgot`；验证码框用 `autocomplete="one-time-code"` |
 | `/terms`、`/privacy`、`/rules` | 用户协议、隐私政策、内容规则：登录前后都能打开（App 在浏览器里打开这三个地址）。正文是 `pages/legal/content/<语言>/*.md`，按界面语言按需加载，用页面里的极简 Markdown 渲染（标题、段落、列表、粗体、链接）；三种语言一一对应，改一份就改另外两份 |
 | `/playthroughs` | 存档（漫画稿 01）：最近玩的那个占左上的大格（剧本名、最近一段的摘录、“继续”、回合数、主角色的人物位），正在写的存档是墨底格，“新的故事 ＋”一格（键 N，去剧本页挑一个），其余是白格；一页六个，之后每页九个，翻页 |
@@ -396,13 +400,13 @@ apps/web/
     └── pages/     auth/  stories/  library/  cards/  scenario/  workbench/  play/  models/  tools/  settings/  Splash.tsx  NotFound.tsx
 ```
 
-纯逻辑（`theme/layout.ts`、`theme/wheel.ts`、`theme/grid.ts`、`theme/palette.ts`、`components/portrait.ts`、`storage/local.ts`、`state/prefs.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/library/collection.ts`、`pages/play/reading.ts`）
+纯逻辑（`theme/layout.ts`、`theme/wheel.ts`、`theme/grid.ts`、`theme/palette.ts`、`components/portrait.ts`、`storage/local.ts`、`state/prefs.ts`、`pages/auth/servers.ts`、`shell/nav.ts`、`shell/recent.ts`、`import/rules.ts`、`pages/library/collection.ts`、`pages/play/reading.ts`）
 用 `node --test` 测，在仓库根目录 `npm test` 时一起跑；整条路的端到端测试见 [testing.md 第 3 节](testing.md)。
 
 ### 和设计稿不同的地方
 
 - 登录态：设计稿的“平台替代”建议把令牌放在 localStorage；按讨论的方案改成 HttpOnly Cookie（见上），服务端为此加了 Cookie 模式。
-- 没有“换服务器”：Cookie 只发给同一个网站，网页和接口同源部署，登录页不放服务器入口和服务器对话框（W02 的对话框不做）；连接测试只测这一个服务器。
+- 换服务器：Cookie 只发给同一个网站，网页和接口同源部署，所以不做 W02 那种只换接口地址的服务器对话框；登录页的服务器行改成跳到另一台服务器自己的网页。连接测试只测这一个服务器。
 - 共用代码：设计稿建议用路径别名直接引用 `apps/mobile/src`；改成 npm 工作区的两个包，手机端也从包里引用。
 - API Key 输入框：用圆点遮住，但不用 `type=password`（免得浏览器把它存成这个网站的密码）；网页里直接粘贴，没有 App 的“粘贴”按钮。
 - 诊断日志导出：设计稿写的是 `.json`；内容和 App 导出的一样（开头几行说明，后面每行一条 JSON，可以拖进 vis），所以文件名是 `.jsonl`。

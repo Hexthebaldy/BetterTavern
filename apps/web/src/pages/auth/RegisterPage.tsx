@@ -17,6 +17,7 @@ import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { AgreeRow, AuthLayout, NarrowIntro } from "./AuthLayout.tsx";
 import styles from "./auth.module.css";
+import { ServerSwitch } from "./ServerSwitch.tsx";
 
 const MIN_PASSWORD = 8;
 const NAME_MAX = 40;
@@ -149,6 +150,7 @@ export function RegisterPage() {
           className={styles.submit}
         />
       </form>
+      <ServerSwitch />
     </AuthLayout>
   );
 }

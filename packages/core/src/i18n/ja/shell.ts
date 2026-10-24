@@ -79,5 +79,13 @@ export const shell: MessagesOtherOnly<typeof source> = {
     newLabel: "新しいサーバーのアドレス",
     test: "接続をテスト",
     useThis: "このアドレスを使う",
+    siteTitle: "別のサーバーに切り替え",
+    siteNote: "そのサーバーのウェブページを開きます。アカウントとデータはサーバーごとに別なので、切り替え先で登録またはログインしてください。",
+    official: "公式サービス",
+    siteLabel: "サーバーのアドレス",
+    sitePlaceholder: "例：http://192.168.1.10:8080",
+    siteInvalid: "アドレスが正しくありません（例：http://192.168.1.10:8080）",
+    siteSame: "いまこのサーバーを使っています",
+    open: "開く",
   },
 };

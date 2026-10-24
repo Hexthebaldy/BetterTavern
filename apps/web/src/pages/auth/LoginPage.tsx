@@ -1,7 +1,7 @@
 /**
  * 登录（W01）。真正的 <form>，浏览器和密码管理器能自动填充；打开时焦点在邮箱，在密码框按 Enter 就提交。
  * 邮箱还没验证（EMAIL_NOT_VERIFIED，服务端已经重发了验证码）时去验证页。
- * 文案和错误提示同 App 的 app/(auth)/login.tsx。
+ * 文案和错误提示同 App 的 app/(auth)/login.tsx。底部是服务器行（ServerSwitch），可以跳到别的服务器的网页。
  */
 
 import { useState, type FormEvent } from "react";
@@ -15,6 +15,7 @@ import { useApp } from "../../state/AppProvider.tsx";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { AuthLayout, NarrowIntro } from "./AuthLayout.tsx";
 import styles from "./auth.module.css";
+import { ServerSwitch } from "./ServerSwitch.tsx";
 
 export function LoginPage() {
   const { api, signIn } = useApp();
@@ -90,6 +91,7 @@ export function LoginPage() {
           <Link to="/register">{t("auth.register")}</Link>
         </div>
       </form>
+      <ServerSwitch />
     </AuthLayout>
   );
 }

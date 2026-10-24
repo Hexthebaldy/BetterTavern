@@ -77,5 +77,13 @@ export const shell = {
     newLabel: "新服务器地址",
     test: "测试连接",
     useThis: "使用这个地址",
+    siteTitle: "换一个服务器",
+    siteNote: "会打开那台服务器自己的网页。账户和数据存在各自的服务器上，换过去要在那边注册或登录。",
+    official: "官方服务",
+    siteLabel: "服务器地址",
+    sitePlaceholder: "例如 http://192.168.1.10:8080",
+    siteInvalid: "地址不对，例如 http://192.168.1.10:8080",
+    siteSame: "你现在就在这个服务器上",
+    open: "打开",
   },
 };

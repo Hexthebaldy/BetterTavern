@@ -254,3 +254,135 @@
     display: none;
   }
 }
+
+/* 登录、注册页底部的服务器行（ServerSwitch）：灰底细框，右边“更改”是一个小键 */
+.server {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 5px 6px 5px 14px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--grey);
+  color: var(--mut);
+  font-size: 14px;
+}
+.server > svg {
+  flex: none;
+}
+.serverText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.serverName {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+}
+.serverChange {
+  flex: none;
+  height: 36px;
+  padding: 0 12px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-key);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--x2);
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+.serverChange:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .serverChange:hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* 换服务器的对话框：一列单选的地址卡，下面是输入框 */
+.siteForm {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 6px;
+  text-align: left;
+}
+.siteChoices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.siteChoice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+  cursor: pointer;
+}
+.siteChoice:has(.siteRadio:focus-visible) {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+.siteOn {
+  box-shadow: var(--b3);
+}
+.siteRadio {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.siteMark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 50%;
+  background: var(--paper);
+}
+.siteOn .siteMark {
+  background: radial-gradient(circle, var(--acc) 0 4px, var(--paper) 4.5px);
+}
+/* 地址一行，“官方服务”在下面一行（窄屏上不和地址抢宽度） */
+.siteText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.siteUrl {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.siteTag {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: var(--mut);
+}
+@media (prefers-reduced-motion: reduce) {
+  .serverChange {
+    transition: none;
+  }
+}

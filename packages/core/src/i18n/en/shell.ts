@@ -81,5 +81,13 @@ export const shell: Messages<typeof source> = {
     newLabel: "New server address",
     test: "Test connection",
     useThis: "Use this address",
+    siteTitle: "Switch servers",
+    siteNote: "This opens that server's own web page. Each server keeps its own accounts and data, so you'll sign up or sign in there.",
+    official: "Official service",
+    siteLabel: "Server address",
+    sitePlaceholder: "e.g. http://192.168.1.10:8080",
+    siteInvalid: "That address doesn't look right, e.g. http://192.168.1.10:8080",
+    siteSame: "You're already on this server",
+    open: "Open",
   },
 };
