@@ -4,7 +4,7 @@ import type { shell as source } from "../zh/shell.ts";
 export const shell: MessagesOtherOnly<typeof source> = {
   nav: {
     saves: "セーブ",
-    library: "シナリオ",
+    library: "ライブラリ",
     workbench: "ワークベンチ",
     settings: "設定",
     scenarios: "シナリオ",

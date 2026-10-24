@@ -3,7 +3,7 @@
 export const shell = {
   nav: {
     saves: "存档",
-    library: "剧本",
+    library: "库",
     workbench: "工作台",
     settings: "设置",
     scenarios: "剧本",

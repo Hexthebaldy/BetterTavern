@@ -145,7 +145,7 @@ export function ScenarioPage() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<unknown>(null);
   const { t } = useTranslation();
-  useDocumentTitle(scenario?.name ?? t("nav.library"));
+  useDocumentTitle(scenario?.name ?? t("nav.scenarios"));
 
   if (!scenario) {
     return (
