@@ -1,6 +1,6 @@
 /**
- * 登录、注册页的“换一个服务器”（网页端）。网页和接口必须同源（Cookie 登录），所以不是改接口地址，
- * 而是打开另一台服务器自己的网页：账户、登录状态都在那边。
+ * 登录、注册页的“换一个服务器”（网页端，只在自己部署的网页上有）。网页和接口必须同源（Cookie 登录），
+ * 所以不是改接口地址，而是打开另一台服务器自己的网页：账户、登录状态都在那边。
  * 打开过的地址存在这个网站的 localStorage（bt.servers），按最近打开排，最多 5 个。
  */
 
@@ -28,6 +28,11 @@ export function siteOrigin(raw: string): string | null {
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
   if (url.username || url.password || !url.hostname) return null;
   return url.origin;
+}
+
+/** 官方网站（bettertavern.com）上不放服务器行：用官方服务的人用不着换，自己部署的网页上才有 */
+export function offersServerSwitch(origin: string): boolean {
+  return origin !== OFFICIAL_SITE;
 }
 
 /** 显示用：去掉 http://，https 留着以便区分（同 App 的服务器面板） */

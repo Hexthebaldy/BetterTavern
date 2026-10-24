@@ -5,6 +5,7 @@ import {
   displaySite,
   MAX_RECENT_SITES,
   OFFICIAL_SITE,
+  offersServerSwitch,
   parseRecentSites,
   rememberSite,
   siteChoices,
@@ -37,6 +38,14 @@ describe("siteOrigin", () => {
     assert.equal(siteOrigin("   "), null);
     assert.equal(siteOrigin("http://"), null);
     assert.equal(siteOrigin("not a url"), null);
+  });
+});
+
+describe("offersServerSwitch", () => {
+  it("官方网站上不放，自己部署的网页上放", () => {
+    assert.equal(offersServerSwitch(OFFICIAL_SITE), false);
+    assert.equal(offersServerSwitch("http://192.168.1.10:8080"), true);
+    assert.equal(offersServerSwitch("http://localhost:5173"), true);
   });
 });
 

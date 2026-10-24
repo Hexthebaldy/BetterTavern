@@ -1,5 +1,5 @@
 /**
- * 登录、注册页底部的服务器行：写着现在用的是哪台服务器，点“更改”打开对话框。
+ * 登录、注册页底部的服务器行：写着现在用的是哪台服务器，点“更改”打开对话框。官方网站上不显示（offersServerSwitch）。
  * 对话框里列出官方服务和最近打开过的地址，也可以输入新地址；“打开”就跳到那台服务器自己的登录页
  * （网页和接口同源，不能只换接口地址，见 servers.ts）。地址只能自己填，不从链接参数里带进来，免得被人做成钓鱼链接。
  */
@@ -16,6 +16,7 @@ import styles from "./auth.module.css";
 import {
   displaySite,
   OFFICIAL_SITE,
+  offersServerSwitch,
   parseRecentSites,
   rememberSite,
   SERVERS_KEY,
@@ -28,6 +29,7 @@ export function ServerSwitch() {
   const [open, setOpen] = useState(false);
   const current = window.location.origin;
   const shown = displaySite(current);
+  if (!offersServerSwitch(current)) return null;
   return (
     <div className={styles.server}>
       <Icon name="server" size={18} />
