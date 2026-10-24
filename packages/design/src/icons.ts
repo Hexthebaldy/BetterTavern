@@ -76,6 +76,7 @@ export const ICONS = {
   sidebar: [{ rect: [3.5, 4.5, 17, 15, 4] }, { d: "M14.5 4.5v15M8 10l2 2-2 2" }],
   cross: [{ d: "M7 7l10 10M17 7L7 17" }],
   arrowRight: [{ d: "M5 12h14M13 6l6 6-6 6" }],
+  arrowDown: [{ d: "M12 5v14M6 13l6 6 6-6" }],
   arrowLeft: [{ d: "M19 12H5M11 6l-6 6 6 6" }],
   more: [dot(6, 12, 1.6), dot(12, 12, 1.6), dot(18, 12, 1.6)],
   grid: [

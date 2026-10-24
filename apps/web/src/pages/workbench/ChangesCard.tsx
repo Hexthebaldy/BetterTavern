@@ -1,10 +1,11 @@
 /**
  * 改动对比（W04，同 App 的 src/features/workbench/ChangesCard.tsx）：写好以后接着改时，agent 给出一处处改动，
- * 红底删除线是原文，绿底是改后的。“全部采用 / 逐条看 / 都不要”；逐条看时每处有“采用”“不要”。
+ * 半透明酒红底、删除线的是原文，中间一个向下的箭头，半透明深绿底的是改后的。“全部采用 / 逐条看 / 都不要”；逐条看时每处有“采用”“不要”。
  * 采用时那一处已经被手动改过的，服务端标成“已经手动改过，没采用”。
+ * 整张清单可以收起（点标题行）：还在等你决定时默认展开，决定完了自动收起；收起时标题行后面写改了哪几处。
  */
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
@@ -46,7 +47,14 @@ function HunkView({
           <span className={styles.hunkSummary}>{hunk.summary}</span>
         ) : null}
       </div>
-      {hunk.before ? <div className={styles.before}>{hunk.before}</div> : null}
+      {hunk.before ? (
+        <>
+          <div className={styles.before}>{hunk.before}</div>
+          <span className={styles.hunkArrow} aria-hidden="true">
+            <Icon name="arrowDown" size={14} strokeWidth={2.4} />
+          </span>
+        </>
+      ) : null}
       <div className={hunk.after === null ? styles.before : styles.after}>
         {hunk.after === null ? t("workbench.changes.deleted") : hunk.after}
       </div>
@@ -90,6 +98,12 @@ export function ChangesCard({
   const pending = hunks.filter((h) => h.state === "pending").length;
   const accepted = hunks.filter((h) => h.state === "accepted").length;
   const open = active && pending > 0;
+  const [expanded, setExpanded] = useState(open);
+  const listId = useId();
+  // 决定完了（全部采用、都不要、逐条看完）就收起来，聊天里不占地方
+  useEffect(() => {
+    if (!open) setExpanded(false);
+  }, [open]);
 
   const decide = async (decision: Decision, key: string): Promise<void> => {
     setBusy(key);
@@ -108,21 +122,37 @@ export function ChangesCard({
     <>
       {intro ? <div className={styles.agentText}>{intro}</div> : null}
       <div className={styles.card}>
-        <div className={styles.cardHead}>
-          <span className={styles.cardTitle}>{t("workbench.changes.title", { count: hunks.length })}</span>
+        <button
+          type="button"
+          className={styles.cardToggle}
+          aria-expanded={expanded}
+          aria-controls={listId}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <span className={styles.cardTitle}>
+            <Icon name={expanded ? "chevronUp" : "chevronDown"} size={16} strokeWidth={2.4} />
+            {t("workbench.changes.title", { count: hunks.length })}
+          </span>
+          {expanded ? null : (
+            <span className={styles.cardTargets}>{hunks.map((h) => hunkTargetLabel(h.target)).join(" · ")}</span>
+          )}
           {!open && pending < hunks.length ? (
             <span className={styles.cardMeta}>{t("workbench.changes.decided", { accepted })}</span>
           ) : null}
-        </div>
-        {hunks.map((hunk) => (
-          <HunkView
-            key={hunk.id}
-            hunk={hunk}
-            reviewing={open && reviewing}
-            busy={busy !== null}
-            onDecide={(decision) => void decide(decision, hunk.id)}
-          />
-        ))}
+        </button>
+        {expanded ? (
+          <div id={listId} className={styles.hunks}>
+            {hunks.map((hunk) => (
+              <HunkView
+                key={hunk.id}
+                hunk={hunk}
+                reviewing={open && reviewing}
+                busy={busy !== null}
+                onDecide={(decision) => void decide(decision, hunk.id)}
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
       {open ? (
         <div className={styles.actions}>
@@ -137,7 +167,10 @@ export function ChangesCard({
               label={t("workbench.changes.review")}
               variant="secondary"
               disabled={busy !== null}
-              onClick={() => setReviewing(true)}
+              onClick={() => {
+                setReviewing(true);
+                setExpanded(true);
+              }}
             />
           ) : null}
           <Button
