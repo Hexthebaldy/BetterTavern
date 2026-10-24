@@ -51,6 +51,7 @@ export const play: Messages<typeof source> = {
     writeOpening: "Write the opening",
     writingOpeningStep: "Writing the opening…",
     slowNote: "The first opening takes a while. You can leave; it will show up in Saves when it's ready.",
+    openingHint: "The director builds the world first, then writes the opening",
     theEnd: "The end",
     noOpening: "The opening isn't written yet. It may have been interrupted last time.",
     myActionPrefix: "My action: ",
@@ -102,6 +103,8 @@ export const play: Messages<typeof source> = {
     rollbackLeft_other: "After this, this save can go back {{count}} more times.",
     rolledBack: "Went back to this part",
     rollbackUsedUp: "This save has no go-backs left",
+    rollbacksLeft_one: "{{count}} left",
+    rollbacksLeft_other: "{{count}} left",
     rollbackFailed: "Couldn't go back: {{error}}",
   },
   reading: {

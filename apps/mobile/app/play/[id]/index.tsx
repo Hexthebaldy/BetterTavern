@@ -22,26 +22,22 @@ import type { Scenario } from "@bettertavern/core/api/types";
 import { canAct, headTurn, isEnded, rollbackStatus, turnsAfter } from "@bettertavern/core/play/turnMachine";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
 
-import { Button, Dots, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
+import { Dots, ErrorState, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
 import { BottomBar } from "../../../src/features/play/BottomBar.tsx";
 import { MoreSheet } from "../../../src/features/play/MoreSheet.tsx";
 import { RollbackSheet } from "../../../src/features/play/RollbackSheet.tsx";
-import {
-  BookHeader,
-  columnWidth,
-  StoryFeed,
-  type StoryFeedHandle,
-} from "../../../src/features/play/StoryFeed.tsx";
+import { BookHeader } from "../../../src/features/play/FeedParts.tsx";
+import { columnWidth, StoryFeed, type StoryFeedHandle } from "../../../src/features/play/StoryFeed.tsx";
 import { TurnActions } from "../../../src/features/play/TurnActions.tsx";
 import { usePlaySession } from "../../../src/features/play/usePlaySession.ts";
 import { WorldDock, WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
 import { useLayout } from "../../../src/hooks/useLayout.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../../src/state/PrefsProvider.tsx";
-import { radius, space, usePalette } from "../../../src/theme/index.ts";
+import { comicDepth, comicRadius, comicStroke, hardShadow, space, useComic } from "../../../src/theme/index.ts";
 
 function OpeningSkeleton() {
-  const palette = usePalette();
+  const c = useComic();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   return (
@@ -55,7 +51,7 @@ function OpeningSkeleton() {
         <SkeletonLine />
         <SkeletonLine />
         <SkeletonLine width="58%" />
-        <View style={[styles.skeletonCard, { backgroundColor: palette.bg2 }]} />
+        <View style={[styles.skeletonCard, { borderColor: c.grey2, backgroundColor: c.paper }]} />
         <SkeletonLine />
         <SkeletonLine />
         <SkeletonLine width="74%" />
@@ -65,36 +61,31 @@ function OpeningSkeleton() {
         <SkeletonLine width="40%" />
       </View>
       <View
-        style={[styles.opening, { bottom: insets.bottom + 30, backgroundColor: palette.bg2 }]}
+        style={[
+          styles.pill,
+          {
+            bottom: insets.bottom + 30,
+            backgroundColor: c.paper,
+            borderColor: c.ink,
+            boxShadow: hardShadow(c.ink, comicDepth.iconButton),
+          },
+        ]}
         accessibilityRole="progressbar"
         accessibilityLabel={t("play.opening")}
       >
-        <Dots />
-        <Text style={{ fontSize: 13, color: palette.mut }}>{t("play.opening")}</Text>
+        <Dots cell={6} />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: c.ink }}>{t("play.opening")}</Text>
       </View>
     </View>
   );
 }
 
+/** 打不开：白底墨框的提示，红色图标和主按钮“重新加载” */
 function LoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
-  const palette = usePalette();
   const { t } = useTranslation();
   return (
     <View style={styles.failedWrap}>
-      <View style={[styles.failed, { backgroundColor: palette.bg2 }]} accessibilityRole="alert">
-        <View style={[styles.failedIcon, { backgroundColor: palette.errBg }]}>
-          <Icon name="alertCircle" size={28} color={palette.err} />
-        </View>
-        <Text
-          style={{ fontSize: 22, lineHeight: 30, fontWeight: "700", color: palette.ink, textAlign: "center" }}
-        >
-          {t("play.openFailed")}
-        </Text>
-        <Text style={{ fontSize: 15, lineHeight: 24, color: palette.mut, textAlign: "center" }}>
-          {message}
-        </Text>
-        <Button label={t("common.reload")} icon="retry" onPress={onRetry} style={styles.failedButton} />
-      </View>
+      <ErrorState icon="alertCircle" title={t("play.openFailed")} message={message} onRetry={onRetry} primary />
     </View>
   );
 }
@@ -102,7 +93,7 @@ function LoadFailed({ message, onRetry }: { message: string; onRetry: () => void
 export default function PlayScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const palette = usePalette();
+  const c = useComic();
   const overlay = useOverlay();
   const { api } = useApp();
   const { t } = useTranslation();
@@ -263,7 +254,7 @@ export default function PlayScreen() {
 
   if (state.phase === "loading") {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         {nav}
         <OpeningSkeleton />
       </View>
@@ -271,7 +262,7 @@ export default function PlayScreen() {
   }
   if (state.phase === "load_failed") {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <View style={{ flex: 1, backgroundColor: c.page }}>
         {nav}
         <LoadFailed
           message={state.error ? describeTurnError(state.error) : t("play.loadFailed")}
@@ -288,7 +279,7 @@ export default function PlayScreen() {
   };
   return (
     // 左边是阅读区（导航栏、故事流、操作栏），停靠时右边是世界状态；手机上只有阅读区
-    <View style={{ flex: 1, flexDirection: "row", backgroundColor: palette.bg }}>
+    <View style={{ flex: 1, flexDirection: "row", backgroundColor: c.page }}>
       <View style={{ flex: 1 }}>
         {nav}
         {/* 操作栏自己跟着键盘浮起（见 BottomBar），故事流的底部留白跟着它走 */}
@@ -322,9 +313,20 @@ export default function PlayScreen() {
             }
           />
           {syncing ? (
-            <View accessibilityRole="alert" style={[styles.syncing, { backgroundColor: palette.accBg }]}>
-              <Icon name="retry" size={16} color={palette.acc} />
-              <Text style={{ fontSize: 13.5, fontWeight: "500", color: palette.acc }}>
+            <View
+              accessibilityRole="alert"
+              style={[
+                styles.pill,
+                styles.syncing,
+                {
+                  backgroundColor: c.paper,
+                  borderColor: c.ink,
+                  boxShadow: hardShadow(c.acc, comicDepth.iconButton),
+                },
+              ]}
+            >
+              <Icon name="retry" size={16} color={c.acc} />
+              <Text style={{ fontSize: 13.5, fontWeight: "700", color: c.ink }}>
                 {t("play.syncing")}
               </Text>
             </View>
@@ -382,6 +384,7 @@ export default function PlayScreen() {
           setRollbackOpen(true);
         }}
         rollback={rollbackStatus(state)}
+        rollbacksLeft={state.rollbacksLeft}
         onDelete={() => void remove()}
       />
     </View>
@@ -399,44 +402,24 @@ const styles = StyleSheet.create({
   },
   skeletonCard: {
     height: 56,
-    borderRadius: radius.card,
+    borderRadius: comicRadius.frame,
+    borderWidth: comicStroke.frame,
     marginHorizontal: -space.s,
     marginVertical: space.m,
   },
-  opening: {
+  /** 打开中、同步中的胶囊：白底 2 墨线、投影 2 */
+  pill: {
     position: "absolute",
     alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     gap: space.s,
     height: 36,
-    paddingHorizontal: space.l,
+    paddingHorizontal: 14,
     borderRadius: 18,
+    borderWidth: comicStroke.control,
   },
-  /** 平板上卡片最宽 480，居中；手机上就是整宽 */
-  failedWrap: { width: "100%", maxWidth: pane.dialog + space.l * 2, alignSelf: "center" },
-  failed: {
-    marginTop: 146,
-    marginHorizontal: space.l,
-    paddingTop: space.xl,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderRadius: radius.sheet,
-    alignItems: "center",
-    gap: space.m,
-  },
-  failedIcon: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center" },
-  failedButton: { alignSelf: "stretch", marginTop: space.s },
-  syncing: {
-    position: "absolute",
-    top: space.s,
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.s,
-    height: 40,
-    paddingLeft: space.m,
-    paddingRight: space.l,
-    borderRadius: 20,
-  },
+  /** 平板上最宽 480，居中；手机上就是整宽 */
+  failedWrap: { width: "100%", maxWidth: pane.dialog + space.l * 2, alignSelf: "center", marginTop: 120 },
+  syncing: { top: space.s },
 });

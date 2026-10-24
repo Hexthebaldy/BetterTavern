@@ -1,6 +1,10 @@
 /**
  * 世界状态面板（WorldSheet.tsx）的三页：人物与地点、关系、事实。
- * 卡片底色按面板的表面取（useSheetSurfaces）：手机的底部面板里是灰卡，平板灰底的停靠面板里是白卡。
+ *
+ * 漫画风（docs/design/comic/mobile/png/09、46、47）：
+ * - 人物与地点：筛选标签，下面一张张白底墨线的格子；左边 42 的灰底图标方块，“我”的格子加蓝投影 3、图标方块填蓝；
+ * - 关系：白底网点的关系图（“我”是蓝底节点、主角色是墨底节点，其他白底，都是 2 的墨线），下面一个格子列出每条关系；
+ * - 事实：一个格子里一条一行，前面墨色圆点；揭示过的秘密是琥珀色；没揭示的秘密是一行墨色虚线框加“揭示”。
  */
 
 import { useMemo, useState } from "react";
@@ -12,8 +16,9 @@ import type { WorldEntity, WorldView } from "@bettertavern/core/api/types";
 import { lookup } from "@bettertavern/core/i18n/index";
 import { layoutGraph, NODE_HEIGHT, relLabel } from "@bettertavern/core/play/worldGraph";
 
-import { Chip, Icon, Pill, useSheetSurfaces, type IconName } from "../../components/ui.tsx";
-import { onColor, radius, space, useIsDark, usePalette } from "../../theme/index.ts";
+import { Halftone } from "../../components/Halftone.tsx";
+import { Chip, Group, Icon, Pill, press, type IconName } from "../../components/ui.tsx";
+import { comicDepth, comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 
 export type Tab = "entities" | "links" | "facts";
 type Filter = "all" | "character" | "location" | "item" | "organization";
@@ -46,8 +51,7 @@ function EntityRow({
   open: boolean;
   onToggle: () => void;
 }) {
-  const palette = usePalette();
-  const surfaces = useSheetSurfaces();
+  const c = useComic();
   const { t } = useTranslation();
   const kind = kindOf(entity.kind);
   const outgoing = view.links.filter((l) => l.src_id === entity.id && names.has(l.dst_id));
@@ -60,10 +64,10 @@ function EntityRow({
   const expandable = outgoing.length + incoming.length + details.length > 0 || entity.summary.length > 60;
   const me = entity.is_protagonist;
   const chip = (key: string, label: string, name: string | undefined, incoming?: boolean) => (
-    <View key={key} style={[styles.relChip, { backgroundColor: surfaces.onFill }]}>
-      <Text style={[styles.kind, { color: palette.mut }]}>{label}</Text>
-      {incoming ? <Icon name="arrowLeft" size={12} color={palette.mut} /> : null}
-      <Text style={{ fontSize: 12.5, color: palette.ink }}>{name}</Text>
+    <View key={key} style={[styles.relChip, { borderColor: c.ink, backgroundColor: c.paper }]}>
+      <Text style={[styles.kind, { color: c.mut }]}>{label}</Text>
+      {incoming ? <Icon name="arrowLeft" size={12} color={c.mut} /> : null}
+      <Text style={{ fontSize: 12.5, color: c.ink }}>{name}</Text>
     </View>
   );
   return (
@@ -74,29 +78,25 @@ function EntityRow({
       onPress={onToggle}
       style={({ pressed }) => [
         styles.entity,
-        {
-          backgroundColor: me ? palette.accBg : surfaces.fill,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        },
+        { borderColor: c.ink, backgroundColor: pressed && !me ? c.grey : c.paper },
+        me ? press(pressed, comicDepth.focus, c.acc) : null,
       ]}
     >
-      <View style={[styles.entityIcon, { backgroundColor: me ? palette.acc : surfaces.onFill }]}>
-        <Icon name={kind.icon} size={20} color={me ? onColor : palette.ink} />
+      <View style={[styles.entityIcon, { borderColor: c.ink, backgroundColor: me ? c.acc : c.grey }]}>
+        <Icon name={kind.icon} size={20} color={me ? c.onAcc : c.ink} />
       </View>
       <View style={{ flex: 1, gap: open ? space.s : 2 }}>
         <View style={styles.entityTop}>
-          <Text style={[styles.entityName, { color: palette.ink, flex: me ? 0 : 1 }]}>{entity.name}</Text>
+          <Text style={[styles.entityName, { color: c.ink, flex: me ? 0 : 1 }]}>{entity.name}</Text>
           {me ? <Pill label={t("world.me")} tone="accSolid" height={20} /> : null}
           {me ? <View style={{ flex: 1 }} /> : null}
-          {me ? null : <Text style={[styles.kind, { color: palette.mut }]}>{kind.label}</Text>}
-          {expandable ? (
-            <Icon name={open ? "chevronUp" : "chevronDown"} size={16} color={palette.mut} />
-          ) : null}
+          {me ? null : <Text style={[styles.kind, { color: c.mut }]}>{kind.label}</Text>}
+          {expandable ? <Icon name={open ? "chevronUp" : "chevronDown"} size={16} color={c.mut} /> : null}
         </View>
         {entity.summary ? (
           <Text
             numberOfLines={open ? undefined : 3}
-            style={{ fontSize: 13.5, lineHeight: 21, color: palette.ink2 }}
+            style={{ fontSize: 14, lineHeight: 21, color: c.ink2 }}
           >
             {entity.summary}
           </Text>
@@ -104,8 +104,8 @@ function EntityRow({
         {open && details.length > 0 ? (
           <View style={{ gap: 4 }}>
             {details.map(([key, value]) => (
-              <Text key={key} style={{ fontSize: 13, lineHeight: 20, color: palette.ink }}>
-                <Text style={{ color: palette.mut }}>{lookup(`world.attrs.${key}`) ?? key} </Text>
+              <Text key={key} style={{ fontSize: 13, lineHeight: 20, color: c.ink }}>
+                <Text style={{ color: c.mut }}>{lookup(`world.attrs.${key}`) ?? key} </Text>
                 {value}
               </Text>
             ))}
@@ -125,16 +125,11 @@ function EntityRow({
 export function Entities({
   view,
   names,
-  panel,
 }: {
   view: WorldView;
   names: Map<string, string>;
-  /** 平板的灰底面板：未选中的标签用白色 card 底 */
-  panel: boolean;
 }) {
-  const palette = usePalette();
-  // 深色下面板比页面亮，未选中的标签改用更亮的 card 底；平板的灰底面板上也用 card 底
-  const onGrey = useIsDark() || panel;
+  const c = useComic();
   const { t } = useTranslation();
   const [filter, setFilter] = useState<Filter>("all");
   const [open, setOpen] = useState<string | null>(null);
@@ -151,7 +146,6 @@ export function Entities({
       <View style={styles.filters}>
         <Chip
           small
-          onGrey={onGrey}
           label={t("world.all")}
           selected={filter === "all"}
           onPress={() => setFilter("all")}
@@ -160,7 +154,6 @@ export function Entities({
           <Chip
             key={k}
             small
-            onGrey={onGrey}
             label={kindOf(k).label}
             icon={kindOf(k).icon}
             selected={filter === k}
@@ -181,13 +174,13 @@ export function Entities({
         ))}
       </View>
       {shown.length === 0 ? (
-        <Text style={[styles.empty, { color: palette.mut }]}>{t("world.empty")}</Text>
+        <Text style={[styles.empty, { color: c.mut }]}>{t("world.empty")}</Text>
       ) : null}
     </View>
   );
 }
 
-/** panelWidth：面板的宽度（手机是屏幕宽减两边各 8，平板是 400），关系图卡片左右再各缩进 12 */
+/** panelWidth：面板的宽度（手机是屏幕宽减两边各 8，平板是 400），关系图格子左右再各缩进 12 */
 export function Links({
   view,
   names,
@@ -197,18 +190,17 @@ export function Links({
   names: Map<string, string>;
   panelWidth: number;
 }) {
-  const palette = usePalette();
-  const surfaces = useSheetSurfaces();
+  const c = useComic();
   const { t } = useTranslation();
-  const width = panelWidth - space.list * 2;
+  // 格子的 2.5 墨线在里面
+  const width = panelWidth - space.list * 2 - comicStroke.frame * 2;
   const height = 300;
   const graph = useMemo(() => layoutGraph(view.entities, view.links, width, height), [view, width]);
   const links = view.links.filter((l) => names.has(l.src_id) && names.has(l.dst_id));
-  if (links.length === 0)
-    return <Text style={[styles.empty, { color: palette.mut }]}>{t("world.noLinks")}</Text>;
+  if (links.length === 0) return <Text style={[styles.empty, { color: c.mut }]}>{t("world.noLinks")}</Text>;
   return (
     <View>
-      <View style={[styles.graph, { backgroundColor: surfaces.fill }]}>
+      <Halftone tone="ink" style={[styles.graph, { borderColor: c.ink }]}>
         <Svg
           width={width}
           height={height}
@@ -223,25 +215,38 @@ export function Links({
               y1={e.from.y}
               x2={e.to.x}
               y2={e.to.y}
-              stroke={palette.line2}
-              strokeWidth={1.6}
+              stroke={c.ink}
+              strokeWidth={2}
               strokeLinecap="round"
             />
           ))}
-          {graph.edges.map((e, i) => (
-            <SvgText
-              key={`t${i}`}
-              x={(e.from.x + e.to.x) / 2 + 4}
-              y={(e.from.y + e.to.y) / 2 - 4}
-              fontSize={11}
-              fill={palette.mut}
-            >
-              {e.label}
-            </SvgText>
-          ))}
+          {graph.edges.map((e, i) => {
+            const x = (e.from.x + e.to.x) / 2;
+            const y = (e.from.y + e.to.y) / 2 + 4;
+            // 先描一圈白边再写字：字压在连线和网点上也看得清
+            return (
+              <G key={`t${i}`}>
+                <SvgText
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  fontSize={12}
+                  stroke={c.paper}
+                  strokeWidth={5}
+                  strokeLinejoin="round"
+                  fill={c.paper}
+                >
+                  {e.label}
+                </SvgText>
+                <SvgText x={x} y={y} textAnchor="middle" fontSize={12} fill={c.mut}>
+                  {e.label}
+                </SvgText>
+              </G>
+            );
+          })}
           {graph.nodes.map((n) => {
-            const fill = n.role === "me" ? palette.acc : n.role === "hub" ? palette.ink : surfaces.onFill;
-            const text = n.role === "me" ? onColor : n.role === "hub" ? palette.bg : palette.ink;
+            const fill = n.role === "me" ? c.acc : n.role === "hub" ? c.ink : c.paper;
+            const text = n.role === "me" ? c.onAcc : n.role === "hub" ? c.paper : c.ink;
             return (
               <G key={n.id}>
                 <Rect
@@ -251,40 +256,32 @@ export function Links({
                   height={NODE_HEIGHT}
                   rx={NODE_HEIGHT / 2}
                   fill={fill}
+                  stroke={c.ink}
+                  strokeWidth={comicStroke.control}
                 />
-                <SvgText
-                  x={n.x}
-                  y={n.y + 4.5}
-                  textAnchor="middle"
-                  fontSize={13}
-                  fontWeight={n.role === "other" ? "400" : "700"}
-                  fill={text}
-                >
+                <SvgText x={n.x} y={n.y + 4.5} textAnchor="middle" fontSize={13} fontWeight="700" fill={text}>
                   {n.label}
                 </SvgText>
               </G>
             );
           })}
         </Svg>
-      </View>
-      <View style={styles.list}>
+      </Halftone>
+      <Group style={styles.block}>
         {links.map((l) => (
-          <View
-            key={`${l.src_id}${l.rel}${l.dst_id}`}
-            style={[styles.linkLine, { backgroundColor: surfaces.fill }]}
-          >
-            <Text numberOfLines={1} style={[styles.linkName, { color: palette.ink }]}>
+          <View key={`${l.src_id}${l.rel}${l.dst_id}`} style={styles.linkLine}>
+            <Text numberOfLines={1} style={[styles.linkName, { color: c.ink }]}>
               {names.get(l.src_id)}
             </Text>
-            <View style={[styles.linkMid, { backgroundColor: surfaces.onFill }]}>
-              <Text style={{ fontSize: 12, color: palette.mut }}>{relLabel(l.rel)} →</Text>
+            <View style={[styles.linkMid, { borderColor: c.ink, backgroundColor: c.paper }]}>
+              <Text style={{ fontSize: 12.5, color: c.ink }}>{relLabel(l.rel)} →</Text>
             </View>
-            <Text numberOfLines={1} style={[styles.linkName, { color: palette.ink, textAlign: "right" }]}>
+            <Text numberOfLines={1} style={[styles.linkName, { color: c.ink, textAlign: "right" }]}>
               {names.get(l.dst_id)}
             </Text>
           </View>
         ))}
-      </View>
+      </Group>
     </View>
   );
 }
@@ -298,64 +295,67 @@ export function Facts({
   names: Map<string, string>;
   onReveal: () => void;
 }) {
-  const palette = usePalette();
-  const surfaces = useSheetSurfaces();
+  const c = useComic();
   const { t } = useTranslation();
   const facts = [...view.facts].sort(
     // 秘密排在后面，其余沿用服务端的顺序（建立得越晚越靠前）
     (a, b) => Number(a.secret) - Number(b.secret),
   );
   return (
-    <View style={styles.list}>
-      {facts.map((f) => (
-        <View
-          key={f.id}
-          style={[styles.fact, { backgroundColor: f.secret ? palette.warnBg : surfaces.fill }]}
-        >
-          {f.secret ? (
-            <View style={{ marginTop: 3 }}>
-              <Icon name="unlock" size={16} color={palette.warn} />
+    <View style={styles.block}>
+      {facts.length > 0 ? (
+        <Group>
+          {facts.map((f) => (
+            <View key={f.id} style={styles.fact}>
+              {f.secret ? (
+                <View style={{ marginTop: 3 }}>
+                  <Icon name="unlock" size={16} color={c.warn} />
+                </View>
+              ) : (
+                <View style={[styles.factDot, { backgroundColor: c.ink }]} />
+              )}
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontSize: 14.5, lineHeight: 22, color: c.ink }}>{f.text}</Text>
+                {f.secret || f.entity_ids.length > 0 ? (
+                  <Text style={[styles.kind, { color: f.secret ? c.warn : c.mut }]}>
+                    {[
+                      f.secret ? t("world.secretRevealed") : null,
+                      ...f.entity_ids.map((id) => names.get(id)).filter(Boolean),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-          ) : (
-            <View style={[styles.factDot, { backgroundColor: palette.ink }]} />
-          )}
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontSize: 14, lineHeight: 22, color: palette.ink }}>{f.text}</Text>
-            {f.secret || f.entity_ids.length > 0 ? (
-              <Text style={[styles.kind, { color: f.secret ? palette.warn : palette.mut }]}>
-                {[
-                  f.secret ? t("world.secretRevealed") : null,
-                  ...f.entity_ids.map((id) => names.get(id)).filter(Boolean),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      ))}
+          ))}
+        </Group>
+      ) : null}
       {view.hidden_facts > 0 ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("world.hiddenLabel", { count: view.hidden_facts })}
           onPress={onReveal}
           style={({ pressed }) => [
-            styles.fact,
             styles.hidden,
-            { backgroundColor: palette.warnBg, transform: [{ scale: pressed ? 0.98 : 1 }] },
+            { borderColor: c.ink, backgroundColor: pressed ? c.grey : "transparent" },
           ]}
         >
-          <Icon name="lock" size={16} color={palette.warn} />
-          <Text style={{ flex: 1, fontSize: 13, color: palette.warn }}>
-            {t("world.hidden", { count: view.hidden_facts })}
-          </Text>
-          <View style={[styles.revealPill, { backgroundColor: surfaces.onFill }]}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: palette.warn }}>{t("world.reveal")}</Text>
-          </View>
+          {({ pressed }) => (
+            <>
+              <Icon name="lock" size={18} color={c.ink} />
+              <Text style={{ flex: 1, fontSize: 13.5, fontWeight: "700", color: c.ink }}>
+                {t("world.hidden", { count: view.hidden_facts })}
+              </Text>
+              <View style={[styles.revealPill, { backgroundColor: c.ink }, press(pressed, comicDepth.focus, c.acc)]}>
+                <Text style={{ fontSize: 13.5, fontWeight: "700", color: c.paper }}>{t("world.reveal")}</Text>
+              </View>
+            </>
+          )}
         </Pressable>
       ) : null}
       {facts.length === 0 && view.hidden_facts === 0 ? (
-        <Text style={[styles.empty, { color: palette.mut }]}>{t("world.noFacts")}</Text>
+        <Text style={[styles.empty, { color: c.mut }]}>{t("world.noFacts")}</Text>
       ) : null}
     </View>
   );
@@ -365,39 +365,68 @@ const styles = StyleSheet.create({
   filters: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: space.s,
     paddingTop: space.m,
     paddingHorizontal: space.list,
   },
-  list: { paddingVertical: space.s, paddingHorizontal: space.list, gap: 6 },
-  entity: { flexDirection: "row", gap: space.m, padding: space.m, borderRadius: radius.option },
-  entityIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  list: { paddingTop: space.m, paddingBottom: space.s, paddingHorizontal: space.list, gap: space.m },
+  block: { marginTop: space.m, marginHorizontal: space.list, gap: space.m },
+  entity: {
+    flexDirection: "row",
+    gap: space.m,
+    padding: space.m,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+  },
+  entityIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    borderWidth: comicStroke.control,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   entityTop: { flexDirection: "row", alignItems: "center", gap: space.s },
-  entityName: { fontSize: 16, lineHeight: 22, fontWeight: "700" },
-  kind: { fontSize: 12, lineHeight: 17 },
+  entityName: { fontSize: 17, lineHeight: 23, fontWeight: "900" },
+  kind: { fontSize: 12.5, lineHeight: 17 },
   relChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   relChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    height: 28,
-    paddingHorizontal: 10,
-    borderRadius: 14,
+    gap: 5,
+    height: 26,
+    paddingHorizontal: 9,
+    borderRadius: comicRadius.tag,
+    borderWidth: comicStroke.chip,
   },
-  graph: { marginTop: space.m, marginHorizontal: space.list, borderRadius: radius.group, overflow: "hidden" },
-  linkLine: {
+  graph: {
+    marginTop: space.m,
+    marginHorizontal: space.list,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
+  },
+  linkLine: { flexDirection: "row", alignItems: "center", gap: space.s, paddingVertical: space.m, paddingHorizontal: 14 },
+  linkName: { flex: 1, fontSize: 14.5 },
+  linkMid: {
+    height: 26,
+    paddingHorizontal: 9,
+    borderRadius: comicRadius.tag,
+    borderWidth: comicStroke.chip,
+    justifyContent: "center",
+  },
+  fact: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: space.m, paddingHorizontal: 14 },
+  hidden: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.s,
-    paddingVertical: space.m,
-    paddingHorizontal: space.l,
-    borderRadius: radius.card,
+    height: 46,
+    paddingLeft: space.m,
+    paddingRight: 6,
+    borderRadius: 10,
+    borderWidth: comicStroke.control,
+    borderStyle: "dashed",
   },
-  linkName: { flex: 1, fontSize: 14 },
-  linkMid: { height: 24, paddingHorizontal: 10, borderRadius: 12, justifyContent: "center" },
-  fact: { flexDirection: "row", alignItems: "flex-start", gap: space.m, padding: 14, borderRadius: 22 },
-  hidden: { alignItems: "center", paddingVertical: 6, paddingRight: 6 },
-  revealPill: { height: 32, paddingHorizontal: space.m, borderRadius: 16, justifyContent: "center" },
-  factDot: { width: 8, height: 8, borderRadius: 4, marginTop: 7 },
+  revealPill: { height: 32, paddingHorizontal: 14, borderRadius: 16, justifyContent: "center" },
+  factDot: { width: 7, height: 7, borderRadius: 4, marginTop: 8 },
   empty: { padding: space.page, fontSize: 14, lineHeight: 22 },
 });

@@ -52,6 +52,7 @@ export const play: MessagesOtherOnly<typeof source> = {
     writingOpeningStep: "冒頭を執筆中…",
     slowNote:
       "最初の冒頭は時間がかかります。この画面を離れても大丈夫です。書き終わると「セーブ」に表示されます。",
+    openingHint: "監督がまず世界を組み立て、それから冒頭を書きます",
     theEnd: "完",
     noOpening: "冒頭がまだできていません。前回は途中で止まった可能性があります。",
     myActionPrefix: "自分の行動：",
@@ -97,6 +98,7 @@ export const play: MessagesOtherOnly<typeof source> = {
     rollbackLeft_other: "戻したあと、このセーブではあと {{count}} 回戻せます。",
     rolledBack: "この場面に戻りました",
     rollbackUsedUp: "このセーブではもう戻せません",
+    rollbacksLeft_other: "あと {{count}} 回",
     rollbackFailed: "戻せませんでした：{{error}}",
   },
   reading: {

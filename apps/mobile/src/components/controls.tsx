@@ -209,7 +209,7 @@ export function Segmented<T extends string>({
               <Text
                 numberOfLines={1}
                 style={[
-                  { fontSize: 14, fontWeight: "600", color: fg },
+                  { flexShrink: 1, fontSize: 14, fontWeight: "600", color: fg },
                   mono ? { fontFamily: font.monoMedium, fontWeight: "normal" } : null,
                 ]}
               >
@@ -420,7 +420,15 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     overflow: "hidden",
   },
-  segment: { flex: 1, flexDirection: "row", gap: 5, alignItems: "center", justifyContent: "center" },
+  segment: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    gap: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
   chip: {
     maxWidth: "100%",
     flexDirection: "row",

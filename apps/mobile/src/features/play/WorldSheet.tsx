@@ -4,12 +4,13 @@
  *
  * 形态按阅读页的宽度（theme/layout.ts 的 worldPresentation）：
  * - 手机：从状态栏下方一直到底的底部面板；
- * - 600–1099：从右侧滑出，宽 400，上、下、右各留 8，圆角 32，有遮罩，右上角是 ×；
+ * - 600–1099：从右侧滑出，宽 400，上、下、右各留 8，有遮罩，右上角是 ×；
  * - ≥ 1100：停靠在右侧（WorldDock），不加遮罩，阅读栏在剩下的宽度里居中，右上角是收起按钮（侧栏图标）。
- * 平板的两种都是灰底（bg2），里面的卡片是白色（PanelSurfaces）。揭示秘密的确认框在任何形态下都是居中对话框。
+ * 漫画风：几种形态都是页面底色、2.5 墨线；标题“世界”和“截至第 N 回合”，三段切换选中的是墨底。
+ * 揭示秘密的确认框在任何形态下都是居中对话框。
  */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,20 +20,10 @@ import type { WorldView } from "@bettertavern/core/api/types";
 import { worldIssue, worldProgress, worldRefreshDelay } from "@bettertavern/core/play/worldStatus";
 import { pane } from "@bettertavern/design/layout";
 
-import {
-  Dots,
-  ErrorState,
-  IconButton,
-  Notice,
-  PanelSurfaces,
-  Segmented,
-  Sheet,
-  useOverlay,
-  useSheetSurfaces,
-} from "../../components/ui.tsx";
+import { Dots, ErrorState, IconButton, Notice, Segmented, Sheet, useOverlay } from "../../components/ui.tsx";
 import { useLayout } from "../../hooks/useLayout.ts";
 import { useApp } from "../../state/AppProvider.tsx";
-import { radius, space, usePalette } from "../../theme/index.ts";
+import { comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 import { Entities, Facts, Links, type Tab } from "./WorldParts.tsx";
 
 /**
@@ -106,8 +97,7 @@ function WorldHeader({
   /** 停靠着：右上角是收起按钮 */
   docked?: boolean;
 }) {
-  const palette = usePalette();
-  const surfaces = useSheetSurfaces();
+  const c = useComic();
   const { t } = useTranslation();
   const { view } = world;
   const counts = view
@@ -126,19 +116,19 @@ function WorldHeader({
     <View>
       <View style={styles.head}>
         <View style={{ flex: 1 }}>
-          <Text accessibilityRole="header" style={[styles.title, { color: palette.ink }]}>
+          <Text accessibilityRole="header" style={[styles.title, { color: c.ink }]}>
             {t("world.title")}
           </Text>
           {view ? (
-            <Text style={{ fontSize: 12, lineHeight: 17, color: palette.mut }}>{worldProgress(view)}</Text>
+            <Text style={{ fontSize: 13, lineHeight: 19, color: c.mut }}>{worldProgress(view)}</Text>
           ) : null}
         </View>
         <IconButton
           icon={docked ? "sidebar" : "close"}
           label={docked ? t("play.worldHide") : t("common.close")}
-          size={docked ? 20 : 22}
+          size={docked ? 20 : 18}
+          diameter={38}
           onPress={onClose}
-          style={{ backgroundColor: surfaces.fill }}
         />
       </View>
       <Segmented
@@ -151,17 +141,7 @@ function WorldHeader({
   );
 }
 
-function WorldBody({
-  world,
-  tab,
-  panelWidth,
-  panel,
-}: {
-  world: World;
-  tab: Tab;
-  panelWidth: number;
-  panel: boolean;
-}) {
+function WorldBody({ world, tab, panelWidth }: { world: World; tab: Tab; panelWidth: number }) {
   const { view, error } = world;
   const { t } = useTranslation();
   const names = useMemo(() => new Map((view?.entities ?? []).map((e) => [e.id, e.name])), [view]);
@@ -172,7 +152,7 @@ function WorldBody({
       ) : null}
       {view ? (
         tab === "entities" ? (
-          <Entities view={view} names={names} panel={panel} />
+          <Entities view={view} names={names} />
         ) : tab === "links" ? (
           <Links view={view} names={names} panelWidth={panelWidth} />
         ) : (
@@ -202,27 +182,26 @@ export function WorldSheet({
   headSeq: number | null;
   playthroughId: string;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { compact, width } = useLayout();
   const world = useWorld(playthroughId, visible, headSeq);
   const [tab, setTab] = useState<Tab>("entities");
   // 手机：面板左右各离屏幕 8；平板：滑出的面板宽 400
   const panelWidth = compact ? width - space.s * 2 : pane.world;
-  const surfaced = (node: ReactNode) => (compact ? node : <PanelSurfaces>{node}</PanelSurfaces>);
   return (
     <Sheet
       visible={visible}
       onClose={onClose}
       full
-      style={compact ? null : { backgroundColor: palette.bg2 }}
-      header={surfaced(<WorldHeader world={world} tab={tab} onTab={setTab} onClose={onClose} />)}
+      style={{ backgroundColor: c.page }}
+      header={<WorldHeader world={world} tab={tab} onTab={setTab} onClose={onClose} />}
     >
-      {surfaced(<WorldBody world={world} tab={tab} panelWidth={panelWidth} panel={!compact} />)}
+      <WorldBody world={world} tab={tab} panelWidth={panelWidth} />
     </Sheet>
   );
 }
 
-/** 停靠在阅读页右侧的世界状态（阅读页宽 ≥ 1100）：宽 400，上、下、右各留 8，圆角 32，灰底，不加遮罩 */
+/** 停靠在阅读页右侧的世界状态（阅读页宽 ≥ 1100）：宽 400，上、下、右各留 8，2.5 墨线、圆角 16，页面底色，不加遮罩 */
 export function WorldDock({
   onClose,
   playthroughId,
@@ -233,7 +212,7 @@ export function WorldDock({
   /** 最新一段的序号：变了就重新取 */
   headSeq: number | null;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const world = useWorld(playthroughId, true, headSeq);
@@ -246,14 +225,13 @@ export function WorldDock({
         {
           marginTop: insets.top + space.s,
           marginBottom: Math.max(insets.bottom, space.s),
-          backgroundColor: palette.bg2,
+          backgroundColor: c.page,
+          borderColor: c.ink,
         },
       ]}
     >
-      <PanelSurfaces>
-        <WorldHeader world={world} tab={tab} onTab={setTab} onClose={onClose} docked />
-        <WorldBody world={world} tab={tab} panelWidth={pane.world} panel />
-      </PanelSurfaces>
+      <WorldHeader world={world} tab={tab} onTab={setTab} onClose={onClose} docked />
+      <WorldBody world={world} tab={tab} panelWidth={pane.world - comicStroke.frame * 2} />
     </View>
   );
 }
@@ -266,7 +244,7 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
     paddingRight: space.m,
   },
-  title: { fontSize: 24, lineHeight: 32, fontWeight: "700" },
+  title: { fontSize: 26, lineHeight: 32, fontWeight: "900", letterSpacing: -0.5 },
   tabs: { marginTop: 14, marginHorizontal: space.list },
   loading: { padding: space.xxl, alignItems: "center" },
   issue: { marginTop: space.m, marginHorizontal: space.list },
@@ -274,7 +252,8 @@ const styles = StyleSheet.create({
     width: pane.world,
     marginRight: space.s,
     paddingTop: space.s,
-    borderRadius: radius.sheet,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.panel,
     overflow: "hidden",
   },
 });

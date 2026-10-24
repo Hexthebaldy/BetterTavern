@@ -69,11 +69,14 @@ export function MenuItem({
   onPress,
   danger,
   disabled,
+  meta,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
   danger?: boolean;
+  /** 右端一行浅色说明（“还能 3 次”） */
+  meta?: string;
   /** 暂时不能用：变淡，点了没反应 */
   disabled?: boolean;
 }) {
@@ -88,7 +91,10 @@ export function MenuItem({
       style={({ pressed }) => [styles.menuItem, { backgroundColor: pressed ? c.grey : "transparent" }]}
     >
       <Icon name={icon} color={color} />
-      <Text style={{ fontSize: 15.5, lineHeight: 22, fontWeight: "600", color }}>{label}</Text>
+      <Text numberOfLines={1} style={{ flex: 1, fontSize: 15.5, lineHeight: 22, fontWeight: "600", color }}>
+        {label}
+      </Text>
+      {meta ? <Text style={{ fontSize: 13.5, color: c.mut }}>{meta}</Text> : null}
     </Pressable>
   );
 }

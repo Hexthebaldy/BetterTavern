@@ -49,6 +49,7 @@ export const play = {
     writeOpening: "写开场",
     writingOpeningStep: "正在写开场…",
     slowNote: "第一次开场比较慢。可以先离开，写好后会出现在“存档”里。",
+    openingHint: "导演会先搭好世界，再写开场",
     theEnd: "全文完",
     noOpening: "开场还没有写好，上次可能中断了。",
     myActionPrefix: "我的行动：",
@@ -94,6 +95,7 @@ export const play = {
     rollbackLeft_other: "回退之后，这个存档还能回退 {{count}} 次。",
     rolledBack: "已经回到这一段",
     rollbackUsedUp: "这个存档的回退次数已用完",
+    rollbacksLeft_other: "还能 {{count}} 次",
     rollbackFailed: "没能回退：{{error}}",
   },
   reading: {

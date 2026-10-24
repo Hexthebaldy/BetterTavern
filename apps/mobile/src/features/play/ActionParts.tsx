@@ -1,15 +1,28 @@
 /**
  * 阅读页的两块输入：选项行（TurnActions.tsx，接在故事流末尾）和自由输入（底部操作栏 BottomBar.tsx 展开后）。
+ *
+ * 选项（漫画风）：灰底 #EEEEEA、2.5 墨线、圆角 14、墨投影 4；左边 26 见方的墨底字母块；黑体 700，16/24。
+ * 按下或选中时变成墨底白字，往投影方向挪 3、投影剩 1。
+ * 自由输入：2.5 蓝框加蓝投影 3，宋体 16/25；下面是“收起”（次要）和“发送”（主按钮）。
  */
 
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 
 import type { TurnOption } from "@bettertavern/core/api/types";
 
-import { Icon, useSheetSurfaces } from "../../components/ui.tsx";
-import { font, radius, size, space, usePalette } from "../../theme/index.ts";
+import { Button, press } from "../../components/ui.tsx";
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  ctype,
+  font,
+  hardShadow,
+  serifFor,
+  space,
+  useComic,
+} from "../../theme/index.ts";
 
 const MAX_TEXT = 2000;
 const KEYS = ["A", "B", "C", "D"];
@@ -32,8 +45,7 @@ export function OptionRow({
   /** 平板宽屏排两列时的宽度和最小高度 */
   style?: StyleProp<ViewStyle>;
 }) {
-  const palette = usePalette();
-  const surfaces = useSheetSurfaces();
+  const c = useComic();
   const { t } = useTranslation();
   return (
     <Pressable
@@ -47,12 +59,8 @@ export function OptionRow({
         const on = chosen || pressed;
         return [
           styles.option,
-          {
-            backgroundColor: on ? palette.accBg : surfaces.fill,
-            boxShadow: on ? `inset 0 0 0 2px ${palette.acc}` : undefined,
-            opacity: dimmed ? 0.4 : 1,
-            transform: [{ scale: on ? 0.98 : 1 }],
-          },
+          { borderColor: c.ink, backgroundColor: on ? c.ink : c.option, opacity: dimmed ? 0.4 : 1 },
+          press(on, comicDepth.raised, c.ink),
           style,
         ];
       }}
@@ -61,12 +69,10 @@ export function OptionRow({
         const on = chosen || pressed;
         return (
           <>
-            <View style={[styles.key, { backgroundColor: on ? palette.acc : surfaces.onFill }]}>
-              <Text style={[styles.keyText, { color: on ? palette.bg : palette.ink }]}>
-                {KEYS[index] ?? "·"}
-              </Text>
+            <View style={[styles.key, { backgroundColor: on ? c.paper : c.ink }]}>
+              <Text style={[styles.keyText, { color: on ? c.ink : c.paper }]}>{KEYS[index] ?? "·"}</Text>
             </View>
-            <Text style={[styles.optionText, { color: palette.ink }]}>{option.text}</Text>
+            <Text style={[ctype.option, styles.optionText, { color: on ? c.paper : c.ink }]}>{option.text}</Text>
           </>
         );
       }}
@@ -80,6 +86,7 @@ export function FreeInput({
   disabled,
   onSend,
   onClose,
+  language,
 }: {
   draft: string;
   onDraft: (text: string) => void;
@@ -87,11 +94,11 @@ export function FreeInput({
   onSend: (text: string) => void;
   /** 没有选项时没法收起 */
   onClose: (() => void) | null;
+  /** 这一局的语言：输入框的宋体按它选 */
+  language: string;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
-  const surfaces = useSheetSurfaces();
-  const [focused, setFocused] = useState(false);
   const trimmed = draft.trim();
   const left = MAX_TEXT - draft.length;
   const blocked = disabled || !trimmed;
@@ -101,59 +108,32 @@ export function FreeInput({
         value={draft}
         onChangeText={onDraft}
         placeholder={t("play.inputPlaceholder")}
-        placeholderTextColor={palette.mut}
+        placeholderTextColor={c.mut}
+        selectionColor={c.acc}
         multiline
         autoFocus={onClose !== null}
         maxLength={MAX_TEXT}
         accessibilityLabel={t("play.inputLabel")}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         style={[
           styles.input,
           {
-            color: palette.ink,
-            backgroundColor: surfaces.fill,
-            boxShadow: focused ? `inset 0 0 0 2px ${palette.acc}` : undefined,
+            fontFamily: serifFor(language),
+            color: c.ink,
+            backgroundColor: c.paper,
+            borderColor: c.acc,
+            boxShadow: hardShadow(c.acc, comicDepth.focus),
           },
         ]}
       />
       <View style={styles.inputRow}>
         {onClose ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onClose}
-            style={({ pressed }) => [
-              styles.collapse,
-              { backgroundColor: surfaces.fill, transform: [{ scale: pressed ? 0.97 : 1 }] },
-            ]}
-          >
-            <Icon name="chevronDown" size={20} />
-            <Text style={{ fontSize: 15, color: palette.ink }}>{t("common.collapse")}</Text>
-          </Pressable>
+          <Button label={t("common.collapse")} icon="chevronDown" variant="secondary" small onPress={onClose} />
         ) : null}
         {left <= 200 ? (
-          <Text style={[styles.left, { color: palette.mut }]}>{t("play.left", { n: left })}</Text>
+          <Text style={[styles.left, { color: c.mut }]}>{t("play.left", { n: left })}</Text>
         ) : null}
         <View style={{ flex: 1 }} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: blocked }}
-          disabled={blocked}
-          onPress={() => onSend(trimmed)}
-          style={({ pressed }) => [
-            styles.send,
-            {
-              backgroundColor: palette.pri,
-              opacity: blocked ? 0.3 : 1,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-            },
-          ]}
-        >
-          <View style={[styles.sendIcon, { backgroundColor: palette.arrowBg }]}>
-            <Icon name="send" size={16} color={palette.onPri} />
-          </View>
-          <Text style={{ fontSize: 15, fontWeight: "500", color: palette.onPri }}>{t("play.send")}</Text>
-        </Pressable>
+        <Button label={t("play.send")} icon="send" small disabled={blocked} onPress={() => onSend(trimmed)} />
       </View>
     </View>
   );
@@ -162,53 +142,35 @@ export function FreeInput({
 const styles = StyleSheet.create({
   option: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: space.m,
-    minHeight: size.optionRow,
-    paddingVertical: 10,
-    paddingLeft: space.m,
-    paddingRight: 14,
-    borderRadius: radius.option,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.option,
   },
   key: {
-    width: size.optionKey,
-    height: size.optionKey,
-    borderRadius: size.optionKey / 2,
+    width: 26,
+    height: 26,
+    marginTop: -1,
+    borderRadius: 7,
     alignItems: "center",
     justifyContent: "center",
   },
-  keyText: { fontFamily: font.monoMedium, fontSize: 13 },
-  optionText: { flex: 1, fontSize: 15, lineHeight: 22 },
-  inputBlock: { gap: space.s },
+  keyText: { fontFamily: font.monoMedium, fontSize: 13, fontWeight: "700" },
+  optionText: { flex: 1 },
+  inputBlock: { gap: 10 },
   input: {
     height: 124,
-    borderRadius: radius.option,
-    paddingHorizontal: space.l,
-    paddingTop: 14,
-    paddingBottom: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
     fontSize: 16,
     lineHeight: 25,
     textAlignVertical: "top",
   },
-  inputRow: { flexDirection: "row", alignItems: "center", gap: space.s },
-  collapse: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    height: 44,
-    paddingLeft: space.m,
-    paddingRight: space.l,
-    borderRadius: 22,
-  },
+  inputRow: { flexDirection: "row", alignItems: "center", gap: space.s, paddingBottom: comicDepth.raised },
   left: { fontFamily: font.mono, fontSize: 12 },
-  send: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.s,
-    height: 44,
-    paddingLeft: space.s,
-    paddingRight: 18,
-    borderRadius: 22,
-  },
-  sendIcon: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
 });

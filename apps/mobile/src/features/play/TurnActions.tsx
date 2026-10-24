@@ -1,11 +1,11 @@
 /**
  * 接在故事流最后一段后面的内容，跟着正文一起滚动，不固定在屏幕底部挡住正文：
- * - 空闲：模型给的选项（圆角灰卡，左边 A / B 圆形字母键）；
- * - 开场没写：“开始故事”；失败：错误卡片加重试 / 换个行动（没有模型时去设置）。
+ * - 空闲：模型给的选项（灰底墨线的格子，左边 A / B 墨底字母块，见 ActionParts.tsx）；
+ * - 开场没写：一行说明和“开始故事”；失败：白底墨框的提示（红字配图标）加重试 / 换个行动（没有模型时去设置）。
  * 生成中、同步中这里什么都没有：状态、“停止”、“自己写…”和世界、更多两个按钮都在底部的操作栏（BottomBar.tsx）。
  * 选了选项之后，那一句会立刻作为“我的行动”出现在故事流里。
  *
- * 平板宽屏（theme/layout.ts）选项排成两列，每格最小高 76，奇数个时最后一项占满一行。
+ * 和正文同样离边 24。平板宽屏（theme/layout.ts）选项排成两列，每格最小高 76，奇数个时最后一项占满一行。
  */
 
 import type { ReactNode } from "react";
@@ -24,10 +24,11 @@ import {
 } from "@bettertavern/core/play/turnMachine";
 import { needsModelSettings } from "@bettertavern/core/settings/labels";
 
-import { Button, Icon, PageSurfaces, useSheetSurfaces } from "../../components/ui.tsx";
+import { Button, Icon } from "../../components/ui.tsx";
 import { useLayout } from "../../hooks/useLayout.ts";
-import { radius, space, usePalette } from "../../theme/index.ts";
+import { comicDepth, comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 import { OptionRow } from "./ActionParts.tsx";
+import { READ_SIDE } from "./FeedParts.tsx";
 import { columnWidth } from "./StoryFeed.tsx";
 import type { PlayControls } from "./usePlaySession.ts";
 
@@ -44,18 +45,11 @@ type Props = {
   available: number;
 };
 
-export function TurnActions(props: Props) {
-  // 放在页面上（不是浮起的面板里）：灰卡用 bg2，卡片里的小圆用白色 card
-  return (
-    <PageSurfaces>
-      <Actions {...props} />
-    </PageSurfaces>
-  );
-}
+/** 两列选项之间、选项与选项之间 */
+const OPTION_GAP = 12;
 
-function Actions({ state, controls, onOpenSettings, onPicked, available }: Props) {
-  const palette = usePalette();
-  const surfaces = useSheetSurfaces();
+export function TurnActions({ state, controls, onOpenSettings, onPicked, available }: Props) {
+  const c = useComic();
   const { size: layoutSize } = useLayout();
   const { t } = useTranslation();
 
@@ -68,9 +62,9 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
     const opening = state.turns.length === 0;
     content = (
       <View style={styles.column}>
-        <View style={[styles.failCard, { backgroundColor: palette.errBg }]} accessibilityRole="alert">
-          <Icon name="alert" size={20} color={palette.err} />
-          <Text style={{ flex: 1, fontSize: 14, lineHeight: 21, color: palette.err }}>
+        <View style={[styles.failCard, { backgroundColor: c.paper, borderColor: c.ink }]} accessibilityRole="alert">
+          <Icon name="alert" size={20} color={c.err} />
+          <Text style={{ flex: 1, fontSize: 14, lineHeight: 21, fontWeight: "600", color: c.err }}>
             {routeMissing
               ? t("play.noModel")
               : state.pending?.narrative
@@ -83,7 +77,7 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
             label={opening ? t("common.close") : t("play.changeAction")}
             variant="secondary"
             onPress={controls.dismissError}
-            style={[styles.flex, { backgroundColor: surfaces.fill }]}
+            style={styles.flex}
           />
           {toSettings ? (
             <Button label={t("play.goModels")} onPress={onOpenSettings} style={styles.flex} />
@@ -95,30 +89,33 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
     );
   } else if (needsOpening(state)) {
     content = (
-      <Button
-        label={t("start.button")}
-        trailingIcon="arrowRight"
-        between
-        onPress={() => controls.submit({ source: "opening" })}
-      />
+      <View style={styles.column}>
+        <Text style={[styles.hint, { color: c.mut }]}>{t("play.openingHint")}</Text>
+        <Button
+          label={t("start.button")}
+          trailingIcon="arrowRight"
+          between
+          onPress={() => controls.submit({ source: "opening" })}
+        />
+      </View>
     );
   } else if (state.phase === "idle") {
     const enabled = canAct(state);
     const options = headTurn(state)?.options ?? [];
-    // 宽屏两列：选项区的宽度减去中间 6，平分；奇数个时最后一项占满一行
-    const inner = columnWidth(available) - space.list * 2;
+    // 宽屏两列：选项区的宽度减去中间 12，平分；奇数个时最后一项占满一行
+    const inner = columnWidth(available) - READ_SIDE * 2;
     const twoColumns = optionColumns(layoutSize) === 2;
     const optionStyle = (i: number): StyleProp<ViewStyle> =>
       twoColumns
         ? {
-            width: options.length % 2 === 1 && i === options.length - 1 ? inner : (inner - 6) / 2,
+            width: options.length % 2 === 1 && i === options.length - 1 ? inner : (inner - OPTION_GAP) / 2,
             minHeight: GRID_OPTION_HEIGHT,
           }
         : null;
     // 没有选项：结局之后什么都不显示；否则是这一段的选项没补齐，提示玩家在下面自己写
     if (options.length === 0) {
       if (isEnded(state)) return null;
-      content = <Text style={[styles.noOptions, { color: palette.mut }]}>{t("play.noOptions")}</Text>;
+      content = <Text style={[styles.noOptions, { color: c.mut }]}>{t("play.noOptions")}</Text>;
     } else {
       content = (
         <View style={twoColumns ? [styles.options, styles.grid] : styles.options}>
@@ -147,19 +144,22 @@ function Actions({ state, controls, onOpenSettings, onPicked, available }: Props
 }
 
 const styles = StyleSheet.create({
-  /** 和书名页、开场步骤一样离屏幕 12，卡片里的字母键正好和正文左边对齐 */
-  area: { marginHorizontal: space.list, marginTop: space.xs },
-  options: { gap: 6 },
+  /** 和正文一样离边 24；下面留出投影 */
+  area: { marginHorizontal: READ_SIDE, marginTop: space.xs, paddingBottom: comicDepth.raised },
+  options: { gap: OPTION_GAP },
   noOptions: { fontSize: 14, lineHeight: 22 },
   grid: { flexDirection: "row", flexWrap: "wrap" },
-  column: { gap: space.s },
+  column: { gap: space.m },
+  hint: { fontSize: 14, lineHeight: 20, textAlign: "center", paddingVertical: space.s },
   failCard: {
     flexDirection: "row",
     gap: 10,
     alignItems: "flex-start",
-    padding: 14,
-    borderRadius: radius.option,
+    paddingVertical: space.m,
+    paddingHorizontal: 14,
+    borderWidth: comicStroke.frame,
+    borderRadius: comicRadius.frame,
   },
-  buttons: { flexDirection: "row", gap: space.s },
+  buttons: { flexDirection: "row", gap: space.m },
   flex: { flex: 1 },
 });

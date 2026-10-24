@@ -1,11 +1,7 @@
 /**
  * 故事流：书名页、已完成的回合（memo 固定，不随流式文字重渲染）、正在生成的那一段，最后是行动区
  * （选项、“自己写…”、生成中的状态，见 TurnActions.tsx），行动区跟着正文一起滚动。
- *
- * “我的行动”和叙述是同一种字（阅读设置里的宋体或黑体、字号），颜色浅一档，左边一道竖线，
- * 不画卡片，读起来是故事的一部分而不是聊天气泡。叙述左右页边距 24，段落之间空 16，两端对齐。
- * 流式光标是 3×20 的蓝色圆头竖条，不闪烁。
- * 写完结局的故事，最后一段下面居中一行“—END—”（叙述的字，浅一档），没有选项也没有别的按钮。
+ * 书名页、叙述、你的行动、开场的两步、结束标记这几块在 FeedParts.tsx（漫画风）。
  *
  * 底部固定着操作栏（BottomBar.tsx）：内容底部按 bottomInset 留白。正在发送、正在构思、重连这些状态也在操作栏里，正文这里不重复。
  * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 时经 onAwayChange 告诉页面，
@@ -14,7 +10,7 @@
  * 不能当成玩家翻走了。
  *
  * 平板上内容收进一条阅读栏（theme/layout.ts 的 readableColumn）：正文最宽 640、在阅读区里居中，
- * “我的行动”卡片、状态行、书名页跟着这条栏走，左右边距和手机一样；字号仍由阅读设置决定，栏宽不随字号变。
+ * “我的行动”、状态行、书名页跟着这条栏走，左右边距和手机一样；字号仍由阅读设置决定，栏宽不随字号变。
  * 滚动区仍是整个阅读区，两边空白处也能拖动。
  */
 
@@ -29,24 +25,10 @@ import {
   type Ref,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type TextStyle,
-} from "react-native";
+import { FlatList, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 
 import { readableColumn } from "@bettertavern/design/layout";
-import {
-  BASE_SIZE,
-  lineHeightFor,
-  MAX_SIZE,
-  readingSize,
-  type ReadingPrefs,
-} from "@bettertavern/core/play/reading";
+import type { ReadingPrefs } from "@bettertavern/core/play/reading";
 import {
   actionNote,
   isEnded,
@@ -56,174 +38,20 @@ import {
   type StoryTurn,
 } from "@bettertavern/core/play/turnMachine";
 
-import { Cover } from "../../components/Cover.tsx";
-import { Icon, Pill } from "../../components/ui.tsx";
-import { radius, serifFor, size, space, usePalette } from "../../theme/index.ts";
+import { space, useComic } from "../../theme/index.ts";
+import {
+  ActionNote,
+  EndMark,
+  Narrative,
+  OpeningMissing,
+  OpeningSteps,
+  useNarrativeStyle,
+  type Narr,
+} from "./FeedParts.tsx";
 
 type Item = { key: string; turn: StoryTurn } | { key: "pending"; pending: PendingTurn };
 
 const FOLLOW_THRESHOLD = 80;
-
-function paragraphs(text: string): string[] {
-  return text
-    .split(/\n+/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-}
-
-/**
- * 叙述正文的字体和字号：没设置字号时跟随系统的动态字体，放大到 24 为止。
- * 宋体按这一局的语言选（language 是 playthroughs.language），不按界面语言。
- */
-export function useNarrativeStyle(
-  prefs: ReadingPrefs,
-  language: string,
-): {
-  style: TextStyle;
-  scale: boolean;
-  maxScale: number;
-} {
-  const palette = usePalette();
-  return useMemo(() => {
-    const size = readingSize(prefs);
-    return {
-      style: {
-        fontFamily: prefs.font === "serif" ? serifFor(language) : undefined,
-        fontSize: size,
-        lineHeight: lineHeightFor(size),
-        letterSpacing: size * 0.01,
-        color: palette.narr,
-        textAlign: "justify",
-      },
-      scale: prefs.size === null,
-      maxScale: MAX_SIZE / BASE_SIZE,
-    };
-  }, [prefs, palette, language]);
-}
-
-type Narr = ReturnType<typeof useNarrativeStyle>;
-
-/** 书名页：往上翻到顶看到的第一屏（灰色圆角卡片，里面是封面、书名和两个小标签） */
-export function BookHeader({
-  seed,
-  blobId,
-  title,
-  card,
-  protagonist,
-  width,
-}: {
-  seed: string;
-  blobId: string | null;
-  title: string;
-  card: string | null;
-  protagonist: string;
-  width: number;
-}) {
-  const palette = usePalette();
-  const { t } = useTranslation();
-  return (
-    <View style={[styles.book, { backgroundColor: palette.bg2 }]}>
-      <Cover
-        seed={seed}
-        blobId={blobId}
-        width={width - space.list * 2 - space.m * 2}
-        height={112}
-        surface="card"
-        rounded={BOOK_RADIUS - space.m}
-      />
-      <Text style={[styles.bookTitle, { color: palette.ink }]}>{title}</Text>
-      {card || protagonist ? (
-        <View style={styles.bookChips}>
-          {card ? <Pill label={card} tone="card" height={26} /> : null}
-          {protagonist ? <Pill label={t("play.iAm", { name: protagonist })} tone="acc" height={26} /> : null}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-/** “我的行动”：和叙述同样的字，颜色浅一档，左边一道竖线；读屏时前面加上“我的行动：” */
-export function ActionNote({ text, narr }: { text: string; narr: Narr }) {
-  const palette = usePalette();
-  const { t } = useTranslation();
-  return (
-    <View
-      accessible
-      accessibilityLabel={t("play.myAction", { text })}
-      style={[styles.note, { borderLeftColor: palette.line2 }]}
-    >
-      <Text
-        selectable
-        allowFontScaling={narr.scale}
-        maxFontSizeMultiplier={narr.maxScale}
-        style={[narr.style, { color: palette.ink2, textAlign: "left" }]}
-      >
-        {text}
-      </Text>
-    </View>
-  );
-}
-
-function Caret({ color, height }: { color: string; height: number }) {
-  const width = size.caret.width;
-  return <View style={{ width, height, marginLeft: 3, borderRadius: width / 2, backgroundColor: color }} />;
-}
-
-function Narrative({
-  text,
-  narr,
-  dim,
-  caret,
-  interrupted,
-}: {
-  text: string;
-  narr: Narr;
-  dim?: boolean;
-  /** 光标颜色；不传就不画光标 */
-  caret?: string;
-  interrupted?: boolean;
-}) {
-  const palette = usePalette();
-  const { t } = useTranslation();
-  const parts = paragraphs(text);
-  const caretHeight = Math.round((narr.style.fontSize ?? 17.5) * 1.15);
-  if (parts.length === 0) {
-    return caret ? (
-      <View style={[styles.caretOnly, { height: narr.style.lineHeight }]}>
-        <Caret color={caret} height={caretHeight} />
-      </View>
-    ) : null;
-  }
-  return (
-    <View>
-      {parts.map((p, i) => {
-        const last = i === parts.length - 1;
-        return (
-          <Text
-            key={i}
-            selectable
-            allowFontScaling={narr.scale}
-            maxFontSizeMultiplier={narr.maxScale}
-            style={[
-              narr.style,
-              styles.paragraph,
-              last ? { marginBottom: 0 } : null,
-              dim ? { color: palette.mut } : null,
-            ]}
-          >
-            {p}
-            {last && caret ? <Caret color={caret} height={caretHeight} /> : null}
-            {last && interrupted ? (
-              <View style={[styles.cutBox, { backgroundColor: palette.bg2 }]}>
-                <Text style={[styles.cut, { color: palette.mut }]}>{t("play.interrupted")}</Text>
-              </View>
-            ) : null}
-          </Text>
-        );
-      })}
-    </View>
-  );
-}
 
 const TurnBlock = memo(function TurnBlock({ turn, narr }: { turn: StoryTurn; narr: Narr }) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
@@ -237,47 +65,8 @@ const TurnBlock = memo(function TurnBlock({ turn, narr }: { turn: StoryTurn; nar
   );
 });
 
-/** 第一次开场：先搭建世界，再写开场。当前一步是白色的圆角行 */
-function OpeningSteps({ building }: { building: boolean }) {
-  const palette = usePalette();
-  const { t } = useTranslation();
-  const step = (label: string, state: "active" | "done" | "todo") => (
-    <View style={[styles.stepRow, state === "active" ? { backgroundColor: palette.card } : null]}>
-      {state === "active" ? (
-        <View style={[styles.stepMark, { backgroundColor: palette.accBg }]}>
-          <View style={[styles.stepDot, { backgroundColor: palette.acc }]} />
-        </View>
-      ) : state === "done" ? (
-        <View style={[styles.stepMark, { backgroundColor: palette.okBg }]}>
-          <Icon name="check" size={14} color={palette.ok} strokeWidth={2.4} />
-        </View>
-      ) : (
-        <View style={[styles.stepMark, { boxShadow: `inset 0 0 0 1.75px ${palette.line2}` }]} />
-      )}
-      <Text
-        style={{
-          fontSize: 14,
-          fontWeight: state === "active" ? "500" : "400",
-          color: state === "active" ? palette.acc : palette.mut,
-        }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-  return (
-    <View accessibilityLiveRegion="polite">
-      <View style={[styles.steps, { backgroundColor: palette.bg2 }]}>
-        {step(building ? t("play.building") : t("play.buildWorld"), building ? "active" : "done")}
-        {step(building ? t("play.writeOpening") : t("play.writingOpeningStep"), building ? "todo" : "active")}
-      </View>
-      <Text style={[styles.stepNote, { color: palette.mut }]}>{t("play.slowNote")}</Text>
-    </View>
-  );
-}
-
 function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: Phase; narr: Narr }) {
-  const palette = usePalette();
+  const c = useComic();
   const failed = phase === "failed";
   const opening = pending.action?.source === "opening";
   const note = actionNote(pending.action);
@@ -285,8 +74,8 @@ function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: P
     failed || phase === "submitting"
       ? undefined
       : phase === "reconnecting" || phase === "polling"
-        ? palette.line2
-        : palette.acc;
+        ? c.line2
+        : c.acc;
   if (opening && !failed && pending.narrative === "") {
     return <OpeningSteps building={pending.buildingWorld} />;
   }
@@ -300,38 +89,6 @@ function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: P
         caret={caret}
         interrupted={failed && pending.narrative.length > 0}
       />
-    </View>
-  );
-}
-
-/** 写完结局：最后一段下面的结束标记 */
-function EndMark({ narr }: { narr: Narr }) {
-  const palette = usePalette();
-  const { t } = useTranslation();
-  return (
-    <Text
-      accessibilityLabel={t("play.theEnd")}
-      allowFontScaling={narr.scale}
-      maxFontSizeMultiplier={narr.maxScale}
-      style={[narr.style, styles.end, { color: palette.mut }]}
-    >
-      —END—
-    </Text>
-  );
-}
-
-/** 开场还没写（上次中断了） */
-function OpeningMissing() {
-  const palette = usePalette();
-  const { t } = useTranslation();
-  return (
-    <View style={styles.missing}>
-      <View style={[styles.missingIcon, { backgroundColor: palette.warnBg }]}>
-        <Icon name="untested" size={18} color={palette.warn} />
-      </View>
-      <Text style={{ flex: 1, fontSize: 15, lineHeight: 24, color: palette.ink2 }}>
-        {t("play.noOpening")}
-      </Text>
     </View>
   );
 }
@@ -456,7 +213,7 @@ export function StoryFeed({
         ListFooterComponent={
           <>
             {missingOpening ? <OpeningMissing /> : null}
-            {ended ? <EndMark narr={narr} /> : null}
+            {ended ? <EndMark /> : null}
             {footer}
             <View style={{ height: bottomSpace }} />
           </>
@@ -479,8 +236,6 @@ export function StoryFeed({
   );
 }
 
-const BOOK_RADIUS = 30;
-
 /** 阅读栏两侧多出来的空白（不算正文自己的 24 页边距） */
 export function sideInset(available: number): number {
   return Math.max(0, readableColumn(available).left - space.read);
@@ -492,57 +247,5 @@ export function columnWidth(available: number): number {
 }
 
 const styles = StyleSheet.create({
-  book: {
-    marginTop: space.s,
-    marginHorizontal: space.list,
-    marginBottom: space.page,
-    paddingTop: space.m,
-    paddingHorizontal: space.m,
-    paddingBottom: 20,
-    borderRadius: BOOK_RADIUS,
-    gap: space.m,
-  },
-  bookTitle: { paddingHorizontal: 6, fontSize: 28, lineHeight: 34, fontWeight: "900", letterSpacing: -0.84 },
-  bookChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 6 },
   turn: { marginBottom: space.l },
-  /** 竖线在正文的左边距上，字往里缩 14 */
-  note: {
-    marginTop: space.xs,
-    marginBottom: space.l,
-    marginLeft: space.read,
-    marginRight: space.read,
-    paddingLeft: 14,
-    borderLeftWidth: 3,
-  },
-  paragraph: { marginBottom: space.l, paddingHorizontal: space.read },
-  caretOnly: { paddingHorizontal: space.read - 3, justifyContent: "center" },
-  cutBox: {
-    marginLeft: space.s,
-    height: 22,
-    paddingHorizontal: 9,
-    borderRadius: 11,
-    justifyContent: "center",
-  },
-  cut: { fontSize: 12, lineHeight: 16 },
-  steps: { marginHorizontal: space.list, padding: space.s, borderRadius: 26, gap: 4 },
-  stepRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.m,
-    height: 52,
-    paddingHorizontal: space.m,
-    borderRadius: radius.card,
-  },
-  stepMark: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  stepDot: { width: 8, height: 8, borderRadius: 4 },
-  stepNote: { fontSize: 13, lineHeight: 20, paddingHorizontal: space.page, paddingTop: space.m },
-  missing: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.m,
-    paddingHorizontal: space.read,
-    paddingTop: space.s,
-  },
-  end: { textAlign: "center", paddingHorizontal: space.read, paddingTop: space.s, letterSpacing: 2 },
-  missingIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
 });

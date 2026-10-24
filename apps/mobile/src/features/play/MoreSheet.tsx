@@ -1,170 +1,131 @@
 /**
- * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号），重命名存档、世界状态、回到更早的一段、写结局、删除存档。
- * “回到更早的一段”生成中不能点；这个存档的回退次数用完时写明已用完、不能点。
+ * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号、跟随系统字体大小），重命名存档、世界状态、回到更早的一段、写结局、删除存档。
+ * “回到更早的一段”生成中不能点，右边写着还能回退几次；这个存档的回退次数用完时写明已用完、不能点。
  * “写结局”只在能行动时可点（开场写完、没在生成、没有失败等着重试），故事写完结局后不再显示。
  * 阅读设置存在设备上，所有故事共用。
  * 手机上是底部面板；平板上贴着操作栏的“更多”按钮弹出（宽 340，右边缘和按钮对齐，底边在按钮上方 8，不加遮罩）。
+ *
+ * 漫画风（docs/design/comic/mobile/png/42）：字体是两块白底墨线的格子，选中的蓝框加蓝投影 3、样字方块填蓝；
+ * 字号是“A- 17 A+”三格的步进；下面一行“跟随系统字体大小”的开关；操作在墨线格子里，删除是红字。
  */
 
-import { useRef, useState, type RefObject } from "react";
+import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import {
-  lineHeightFor,
-  READING_SIZES,
-  readingSize,
-  sizeIndex,
-  stepSize,
-  type ReadingFont,
-} from "@bettertavern/core/play/reading";
+import { readingSize, stepSize, type ReadingFont } from "@bettertavern/core/play/reading";
 
-import { MenuGroup, MenuItem, Sheet, useSheetSurfaces } from "../../components/ui.tsx";
+import { MenuGroup, MenuItem, Sheet, Toggle } from "../../components/ui.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
-import { font, onColor, serifFor, space, usePalette } from "../../theme/index.ts";
-
-/** 字号轨道两头的留白 */
-const TRACK_PADDING = 14;
+import {
+  comicDepth,
+  comicRadius,
+  comicStroke,
+  font,
+  hardShadow,
+  serifFor,
+  space,
+  useComic,
+} from "../../theme/index.ts";
 
 function FontChoice() {
-  const palette = usePalette();
-  // 样字是界面文字（“宋”“明”），按界面语言选宋体
+  const c = useComic();
+  // 样字是界面文字（“宋”“黑”），按界面语言选宋体
   const { t, i18n } = useTranslation();
-  const surfaces = useSheetSurfaces();
   const { reading, setReading } = usePrefs();
   const option = (value: ReadingFont, glyph: string, label: string) => {
     const on = reading.font === value;
-    const fg = on ? palette.ink : palette.mut;
     return (
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ selected: on }}
         accessibilityLabel={label}
         onPress={() => setReading({ ...reading, font: value })}
-        style={[
+        style={({ pressed }) => [
           styles.fontOption,
-          on ? { backgroundColor: surfaces.raised, boxShadow: palette.shadowLift } : null,
+          on
+            ? { borderWidth: comicStroke.frame, borderColor: c.acc, boxShadow: hardShadow(c.acc, comicDepth.focus) }
+            : { borderColor: c.ink },
+          { backgroundColor: pressed && !on ? c.grey : c.paper },
         ]}
       >
-        <Text
-          style={{
-            fontSize: 20,
-            color: fg,
-            fontFamily: value === "serif" ? serifFor(i18n.language) : undefined,
-            fontWeight: value === "sans" ? "700" : "400",
-          }}
-        >
-          {glyph}
-        </Text>
-        <Text style={{ fontSize: 15, fontWeight: on ? "600" : "400", color: fg }}>{label}</Text>
+        <View style={[styles.glyphBox, { borderColor: c.ink, backgroundColor: on ? c.acc : c.grey }]}>
+          <Text
+            style={{
+              fontSize: 15,
+              color: on ? c.onAcc : c.ink,
+              fontFamily: value === "serif" ? serifFor(i18n.language) : undefined,
+              fontWeight: "700",
+            }}
+          >
+            {glyph}
+          </Text>
+        </View>
+        <Text style={{ fontSize: 15, fontWeight: "700", color: c.ink }}>{label}</Text>
       </Pressable>
     );
   };
   return (
-    <View
-      accessibilityRole="radiogroup"
-      accessibilityLabel={t("reading.font")}
-      style={[styles.fonts, { backgroundColor: surfaces.inset }]}
-    >
+    <View accessibilityRole="radiogroup" accessibilityLabel={t("reading.font")} style={styles.fonts}>
       {option("serif", t("reading.serifSample"), t("reading.serif"))}
       {option("sans", t("reading.sansSample"), t("reading.sans"))}
     </View>
   );
 }
 
-const KNOB = 24;
-
-/** 字号：两头是减小、增大的圆按钮，中间的轨道可以点或拖到某一档 */
+/** 字号：“A- 17 A+”三格；中间那格读屏时可以上下调 */
 function SizeControl() {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
-  const surfaces = useSheetSurfaces();
   const { reading, setReading } = usePrefs();
-  const [trackWidth, setTrackWidth] = useState(0);
-  const lastIndex = useRef(-1);
   const size = readingSize(reading);
-  const index = sizeIndex(size);
-  const ratio = index / (READING_SIZES.length - 1);
-
-  const pick = (e: GestureResponderEvent): void => {
-    if (trackWidth <= 0) return;
-    // locationX 从轨道区域的左边算起，要减掉两边的留白
-    const r = Math.min(Math.max((e.nativeEvent.locationX - TRACK_PADDING) / trackWidth, 0), 1);
-    const next = Math.round(r * (READING_SIZES.length - 1));
-    if (next === lastIndex.current) return;
-    lastIndex.current = next;
-    setReading({ ...reading, size: READING_SIZES[next] ?? size });
-  };
-
-  const stepButton = (label: string, glyphSize: number, delta: 1 | -1) => (
+  const step = (delta: 1 | -1): void => setReading({ ...reading, size: stepSize(reading, delta) });
+  const stepButton = (label: string, glyph: string, delta: 1 | -1) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      onPress={() => setReading({ ...reading, size: stepSize(reading, delta) })}
-      style={({ pressed }) => [
-        styles.sizeButton,
-        { backgroundColor: surfaces.raised, transform: [{ scale: pressed ? 0.97 : 1 }] },
-      ]}
+      onPress={() => step(delta)}
+      style={({ pressed }) => [styles.stepCell, { backgroundColor: pressed ? c.grey : c.paper }]}
     >
-      <Text style={{ fontSize: glyphSize, color: palette.ink }}>A</Text>
+      <Text style={[styles.stepText, { color: c.ink }]}>{glyph}</Text>
     </Pressable>
   );
-
   return (
-    <View style={{ gap: space.s }}>
-      <View style={[styles.size, { backgroundColor: surfaces.inset }]}>
-        {stepButton(t("reading.smaller"), 14, -1)}
+    <View style={styles.row}>
+      <Text style={[styles.label, { flex: 1, color: c.ink }]}>{t("reading.size")}</Text>
+      <View style={[styles.stepper, { borderColor: c.ink }]}>
+        {stepButton(t("reading.smaller"), "A-", -1)}
         <View
           accessible
           accessibilityRole="adjustable"
           accessibilityLabel={t("reading.size")}
           accessibilityValue={{ text: `${size}` }}
           accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
-          onAccessibilityAction={(e) =>
-            setReading({
-              ...reading,
-              size: stepSize(reading, e.nativeEvent.actionName === "increment" ? 1 : -1),
-            })
-          }
-          style={styles.trackArea}
-          onStartShouldSetResponder={() => true}
-          onMoveShouldSetResponder={() => true}
-          onResponderGrant={(e) => {
-            lastIndex.current = -1;
-            pick(e);
-          }}
-          onResponderMove={pick}
+          onAccessibilityAction={(e) => step(e.nativeEvent.actionName === "increment" ? 1 : -1)}
+          style={[styles.stepValue, { borderColor: c.ink, backgroundColor: c.grey }]}
         >
-          <View
-            pointerEvents="none"
-            onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
-            style={[styles.track, { backgroundColor: palette.bg3 }]}
-          >
-            <View style={[styles.fill, { width: `${ratio * 100}%`, backgroundColor: palette.acc }]} />
-            <View
-              style={[styles.knob, { left: ratio * trackWidth - KNOB / 2, boxShadow: palette.shadowKnob }]}
-            />
-          </View>
+          <Text style={[styles.stepText, { fontFamily: font.monoMedium, color: c.ink }]}>{size}</Text>
         </View>
-        {stepButton(t("reading.larger"), 22, 1)}
+        {stepButton(t("reading.larger"), "A+", 1)}
       </View>
-      <View style={styles.sizeNote}>
-        <Text style={{ fontFamily: font.mono, fontSize: 12, color: palette.mut }}>
-          {size} / {lineHeightFor(size)} ·{" "}
-          {reading.size === null ? t("reading.followSystemSize") : t("reading.fixedSize")}
-        </Text>
-        {reading.size !== null ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setReading({ ...reading, size: null })}
-            hitSlop={10}
-          >
-            <Text style={{ fontSize: 13, fontWeight: "500", color: palette.acc }}>
-              {t("reading.followSystem")}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
+    </View>
+  );
+}
+
+/** 跟随系统字体大小：打开时字号跟着系统的动态字体走；关掉时停在现在的字号 */
+function FollowSystem() {
+  const c = useComic();
+  const { t } = useTranslation();
+  const { reading, setReading } = usePrefs();
+  const follow = reading.size === null;
+  return (
+    <View style={styles.row}>
+      <Text style={{ flex: 1, fontSize: 15, color: c.ink }}>{t("reading.followSystemSize")}</Text>
+      <Toggle
+        value={follow}
+        label={t("reading.followSystemSize")}
+        onChange={(on) => setReading({ ...reading, size: on ? null : readingSize(reading) })}
+      />
     </View>
   );
 }
@@ -178,6 +139,7 @@ export function MoreSheet({
   ending,
   onRollback,
   rollback,
+  rollbacksLeft,
   onDelete,
   anchor,
   above,
@@ -193,19 +155,22 @@ export function MoreSheet({
   onRollback: () => void;
   /** 回到更早的一段：见 turnMachine 的 rollbackStatus；none 时不显示 */
   rollback: "ready" | "busy" | "used_up" | "none";
+  /** 这个存档还能回退几次 */
+  rollbacksLeft: number;
   onDelete: () => void;
   /** 平板：菜单贴着这个按钮弹出；传了 above 时底边放在它的顶边上方 */
   anchor?: RefObject<View | null>;
   above?: RefObject<View | null>;
 }) {
-  const palette = usePalette();
+  const c = useComic();
   const { t } = useTranslation();
   return (
-    <Sheet visible={visible} onClose={onClose} kind="menu" anchor={anchor} above={above}>
+    <Sheet visible={visible} onClose={onClose} kind="menu" anchor={anchor} above={above} title={t("reading.title")}>
       <View style={styles.body}>
-        <Text style={[styles.label, { color: palette.mut }]}>{t("reading.title")}</Text>
+        <Text style={[styles.label, { color: c.ink }]}>{t("reading.font")}</Text>
         <FontChoice />
         <SizeControl />
+        <FollowSystem />
         <MenuGroup style={{ marginTop: space.xs }}>
           <MenuItem icon="write" label={t("reading.renameSave")} onPress={onRename} />
           {onWorld ? <MenuItem icon="world" label={t("play.world")} onPress={onWorld} /> : null}
@@ -213,6 +178,7 @@ export function MoreSheet({
             <MenuItem
               icon="back"
               label={rollback === "used_up" ? t("play.rollbackUsedUp") : t("play.rollbackPick")}
+              meta={rollback === "used_up" ? undefined : t("play.rollbacksLeft", { count: rollbacksLeft })}
               disabled={rollback !== "ready"}
               onPress={onRollback}
             />
@@ -233,47 +199,42 @@ export function MoreSheet({
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: space.s, gap: space.s },
-  label: {
-    fontSize: 13,
-    lineHeight: 18,
-    paddingTop: space.s,
-    paddingHorizontal: space.s,
-    paddingBottom: space.xs,
-  },
-  fonts: { flexDirection: "row", padding: 4, gap: 4, borderRadius: 26 },
+  body: { gap: 14, paddingHorizontal: 18, paddingBottom: space.xs },
+  label: { fontSize: 13.5, lineHeight: 18, fontWeight: "700" },
+  fonts: { flexDirection: "row", gap: space.m },
   fontOption: {
     flex: 1,
-    height: 52,
-    borderRadius: 22,
+    height: 60,
     flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    borderWidth: comicStroke.control,
+    borderRadius: comicRadius.frame,
+  },
+  glyphBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: comicStroke.control,
     alignItems: "center",
     justifyContent: "center",
-    gap: space.s,
   },
-  size: {
+  row: { flexDirection: "row", alignItems: "center", gap: space.m, minHeight: 40 },
+  stepper: {
     flexDirection: "row",
+    height: 40,
+    borderWidth: comicStroke.control,
+    borderRadius: 11,
+    overflow: "hidden",
+  },
+  stepCell: { width: 48, alignItems: "center", justifyContent: "center" },
+  stepValue: {
+    width: 52,
     alignItems: "center",
-    height: 60,
-    paddingHorizontal: space.s,
-    borderRadius: 26,
+    justifyContent: "center",
+    borderLeftWidth: comicStroke.control,
+    borderRightWidth: comicStroke.control,
   },
-  sizeButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  trackArea: { flex: 1, height: 52, justifyContent: "center", paddingHorizontal: TRACK_PADDING },
-  track: { height: 6, borderRadius: 3 },
-  fill: { height: 6, borderRadius: 3 },
-  knob: {
-    position: "absolute",
-    top: -(KNOB - 6) / 2,
-    width: KNOB,
-    height: KNOB,
-    borderRadius: KNOB / 2,
-    backgroundColor: onColor,
-  },
-  sizeNote: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: space.s,
-  },
+  stepText: { fontSize: 15, fontWeight: "700" },
 });
