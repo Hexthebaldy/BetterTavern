@@ -1,4 +1,5 @@
-"""每个用户的用量上限：同时在写的 agent、没保存的草稿、存的图一共多大（数值在 settings.py）。
+"""每个用户的用量上限：同时在写的 agent、没保存的草稿、世界书几本、存的图一共多大
+（数值在 settings.py）。
 
 公开部署时防止一个账号占满整台机器：超过时返回 409，客户端按错误码提示。
 检查和新建在同一个事务里：事务一开始先 lock_user（同一个用户的这类请求排队），再锁草稿、再查用量，
@@ -14,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from bettertavern.infra.db.repositories import accounts as accounts_repo
 from bettertavern.infra.db.repositories import drafts as drafts_repo
 from bettertavern.infra.db.repositories import library as library_repo
+from bettertavern.infra.db.repositories import lorebooks as lorebooks_repo
 from bettertavern.infra.db.repositories import workbench as workbench_repo
 
 from .errors import AppError
@@ -25,6 +27,7 @@ MIB = 1024 * 1024
 class Quotas:
     max_running_agents: int = 2
     max_open_drafts: int = 50
+    max_lorebooks: int = 100
     max_image_bytes: int = 200 * MIB
     # 官方搜索：每个用户每天几次、全站每个月几次（用完了查维基百科，不报错）
     platform_searches_per_day: int = 30
@@ -52,6 +55,16 @@ async def check_open_drafts(conn: AsyncConnection, user_id: str, quotas: Quotas)
             code="TOO_MANY_DRAFTS",
             status=409,
             limit=quotas.max_open_drafts,
+        )
+
+
+async def check_lorebooks(conn: AsyncConnection, user_id: str, quotas: Quotas) -> None:
+    if await lorebooks_repo.count_lorebooks(conn, user_id) >= quotas.max_lorebooks:
+        raise AppError(
+            "Too many lorebooks, delete some first",
+            code="TOO_MANY_LOREBOOKS",
+            status=409,
+            limit=quotas.max_lorebooks,
         )
 
 

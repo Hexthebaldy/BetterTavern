@@ -1,15 +1,16 @@
-# 接口：角色卡仓库与剧本仓库
+# 接口：角色卡、剧本与世界书仓库
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
 > 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
-“剧本”页分成两个仓库：
+这里有三个仓库：
 
 - **角色卡仓库**：正式保存的角色卡。卡只从[工作台](workbench.md)保存进来（新建、导入、修改都先是草稿）；这里能看、删、看版本历史、恢复旧版、导出。
-- **剧本仓库**：从角色卡仓库里选一张或几张卡（群像剧本）建剧本，再加上剧本的设置（默认主角、偏好、用哪条开场白）。
+- **剧本仓库**：从角色卡仓库里选一张或几张卡（群像剧本）建剧本，再加上剧本的设置（默认主角、偏好、用哪条开场白），可以挂几本世界书。
+- **世界书仓库**：导入 SillyTavern 的世界书文件，或者新建空白的；能改名、改条目、删除。设计见 [lorebook.md](../lorebook.md)。
 
-剧本**实时引用**角色卡：只记卡的 id，开新故事时读这几张卡当时最新的正式版本；已经开始的故事不受影响。有剧本在用的卡不能删。
+剧本**实时引用**角色卡和世界书：只记 id，开新故事时读它们当时最新的内容；已经开始的故事不受影响。有剧本在用的卡不能删；世界书删掉时自动从剧本上摘掉。
 相关的表见 [数据模型：角色卡与剧本](../data-model/library.md)。
 
 ## 接口
@@ -114,8 +115,8 @@
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
-| 404 | `NOT_FOUND` | 有一张卡不存在 |
-| 422 | `VALIDATION_ERROR` | 没选卡或超过 8 张（`field: "card_ids"`）；名字为空（`field: "name"`）；`setup.opening` 指向的卡不在 `card_ids` 里、开场白编号不存在或那一条是空的（`field: "setup.opening"`） |
+| 404 | `NOT_FOUND` | 有一张卡或一本世界书不存在 |
+| 422 | `VALIDATION_ERROR` | 没选卡或超过 8 张（`field: "card_ids"`）；世界书超过 4 本（`field: "lorebook_ids"`）；名字为空（`field: "name"`）；`setup.opening` 指向的卡不在 `card_ids` 里、开场白编号不存在或那一条是空的（`field: "setup.opening"`） |
 
 #### `ScenarioIn`
 
@@ -124,6 +125,7 @@
 | `name` | string / null | 否 | 剧本名，最多 80 个字符；不传时用第一张卡的显示名 |
 | `card_ids` | array of string | 是 | 用哪几张卡，1 到 8 张，按顺序；第一张是主角色卡（剧本封面、默认名字取它）。重复的只算一次 |
 | `setup` | [`ScenarioSetupModel`](#scenariosetupmodel) | 否 | 剧本的设置，默认全空 |
+| `lorebook_ids` | array of string | 否 | 挂哪几本世界书，0 到 4 本，按顺序（顺序只影响开局合并时的先后，见 [lorebook.md](../lorebook.md) 第 3.2 节）。重复的只算一次。卡里自带的世界书不用在这里加 |
 
 #### `ScenarioSetupModel`
 
@@ -169,7 +171,7 @@
 
 ### `PATCH /v1/scenarios/{scenario_id}`
 
-改名字、设置，或者换卡。只改传了的字段；版本号加 1。
+改名字、设置，或者换卡、换世界书。只改传了的字段；版本号加 1。
 
 - 鉴权：需要
 - 请求体：[`ScenarioPatchIn`](#scenariopatchin)
@@ -177,7 +179,7 @@
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
-| 404 | `NOT_FOUND` | 剧本不存在，或者有一张卡不存在 |
+| 404 | `NOT_FOUND` | 剧本不存在，或者有一张卡、一本世界书不存在 |
 | 409 | `SCENARIO_CHANGED` | 带了 `version`，但不是当前的版本号（在别处改过了），带当前的 `version` |
 | 422 | `VALIDATION_ERROR` | 同 `POST /v1/scenarios`；换了卡以后 `setup.opening` 指向的卡不在剧本里也是这个错误，要一起改 |
 
@@ -188,6 +190,7 @@
 | `name` | string / null | 否 | 新名字，1 到 80 个字符 |
 | `card_ids` | array of string / null | 否 | 换成这几张卡（整个替换），1 到 8 张 |
 | `setup` | [`ScenarioSetupModel`](#scenariosetupmodel) / null | 否 | 新的设置（整个替换） |
+| `lorebook_ids` | array of string / null | 否 | 换成这几本世界书（整个替换），0 到 4 本；传空数组是全部摘掉 |
 | `version` | integer / null | 否 | 读到的版本号；带上时检查有没有在别处改过 |
 
 ### `DELETE /v1/scenarios/{scenario_id}`
@@ -200,6 +203,131 @@
 | HTTP | code | 情形 |
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 剧本不存在 |
+
+### `GET /v1/lorebooks`
+
+我的世界书，按最近修改时间倒序，不分页。不带条目全文。
+
+- 鉴权：需要
+- 成功：`200`，返回 [`LorebookOut`](#lorebookout) 数组。
+
+### `POST /v1/lorebooks`
+
+新建一本空白的世界书（`source` 是 `manual`），之后用 `PUT /v1/lorebooks/{lorebook_id}/book` 写条目。和工作台的导入、上传共用每分钟 20 次的限流计数。
+
+- 鉴权：需要
+- 请求体：[`LorebookCreateIn`](#lorebookcreatein)
+- 成功：`201`，返回 [`LorebookDetailOut`](#lorebookdetailout)。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 409 | `TOO_MANY_LOREBOOKS` | 世界书已经到上限（默认 100 本），带 `limit` |
+| 422 | `VALIDATION_ERROR` | 名字为空或超过 80 个字符（`field: "name"`）；简介超过 2000 个字符（`field: "description"`） |
+| 429 | `RATE_LIMITED` | 超过限流 |
+
+#### `LorebookCreateIn`
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `name` | string | 是 | 书名，1 到 80 个字符（连续空白合成一个） |
+| `description` | string | 否 | 简介，最多 2000 个字符 |
+
+### `POST /v1/lorebooks/import`
+
+导入一本世界书。请求体是 `multipart/form-data`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `file` | 世界书文件，必填，JSON，最大 8 MB。按内容识别格式，不看扩展名：SillyTavern 的世界书文件（`worlds/*.json`）、角色卡规范里单独导出的世界书（`lorebook_v3`，或者只有一个 `character_book`）。书名取文件里的名字，没有就用文件名 |
+| `allow_duplicate` | 这个文件已经导入过时，是否仍然另起一本。默认 `false` |
+
+字段怎么对应、丢掉哪些条目见 [lorebook.md](../lorebook.md) 第 6 节：没有正文的、没有关键词又不是常驻的条目丢掉，最多留 2000 条；结果里的导入报告写明各丢了几条、哪些设置不支持。
+
+- 鉴权：需要
+- 成功：`201`，返回 [`LorebookImportOut`](#lorebookimportout)，`lorebook` 是新的那本。
+  同一个用户导入过同一个文件（SHA-256 相同）、而且 `allow_duplicate` 为假时，返回 `200`，`lorebook` 为 null，`existing` 是已有的那本：
+  客户端问用户是打开它还是另外导入一份（带 `allow_duplicate=true` 再传一次）。另外导入的那本不记文件指纹。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 400 | `BAD_REQUEST` | multipart 格式损坏，无法解析 |
+| 409 | `TOO_MANY_LOREBOOKS` | 世界书已经到上限，带 `limit` |
+| 413 | `PAYLOAD_TOO_LARGE` | 文件超过 8 MB |
+| 422 | `LOREBOOK_INVALID` | 不是世界书、JSON 损坏、嵌套太深、一条能用的条目都没有、正文加起来超过 50 万字，原因写在 `title` 里 |
+| 422 | `LOREBOOK_IS_CARD` | 传的是角色卡（客户端提示去工作台导入） |
+| 422 | `VALIDATION_ERROR` | 请求里没有 `file` 字段 |
+| 429 | `RATE_LIMITED` | 超过限流（和工作台的导入、上传共用计数） |
+
+### `GET /v1/lorebooks/{lorebook_id}`
+
+一本世界书的全部内容：概况、全部条目（按列表顺序，文本是原文，宏原样返回）、挂着它的剧本。
+
+- 鉴权：需要
+- 成功：`200`，返回 [`LorebookDetailOut`](#lorebookdetailout)。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 世界书不存在 |
+
+### `PATCH /v1/lorebooks/{lorebook_id}`
+
+改书名、简介。只改传了的字段；版本号加 1。
+
+- 鉴权：需要
+- 请求体：[`LorebookPatchIn`](#lorebookpatchin)
+- 成功：`200`，返回 [`LorebookDetailOut`](#lorebookdetailout)。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 世界书不存在 |
+| 409 | `LOREBOOK_CHANGED` | 带了 `version`，但不是当前的版本号（在别处改过了），带当前的 `version` |
+| 422 | `VALIDATION_ERROR` | 同 `POST /v1/lorebooks` |
+
+#### `LorebookPatchIn`
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `name` | string / null | 否 | 新书名，1 到 80 个字符 |
+| `description` | string / null | 否 | 新简介，最多 2000 个字符 |
+| `version` | integer / null | 否 | 读到的版本号；带上时检查有没有在别处改过 |
+
+### `PUT /v1/lorebooks/{lorebook_id}/book`
+
+编辑条目的自动保存：整本的条目（不是只传改了的）和读到的版本号。版本号加 1。请求体最大 8 MB。
+
+和工作台草稿的自动保存一样**宽松**（`domain/scenario/lorebook.py`）：
+- 标题、正文、关键词可以暂时空着（这样的条目不会被带上，编辑页标出来）；
+- 长度照样检查：最多 2000 条，正文加起来最多 500000 字，每条的上限同卡里的世界书（见 [workbench.md](workbench.md#put-v1workbenchdraftsdraft_idcard)）。超长拒绝，不截断；
+- 文本去掉首尾空白，换行统一成 `\n`，去掉 `\u0000`；关键词去掉空的和重复的；按列表顺序重新编号（`order`），优先级和其余触发设置不跟着变。
+
+- 鉴权：需要
+- 请求体：[`LorebookBookIn`](#lorebookbookin)
+- 成功：`200`，返回 [`LorebookDetailOut`](#lorebookdetailout)。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 世界书不存在 |
+| 409 | `LOREBOOK_CHANGED` | 版本号对不上：在别的设备上改过了，重新读取再改。带当前的 `version` |
+| 413 | `PAYLOAD_TOO_LARGE` | 请求体超过 8 MB |
+| 422 | `VALIDATION_ERROR` | 超过上限，`field` 指出是哪里，例如 `book`、`book.3.content`、`book.3.keys` |
+
+#### `LorebookBookIn`
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `version` | integer | 是 | 读到的版本号 |
+| `book` | array of [`LoreEntryIn`](workbench.md#loreentryin) | 否 | 全部条目，按列表顺序 |
+
+### `DELETE /v1/lorebooks/{lorebook_id}`
+
+删除世界书，并从挂着它的剧本上摘掉（剧本少一本书照样能玩）。已经开始的故事不受影响。
+
+- 鉴权：需要
+- 成功：`204`，没有响应体。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 世界书不存在 |
 
 ## 响应对象
 
@@ -341,9 +469,18 @@
 | `cover_blob_id` | string / null | 主角色卡的封面 |
 | `setup` | [`ScenarioSetupModel`](#scenariosetupmodel) | 剧本的设置，没设置的项是默认值 |
 | `description_preview` | string | 主角色卡描述的预览，规则同 [`CardOut`](#cardout) |
-| `version` | integer | 版本号，从 1 开始；改名字、设置、换卡都会加 1 |
+| `version` | integer | 版本号，从 1 开始；改名字、设置、换卡、换世界书都会加 1 |
 | `created_at` | string（时间） | 创建时间 |
 | `updated_at` | string（时间） | 最近修改时间 |
+| `lorebooks` | array of [`ScenarioLorebookOut`](#scenariolorebookout) | 挂的世界书，按顺序 |
+
+### `ScenarioLorebookOut`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `lorebook_id` | string | 世界书的 ID |
+| `name` | string | 书名 |
+| `entries` | integer | 条目数 |
 
 ### `ScenarioCardOut`
 
@@ -352,3 +489,53 @@
 | `card_id` | string | 卡的 ID |
 | `name` | string | 卡的显示名 |
 | `cover_blob_id` | string / null | 卡的封面 |
+
+### `LorebookOut`
+
+世界书仓库的一本（不带条目全文）。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 世界书的 ID |
+| `name` | string | 书名 |
+| `description` | string | 简介，可能是空串 |
+| `source` | string | 怎么来的：`st_world`（SillyTavern 的世界书文件）/ `lorebook`（角色卡格式的世界书）/ `manual`（新建的） |
+| `entries` | integer | 条目数 |
+| `constant` | integer | 常驻条目数 |
+| `scenario_count` | integer | 几个剧本挂着它 |
+| `report` | [`LorebookReportOut`](#lorebookreportout) / null | 导入报告；新建的是 null |
+| `version` | integer | 版本号，从 1 开始；改名、改简介、改条目都会加 1 |
+| `created_at` | string（时间） | 导入或新建的时间 |
+| `updated_at` | string（时间） | 最近修改时间 |
+
+### `LorebookReportOut`
+
+导入报告：导入时数的几样，之后改条目不变。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `entries` | integer | 导进来几条 |
+| `constant` | integer | 其中常驻的 |
+| `disabled` | integer | 其中停用的 |
+| `dropped_empty` | integer | 没有正文、丢掉的 |
+| `dropped_unreachable` | integer | 没有关键词又不是常驻（永远不会被带上）、丢掉的 |
+| `dropped_over_limit` | integer | 超过 2000 条、丢掉的 |
+| `vectorized` | integer | 按意思匹配的（要 SillyTavern 的向量扩展）：我们只看关键词 |
+| `character_filter` | integer | 只对某些角色生效的：这个限制不生效 |
+| `bad_regex` | integer | 有正则关键词写错、或者用了不认的写法的：那个关键词不会命中 |
+| `other_macros` | integer | 用了 `{{user}}`、`{{char}}` 以外的宏的：开局时那些宏被删掉 |
+
+### `LorebookDetailOut`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `lorebook` | [`LorebookOut`](#lorebookout) | 概况 |
+| `book` | array of [`LoreEntryOut`](#loreentryout) | 全部条目，按列表顺序 |
+| `scenarios` | array of [`ScenarioRefOut`](#scenariorefout) | 挂着它的剧本，按名字排 |
+
+### `LorebookImportOut`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `lorebook` | [`LorebookDetailOut`](#lorebookdetailout) / null | 新导入的那本；文件导入过、又没让另起一本时为 null |
+| `existing` | [`LorebookOut`](#lorebookout) / null | 已经导入过的那本 |

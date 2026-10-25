@@ -22,6 +22,10 @@ import type {
   CardDetail,
   CardRevision,
   CardSummary,
+  LoreEntry,
+  LorebookDetail,
+  LorebookImport,
+  LorebookSummary,
   CharacterCardInput,
   Draft,
   DraftImport,
@@ -186,6 +190,28 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
       /** 带 version 时检查有没有在别处改过（409 SCENARIO_CHANGED） */
       update: (id: string, body: ScenarioPatch) => client.patch<Scenario>(`/v1/scenarios/${enc(id)}`, body),
       remove: (id: string) => client.delete<void>(`/v1/scenarios/${enc(id)}`),
+    },
+    lorebooks: {
+      list: () => client.get<LorebookSummary[]>("/v1/lorebooks"),
+      get: (id: string) => client.get<LorebookDetail>(`/v1/lorebooks/${enc(id)}`),
+      create: (name: string, description = "") =>
+        client.post<LorebookDetail>("/v1/lorebooks", { name, description }),
+      /** 同一个文件导入过、又没让另起一本时 lorebook 是 null、existing 是已有的那本。
+       * 书名取文件里的名字，没有就用 filename */
+      importFile: (file: Blob, options: { allowDuplicate: boolean; filename?: string }) => {
+        const form = new FormData();
+        if (options.filename) form.append("file", file, options.filename);
+        else form.append("file", file);
+        form.append("allow_duplicate", options.allowDuplicate ? "true" : "false");
+        return client.request<LorebookImport>("POST", "/v1/lorebooks/import", { form, timeoutMs: 120_000 });
+      },
+      /** 带 version 时检查有没有在别处改过（409 LOREBOOK_CHANGED） */
+      update: (id: string, body: { name?: string; description?: string; version?: number }) =>
+        client.patch<LorebookDetail>(`/v1/lorebooks/${enc(id)}`, body),
+      /** 编辑条目的自动保存：整本的条目；版本号对不上是 409 LOREBOOK_CHANGED */
+      saveBook: (id: string, version: number, book: LoreEntry[]) =>
+        client.put<LorebookDetail>(`/v1/lorebooks/${enc(id)}/book`, { version, book }, { timeoutMs: 60_000 }),
+      remove: (id: string) => client.delete<void>(`/v1/lorebooks/${enc(id)}`),
     },
     blobPath: (blobId: string) => `/v1/blobs/${enc(blobId)}`,
     workbench: {

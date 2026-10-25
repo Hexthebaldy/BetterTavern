@@ -1,4 +1,5 @@
-"""每个用户的用量上限：同时在写的 agent、没保存的草稿、存的图一共多大（真实 Postgres）。"""
+"""每个用户的用量上限：同时在写的 agent、没保存的草稿、世界书几本、存的图一共多大
+（真实 Postgres）。"""
 
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from bettertavern.runtime.ports import NewImage, StorageFull
 from bettertavern.services.auth_service import AuthService
 from bettertavern.services.draft_service import DraftService
 from bettertavern.services.errors import AppError
+from bettertavern.services.lorebook_service import LorebookService
 from bettertavern.services.quotas import Quotas
 from bettertavern.services.scenario_service import ScenarioService
 from bettertavern.services.web_store import PgWebStore
@@ -82,6 +84,27 @@ async def test_unsaved_drafts_are_capped(engine: AsyncEngine) -> None:
     # 删掉一份就又能建
     await service.delete(user, made[0].summary.id)
     await service.create_manual(user, language="zh")
+
+
+async def test_lorebooks_are_capped(engine: AsyncEngine) -> None:
+    user = await new_user(engine)
+    service = LorebookService(engine, Quotas(max_lorebooks=2))
+    # 同时新建三本：排队检查，只有两本建得出来
+    results = await asyncio.gather(
+        *(service.create(user, name=f"书{i}") for i in range(3)), return_exceptions=True
+    )
+    made = [r for r in results if not isinstance(r, BaseException)]
+    refused = [r for r in results if isinstance(r, AppError)]
+    assert len(made) == 2 and len(refused) == 1
+    assert refused[0].code == "TOO_MANY_LOREBOOKS" and refused[0].extra["limit"] == 2
+    # 导入也算；删掉一本就又能导
+    data = b'{"entries": {"0": {"uid": 0, "key": ["k"], "content": "x"}}}'
+    with pytest.raises(AppError) as again:
+        await service.import_file(user, data, filename="a.json", allow_duplicate=False)
+    assert again.value.code == "TOO_MANY_LOREBOOKS"
+    await service.delete(user, made[0].summary.id)
+    imported = await service.import_file(user, data, filename="a.json", allow_duplicate=False)
+    assert imported.lorebook is not None
 
 
 async def test_running_agents_are_capped(engine: AsyncEngine) -> None:

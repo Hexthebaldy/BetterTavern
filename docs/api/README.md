@@ -14,7 +14,7 @@
 | [auth.md](auth.md) | 认证与账户 | `/v1/auth/*`、`/v1/me` |
 | [models.md](models.md) | 服务商与模型路由（玩家配好的模型，含 Key 和端点） | `/v1/providers*`、`/v1/model-routes*` |
 | [tools.md](tools.md) | 外部服务：搜索、读网页、文生图的配置 | `/v1/tool-providers`、`/v1/tool-routes*` |
-| [library.md](library.md) | 角色卡仓库与剧本仓库 | `/v1/cards*`、`/v1/scenarios*`、`/v1/blobs/*` |
+| [library.md](library.md) | 角色卡仓库、剧本仓库与世界书仓库 | `/v1/cards*`、`/v1/scenarios*`、`/v1/lorebooks*`、`/v1/blobs/*` |
 | [workbench.md](workbench.md) | 工作台：草稿、图片、保存到角色卡仓库 | `/v1/workbench/*` |
 | [play.md](play.md) | 游玩与回合 | `/v1/playthroughs*`、`/v1/turns/*` |
 | [events.md](events.md) | 回合事件流（SSE）的格式 | `/v1/turns/{turn_id}/events` 推送的内容（接口本身在 play.md） |
@@ -93,10 +93,10 @@
 | 用户 | 5（`RATE_LIMIT_AUTH_PER_MIN`） | `POST /v1/me/password` |
 | 用户 | 30（`RATE_LIMIT_TURNS_PER_MIN`），两个接口共用一个计数 | `POST /v1/playthroughs`、`POST /v1/playthroughs/{playthrough_id}/turns` |
 | 用户 | 5（`RATE_LIMIT_PROBE_PER_MIN`），三个接口各自计数 | `POST /v1/model-routes/{route_id}/probe`、`POST /v1/providers/{provider}/models`、`POST /v1/tool-routes/{route_id}/test` |
-| 用户 | 20（`RATE_LIMIT_WORKBENCH_PER_MIN`），六个接口共用一个计数 | `POST /v1/workbench/drafts`、`POST /v1/workbench/drafts/import`、`POST /v1/workbench/drafts/{draft_id}/assets`、`POST /v1/workbench/drafts/{draft_id}/covers`、`POST /v1/workbench/drafts/{draft_id}/messages`、`POST /v1/workbench/drafts/{draft_id}/continue` |
+| 用户 | 20（`RATE_LIMIT_WORKBENCH_PER_MIN`），八个接口共用一个计数 | `POST /v1/workbench/drafts`、`POST /v1/workbench/drafts/import`、`POST /v1/workbench/drafts/{draft_id}/assets`、`POST /v1/workbench/drafts/{draft_id}/covers`、`POST /v1/workbench/drafts/{draft_id}/messages`、`POST /v1/workbench/drafts/{draft_id}/continue`、`POST /v1/lorebooks`、`POST /v1/lorebooks/import` |
 
 另外每个用户有用量上限（不是按时间，是同时存在的数量）：同时在写的 agent 最多 2 个（`MAX_RUNNING_AGENTS`），
-没保存的草稿最多 50 份（`MAX_OPEN_DRAFTS`），存的图一共最多 200 MB（`MAX_IMAGE_BYTES_PER_USER`），超过时返回 409，见下面的错误码。
+没保存的草稿最多 50 份（`MAX_OPEN_DRAFTS`），世界书最多 100 本（`MAX_LOREBOOKS`），存的图一共最多 200 MB（`MAX_IMAGE_BYTES_PER_USER`），超过时返回 409，见下面的错误码。
 
 客户端 IP 取的是连接的对端地址；对端在 `FORWARDED_ALLOW_IPS`（默认 `127.0.0.1,::1`，可以写网段）里时，改用它带来的 `X-Forwarded-For`
 里最后一个不受信任的地址，也就是代理看到的真实 IP。服务部署在反向代理后面时，要把代理的地址加进这个变量，否则所有玩家会共用代理的 IP 计数。
@@ -104,7 +104,7 @@
 
 ### 请求体大小
 
-请求体默认最大 1 MB；导入角色卡、上传图片的接口最大 16 MB 加 256 KB（multipart 的边界和头部）；草稿的自动保存最大 4 MB。超过限制返回 413 `PAYLOAD_TOO_LARGE`。
+请求体默认最大 1 MB；导入角色卡、上传图片的接口最大 16 MB 加 256 KB（multipart 的边界和头部）；导入世界书最大 8 MB 加 256 KB；草稿的自动保存最大 4 MB；世界书改条目最大 8 MB。超过限制返回 413 `PAYLOAD_TOO_LARGE`。
 检查在最外层的中间件里进行：有 `Content-Length` 的请求直接拒绝，分块上传边收边计数。
 
 ### 优雅退出
@@ -160,10 +160,12 @@
 | `CARD_IN_USE` | 409 | 要删的角色卡有剧本在用 | `scenarios`（`[{id, name}]`） |
 | `DRAFT_CHANGED` | 409 | 自动保存草稿时版本号对不上：agent 或别的设备改过了，重新读取 | `version`（草稿当前的版本号） |
 | `SCENARIO_CHANGED` | 409 | 改剧本时带的版本号对不上：在别处改过了 | `version`（当前的版本号） |
+| `LOREBOOK_CHANGED` | 409 | 改世界书（名字、简介、条目）时版本号对不上：在别处改过了，重新读取 | `version`（当前的版本号） |
 | `IMAGE_LICENSE` | 409 | 版权不明的图要确认“仅限个人使用”才能当封面 | `license` |
 | `DRAFT_BUSY` | 409 | 工作台的 agent 还在跑，不能再开一轮 |  |
 | `TOO_MANY_RUNS` | 409 | 同时在写的 agent 已经到上限（别的草稿还在写） | `limit` |
 | `TOO_MANY_DRAFTS` | 409 | 没保存的草稿已经到上限 | `limit` |
+| `TOO_MANY_LOREBOOKS` | 409 | 世界书已经到上限 | `limit` |
 | `STORAGE_FULL` | 409 | 存的图已经到上限 | `limit_mb` |
 | `TOOL_ROUTE_MISSING` | 409 | 封面面板直接出图时，还没配文生图 |  |
 | `TOOL_ROUTE_INVALID` | 502 | 文生图服务出错（Key 不对、额度用完、内容策略、网络） | `reason`（`auth` / `quota` / `blocked` / `http` / `network` / `bad_response`） |
@@ -175,6 +177,8 @@
 | `ENDPOINT_NOT_ALLOWED` | 422 | 接口地址没有通过 SSRF 校验 | `reason` |
 | `WINDOW_TOO_SMALL` | 422 | 模型的有效窗口小于 16000 | `model_window`、`cap`、`max_tokens`、`effective_window` |
 | `CARD_INVALID` | 422 | 角色卡无法解析 |  |
+| `LOREBOOK_INVALID` | 422 | 世界书无法解析（不是世界书、坏了、没有能用的条目、太长） |  |
+| `LOREBOOK_IS_CARD` | 422 | 导入世界书时传的是角色卡 |  |
 | `CARD_CHECK_FAILED` | 422 | 草稿保存进仓库前没通过检查 | `issues`（问题清单，见 [workbench.md](workbench.md#issueout)）、`field` |
 | `IMAGE_INVALID` | 422 | 上传的不是 PNG、JPEG、WebP，或者解码失败、像素太多 | `field` |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | 同一个 `Idempotency-Key` 对应了不同的请求内容 |  |

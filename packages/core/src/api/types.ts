@@ -279,20 +279,70 @@ export type Scenario = {
   version: number;
   created_at: string;
   updated_at: string;
+  /** 挂的世界书，按顺序 */
+  lorebooks: ScenarioLorebook[];
 };
+
+export type ScenarioLorebook = { lorebook_id: string; name: string; entries: number };
 
 export type NewScenario = {
   name?: string | null;
   card_ids: string[];
   setup?: ScenarioSetup;
+  /** 最多 4 本 */
+  lorebook_ids?: string[];
 };
 
 export type ScenarioPatch = {
   name?: string;
   card_ids?: string[];
   setup?: ScenarioSetup;
+  /** 整个替换；空数组是全部摘掉 */
+  lorebook_ids?: string[];
   version?: number;
 };
+
+// ---- 世界书仓库 ----------------------------------------------------------------------------
+
+export type LorebookSource = "st_world" | "lorebook" | "manual";
+
+/** 导入报告：只有数字 */
+export type LorebookReport = {
+  entries: number;
+  constant: number;
+  disabled: number;
+  dropped_empty: number;
+  dropped_unreachable: number;
+  dropped_over_limit: number;
+  vectorized: number;
+  character_filter: number;
+  bad_regex: number;
+  other_macros: number;
+};
+
+/** 世界书仓库的一本（不带条目） */
+export type LorebookSummary = {
+  id: string;
+  name: string;
+  description: string;
+  source: LorebookSource;
+  entries: number;
+  constant: number;
+  scenario_count: number;
+  /** 新建的是 null */
+  report: LorebookReport | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LorebookDetail = {
+  lorebook: LorebookSummary;
+  book: LoreEntry[];
+  scenarios: { id: string; name: string }[];
+};
+
+export type LorebookImport = { lorebook: LorebookDetail | null; existing: LorebookSummary | null };
 
 // ---- 工作台 ------------------------------------------------------------------------------
 

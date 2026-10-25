@@ -30,6 +30,7 @@ from .cover_service import CoverService
 from .credits import CreditPolicy, CreditService, grant_key
 from .draft_service import DraftService
 from .lightning_store import PgLightningStore
+from .lorebook_service import LorebookService
 from .maintenance import Maintenance
 from .memory_store import PgMemoryStore
 from .outline_store import PgOutlineStore
@@ -58,6 +59,7 @@ class Services:
     routes: RouteService
     scenarios: ScenarioService
     cards: CardService
+    lorebooks: LorebookService
     drafts: DraftService
     workbench: WorkbenchService
     tool_routes: ToolRouteService
@@ -141,6 +143,7 @@ def build_services(
         routes=routes,
         scenarios=scenarios,
         cards=CardService(engine),
+        lorebooks=LorebookService(engine, quotas),
         drafts=DraftService(engine, scenarios, quotas),
         workbench=WorkbenchService(engine, quotas=quotas, credits=credits),
         tool_routes=tool_routes,

@@ -1,10 +1,10 @@
-# 数据模型：角色卡与剧本
+# 数据模型：角色卡、剧本与世界书
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
-角色卡仓库（`cards`、`card_revisions`）、剧本仓库（`scenarios`、`scenario_cards`）和图片文件（`blobs`）。
+角色卡仓库（`cards`、`card_revisions`）、剧本仓库（`scenarios`、`scenario_cards`、`scenario_lorebooks`）、世界书仓库（`lorebooks`，设计见 [lorebook.md](../lorebook.md)）和图片文件（`blobs`）。
 对应的接口见 [api/library.md](../api/library.md)；卡从工作台的草稿保存进来，草稿的表见 [workbench.md](workbench.md)。
 
 迁移 0018 把原来“一个剧本就是一张卡”拆开：每个现有剧本复制出一张卡（卡的 `id` 沿用剧本的 `id`），各记一份版本，
@@ -113,6 +113,47 @@
 约束与索引：主键 `(scenario_id, card_id)`；`scenario_cards_position_uq (scenario_id, position)` 唯一；
 `scenario_cards_card_idx (card_id)`，删卡和列出“在用的剧本”时查。换卡时先删掉这个剧本的全部行再按新顺序插入。
 
+### `lorebooks`
+
+世界书仓库：导入的（SillyTavern 的世界书文件、角色卡格式的世界书）或新建的世界书。迁移 `0025` 加的。
+
+| 列 | 类型 | 可空 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | uuid | 否 | `gen_random_uuid()` | 主键 |
+| `user_id` | uuid | 否 |  | → `users.id`，级联删除 |
+| `name` | text | 否 |  | 书名，最多 80 字；导入时取文件里的名字，没有就用文件名 |
+| `description` | text | 否 | `''` | 简介，最多 2000 字 |
+| `source` | text | 否 |  | 怎么来的：`st_world`（SillyTavern 的世界书文件）/ `lorebook`（角色卡规范里单独导出的世界书）/ `manual`（新建的） |
+| `source_sha256` | text | 是 |  | 导入文件整体的 SHA-256。同一个用户再导入同一个文件时，先问是打开这本还是另起一本；另起的那本这一列为空 |
+| `raw` | jsonb | 是 |  | 导入时的原始 JSON，原样保存；新建的为空 |
+| `book` | jsonb | 否 | `'[]'` | 条目数组，结构同卡里的世界书（下文“世界书条目”）。最多 2000 条，正文加起来最多 500000 字 |
+| `report` | jsonb | 否 | `'{}'` | 导入报告，结构见下文；新建的是 `{}` |
+| `version` | integer | 否 | `1` | 改名、改简介、改条目时加 1；改的时候带着读到的版本号，对不上返回 409 `LOREBOOK_CHANGED` |
+| `created_at` | timestamptz | 否 | `now()` |  |
+| `updated_at` | timestamptz | 否 | `now()` | 世界书仓库按它倒序 |
+
+约束与索引：
+- `source` 的 CHECK；`version >= 1`；
+- `lorebooks_user_idx (user_id, updated_at DESC)`；
+- `lorebooks_user_sha_uq (user_id, source_sha256) WHERE source_sha256 IS NOT NULL`：同一个文件只记一本。
+
+改名字、简介、条目都是带条件的 UPDATE（`… WHERE id = :id AND user_id = :u AND version = :v`），影响行数为 0 就是在别处改过。
+每个用户最多 100 本（服务端设置 `MAX_LOREBOOKS`），超过时 409 `TOO_MANY_LOREBOOKS`。列表不读 `book` 全文，条目数和常驻条数在 SQL 里数。
+
+### `scenario_lorebooks`
+
+剧本挂了哪几本世界书。和 `scenario_cards` 一样是**实时引用**：开新故事时读这几本当时的条目。迁移 `0025` 加的。
+
+| 列 | 类型 | 可空 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `scenario_id` | uuid | 否 |  | → `scenarios.id`，级联删除 |
+| `lorebook_id` | uuid | 否 |  | → `lorebooks.id`，**级联删除**：删书时自动从剧本上摘掉，剧本照样能玩 |
+| `position` | smallint | 否 |  | 第几本，从 0 开始，CHECK 在 0 到 3 之间（一个剧本最多 4 本） |
+
+约束与索引：主键 `(scenario_id, lorebook_id)`；`scenario_lorebooks_position_uq (scenario_id, position)` 唯一；
+`scenario_lorebooks_lorebook_idx (lorebook_id)`，列出“挂着它的剧本”和数 `scenario_count` 时查。换书时先删掉这个剧本的全部行再按新顺序插入。
+摘书、删书不改 `scenarios.version`（只有通过剧本接口换书时才加 1）。
+
 ## JSON 列
 
 ### `cards.card`
@@ -206,3 +247,17 @@
 ```
 
 写入时检查 `opening.card_id` 在这个剧本的卡里、那条开场白存在且不为空。迁移 0018 之前的剧本是 `{}`，读出时按默认值补齐。
+
+### `lorebooks.report`
+
+导入报告（`domain/scenario/lorebook.py` 的 `LorebookReport`），只有数字，不记内容；导入以后改条目不变：
+
+```jsonc
+{
+  "entries": 42, "constant": 3, "disabled": 1,           // 导进来几条、其中常驻的、停用的
+  "dropped_empty": 2, "dropped_unreachable": 1,          // 没正文丢掉的、没关键词又不常驻丢掉的
+  "dropped_over_limit": 0,                               // 超过 2000 条丢掉的
+  "vectorized": 0, "character_filter": 0,                // 按意思匹配的、只对某些角色生效的（我们不支持）
+  "bad_regex": 1, "other_macros": 2                      // 正则写错的、用了 {{user}} {{char}} 以外的宏的
+}
+```

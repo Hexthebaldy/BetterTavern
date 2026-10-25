@@ -25,6 +25,13 @@ from bettertavern.api.v1.auth import router as auth_router
 from bettertavern.api.v1.cards import router as cards_router
 from bettertavern.api.v1.credits import router as credits_router
 from bettertavern.api.v1.health import router as health_router
+from bettertavern.api.v1.lorebooks import (
+    BOOK_PATH_PATTERN,
+    MAX_BOOK_BODY_BYTES,
+    MAX_IMPORT_BODY_BYTES,
+)
+from bettertavern.api.v1.lorebooks import IMPORT_PATH as LOREBOOK_IMPORT_PATH
+from bettertavern.api.v1.lorebooks import router as lorebooks_router
 from bettertavern.api.v1.playthroughs import router as playthroughs_router
 from bettertavern.api.v1.routes import router as routes_router
 from bettertavern.api.v1.scenarios import router as scenarios_router
@@ -189,13 +196,17 @@ def create_app(
         mail=RateLimiter(20, 3600.0),
     )
     install_error_handlers(app)
-    # 角色卡上传另算：16 MB 的文件加上 multipart 的边界和头
+    # 角色卡上传另算：16 MB 的文件加上 multipart 的边界和头；世界书的导入和改条目也另算
     app.add_middleware(
         BodySizeLimit,
-        limits={IMPORT_PATH: MAX_UPLOAD_BYTES + 256 * 1024},
+        limits={
+            IMPORT_PATH: MAX_UPLOAD_BYTES + 256 * 1024,
+            LOREBOOK_IMPORT_PATH: MAX_IMPORT_BODY_BYTES,
+        },
         patterns=[
             (CARD_PATH_PATTERN, MAX_CARD_BODY_BYTES),
             (ASSET_PATH_PATTERN, MAX_IMAGE_BYTES + 256 * 1024),
+            (BOOK_PATH_PATTERN, MAX_BOOK_BODY_BYTES),
         ],
     )
     if settings.cors_origin_list:
@@ -214,6 +225,7 @@ def create_app(
     app.include_router(routes_router)
     app.include_router(cards_router)
     app.include_router(scenarios_router)
+    app.include_router(lorebooks_router)
     app.include_router(workbench_router)
     app.include_router(tools_router)
     app.include_router(playthroughs_router)

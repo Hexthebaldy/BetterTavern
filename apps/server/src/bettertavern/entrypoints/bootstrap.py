@@ -85,6 +85,7 @@ def quotas(settings: Settings) -> Quotas:
     return Quotas(
         max_running_agents=settings.max_running_agents,
         max_open_drafts=settings.max_open_drafts,
+        max_lorebooks=settings.max_lorebooks,
         max_image_bytes=settings.max_image_bytes_per_user,
         platform_searches_per_day=settings.platform_search_daily,
         platform_searches_per_month=settings.platform_search_monthly,

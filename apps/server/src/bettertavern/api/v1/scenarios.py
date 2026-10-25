@@ -1,4 +1,4 @@
-"""剧本仓库：从角色卡仓库选一张或几张卡新建剧本，列表、详情、改名字和设置、换卡、删除。"""
+"""剧本仓库：从角色卡仓库选一张或几张卡新建剧本，列表、详情、改名字和设置、换卡、换世界书、删除。"""
 
 from __future__ import annotations
 
@@ -19,7 +19,11 @@ async def list_scenarios(user_id: UserId, services: ServicesDep) -> list[Scenari
 @router.post("/scenarios", status_code=status.HTTP_201_CREATED)
 async def create_scenario(body: ScenarioIn, user_id: UserId, services: ServicesDep) -> ScenarioOut:
     view = await services.scenarios.create(
-        user_id, name=body.name, card_ids=body.card_ids, setup=setup_json(body.setup)
+        user_id,
+        name=body.name,
+        card_ids=body.card_ids,
+        setup=setup_json(body.setup),
+        lorebook_ids=body.lorebook_ids,
     )
     return ScenarioOut.model_validate(view)
 
@@ -37,6 +41,7 @@ async def update_scenario(
         name=body.name,
         setup=setup_json(body.setup) if body.setup is not None else None,
         card_ids=body.card_ids,
+        lorebook_ids=body.lorebook_ids,
         version=body.version,
     )
     return ScenarioOut.model_validate(await services.scenarios.update(user_id, scenario_id, patch))

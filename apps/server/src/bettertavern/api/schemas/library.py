@@ -211,10 +211,17 @@ class ScenarioCardOut(Out):
     cover_blob_id: str | None
 
 
+class ScenarioLorebookOut(Out):
+    lorebook_id: str
+    name: str
+    entries: int
+
+
 class ScenarioOut(Out):
     id: str
     name: str
     cards: list[ScenarioCardOut]
+    lorebooks: list[ScenarioLorebookOut]
     cover_blob_id: str | None
     setup: ScenarioSetupModel
     description_preview: str
@@ -228,12 +235,15 @@ class ScenarioIn(BaseModel):
     name: str | None = Field(default=None, max_length=80)
     card_ids: list[str] = Field(min_length=1, max_length=8)
     setup: ScenarioSetupModel = Field(default_factory=ScenarioSetupModel)
+    # 挂哪几本世界书（最多 4 本，按顺序）；上限由用例层检查（422 带 field）
+    lorebook_ids: list[str] = Field(default_factory=list)
 
 
 class ScenarioPatchIn(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     card_ids: list[str] | None = Field(default=None, min_length=1, max_length=8)
     setup: ScenarioSetupModel | None = None
+    lorebook_ids: list[str] | None = None
     # 带上读到的版本号时检查有没有在别处改过（409 SCENARIO_CHANGED）
     version: int | None = Field(default=None, ge=1)
 

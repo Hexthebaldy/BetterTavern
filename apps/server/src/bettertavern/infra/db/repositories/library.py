@@ -1,6 +1,8 @@
-"""剧本仓库：scenarios、scenario_cards，以及 blobs（封面等图片；存在库里，便于备份和单机部署）。
+"""剧本仓库：scenarios、scenario_cards、scenario_lorebooks，以及 blobs（封面等图片；存在库里，
+便于备份和单机部署）。
 
-角色卡本身在 cards.py。剧本只记用了哪几张卡（scenario_cards），开新故事时读这几张卡当时的正式版本。
+角色卡本身在 cards.py，世界书在 lorebooks.py。剧本只记用了哪几张卡（scenario_cards）、挂了哪几本
+世界书（scenario_lorebooks），开新故事时读它们当时的正式内容。
 """
 
 from __future__ import annotations
@@ -128,6 +130,16 @@ class ScenarioCardRef:
 
 
 @dataclass(frozen=True, slots=True)
+class ScenarioLorebookRef:
+    """剧本挂的一本世界书（不带条目全文）。"""
+
+    lorebook_id: str
+    position: int
+    name: str
+    entries: int
+
+
+@dataclass(frozen=True, slots=True)
 class ScenarioRow:
     id: str
     user_id: str
@@ -137,10 +149,12 @@ class ScenarioRow:
     created_at: datetime
     updated_at: datetime
     cards: tuple[ScenarioCardRef, ...] = ()
+    lorebooks: tuple[ScenarioLorebookRef, ...] = ()
 
     @classmethod
     def from_row(cls, row: Row) -> ScenarioRow:
         refs = as_json(row.get("cards"), []) or []
+        books = as_json(row.get("lorebooks"), []) or []
         return cls(
             id=str(row["id"]),
             user_id=str(row["user_id"]),
@@ -158,10 +172,19 @@ class ScenarioRow:
                 )
                 for r in sorted(refs, key=lambda r: int(r["position"]))
             ),
+            lorebooks=tuple(
+                ScenarioLorebookRef(
+                    lorebook_id=str(b["lorebook_id"]),
+                    position=int(b["position"]),
+                    name=str(b["name"]),
+                    entries=int(b["entries"]),
+                )
+                for b in sorted(books, key=lambda b: int(b["position"]))
+            ),
         )
 
 
-# 每个剧本带上它的几张卡（按位置排），一次查出来
+# 每个剧本带上它的几张卡、挂的几本世界书（都按位置排），一次查出来
 _SCENARIO_SELECT = """
 SELECT s.id, s.user_id, s.name, s.setup, s.version, s.created_at, s.updated_at,
        COALESCE((
@@ -170,7 +193,14 @@ SELECT s.id, s.user_id, s.name, s.setup, s.version, s.created_at, s.updated_at,
                       'cover_blob_id', c.cover_blob_id) ORDER BY sc.position)
            FROM scenario_cards AS sc JOIN cards AS c ON c.id = sc.card_id
            WHERE sc.scenario_id = s.id
-       ), '[]') AS cards
+       ), '[]') AS cards,
+       COALESCE((
+           SELECT json_agg(json_build_object(
+                      'lorebook_id', l.id, 'position', sl.position, 'name', l.name,
+                      'entries', jsonb_array_length(l.book)) ORDER BY sl.position)
+           FROM scenario_lorebooks AS sl JOIN lorebooks AS l ON l.id = sl.lorebook_id
+           WHERE sl.scenario_id = s.id
+       ), '[]') AS lorebooks
 FROM scenarios AS s
 """
 
@@ -182,6 +212,7 @@ async def insert_scenario(
     name: str,
     setup: dict[str, Any],
     card_ids: Sequence[str],
+    lorebook_ids: Sequence[str] = (),
 ) -> ScenarioRow:
     row = await fetch_one(
         conn,
@@ -192,6 +223,7 @@ async def insert_scenario(
     assert row is not None
     scenario_id = str(row["id"])
     await _insert_cards(conn, scenario_id, card_ids)
+    await _insert_lorebooks(conn, scenario_id, lorebook_ids)
     created = await get_scenario(conn, user_id, scenario_id)
     assert created is not None
     return created
@@ -204,6 +236,18 @@ async def _insert_cards(conn: AsyncConnection, scenario_id: str, card_ids: Seque
             """INSERT INTO scenario_cards (scenario_id, card_id, position)
                VALUES (:s, :c, :p)""",
             {"s": scenario_id, "c": card_id, "p": position},
+        )
+
+
+async def _insert_lorebooks(
+    conn: AsyncConnection, scenario_id: str, lorebook_ids: Sequence[str]
+) -> None:
+    for position, lorebook_id in enumerate(lorebook_ids):
+        await execute(
+            conn,
+            """INSERT INTO scenario_lorebooks (scenario_id, lorebook_id, position)
+               VALUES (:s, :l, :p)""",
+            {"s": scenario_id, "l": lorebook_id, "p": position},
         )
 
 
@@ -237,8 +281,10 @@ async def update_scenario(
     setup: dict[str, Any],
     card_ids: Sequence[str] | None,
     expected_version: int | None,
+    lorebook_ids: Sequence[str] | None = None,
 ) -> ScenarioRow | None:
-    """改名字、设置，可选换卡；版本号加 1。expected_version 对不上或剧本不存在时返回 None。"""
+    """改名字、设置，可选换卡、换世界书；版本号加 1。
+    expected_version 对不上或剧本不存在时返回 None。"""
     row = await fetch_one(
         conn,
         """UPDATE scenarios
@@ -259,6 +305,11 @@ async def update_scenario(
     if card_ids is not None:
         await execute(conn, "DELETE FROM scenario_cards WHERE scenario_id = :s", {"s": scenario_id})
         await _insert_cards(conn, scenario_id, card_ids)
+    if lorebook_ids is not None:
+        await execute(
+            conn, "DELETE FROM scenario_lorebooks WHERE scenario_id = :s", {"s": scenario_id}
+        )
+        await _insert_lorebooks(conn, scenario_id, lorebook_ids)
     return await get_scenario(conn, user_id, scenario_id)
 
 
