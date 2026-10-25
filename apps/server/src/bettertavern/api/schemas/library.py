@@ -5,11 +5,45 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from bettertavern.domain.scenario.card import LoreRules
+from bettertavern.domain.scenario.edit import LoreEntryEdit
 
 from .common import Out
 
 # ---- 卡片内容（角色卡详情、草稿共用） ----
+
+
+LoreLogicIn = Literal["any", "all", "not_any", "not_all"]
+LoreMatchIn = Literal[
+    "persona", "description", "personality", "depth_prompt", "scenario", "creator_notes"
+]
+LoreTriggerIn = Literal["normal", "continue", "impersonate", "swipe", "regenerate", "quiet"]
+
+
+class LoreRulesModel(BaseModel):
+    """世界书条目不常用的触发设置（同 domain/scenario/card.py 的 LoreRules），请求和响应共用。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    whole_words: bool | None = None
+    case_sensitive: bool | None = None
+    scan_depth: int | None = Field(default=None, ge=0, le=1000)
+    match: list[LoreMatchIn] = Field(default_factory=list)
+    exclude_recursion: bool = False
+    prevent_recursion: bool = False
+    delay_until_recursion: int = Field(default=0, ge=0, le=100)
+    probability: int = Field(default=100, ge=0, le=100)
+    groups: list[str] = Field(default_factory=list, max_length=16)
+    group_override: bool = False
+    group_weight: int = Field(default=100, ge=0, le=1_000_000)
+    group_scoring: bool | None = None
+    sticky: int = Field(default=0, ge=0, le=1000)
+    cooldown: int = Field(default=0, ge=0, le=1000)
+    delay: int = Field(default=0, ge=0, le=1000)
+    triggers: list[LoreTriggerIn] = Field(default_factory=list)
+    ignore_budget: bool = False
 
 
 class LoreEntryOut(Out):
@@ -18,6 +52,10 @@ class LoreEntryOut(Out):
     content: str
     enabled: bool
     constant: bool
+    secondary_keys: list[str]
+    logic: str
+    priority: int | None
+    rules: LoreRulesModel | None
 
 
 class CharacterCardOut(Out):
@@ -49,6 +87,25 @@ class LoreEntryIn(BaseModel):
     content: str = ""
     enabled: bool = True
     constant: bool = False
+    secondary_keys: list[str] = Field(default_factory=list)
+    logic: LoreLogicIn = "any"
+    priority: int | None = None
+    rules: LoreRulesModel | None = None
+
+
+def lore_edit(entry: LoreEntryIn) -> LoreEntryEdit:
+    """请求里的一条世界书 → 一次编辑（校验和上限在 domain/scenario/edit.py 的 edit_entry）。"""
+    return LoreEntryEdit(
+        name=entry.name,
+        keys=tuple(entry.keys),
+        content=entry.content,
+        enabled=entry.enabled,
+        constant=entry.constant,
+        secondary_keys=tuple(entry.secondary_keys),
+        logic=entry.logic,
+        priority=entry.priority,
+        rules=None if entry.rules is None else LoreRules(**entry.rules.model_dump()),
+    )
 
 
 class CharacterCardIn(BaseModel):

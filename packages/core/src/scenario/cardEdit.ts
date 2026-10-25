@@ -8,7 +8,7 @@
  * - 草稿可以暂时不完整（名字空着、条目没写内容）：自动保存照样存，检查结果里是 error，保存进仓库时才挡住。
  */
 
-import type { CharacterCard, CharacterCardInput, Draft, Issue } from "../api/types.ts";
+import type { CharacterCard, CharacterCardInput, Draft, Issue, LoreLogic, LoreRules } from "../api/types.ts";
 import { i18n } from "../i18n/index.ts";
 
 export const CARD_LIMITS = {
@@ -22,7 +22,7 @@ export const CARD_LIMITS = {
   entries: 1000,
   entryName: 120,
   keys: 64,
-  key: 100,
+  key: 300,
 } as const;
 
 /** 能编辑的文本字段，按表单里的顺序 */
@@ -46,7 +46,8 @@ export function fieldLabel(field: LabeledField): string {
 
 const LABELED = new Set<string>([...TEXT_FIELDS, "name", "display_name", "tags", "alternate_greetings"]);
 
-/** 世界书条目的草稿：key 只在界面上用来区分条目，不发给服务端 */
+/** 世界书条目的草稿：key 只在界面上用来区分条目，不发给服务端。
+ * 次要关键词和关键词一样是一串用逗号分开的文字；优先级、其余触发设置原样带着（保存时不丢）。 */
 export type EntryDraft = {
   key: string;
   name: string;
@@ -54,6 +55,31 @@ export type EntryDraft = {
   content: string;
   enabled: boolean;
   constant: boolean;
+  secondaryKeys: string;
+  logic: LoreLogic;
+  priority: number | null;
+  rules: LoreRules | null;
+};
+
+/** 触发设置的默认值（SillyTavern 新装时的），和服务端 LoreRules 的默认一致 */
+export const DEFAULT_RULES: LoreRules = {
+  whole_words: null,
+  case_sensitive: null,
+  scan_depth: null,
+  match: [],
+  exclude_recursion: false,
+  prevent_recursion: false,
+  delay_until_recursion: 0,
+  probability: 100,
+  groups: [],
+  group_override: false,
+  group_weight: 100,
+  group_scoring: null,
+  sticky: 0,
+  cooldown: 0,
+  delay: 0,
+  triggers: [],
+  ignore_budget: false,
 };
 
 export type GreetingDraft = { key: string; text: string };
@@ -102,7 +128,18 @@ export function joinList(items: readonly string[]): string {
 }
 
 export function newEntry(): EntryDraft {
-  return { key: nextKey("e"), name: "", keys: "", content: "", enabled: true, constant: false };
+  return {
+    key: nextKey("e"),
+    name: "",
+    keys: "",
+    content: "",
+    enabled: true,
+    constant: false,
+    secondaryKeys: "",
+    logic: "any",
+    priority: null,
+    rules: null,
+  };
 }
 
 export function newGreeting(text = ""): GreetingDraft {
@@ -130,6 +167,10 @@ export function draftOf(card: CharacterCard, displayName: string): CardDraft {
       content: e.content,
       enabled: e.enabled,
       constant: e.constant,
+      secondaryKeys: joinList(e.secondary_keys ?? []),
+      logic: e.logic ?? "any",
+      priority: e.priority ?? null,
+      rules: e.rules ?? null,
     })),
   };
 }
@@ -156,6 +197,10 @@ export function cardOf(draft: CardDraft): CharacterCardInput {
       content: e.content,
       enabled: e.enabled,
       constant: e.constant,
+      secondary_keys: splitList(e.secondaryKeys),
+      logic: e.logic,
+      priority: e.priority,
+      rules: e.rules,
     })),
   };
 }

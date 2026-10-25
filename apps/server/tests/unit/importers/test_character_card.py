@@ -171,3 +171,33 @@ def test_macros() -> None:
 )
 def test_display_text(text: str, shown: str) -> None:
     assert display_text(text, char="阿苓") == shown
+
+
+def test_card_book_keeps_sillytavern_settings() -> None:
+    data = json.loads(json.dumps(V2))
+    data["data"]["character_book"]["entries"] = [
+        {
+            "keys": ["老周"],
+            "secondary_keys": ["欠债"],
+            "selective": True,
+            "content": "老周是船夫",
+            "insertion_order": 300,
+            "comment": "老周",
+            "extensions": {"display_index": 1, "selectiveLogic": 3, "sticky": 4, "group": "人物"},
+        },
+        {
+            "keys": ["商会"],
+            "content": "北境商会",
+            "insertion_order": 5,
+            "extensions": {"display_index": 0},
+        },
+        # 没有关键词的条目留着（工作台里会提示永远用不到）
+        {"keys": [], "content": "孤零零的一条"},
+    ]
+    card = import_card(json.dumps(data, ensure_ascii=False).encode()).card
+    assert [e.content for e in card.book] == ["北境商会", "老周是船夫", "孤零零的一条"]
+    assert [e.order for e in card.book] == [0, 1, 2]
+    shang, zhou, _ = card.book
+    assert shang.priority == 5 and shang.rules is None
+    assert zhou.priority == 300 and zhou.secondary_keys == ("欠债",) and zhou.logic == "all"
+    assert zhou.rules is not None and zhou.rules.sticky == 2 and zhou.rules.groups == ("人物",)

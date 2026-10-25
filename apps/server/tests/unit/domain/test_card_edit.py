@@ -12,6 +12,7 @@ from bettertavern.domain.scenario.card import (
     MAX_TOTAL_CHARS,
     CharacterCard,
     LoreEntry,
+    LoreRules,
 )
 from bettertavern.domain.scenario.edit import (
     CardEdit,
@@ -169,3 +170,60 @@ def test_lenient_mode_still_checks_lengths() -> None:
             CARD, edit_of(CARD, alternate_greetings=("字" * (MAX_FIELD_CHARS + 1),)), lenient=True
         )
     assert info.value.field == "alternate_greetings.0"
+
+
+def test_lore_settings_follow_the_entry_when_it_moves() -> None:
+    rules = LoreRules(probability=30, groups=(" 天气 ", "", "天气"))
+    card = CARD.model_copy(
+        update={
+            "book": (
+                LoreEntry(name="甲", keys=("甲",), content="一", order=0, priority=300),
+                LoreEntry(
+                    name="乙",
+                    keys=("乙",),
+                    content="二",
+                    order=1,
+                    secondary_keys=("丙",),
+                    logic="not_any",
+                    rules=rules,
+                ),
+            )
+        }
+    )
+    first, second = edit_of(card).book
+    after = apply_edit(card, edit_of(card, book=(second, first)))
+    moved, kept = after.book
+    assert (moved.name, moved.order, moved.secondary_keys, moved.logic) == (
+        "乙",
+        0,
+        ("丙",),
+        "not_any",
+    )
+    assert moved.rules == LoreRules(probability=30, groups=("天气",))
+    assert (kept.name, kept.order, kept.priority) == ("甲", 1, 300)
+    # 全是默认值的设置存成 None
+    plain = apply_edit(card, edit_of(card, book=(dataclasses.replace(first, rules=LoreRules()),)))
+    assert plain.book[0].rules is None
+    changed = apply_edit(card, edit_of(card, book=(dataclasses.replace(first, priority=1), second)))
+    assert changed_fields(card, changed) == ["book"]
+
+
+@pytest.mark.parametrize(
+    ("entry", "field"),
+    [
+        (
+            LoreEntryEdit(content="有", secondary_keys=tuple(str(i) for i in range(65))),
+            "book.0.secondary_keys",
+        ),
+        (LoreEntryEdit(content="有", keys=("长" * 301,)), "book.0.keys"),
+        (LoreEntryEdit(content="有", priority=10_000_000), "book.0.priority"),
+        (
+            LoreEntryEdit(content="有", rules=LoreRules(groups=tuple(f"g{i}" for i in range(17)))),
+            "book.0.rules.groups",
+        ),
+    ],
+)
+def test_rejects_bad_lore_settings(entry: LoreEntryEdit, field: str) -> None:
+    with pytest.raises(EditError) as info:
+        apply_edit(CARD, edit_of(CARD, book=(entry,)))
+    assert info.value.field == field

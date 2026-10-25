@@ -8,7 +8,7 @@ import json
 import pytest
 from PIL import Image
 
-from bettertavern.domain.scenario.card import CharacterCard, LoreEntry
+from bettertavern.domain.scenario.card import CharacterCard, LoreEntry, LoreRules
 from bettertavern.importers.character_card import import_card
 from bettertavern.importers.character_card.export import card_v2, card_v3, embed_card
 from bettertavern.importers.images import ImageError, clean_image, cover_png
@@ -96,3 +96,34 @@ def test_cover_is_cropped_to_two_by_three() -> None:
     image.save(out, format="PNG")
     with Image.open(io.BytesIO(cover_png(out.getvalue()))) as cover:
         assert cover.size == (512, 768)
+
+
+def test_lore_settings_survive_export_and_import() -> None:
+    entry = LoreEntry(
+        name="老周",
+        keys=("老周", "/周叔|老周头/i"),
+        secondary_keys=("欠债",),
+        logic="not_all",
+        content="老周欠北境商会的钱",
+        order=0,
+        priority=250,
+        rules=LoreRules(
+            whole_words=False,
+            scan_depth=6,
+            match=("scenario",),
+            prevent_recursion=True,
+            delay_until_recursion=2,
+            probability=40,
+            groups=("人物", "渡口"),
+            group_override=True,
+            group_weight=30,
+            sticky=2,
+            cooldown=1,
+            delay=4,
+            triggers=("normal",),
+            ignore_budget=True,
+        ),
+    )
+    card = CARD.model_copy(update={"book": (entry,)})
+    imported = import_card(json.dumps(card_v3(card, raw=None, extra={})).encode())
+    assert imported.card.book == (entry,)

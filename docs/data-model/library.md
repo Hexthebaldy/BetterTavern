@@ -129,18 +129,53 @@
   "creator": "", "character_version": "", "nickname": "",
   "tags": ["…"],
   "book_name": "",
-  "book": [{ "name": "", "keys": ["火漆"], "content": "…", "constant": true, "enabled": true, "order": 0 }],
+  "book": [{                          // 世界书条目，结构见下文“世界书条目”
+    "name": "", "keys": ["火漆"], "content": "…", "constant": true, "enabled": true, "order": 0,
+    "secondary_keys": [], "logic": "any", "priority": null, "rules": null
+  }],
   "truncated": ["description"]  // 导入时被截断、之后没改过的字段名
+}
+```
+
+#### 世界书条目
+
+卡里的世界书和独立世界书（以后的 `lorebooks.book`）用同一个结构（`domain/scenario/card.py` 的 `LoreEntry`），触发规则照 SillyTavern（[lorebook.md](../lorebook.md) 第 6、7 节）：
+
+| 字段 | 说明 |
+| --- | --- |
+| `name` | 标题，最多 120 字；只给人看，不发给模型 |
+| `keys` | 关键词，最多 64 个、每个最多 300 字；写成 `/……/flags` 的是正则 |
+| `content` | 正文，最多 60000 字 |
+| `constant` / `enabled` | 常驻 / 启用 |
+| `order` | 列表里的位置，只管显示和编辑的先后；编辑保存时按列表重新编号 |
+| `secondary_keys` | 次要关键词，上限同 `keys` |
+| `logic` | 次要关键词的逻辑：`any`（再命中任一个）/ `all`（全命中）/ `not_any`（一个都不命中）/ `not_all`（不全命中）；次要关键词为空时不看 |
+| `priority` | SillyTavern 的 `order` 数字：大的优先、在上下文里靠后；null 时按 `order` 算。2026-10-25 以前导入的卡没有这个字段 |
+| `rules` | 不常用的触发设置，null 表示全按默认；全是默认值时存成 null |
+
+`rules` 的结构（`LoreRules`，为 null 的项按 SillyTavern 新装时的默认值；粘滞、冷却、延迟按回合存，导入时 ST 的消息条数除以 2 向上取整，导出时乘 2）：
+
+```jsonc
+{
+  "whole_words": null, "case_sensitive": null, "scan_depth": null,   // 整词匹配（默认开）、区分大小写（默认关）、往回扫几条消息（默认 2）
+  "match": ["scenario"],                // 顺带扫描：persona / description / personality / depth_prompt / scenario / creator_notes
+  "exclude_recursion": false, "prevent_recursion": false, "delay_until_recursion": 0,
+  "probability": 100,                   // 0–100
+  "groups": ["天气"], "group_override": false, "group_weight": 100, "group_scoring": null,
+  "sticky": 0, "cooldown": 0, "delay": 0,   // 回合
+  "triggers": [],                       // normal / continue / impersonate / swipe / regenerate / quiet，空的不限
+  "ignore_budget": false
 }
 ```
 
 导入时的上限（`importers/character_card/parse.py`）：
 - 八个顶层文本字段（`description`、`personality`、`scenario`、`first_mes`、`mes_example`、`system_prompt`、`post_history_instructions`、`creator_notes`）各 60000 字，超出的部分截断，并把字段名记进 `truncated`。
 - 备选开场白（最多 64 条）和世界书条目的内容也截到 60000 字，但不记进 `truncated`；世界书最多 1000 条，多出的直接丢弃。名字最多 80 字，标签最多 32 个。
+- 世界书条目和导入独立世界书共用一套映射（`importers/lorebook/entries.py`）：SillyTavern 写在每条 `extensions` 里的设置读进 `secondary_keys`、`logic`、`priority`（`insertion_order`）、`rules`；按 `extensions.display_index` 排好、`order` 重新编号；没有正文的条目丢掉，没有关键词的留着（工作台里提示永远用不到）。
 - 截断之后文本总量仍然超过 300000 字的卡片，导入时直接拒绝（422 `CARD_INVALID`）。
 
 编辑（工作台的草稿，`domain/scenario/edit.py`）能改角色名、七个文本字段（不含后置指令）、备选开场白（最多 32 条）、标签和世界书；
-上限和导入相同，但超长时拒绝，不截断；世界书条目按列表顺序重新编号 `order`；改过的字段从 `truncated` 里去掉。
+上限和导入相同，但超长时拒绝，不截断；世界书条目按列表顺序重新编号 `order`，`priority` 和 `rules` 跟着条目走；改过的字段从 `truncated` 里去掉。
 卡片里的 `{{user}}`、`{{char}}` 宏原样保存，用到时再替换。
 
 ### `cards.meta`

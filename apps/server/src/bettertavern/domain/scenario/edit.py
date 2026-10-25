@@ -5,7 +5,8 @@
 
 能改的是：角色名、七个文本字段（含系统提示和作者备注）、备选开场白、标签，以及卡片自带的世界书条目。
 其余字段（作者、版本号、后置指令等）原样保留。
-世界书条目按列表顺序重新编号（order），开局搭建世界时常驻条目优先、其次按这个顺序取。
+世界书条目按列表顺序重新编号（order，只管显示的先后）；优先级数字（priority）和其余触发设置跟着条目走，
+不因为挪了位置而变（docs/lorebook.md 第 3.3 节）。条目的校验（edit_entry）独立世界书也用。
 
 两种模式：
 - 草稿（lenient=True）：工作台自动保存时用。允许名字为空、条目内容为空、
@@ -17,7 +18,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .card import MAX_BOOK_ENTRIES, MAX_FIELD_CHARS, MAX_TOTAL_CHARS, CharacterCard, LoreEntry
+from .card import (
+    MAX_BOOK_ENTRIES,
+    MAX_FIELD_CHARS,
+    MAX_TOTAL_CHARS,
+    CharacterCard,
+    LoreEntry,
+    LoreLogic,
+    LoreRules,
+)
 
 EDITABLE_TEXT_FIELDS = (
     "description",
@@ -34,7 +43,8 @@ MAX_TAGS = 32
 MAX_TAG_CHARS = 40
 MAX_ENTRY_NAME_CHARS = 120
 MAX_KEYS = 64
-MAX_KEY_CHARS = 100
+MAX_KEY_CHARS = 300  # 正则写的关键词会长一点
+MAX_PRIORITY = 1_000_000
 
 
 class EditError(ValueError):
@@ -53,6 +63,24 @@ class LoreEntryEdit:
     content: str = ""
     enabled: bool = True
     constant: bool = False
+    secondary_keys: tuple[str, ...] = ()
+    logic: LoreLogic = "any"
+    priority: int | None = None
+    rules: LoreRules | None = None
+
+    @classmethod
+    def of(cls, entry: LoreEntry) -> LoreEntryEdit:
+        return cls(
+            name=entry.name,
+            keys=tuple(entry.keys),
+            content=entry.content,
+            enabled=entry.enabled,
+            constant=entry.constant,
+            secondary_keys=tuple(entry.secondary_keys),
+            logic=entry.logic,
+            priority=entry.priority,
+            rules=entry.rules,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,16 +105,7 @@ class CardEdit:
             **{f: getattr(card, f) for f in EDITABLE_TEXT_FIELDS},
             alternate_greetings=tuple(card.alternate_greetings),
             tags=tuple(card.tags),
-            book=tuple(
-                LoreEntryEdit(
-                    name=e.name,
-                    keys=tuple(e.keys),
-                    content=e.content,
-                    enabled=e.enabled,
-                    constant=e.constant,
-                )
-                for e in book_in_order(card.book)
-            ),
+            book=tuple(LoreEntryEdit.of(e) for e in book_in_order(card.book)),
         )
 
 
@@ -130,7 +149,8 @@ def _greetings(values: tuple[str, ...], *, lenient: bool) -> tuple[str, ...]:
     return tuple(result)
 
 
-def _entry(index: int, edit: LoreEntryEdit, *, lenient: bool) -> LoreEntry:
+def edit_entry(index: int, edit: LoreEntryEdit, *, lenient: bool) -> LoreEntry:
+    """一条世界书条目（卡里的和独立世界书共用）：order 记成列表位置 index。"""
     where = f"book.{index}"
     name = _clean(edit.name)
     if len(name) > MAX_ENTRY_NAME_CHARS:
@@ -147,6 +167,21 @@ def _entry(index: int, edit: LoreEntryEdit, *, lenient: bool) -> LoreEntry:
     keys = _strings(
         edit.keys, field=f"{where}.keys", limit=MAX_KEYS, each=MAX_KEY_CHARS, what="keywords"
     )
+    secondary = _strings(
+        edit.secondary_keys,
+        field=f"{where}.secondary_keys",
+        limit=MAX_KEYS,
+        each=MAX_KEY_CHARS,
+        what="secondary keywords",
+    )
+    if edit.priority is not None and abs(edit.priority) > MAX_PRIORITY:
+        raise EditError(f"{where}.priority", f"The priority must be within ±{MAX_PRIORITY}")
+    rules = edit.rules
+    if rules is not None:
+        groups = _strings(
+            rules.groups, field=f"{where}.rules.groups", limit=16, each=100, what="groups"
+        )
+        rules = rules.model_copy(update={"groups": groups})
     return LoreEntry(
         name=name,
         keys=keys,
@@ -154,6 +189,10 @@ def _entry(index: int, edit: LoreEntryEdit, *, lenient: bool) -> LoreEntry:
         constant=edit.constant,
         enabled=edit.enabled,
         order=index,
+        secondary_keys=secondary,
+        logic=edit.logic,
+        priority=edit.priority,
+        rules=None if rules == LoreRules() else rules,
     )
 
 
@@ -175,7 +214,7 @@ def apply_edit(card: CharacterCard, edit: CardEdit, *, lenient: bool = False) ->
     tags = _strings(edit.tags, field="tags", limit=MAX_TAGS, each=MAX_TAG_CHARS, what="tags")
     if len(edit.book) > MAX_BOOK_ENTRIES:
         raise EditError("book", f"The lorebook can have at most {MAX_BOOK_ENTRIES} entries")
-    book = tuple(_entry(i, entry, lenient=lenient) for i, entry in enumerate(edit.book))
+    book = tuple(edit_entry(i, entry, lenient=lenient) for i, entry in enumerate(edit.book))
     updated = card.model_copy(
         update={
             "name": name,
@@ -202,12 +241,10 @@ def book_in_order(book: tuple[LoreEntry, ...]) -> tuple[LoreEntry, ...]:
 
 
 def changed_fields(before: CharacterCard, after: CharacterCard) -> list[str]:
-    """哪些可编辑的字段变了（只用于日志，不记内容）。世界书只看内容和先后，不看编号本身。"""
+    """哪些可编辑的字段变了（只用于日志，不记内容）。世界书只看内容、设置和先后，不看编号本身。"""
 
-    def entries(card: CharacterCard) -> list[tuple[object, ...]]:
-        return [
-            (e.name, e.keys, e.content, e.constant, e.enabled) for e in book_in_order(card.book)
-        ]
+    def entries(card: CharacterCard) -> list[object]:
+        return [e.model_copy(update={"order": 0}) for e in book_in_order(card.book)]
 
     changed = [
         f

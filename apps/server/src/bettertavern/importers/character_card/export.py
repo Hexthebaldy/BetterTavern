@@ -13,7 +13,7 @@ import zlib
 from collections.abc import Mapping
 from typing import Any
 
-from bettertavern.domain.scenario.card import CharacterCard
+from bettertavern.domain.scenario.card import CharacterCard, LoreEntry
 from bettertavern.domain.scenario.edit import book_in_order
 
 from .png import PNG_SIGNATURE
@@ -25,6 +25,60 @@ def _extensions(raw: Any) -> dict[str, Any]:
     inner = raw.get("data") if isinstance(raw.get("data"), Mapping) else raw
     ext = inner.get("extensions") if isinstance(inner, Mapping) else None
     return dict(ext) if isinstance(ext, Mapping) else {}
+
+
+# 次要关键词的逻辑 → ST 的 selectiveLogic
+_LOGIC = {"any": 0, "not_all": 1, "not_any": 2, "all": 3}
+_MATCH_KEYS = {
+    "persona": "match_persona_description",
+    "description": "match_character_description",
+    "personality": "match_character_personality",
+    "depth_prompt": "match_character_depth_prompt",
+    "scenario": "match_scenario",
+    "creator_notes": "match_creator_notes",
+}
+
+
+def _entry(index: int, entry: LoreEntry) -> dict[str, Any]:
+    """一条世界书写成 character_book 的格式，ST 的设置写进 extensions（键名同 ST 导出卡时写的）。
+    粘滞、冷却、延迟我们按回合存，写回去时换成消息条数（一回合两条）。"""
+    rules = entry.effective_rules()
+    extensions: dict[str, Any] = {
+        "display_index": index,
+        "selectiveLogic": _LOGIC[entry.logic],
+        "probability": rules.probability,
+        "useProbability": rules.probability < 100,
+        "group": ",".join(rules.groups),
+        "group_override": rules.group_override,
+        "group_weight": rules.group_weight,
+        "use_group_scoring": rules.group_scoring,
+        "exclude_recursion": rules.exclude_recursion,
+        "prevent_recursion": rules.prevent_recursion,
+        "delay_until_recursion": rules.delay_until_recursion,
+        "scan_depth": rules.scan_depth,
+        "case_sensitive": rules.case_sensitive,
+        "match_whole_words": rules.whole_words,
+        "sticky": rules.sticky * 2,
+        "cooldown": rules.cooldown * 2,
+        "delay": rules.delay * 2,
+        "triggers": list(rules.triggers),
+        "ignore_budget": rules.ignore_budget,
+        **{key: name in rules.match for name, key in _MATCH_KEYS.items()},
+    }
+    return {
+        "id": index,
+        "keys": list(entry.keys),
+        "secondary_keys": list(entry.secondary_keys),
+        "selective": bool(entry.secondary_keys),
+        "content": entry.content,
+        "extensions": extensions,
+        "enabled": entry.enabled,
+        "insertion_order": entry.effective_priority(),
+        "constant": entry.constant,
+        "name": entry.name,
+        "comment": entry.name,
+        "use_regex": False,
+    }
 
 
 def card_data(card: CharacterCard, *, raw: Any, extra: Mapping[str, Any]) -> dict[str, Any]:
@@ -52,21 +106,7 @@ def card_data(card: CharacterCard, *, raw: Any, extra: Mapping[str, Any]) -> dic
         data["character_book"] = {
             "name": card.book_name or card.name,
             "extensions": {},
-            "entries": [
-                {
-                    "id": index,
-                    "keys": list(e.keys),
-                    "content": e.content,
-                    "extensions": {},
-                    "enabled": e.enabled,
-                    "insertion_order": index,
-                    "constant": e.constant,
-                    "name": e.name,
-                    "comment": e.name,
-                    "use_regex": False,
-                }
-                for index, e in enumerate(book)
-            ],
+            "entries": [_entry(index, e) for index, e in enumerate(book)],
         }
     return data
 

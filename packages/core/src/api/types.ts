@@ -140,13 +140,44 @@ export type Credits = {
   uses_platform: boolean;
 };
 
-/** 卡片自带的世界书条目 */
+/** 次要关键词的逻辑：再命中任一个 / 全命中 / 一个都不命中 / 不全命中 */
+export type LoreLogic = "any" | "all" | "not_any" | "not_all";
+
+/** 世界书条目不常用的触发设置（照 SillyTavern）；为 null 的项按默认 */
+export type LoreRules = {
+  whole_words: boolean | null;
+  case_sensitive: boolean | null;
+  scan_depth: number | null;
+  match: ("persona" | "description" | "personality" | "depth_prompt" | "scenario" | "creator_notes")[];
+  exclude_recursion: boolean;
+  prevent_recursion: boolean;
+  delay_until_recursion: number;
+  probability: number;
+  groups: string[];
+  group_override: boolean;
+  group_weight: number;
+  group_scoring: boolean | null;
+  /** 粘滞、冷却、延迟按回合算 */
+  sticky: number;
+  cooldown: number;
+  delay: number;
+  triggers: ("normal" | "continue" | "impersonate" | "swipe" | "regenerate" | "quiet")[];
+  ignore_budget: boolean;
+};
+
+/** 世界书条目：卡片自带的和独立世界书共用 */
 export type LoreEntry = {
   name: string;
   keys: string[];
   content: string;
   enabled: boolean;
   constant: boolean;
+  secondary_keys: string[];
+  logic: LoreLogic;
+  /** 优先级数字（SillyTavern 的 order）；null 时按列表位置算 */
+  priority: number | null;
+  /** null 时全按默认 */
+  rules: LoreRules | null;
 };
 
 /** 角色卡的内容（原文，{{char}}、{{user}} 不替换）；角色卡详情和工作台的草稿共用 */

@@ -19,6 +19,12 @@ from bettertavern.domain.scenario.card import (
     CharacterCard,
     LoreEntry,
 )
+from bettertavern.importers.lorebook.entries import (
+    EntryStats,
+    from_book,
+    from_world,
+    is_book_entry,
+)
 
 MAX_JSON_BYTES = 4 * 1024 * 1024
 TEXT_FIELDS = (
@@ -87,6 +93,8 @@ def detect_spec(data: Mapping[str, Any]) -> tuple[CardSpec, Mapping[str, Any]]:
 
 
 def _book(data: Mapping[str, Any]) -> tuple[str, tuple[LoreEntry, ...]]:
+    """卡里内嵌的世界书：条目的映射和独立世界书共用（importers/lorebook/entries.py），
+    按显示的先后排好、重新编号；没有正文的不要，没有关键词的留着（工作台里会提示）。"""
     book = data.get("character_book")
     if not isinstance(book, Mapping):
         return "", ()
@@ -95,25 +103,18 @@ def _book(data: Mapping[str, Any]) -> tuple[str, tuple[LoreEntry, ...]]:
         entries_raw = list(entries_raw.values())
     if not isinstance(entries_raw, list):
         return _text(book.get("name")), ()
-    entries: list[LoreEntry] = []
+    stats = EntryStats()  # 角色卡没有导入报告，这里不用
+    kept: list[tuple[int, int, LoreEntry]] = []
     for index, item in enumerate(entries_raw[:MAX_BOOK_ENTRIES]):
         if not isinstance(item, Mapping):
             continue
-        content = _text(item.get("content")).strip()
-        if not content:
-            continue
-        order = item.get("insertion_order", item.get("order", index))
-        entries.append(
-            LoreEntry(
-                name=_text(item.get("name") or item.get("comment")).strip()[:120],
-                keys=_strings(item.get("keys")),
-                content=content[:MAX_FIELD_CHARS],
-                constant=bool(item.get("constant", False)),
-                enabled=bool(item.get("enabled", True)),
-                order=order if isinstance(order, int) else index,
-            )
-        )
-    return _text(book.get("name")).strip()[:120], tuple(entries)
+        convert = from_world if not is_book_entry(item) and "key" in item else from_book
+        entry = convert(item, index=index, stats=stats)
+        if entry is not None:
+            kept.append((entry.order, index, entry))
+    kept.sort(key=lambda t: (t[0], t[1]))
+    entries = tuple(e.model_copy(update={"order": i}) for i, (_, _, e) in enumerate(kept))
+    return _text(book.get("name")).strip()[:120], entries
 
 
 def normalize_card(data: Any) -> CharacterCard:

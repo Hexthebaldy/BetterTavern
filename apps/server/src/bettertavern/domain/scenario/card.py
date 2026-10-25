@@ -18,8 +18,63 @@ MAX_FIELD_CHARS = 60_000
 MAX_TOTAL_CHARS = 300_000
 MAX_BOOK_ENTRIES = 1000
 
+# 世界书条目的触发设置照 SillyTavern（docs/lorebook.md 第 6.1 节）
+# 次要关键词的逻辑：再命中任一个 / 全命中 / 一个都不命中 / 不全命中
+LoreLogic = Literal["any", "all", "not_any", "not_all"]
+# 顺带扫描哪段文字：主角介绍、卡的描述、性格、深度提示、场景、作者备注
+LoreMatch = Literal[
+    "persona", "description", "personality", "depth_prompt", "scenario", "creator_notes"
+]
+# 只在哪几种生成方式下触发（ST 的 triggers）；我们每回合都相当于 normal
+LoreTrigger = Literal["normal", "continue", "impersonate", "swipe", "regenerate", "quiet"]
+LORE_MATCHES: tuple[LoreMatch, ...] = (
+    "persona",
+    "description",
+    "personality",
+    "depth_prompt",
+    "scenario",
+    "creator_notes",
+)
+LORE_TRIGGERS: tuple[LoreTrigger, ...] = (
+    "normal",
+    "continue",
+    "impersonate",
+    "swipe",
+    "regenerate",
+    "quiet",
+)
+DEFAULT_PRIORITY = 100  # ST 新建条目的 order
+
+
+class LoreRules(BaseModel):
+    """不常用的触发设置。没设的取 SillyTavern 新装时的默认值；为空（None）的项表示“按默认”。
+    粘滞、冷却、延迟按回合存（ST 的消息条数除以 2 向上取整：一回合是玩家一条加导演一条）。"""
+
+    model_config = ConfigDict(frozen=True)
+
+    whole_words: bool | None = None  # 整词匹配，默认开
+    case_sensitive: bool | None = None  # 区分大小写，默认关
+    scan_depth: int | None = Field(default=None, ge=0, le=1000)  # 往回扫几条消息，默认 2
+    match: tuple[LoreMatch, ...] = ()
+    exclude_recursion: bool = False  # 不被别的条目的内容触发
+    prevent_recursion: bool = False  # 内容不去触发别的条目
+    delay_until_recursion: int = Field(default=0, ge=0, le=100)  # 第几层递归以后才能触发
+    probability: int = Field(default=100, ge=0, le=100)
+    groups: tuple[str, ...] = ()
+    group_override: bool = False  # 组内优先
+    group_weight: int = Field(default=100, ge=0, le=1_000_000)
+    group_scoring: bool | None = None  # 组打分，默认关
+    sticky: int = Field(default=0, ge=0, le=1000)
+    cooldown: int = Field(default=0, ge=0, le=1000)
+    delay: int = Field(default=0, ge=0, le=1000)
+    triggers: tuple[LoreTrigger, ...] = ()
+    ignore_budget: bool = False
+
 
 class LoreEntry(BaseModel):
+    """世界书的一条。order 是列表里的位置（显示、编辑时的先后）；priority 是 ST 的 order 数字，
+    管优先级和放进上下文的先后（docs/lorebook.md 第 3.3 节），为空时按 order 算。"""
+
     model_config = ConfigDict(frozen=True)
 
     name: str = ""
@@ -28,6 +83,16 @@ class LoreEntry(BaseModel):
     constant: bool = False
     enabled: bool = True
     order: int = 0
+    secondary_keys: tuple[str, ...] = ()
+    logic: LoreLogic = "any"
+    priority: int | None = None
+    rules: LoreRules | None = None  # 为空表示全按默认
+
+    def effective_priority(self) -> int:
+        return self.order if self.priority is None else self.priority
+
+    def effective_rules(self) -> LoreRules:
+        return self.rules if self.rules is not None else LoreRules()
 
 
 class CharacterCard(BaseModel):

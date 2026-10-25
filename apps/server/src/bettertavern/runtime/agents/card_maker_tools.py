@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from bettertavern.domain.scenario.card import CharacterCard, LoreEntry
@@ -377,13 +377,7 @@ async def set_greetings(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
 
 
 def _lore_edit(entry: LoreEntry) -> LoreEntryEdit:
-    return LoreEntryEdit(
-        name=entry.name,
-        keys=tuple(entry.keys),
-        content=entry.content,
-        enabled=entry.enabled,
-        constant=entry.constant,
-    )
+    return LoreEntryEdit.of(entry)
 
 
 async def lore_upsert(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
@@ -408,9 +402,11 @@ async def lore_upsert(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
 
     def change(card: CharacterCard) -> CharacterCard:
         entries = [_lore_edit(e) for e in book_in_order(card.book)]
-        target = LoreEntryEdit(
-            name=name
-            or (entries[index].name if index is not None and index < len(entries) else ""),
+        # 改已有的条目时，次要关键词、优先级这些 agent 不管的设置原样留着
+        base = entries[index] if index is not None and index < len(entries) else LoreEntryEdit()
+        target = replace(
+            base,
+            name=name or base.name,
             keys=keys,
             content=content,
             enabled=bool(args.get("enabled", True)),

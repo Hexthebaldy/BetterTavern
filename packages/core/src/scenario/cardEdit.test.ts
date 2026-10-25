@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CharacterCard } from "../api/types.ts";
+import type { CharacterCard, LoreEntry } from "../api/types.ts";
 import { i18n } from "../i18n/index.ts";
 import {
   blocking,
   CARD_LIMITS,
   charCount,
+  DEFAULT_RULES,
   checkCard,
   describeField,
   describeIssue,
@@ -21,6 +22,18 @@ import {
   type CardDraft,
 } from "./cardEdit.ts";
 
+const PLAIN: LoreEntry = {
+  name: "",
+  keys: [],
+  content: "",
+  enabled: true,
+  constant: false,
+  secondary_keys: [],
+  logic: "any",
+  priority: null,
+  rules: null,
+};
+
 const CARD: CharacterCard = {
   name: "阿苓",
   description: "{{char}} 是酒馆的帮工",
@@ -33,8 +46,18 @@ const CARD: CharacterCard = {
   alternate_greetings: ["雨停了。"],
   tags: ["酒馆", "雨夜"],
   book: [
-    { name: "渡口", keys: ["子时", "船"], content: "子时才有船", enabled: true, constant: true },
-    { name: "", keys: [], content: "北境商会的火漆是黑色的", enabled: false, constant: false },
+    {
+      ...PLAIN,
+      name: "渡口",
+      keys: ["子时", "船"],
+      content: "子时才有船",
+      constant: true,
+      secondary_keys: ["夜里"],
+      logic: "not_any",
+      priority: 300,
+      rules: { ...DEFAULT_RULES, probability: 40, groups: ["渡口"] },
+    },
+    { ...PLAIN, name: "", keys: [], content: "北境商会的火漆是黑色的", enabled: false },
   ],
   creator: "",
   character_version: "",

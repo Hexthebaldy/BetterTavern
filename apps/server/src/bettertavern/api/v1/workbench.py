@@ -11,7 +11,13 @@ from starlette.responses import StreamingResponse
 
 from bettertavern.api.deps import LimitersDep, ServicesDep, UserId, check_rate
 from bettertavern.api.lifecycle import Shutdown
-from bettertavern.api.schemas.library import CardOut, CharacterCardIn, CharacterCardOut, ScenarioOut
+from bettertavern.api.schemas.library import (
+    CardOut,
+    CharacterCardIn,
+    CharacterCardOut,
+    ScenarioOut,
+    lore_edit,
+)
 from bettertavern.api.schemas.workbench import (
     AssetOut,
     ChangesDecisionIn,
@@ -34,7 +40,7 @@ from bettertavern.api.schemas.workbench import (
     TranscriptOut,
 )
 from bettertavern.api.sse import event_stream_body, sse_response
-from bettertavern.domain.scenario.edit import CardEdit, LoreEntryEdit
+from bettertavern.domain.scenario.edit import CardEdit
 from bettertavern.domain.story.language import DEFAULT_LANGUAGE, parse_language
 from bettertavern.importers.character_card import MAX_UPLOAD_BYTES
 from bettertavern.importers.images import MAX_IMAGE_BYTES
@@ -77,16 +83,7 @@ def card_edit(card: CharacterCardIn) -> CardEdit:
         creator_notes=card.creator_notes,
         alternate_greetings=tuple(card.alternate_greetings),
         tags=tuple(card.tags),
-        book=tuple(
-            LoreEntryEdit(
-                name=e.name,
-                keys=tuple(e.keys),
-                content=e.content,
-                enabled=e.enabled,
-                constant=e.constant,
-            )
-            for e in card.book
-        ),
+        book=tuple(lore_edit(e) for e in card.book),
     )
 
 

@@ -74,6 +74,7 @@
 - `json`：V3 格式的 JSON。
 
 导入时原始 JSON 里 `extensions` 的内容原样保留，BetterTavern 自己的信息（卡的 id、版本号、`meta`）放进 `extensions.bettertavern`。
+世界书条目照 SillyTavern 导出卡时的写法：`insertion_order` 是优先级数字（`priority`，没有时是列表位置），次要关键词、逻辑和其余触发设置写进每条的 `extensions`（键名同 SillyTavern，粘滞、冷却、延迟换回消息条数）。
 
 - 鉴权：需要
 - 成功：`200`，响应体是文件，`Content-Type` 是 `image/png` 或 `application/json`，带 `Content-Disposition: attachment`（文件名是卡的显示名）。
@@ -281,13 +282,43 @@
 
 ### `LoreEntryOut`
 
+世界书的一条，角色卡自带的世界书和独立世界书共用。触发规则照 SillyTavern（[lorebook.md](../lorebook.md) 第 6、7 节）。
+
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `name` | string | 条目名称 |
-| `keys` | array of string | 关键词 |
+| `name` | string | 条目名称（只给人看，不发给模型） |
+| `keys` | array of string | 关键词；写成 `/……/flags` 的是正则 |
 | `content` | string | 内容 |
 | `enabled` | boolean | 是否启用 |
 | `constant` | boolean | 是否常驻 |
+| `secondary_keys` | array of string | 次要关键词 |
+| `logic` | string | 次要关键词的逻辑：`any` / `all` / `not_any` / `not_all`，含义见 [`LoreEntryIn`](workbench.md#loreentryin) |
+| `priority` | integer / null | 优先级数字（SillyTavern 的 `order`）；为 null 时按列表位置算 |
+| `rules` | [`LoreRulesModel`](#lorerulesmodel) / null | 不常用的触发设置；为 null 时全按默认 |
+
+### `LoreRulesModel`
+
+世界书条目不常用的触发设置，请求和响应共用。为 null 的项表示按 SillyTavern 新装时的默认值。粘滞、冷却、延迟按回合算（SillyTavern 按消息条数，导入时除以 2 向上取整）。
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `whole_words` | boolean / null | 否 | 整词匹配：关键词前后不能紧挨英文字母、数字、下划线；默认（null）开 |
+| `case_sensitive` | boolean / null | 否 | 区分大小写；默认（null）关 |
+| `scan_depth` | integer / null | 否 | 往回扫几条消息（一回合两条），0 到 1000；默认（null）2 |
+| `match` | array of string | 否 | 顺带扫描的文字：`persona`（主角介绍）、`description`、`personality`、`depth_prompt`、`scenario`、`creator_notes`（卡的这几段） |
+| `exclude_recursion` | boolean | 否 | 不被别的条目的内容触发，默认否 |
+| `prevent_recursion` | boolean | 否 | 被触发以后，内容不去触发别的条目，默认否 |
+| `delay_until_recursion` | integer | 否 | 只在第几层递归以后才能触发，0 到 100；0（默认）是不限 |
+| `probability` | integer | 否 | 触发概率，0 到 100，默认 100 |
+| `groups` | array of string | 否 | 所在的组，最多 16 个；同一组同时命中时只留一条 |
+| `group_override` | boolean | 否 | 组内优先：同组里优先留它（几条都开了就取优先级大的），默认否 |
+| `group_weight` | integer | 否 | 同组里按权重抽时的权重，0 到 1000000，默认 100 |
+| `group_scoring` | boolean / null | 否 | 组打分：同组先留命中关键词最多的；默认（null）关 |
+| `sticky` | integer | 否 | 触发后连着生效几回合，0 到 1000，默认 0 |
+| `cooldown` | integer | 否 | 生效结束后几回合内不能再触发，0 到 1000，默认 0 |
+| `delay` | integer | 否 | 第几回合以后才能触发，0 到 1000，默认 0 |
+| `triggers` | array of string | 否 | 只在哪几种生成方式下触发（SillyTavern 的 `normal`、`continue`、`impersonate`、`swipe`、`regenerate`、`quiet`）；空的（默认）不限。我们的回合都算 `normal` |
+| `ignore_budget` | boolean | 否 | 不占预算：预算满了也带上，默认否 |
 
 ### `CardRevisionOut`
 
