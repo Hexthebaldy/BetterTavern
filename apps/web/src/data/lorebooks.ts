@@ -38,8 +38,14 @@ export function useLorebooks() {
 
 export type LorebookProblem = { title: string; message: string; toWorkbench?: boolean };
 
-/** 导入世界书：一次一个文件。成功时把新的那本交给 onImported（列表页打开它，剧本表单把它挂上） */
-export function useLorebookImport(onImported: (book: LorebookSummary) => void) {
+/**
+ * 导入世界书：一次一个文件。成功时把新的那本交给 onImported（列表页打开它，剧本表单把它挂上）。
+ * 导入过同一个文件时默认可以去打开已有的那本；剧本表单传 attachExisting，改成把已有的挂上（不离开表单）。
+ */
+export function useLorebookImport(
+  onImported: (book: LorebookSummary) => void,
+  attachExisting?: (book: LorebookSummary) => void,
+) {
   const { api } = useApp();
   const overlay = useOverlay();
   const queries = useQueryClient();
@@ -69,11 +75,12 @@ export function useLorebookImport(onImported: (book: LorebookSummary) => void) {
             title: t("lorebook.duplicateTitle"),
             message: t("lorebook.duplicateMessage", { name: existing.name }),
             confirmLabel: t("lorebook.importAnother"),
-            cancelLabel: t("lorebook.openExisting"),
+            cancelLabel: attachExisting ? t("lorebook.attachExisting") : t("lorebook.openExisting"),
             icon: "info",
           });
           if (!again) {
-            navigate(lorebookPath(existing.id));
+            if (attachExisting) attachExisting(existing);
+            else navigate(lorebookPath(existing.id));
             return;
           }
           setProgress(file.name);
@@ -97,7 +104,7 @@ export function useLorebookImport(onImported: (book: LorebookSummary) => void) {
         busy.current = false;
       }
     },
-    [api, navigate, onImported, overlay, queries, t],
+    [api, attachExisting, navigate, onImported, overlay, queries, t],
   );
 
   return { importFile, progress, problem, dismiss: () => setProblem(null) };

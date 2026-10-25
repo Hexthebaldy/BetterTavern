@@ -17,6 +17,7 @@ export function Portrait({
   seed,
   blobId,
   size,
+  height = size,
   rounded = comicRadius.cover,
   tone: forcedTone,
   style,
@@ -26,6 +27,8 @@ export function Portrait({
   seed: string;
   blobId?: string | null;
   size: number;
+  /** 不是正方形时的高（库里世界书的格子顶上一条）；不传就和 size 一样 */
+  height?: number;
   rounded?: number;
   /** 指定底（剧本里的主角色是蓝网点）；不传就按 seed 选 */
   tone?: PanelTone;
@@ -33,21 +36,22 @@ export function Portrait({
 }) {
   const c = useComic();
   if (blobId) {
-    return <Cover seed={seed} blobId={blobId} width={size} height={size} rounded={rounded} framed style={style} />;
+    return <Cover seed={seed} blobId={blobId} width={size} height={height} rounded={rounded} framed style={style} />;
   }
   const tone = forcedTone ?? portraitTone(seed);
   const fg = tone === "blue" ? c.onAcc : isDarkTone(tone) ? c.paper : c.ink;
+  const glyphSize = Math.min(size, height);
   const glyph = (
     <Text
       allowFontScaling={false}
-      style={[styles.glyph, { fontSize: size * 0.72, lineHeight: size * 0.86, color: fg }]}
+      style={[styles.glyph, { fontSize: glyphSize * 0.72, lineHeight: glyphSize * 0.86, color: fg }]}
     >
       {portraitGlyph(name)}
     </Text>
   );
   const box = [
     styles.box,
-    { width: size, height: size, borderRadius: rounded, borderColor: c.ink },
+    { width: size, height, borderRadius: rounded, borderColor: c.ink },
     style,
   ];
   if (tone === "blue" || tone === "dots" || tone === "grey") {

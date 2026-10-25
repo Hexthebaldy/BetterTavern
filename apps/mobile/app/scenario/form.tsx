@@ -3,7 +3,8 @@
  * 1. 从角色卡仓库选一张或几张卡（最多 8 张，群像剧本），可以调先后，第一张是主角色；
  * 2. 剧本名（不填就用第一张卡的名字）；
  * 3. 默认主角和偏好：开新故事时预填（和“开始新的故事”是同一个表单，StartForm.tsx）；
- * 4. 开场：用其中一张卡的开场白或某条备选开场白（导演不重写），或者让导演根据设定写一个。
+ * 4. 开场：用其中一张卡的开场白或某条备选开场白（导演不重写），或者让导演根据设定写一个；
+ * 5. 世界书：从世界书仓库挂几本（最多 4 本，可以调先后），也可以当场导入一本新的并挂上（docs/lorebook.md 第 9.2 节）。
  * 编辑时带版本号保存，别处改过（409 SCENARIO_CHANGED）就重新读一次。
  *
  * 漫画风（docs/design/comic/mobile/png/19）：选好的卡在一个墨线格子里，序号是墨底方块，第一张标“主角色”；
@@ -11,15 +12,17 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
-import type { CardDetail, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
+import type { CardDetail, LorebookSummary, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
+import { LOREBOOK_LIMITS } from "@bettertavern/core/scenario/lorebook";
 
 import { Cover } from "../../src/components/Cover.tsx";
 import {
+  Button,
   ErrorState,
   Field,
   Group,
@@ -35,6 +38,7 @@ import {
   useColumnStyle,
   useOverlay,
 } from "../../src/components/ui.tsx";
+import { useLorebookImport } from "../../src/features/library/lorebookActions.ts";
 import { StartForm, type StartValues } from "../../src/features/scenario/StartForm.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
@@ -43,6 +47,15 @@ import { comicRadius, font, space, useComic } from "../../src/theme/index.ts";
 const MAX_CARDS = 8;
 
 type Opening = ScenarioSetup["opening"];
+
+function moveIn<T>(list: T[], index: number, delta: -1 | 1): T[] {
+  const target = index + delta;
+  if (target < 0 || target >= list.length) return list;
+  const next = [...list];
+  const [item] = next.splice(index, 1);
+  if (item !== undefined) next.splice(target, 0, item);
+  return next;
+}
 
 function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; presetCard: string | null; onChanged: () => void }) {
   const { api } = useApp();
@@ -60,6 +73,18 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
   const [opening, setOpening] = useState<Opening>(scenario?.setup.opening ?? null);
   const [lightning, setLightning] = useState(scenario?.setup.lightning ?? false);
   const [details, setDetails] = useState<Map<string, CardDetail>>(new Map());
+  const [books, setBooks] = useState<string[]>(() => scenario?.lorebooks.map((b) => b.lorebook_id) ?? []);
+  const lorebooks = useAsync(() => api.lorebooks.list(), [api]);
+  const attach = useCallback(
+    (book: LorebookSummary) =>
+      setBooks((list) => (list.includes(book.id) || list.length >= LOREBOOK_LIMITS.perScenario ? list : [...list, book.id])),
+    [],
+  );
+  const bookImport = useLorebookImport((book) => {
+    attach(book);
+    void lorebooks.reload();
+  }, attach);
+  const booksFull = books.length >= LOREBOOK_LIMITS.perScenario;
   // 取过的卡（取不到的也算），不反复取
   const requested = useRef(new Set<string>());
   const [saving, setSaving] = useState(false);
@@ -93,15 +118,7 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
       setPicked((list) => [...list, id]);
     }
   };
-  const move = (index: number, delta: -1 | 1): void =>
-    setPicked((list) => {
-      const target = index + delta;
-      if (target < 0 || target >= list.length) return list;
-      const next = [...list];
-      const [item] = next.splice(index, 1);
-      if (item !== undefined) next.splice(target, 0, item);
-      return next;
-    });
+  const move = (index: number, delta: -1 | 1): void => setPicked((list) => moveIn(list, index, delta));
 
   const save = async (): Promise<void> => {
     if (!picked.length || !values) return;
@@ -119,12 +136,18 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
           name: name.trim() || undefined,
           card_ids: picked,
           setup,
+          lorebook_ids: books,
           version: scenario.version,
         });
         overlay.toast(t("scenario.saved"));
         router.back();
       } else {
-        const created = await api.scenarios.create({ name: name.trim() || null, card_ids: picked, setup });
+        const created = await api.scenarios.create({
+          name: name.trim() || null,
+          card_ids: picked,
+          setup,
+          lorebook_ids: books,
+        });
         overlay.toast(t("newScenario.created", { name: created.name }));
         router.replace({ pathname: "/scenario/[id]", params: { id: created.id } });
       }
@@ -307,6 +330,115 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
             </Group>
           </View>
 
+          <SectionHeader
+            title={t("lorebook.formSection")}
+            meta={books.length ? `${books.length}/${LOREBOOK_LIMITS.perScenario}` : undefined}
+            style={styles.section}
+          />
+          <Text style={[styles.hint, { color: c.mut }]}>
+            {t("lorebook.formHint", { max: LOREBOOK_LIMITS.perScenario })}
+          </Text>
+          {bookImport.problem ? (
+            <Notice
+              message={`${bookImport.problem.title}\n${bookImport.problem.message}`}
+              onClose={bookImport.dismiss}
+            />
+          ) : null}
+          {books.length ? (
+            <Group>
+              {books.map((id, i) => {
+                const book = lorebooks.data?.find((b) => b.id === id);
+                const known = scenario?.lorebooks.find((b) => b.lorebook_id === id);
+                const entries = book?.entries ?? known?.entries ?? 0;
+                return (
+                  <View key={id} style={styles.pick}>
+                    <View style={[styles.index, { backgroundColor: c.ink }]}>
+                      <Text style={[styles.indexText, { color: c.paper }]}>{i + 1}</Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={[styles.pickName, { color: c.ink }]}>
+                        {book?.name ?? known?.name ?? id}
+                      </Text>
+                      <Text numberOfLines={1} style={{ fontSize: 12.5, color: c.mut }}>
+                        {t("lorebook.entries", { count: entries })}
+                      </Text>
+                    </View>
+                    <IconButton
+                      icon="chevronUp"
+                      label={t("newScenario.moveUp")}
+                      tone="plain"
+                      diameter={32}
+                      size={18}
+                      disabled={i === 0}
+                      onPress={() => setBooks((list) => moveIn(list, i, -1))}
+                    />
+                    <IconButton
+                      icon="chevronDown"
+                      label={t("newScenario.moveDown")}
+                      tone="plain"
+                      diameter={32}
+                      size={18}
+                      disabled={i === books.length - 1}
+                      onPress={() => setBooks((list) => moveIn(list, i, 1))}
+                    />
+                    <IconButton
+                      icon="close"
+                      label={t("newScenario.remove")}
+                      tone="plain"
+                      diameter={32}
+                      size={18}
+                      onPress={() => setBooks((list) => list.filter((x) => x !== id))}
+                    />
+                  </View>
+                );
+              })}
+            </Group>
+          ) : null}
+          {(lorebooks.data ?? []).some((b) => !books.includes(b.id)) ? (
+            <Group>
+              {(lorebooks.data ?? [])
+                .filter((b) => !books.includes(b.id))
+                .map((book) => (
+                  <Pressable
+                    key={book.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: booksFull }}
+                    onPress={() =>
+                      booksFull
+                        ? overlay.toast(t("lorebook.formTooMany", { max: LOREBOOK_LIMITS.perScenario }), { icon: "alert" })
+                        : attach(book)
+                    }
+                    style={({ pressed }) => [styles.pick, { backgroundColor: pressed ? c.grey : "transparent" }]}
+                  >
+                    <View style={styles.index}>
+                      <Icon name="plus" size={18} color={c.mut} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={[styles.pickName, { color: booksFull ? c.mut : c.ink }]}>
+                        {book.name}
+                      </Text>
+                      <Text numberOfLines={1} style={{ fontSize: 12.5, color: c.mut }}>
+                        {[t("lorebook.entries", { count: book.entries }), book.description].filter(Boolean).join(" · ")}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+            </Group>
+          ) : null}
+          {lorebooks.data && lorebooks.data.length === 0 ? (
+            <Text style={[styles.hint, { color: c.mut }]}>{t("lorebook.formNone")}</Text>
+          ) : null}
+          <Button
+            label={bookImport.importing ? t("lorebook.importing", { name: bookImport.importing }) : t("lorebook.formImport")}
+            icon="import"
+            variant="secondary"
+            small
+            busy={bookImport.importing !== null}
+            disabled={booksFull}
+            onPress={() => void bookImport.pick()}
+            style={styles.importButton}
+          />
+
           <SectionHeader title={t("newScenario.lightning")} style={styles.section} />
           <View style={styles.switchRow}>
             <Text style={[styles.hint, styles.switchHint, { color: c.mut }]}>
@@ -360,4 +492,5 @@ const styles = StyleSheet.create({
   indexText: { fontFamily: font.monoMedium, fontSize: 13, fontWeight: "700" },
   pickName: { flex: 1, fontSize: 15.5, fontWeight: "900" },
   opening: { flexDirection: "row", alignItems: "flex-start", gap: space.m, paddingVertical: 14, paddingHorizontal: 14 },
+  importButton: { alignSelf: "flex-start" },
 });

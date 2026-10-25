@@ -1,6 +1,6 @@
 /**
  * 库页（app/(tabs)/library.tsx）的部件（漫画风，docs/design/comic/mobile/png/10–14、tablet/png/04–05）：
- * 页头的网格 / 列表切换和新建、网格卡片、列表行、空状态。剧本仓库和角色卡仓库共用一种卡片（Item）。
+ * 页头的网格 / 列表切换和新建、网格卡片、列表行、空状态。剧本仓库、角色卡仓库和世界书仓库共用一种卡片（Item）。
  *
  * - 网格卡片：白底 2.5 墨线的格子（圆角 12），封面在上（底边一道墨线），名字、两行简介、数量在下；
  *   有没保存的草稿的角色卡在封面左上角标“草稿”。
@@ -12,11 +12,13 @@ import { type Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { CardSummary, Scenario } from "@bettertavern/core/api/types";
+import type { CardSummary, LorebookSummary, Scenario } from "@bettertavern/core/api/types";
 import { i18n } from "@bettertavern/core/i18n/index";
+import { hasUnsupported } from "@bettertavern/core/scenario/lorebook";
 import { cardOrigin } from "@bettertavern/core/workbench/labels";
 
 import { Cover } from "../../components/Cover.tsx";
+import { Portrait } from "../../components/Portrait.tsx";
 import { Button, EmptyPanel, Icon, Pill, press, type IconName } from "../../components/ui.tsx";
 import type { LibraryView } from "../../state/PrefsProvider.tsx";
 import {
@@ -37,6 +39,10 @@ export type Item = {
   coverBlobId: string | null;
   /** 角色卡有没保存的草稿：封面上标“草稿” */
   draft?: boolean;
+  /** 世界书：封面换成名字的第一个字压在网点底上（同人物位） */
+  portrait?: boolean;
+  /** 封面左上角的琥珀色小标（世界书有不支持的设置） */
+  warning?: string;
 };
 
 /** saves：用这个剧本开的存档有几个（取自存档列表） */
@@ -66,6 +72,25 @@ export function cardItem(c: CardSummary): Item {
     meta,
     coverBlobId: c.cover_blob_id,
     draft: !!c.draft_id,
+  };
+}
+
+export function lorebookItem(b: LorebookSummary): Item {
+  const meta = [
+    i18n.t("lorebook.entries", { count: b.entries }),
+    b.constant ? i18n.t("lorebook.constant", { count: b.constant }) : "",
+    b.scenario_count ? i18n.t("lorebook.usedBy", { count: b.scenario_count }) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return {
+    id: b.id,
+    title: b.name,
+    summary: b.description || i18n.t(`lorebook.source.${b.source}`),
+    meta,
+    coverBlobId: null,
+    portrait: true,
+    warning: hasUnsupported(b.report) ? i18n.t("lorebook.unsupported") : undefined,
   };
 }
 
@@ -194,8 +219,13 @@ function TileBody({ item, width }: { item: Item; width: number }) {
   return (
     <>
       <View style={[styles.tileCover, { borderBottomColor: c.ink }]}>
-        <Cover seed={item.id} blobId={item.coverBlobId} width={inner} height={coverHeight(width)} rounded={0} />
+        {item.portrait ? (
+          <Portrait name={item.title} seed={item.id} size={inner} height={coverHeight(width)} rounded={0} style={styles.flat} />
+        ) : (
+          <Cover seed={item.id} blobId={item.coverBlobId} width={inner} height={coverHeight(width)} rounded={0} />
+        )}
         {item.draft ? <Pill tone="ink" label={t("library.draftChip")} style={styles.draft} /> : null}
+        {item.warning ? <Pill tone="warn" label={item.warning} style={styles.draft} /> : null}
       </View>
       <View style={styles.tileMeta}>
         <Text numberOfLines={1} style={[styles.name, { color: c.ink }]}>
@@ -237,7 +267,11 @@ export function Row({
         { borderColor: c.ink, backgroundColor: pressed ? c.grey : c.paper },
       ]}
     >
-      <Cover seed={item.id} blobId={item.coverBlobId} width={60} height={60} framed />
+      {item.portrait ? (
+        <Portrait name={item.title} seed={item.id} size={60} />
+      ) : (
+        <Cover seed={item.id} blobId={item.coverBlobId} width={60} height={60} framed />
+      )}
       <View style={{ flex: 1, minWidth: 0, gap: space.xs }}>
         <View style={styles.rowTop}>
           <Text numberOfLines={1} style={[styles.rowTitle, { color: c.ink }]}>
@@ -314,6 +348,8 @@ const styles = StyleSheet.create({
   tile: { borderWidth: comicStroke.frame, borderRadius: comicRadius.frame, overflow: "hidden" },
   tileCover: { borderBottomWidth: comicStroke.frame },
   draft: { position: "absolute", left: 8, top: 8 },
+  /** 格子顶上一条的人物位：外面已经有格子的墨线 */
+  flat: { borderWidth: 0 },
   tileMeta: { paddingTop: 10, paddingHorizontal: 12, paddingBottom: 12, gap: 4 },
   name: { fontSize: 17, lineHeight: 22, fontWeight: "900" },
   summary: { fontSize: 13, lineHeight: 20, minHeight: 40 },

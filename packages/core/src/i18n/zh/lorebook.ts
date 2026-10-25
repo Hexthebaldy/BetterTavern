@@ -4,6 +4,8 @@ export const lorebook = {
   lorebook: {
     tabs: {
       cards: "角色卡",
+      /** 手机上剧本、角色卡、世界书三段并排时用 */
+      cardsShort: "角色卡",
       lorebooks: "世界书",
       label: "角色卡和世界书",
     },
@@ -67,6 +69,7 @@ export const lorebook = {
     duplicateTitle: "这个文件导入过了",
     duplicateMessage: "世界书仓库里已经有“{{name}}”。",
     openExisting: "打开已有的",
+    attachExisting: "挂上已有的",
     importAnother: "另外导入一份",
     notJson: "“{{name}}”不是 JSON 文件",
     notJsonMessage: "世界书是 SillyTavern 导出的 .json 文件。",

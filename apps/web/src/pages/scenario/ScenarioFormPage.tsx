@@ -68,7 +68,7 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
       setBooks((list) => (list.includes(book.id) || list.length >= LOREBOOK_LIMITS.perScenario ? list : [...list, book.id])),
     [],
   );
-  const bookImport = useLorebookImport(attach);
+  const bookImport = useLorebookImport(attach, attach);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 

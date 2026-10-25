@@ -5,6 +5,7 @@ export const lorebook: Messages<typeof source> = {
   lorebook: {
     tabs: {
       cards: "Character cards",
+      cardsShort: "Cards",
       lorebooks: "Lorebooks",
       label: "Character cards and lorebooks",
     },
@@ -77,6 +78,7 @@ export const lorebook: Messages<typeof source> = {
     duplicateTitle: "This file was imported before",
     duplicateMessage: "The lorebook library already has “{{name}}”.",
     openExisting: "Open the existing one",
+    attachExisting: "Attach the existing one",
     importAnother: "Import another copy",
     notJson: "“{{name}}” isn't a JSON file",
     notJsonMessage: "A lorebook is a .json file exported from SillyTavern.",

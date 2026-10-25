@@ -25,6 +25,7 @@ describe("导航的几块", () => {
     assert.equal(activeItem(RAIL_ITEMS, "playthroughs", {}), "saves");
     assert.equal(activeItem(RAIL_ITEMS, "library", {}), "scenarios");
     assert.equal(activeItem(RAIL_ITEMS, "library", { tab: "cards" }), "characters");
+    assert.equal(activeItem(RAIL_ITEMS, "library", { tab: "lorebooks" }), "characters");
     assert.equal(activeItem(RAIL_ITEMS, "settings", undefined), "settings");
     assert.equal(activeItem(RAIL_ITEMS, "settings", { section: "models" }), "models");
     // 不认识的参数值当作没带
@@ -51,6 +52,7 @@ describe("导航的几块", () => {
       params: { section: "models" },
     });
     assert.equal(railTarget(rail("characters"), "library", { tab: "cards" }), null);
+    assert.equal(railTarget(rail("characters"), "library", { tab: "lorebooks" }), null);
     assert.equal(railTarget(rail("saves"), "playthroughs", {}), null);
   });
 });

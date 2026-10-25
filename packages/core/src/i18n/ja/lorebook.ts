@@ -5,6 +5,7 @@ export const lorebook: MessagesOtherOnly<typeof source> = {
   lorebook: {
     tabs: {
       cards: "キャラクターカード",
+      cardsShort: "カード",
       lorebooks: "ワールドブック",
       label: "キャラクターカードとワールドブック",
     },
@@ -66,6 +67,7 @@ export const lorebook: MessagesOtherOnly<typeof source> = {
     duplicateTitle: "このファイルは読み込み済みです",
     duplicateMessage: "ワールドブックの書庫にはすでに「{{name}}」があります。",
     openExisting: "既存のものを開く",
+    attachExisting: "既存のものを付ける",
     importAnother: "もう一冊読み込む",
     notJson: "「{{name}}」は JSON ファイルではありません",
     notJsonMessage: "ワールドブックは SillyTavern から書き出した .json ファイルです。",

@@ -1,5 +1,5 @@
 /**
- * 剧本详情：封面、剧本里的角色卡（第一张是主角色，点一下看卡）、剧本设置（默认主角、偏好、开场），
+ * 剧本详情：封面、剧本里的角色卡（第一张是主角色，点一下看卡）、剧本设置（默认主角、偏好、开场、挂的世界书），
  * 下面是“开始新的故事”的五步表单（按剧本设置预填）。开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
  * 剧本名右边是“编辑设置”（form.tsx）；删除剧本的按钮在页面最底下。从编辑页回来时重新加载（useAsync 在回到页面时会再取一次）。
  *
@@ -8,7 +8,7 @@
  * 右栏是开始新故事的五步，底部浮着一条摘要栏（已选项胶囊加“开始故事”）。
  *
  * 漫画风（docs/design/comic/mobile/png/15–17）：手机上封面铺满顶部、底边一道墨线，返回是浮在上面的图标按钮；
- * 平板上封面是墨线的格子。剧本里的卡是一排人物位小卡（主角色是蓝网点底加“主角色”）；设置是墨线格子里的三行；
+ * 平板上封面是墨线的格子。剧本里的卡是一排人物位小卡（主角色是蓝网点底加“主角色”）；设置是墨线格子里的四行；
  * 简介不进框。浮着的摘要栏是白底墨线、墨投影 4。
  */
 
@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
+import { lorebookSummary } from "@bettertavern/core/scenario/lorebook";
 import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
 import { needsModelSettings } from "@bettertavern/core/settings/labels";
 import { pane } from "@bettertavern/design/layout";
@@ -120,6 +121,7 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
         )}
         {setupRow(t("scenario.preferences"), prefs)}
         {setupRow(t("scenario.opening"), openingText(scenario))}
+        {setupRow(t("lorebook.scenarioRow"), lorebookSummary(scenario.lorebooks.map((b) => b.name)))}
       </Group>
       {scenario.description_preview ? (
         <View style={styles.description}>
