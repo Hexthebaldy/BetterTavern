@@ -68,6 +68,7 @@
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `replied_at` | timestamptz | 是 |  | 叙述和选项写入的时间 |
 | `committed_at` | timestamptz | 是 |  | 世界状态 agent 整理完（或跳过）的时间；结局那一轮保存时直接写入，和 `replied_at` 相同 |
+| `lore` | jsonb | 否 | `'{}'` | 这一回合的世界书记录，结构见下文“JSON 列”；导演写完回合时一起写入。下一回合读父回合的这一列算粘滞和冷却，回退后读的是目标回合的，自然跟着回去（迁移 `0027`） |
 
 约束与索引：
 - `turns_chain_seq_uq (playthrough_id, seq) WHERE status NOT IN ('failed', 'archived')`：保证活跃链上每个 `seq` 只有一个回合。失败的尝试和被回退的回合不受这个约束，所以重试时可以在同一个 `seq` 上插入 `attempt + 1`。
@@ -176,6 +177,18 @@
     }
   ],
   "truncated": false
+}
+```
+
+### `turns.lore`
+
+这一回合的世界书记录（`runtime/context/lore.py` 的 `LoreSelection.record`）：挑中了哪几条（在 `playthrough_lore.entries` 里的序号），以及写完以后还在粘滞期、冷却期的条目各到第几回合为止（含那一回合）。不记内容。没有世界书快照的局、用卡片开场白开场的那一回合是 `{}`。
+
+```jsonc
+{
+  "hits": [0, 3, 7],          // 这一回合带进上下文的条目（不含系统提示里的常驻条目）
+  "sticky": { "3": 12 },      // 序号 3 的条目到第 12 回合为止一直算触发
+  "cooldown": { "7": 10 }     // 序号 7 的条目到第 10 回合为止不能触发
 }
 ```
 

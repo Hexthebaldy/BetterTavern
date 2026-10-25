@@ -183,7 +183,9 @@ class PgTurnStore:
             turn = await story_repo.get_turn(conn, header.turn_id)
             assert pt is not None and turn is not None
             action = PlayerAction.from_json(turn.user_action)
-            return await load_turn_context(conn, pt, header, action, up_to_seq=header.seq - 1)
+            return await load_turn_context(
+                conn, pt, header, action, up_to_seq=header.seq - 1, parent=turn.parent_turn_id
+            )
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:
         async with self._engine.begin() as conn:
@@ -238,6 +240,7 @@ class PgTurnStore:
             state_seq=outcome.state_seq,
             director_run_id=director_run_id,
             director_notes=outcome.director_notes,
+            lore=dict(outcome.lore),
         )
         if not updated:
             raise _Stale
@@ -391,6 +394,7 @@ async def load_turn_context(
     action: PlayerAction,
     *,
     up_to_seq: int,
+    parent: str | None = None,
 ) -> TurnContext:
     """拼导演上下文要用的全部内容：原文到 up_to_seq 为止。导演每回合用它，闪电模式的压缩也用它
     （services/lightning_store.py），两边拼出的开头一字不差，前缀缓存才能命中。"""
@@ -404,6 +408,8 @@ async def load_turn_context(
     history = await story_repo.list_chain(conn, pt.id, after_seq=start - 1, up_to_seq=up_to_seq)
     world = await load_world(conn, pt.id)
     lore = lore_of(await story_repo.get_lore(conn, pt.id))
+    # 上一回合的世界书记录（粘滞、冷却）；闪电模式的压缩不需要，不给 parent
+    lore_record = await story_repo.get_turn_lore(conn, parent) if lore and parent else None
     memory = await load_story_memory(conn, pt.id, pt.summarized_seq)
     current = await outline_repo.current_outline(conn, pt.id)
     greeting, char = "", ""
@@ -440,4 +446,5 @@ async def load_turn_context(
         opening_greeting=greeting,
         cards=cards_of(pt.seed),
         lore=lore,
+        lore_record=lore_record,
     )

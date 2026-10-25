@@ -110,6 +110,8 @@ class TurnContext:
     # 这一局的世界书快照（domain/world/lore.py），每回合按关键词挑条目（runtime/context/lore.py）；
     # 世界书功能上线（2026-10-25）前开局的存档没有，那时卡里的世界书在 cards 快照里
     lore: LoreSnapshot | None = None
+    # 上一回合（父回合）的世界书记录 turns.lore：哪些条目还在粘滞期、冷却期
+    lore_record: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,6 +143,8 @@ class TurnOutcome:
     runs: list[AgentRunRecord]
     ends_story: bool = False  # 结局写完了：提交时把这局标为 ended
     director_notes: str = ""  # 导演写在选项之后、玩家看不到的备注
+    # 这一回合的世界书记录（写进 turns.lore）：挑中了哪几条、之后还在粘滞或冷却的条目
+    lore: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

@@ -126,7 +126,7 @@
 | 导演，`NARRATIVE_MISSING` | 同上，但没有 `stage`、`repairs`、`notes` |
 | 导演，服务商出错或碰到上限 | `{ "route_id", "estimated_tokens", "usage_ratio", "dropped_turns", "prompt_versions" }` |
 
-导演的三种都还带 `recall_before`（上下文里的原文从第几回合开始），这一局有世界书快照时还带 `lore`：`{ "constant", "triggered": [序号], "recursion", "dropped", "regex_timeouts" }`，即系统提示里放了几条常驻条目、这一回合挑中的条目在快照（`playthrough_lore.entries`）里的序号、其中几条是递归带出来的、几条因为预算装不下、正则超时几次（没有超时就没有这一项）。不记条目内容。
+导演的三种都还带 `recall_before`（上下文里的原文从第几回合开始），这一局有世界书快照时还带 `lore`：`{ "constant", "triggered": [序号], "recursion", "dropped", "sticky": [序号], "regex_timeouts" }`，即系统提示里放了几条常驻条目、这一回合挑中的条目在快照（`playthrough_lore.entries`）里的序号、其中几条是递归带出来的、几条因为预算装不下、哪几条是粘滞期里接着生效的（没有就没有这一项）、正则超时几次（没有超时就没有这一项）。不记条目内容。
 
 | 补选项 | `{ "existing", "produced" }`：调用前已有几个合格选项、这次补出了几个 |
 | WorldBuilder，成功 | `{ "mode", "attempts", "characters", "locations", "facts" }`；`mode` 是实际用上的结构化输出方式（`json_schema` / `tool_call` / `json_object` / `prompt_json`） |

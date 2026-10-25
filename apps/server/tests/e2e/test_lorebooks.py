@@ -263,3 +263,51 @@ async def test_the_director_gets_entries_by_keyword(running: Running) -> None:
         assert "火漆印是北境商会的暗号。" in lore and "暗号每月初一更换。" in lore
         assert "码头归漕帮管。" not in last
         assert last.index("<lore>") < last.index("<player-action>")
+
+
+async def test_sticky_entries_follow_rollback(running: Running) -> None:
+    async with httpx.AsyncClient(base_url=running.base_url, timeout=30) as client:
+        account = await setup_account(client, running.fake)
+        token = account["token"]
+        auth = {"Authorization": f"Bearer {token}"}
+        # 粘滞 4 条消息 = 2 回合：提到一次以后，接下来两回合不提也带着
+        world = {
+            "entries": {"0": {"uid": 0, "key": ["漕帮"], "content": "漕帮管着码头。", "sticky": 4}}
+        }
+        r = await client.post("/v1/lorebooks/import", headers=auth, files=file_of(world, "帮.json"))
+        book_id = r.json()["lorebook"]["lorebook"]["id"]
+        saved: dict[str, Any] = await import_scenario(client, auth)
+        sid = saved["scenario"]["id"]
+        await client.patch(f"/v1/scenarios/{sid}", headers=auth, json={"lorebook_ids": [book_id]})
+        r = await client.post(
+            "/v1/playthroughs",
+            headers=auth,
+            json={"scenario_id": sid, "protagonist": {"name": "林川"}},
+        )
+        created = r.json()
+        pid = created["playthrough"]["id"]
+        await read_events(client, created["events_url"], token)
+        opening_id = (await client.get(f"/v1/playthroughs/{pid}", headers=auth)).json()[
+            "playthrough"
+        ]["head_turn_id"]
+
+        async def act(text: str) -> str:
+            head = (await client.get(f"/v1/playthroughs/{pid}", headers=auth)).json()
+            body = {
+                "parent_turn_id": head["playthrough"]["head_turn_id"],
+                "action": {"source": "text", "text": text},
+            }
+            r = await client.post(f"/v1/playthroughs/{pid}/turns", headers=auth, json=body)
+            assert r.status_code == 201, r.text
+            await read_events(client, r.json()["events_url"], token)
+            request = [q for q in running.fake.app.chat_requests if q.body.get("stream")][-1]
+            return str(request.body["messages"][-1]["content"])
+
+        assert "漕帮管着码头。" in await act("我打听漕帮的事")
+        assert "漕帮管着码头。" in await act("我坐下喝茶")  # 粘滞
+        # 回到开场：之后的回合撤销，粘滞也跟着没了
+        r = await client.post(
+            f"/v1/playthroughs/{pid}/rollback", headers=auth, json={"turn_id": opening_id}
+        )
+        assert r.status_code == 200, r.text
+        assert "漕帮管着码头。" not in await act("我坐下喝茶")

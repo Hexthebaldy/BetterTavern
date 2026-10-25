@@ -198,6 +198,7 @@ async def finalize_turn(
         state_seq=state_seq,
         runs=[run, *repair_runs],
         director_notes=outcome.director_notes,
+        lore=generation.context.lore_record or {},
     )
 
 
@@ -262,6 +263,7 @@ def finalize_ending(generation: Generation, state_seq: int) -> TurnOutcome:
         runs=[run],
         ends_story=True,
         director_notes=parse.director_notes,
+        lore=generation.context.lore_record or {},
     )
 
 

@@ -494,6 +494,7 @@ async def complete_turn(
     state_seq: int,
     director_run_id: str | None,
     director_notes: str | None = None,
+    lore: dict[str, Any] | None = None,
 ) -> bool:
     count = await execute(
         conn,
@@ -502,6 +503,7 @@ async def complete_turn(
         SET status = :status, narrative = :narrative, options = CAST(:options AS jsonb),
             options_source = :source, usage = CAST(:usage AS jsonb), state_seq = :state_seq,
             director_run_id = :run, director_notes = :notes, error = NULL, replied_at = now(),
+            lore = CAST(:lore AS jsonb),
             committed_at = CASE WHEN :status = 'committed' THEN now() ELSE NULL END
         WHERE id = :id AND status = 'generating'
         """,
@@ -515,9 +517,19 @@ async def complete_turn(
             "state_seq": state_seq,
             "run": director_run_id,
             "notes": director_notes or None,
+            "lore": dumps(lore or {}),
         },
     )
     return count == 1
+
+
+async def get_turn_lore(conn: AsyncConnection, turn_id: str | None) -> dict[str, Any]:
+    """一个回合的世界书记录（turns.lore）：挑中了哪几条、之后还在粘滞或冷却的条目。"""
+    if turn_id is None:
+        return {}
+    value = await fetch_value(conn, "SELECT lore FROM turns WHERE id = :id", {"id": turn_id})
+    data = as_json(value, {})
+    return data if isinstance(data, dict) else {}
 
 
 async def fail_turn(

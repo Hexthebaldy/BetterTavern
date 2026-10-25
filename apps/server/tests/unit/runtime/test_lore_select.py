@@ -8,14 +8,16 @@ import itertools
 import pytest
 
 from bettertavern.domain.scenario.card import LoreEntry, LoreRules
-from bettertavern.domain.world.lore import LoreItem, LoreSnapshot
+from bettertavern.domain.world.lore import CardTexts, LoreItem, LoreSnapshot
 from bettertavern.runtime.context import lore as lore_module
 from bettertavern.runtime.context.lore import (
     LoreScan,
+    LoreSelection,
     constant_items,
     lore_budget,
     select_lore,
 )
+from bettertavern.runtime.context.lore_effects import LoreTimers
 
 WINDOW = 100_000  # 预算 min(25000, 12000) = 12000 token
 
@@ -194,3 +196,150 @@ def test_same_input_same_output() -> None:
 def test_no_snapshot_or_empty_snapshot() -> None:
     assert select_lore(None, LoreScan(messages=("x",)), window=WINDOW).triggered == ()
     assert select_lore(snap(), LoreScan(messages=("x",)), window=WINDOW).constants == ()
+
+
+# ---- 第 4 步：分组、概率、粘滞冷却延迟、扫描深度、顺带扫描、生成方式 ----------------------------
+
+
+def run(
+    snapshot: LoreSnapshot,
+    *messages: str,
+    turn: int = 1,
+    seed: str = "pt:1:0",
+    timers: LoreTimers | None = None,
+) -> LoreSelection:
+    scan = LoreScan(messages=messages, turn=turn, seed=seed, timers=timers or LoreTimers())
+    return select_lore(snapshot, scan, window=WINDOW)
+
+
+def names(selection: LoreSelection) -> list[str]:
+    return [i.entry.content for i in selection.triggered]
+
+
+def test_only_one_entry_per_group() -> None:
+    weather = [entry(w, "天气", rules=LoreRules(groups=("天气",))) for w in ("晴", "雨", "雪")]
+    picks = {names(run(snap(*weather), "看看天气", seed=f"pt:{n}:0"))[0] for n in range(40)}
+    assert picks == {"晴", "雨", "雪"}  # 按权重抽，不同回合抽到不同的
+    for n in range(10):
+        assert len(names(run(snap(*weather), "看看天气", seed=f"pt:{n}:0"))) == 1
+    # 同一回合（同一个种子）重试抽到的一样
+    assert names(run(snap(*weather), "天气", seed="pt:7:0")) == names(
+        run(snap(*weather), "天气", seed="pt:7:0")
+    )
+
+
+def test_group_weights_override_and_scoring() -> None:
+    heavy = entry("常见", "天气", rules=LoreRules(groups=("g",), group_weight=1000))
+    rare = entry("少见", "天气", rules=LoreRules(groups=("g",), group_weight=1))
+    picks = [names(run(snap(heavy, rare), "天气", seed=f"s{n}"))[0] for n in range(50)]
+    assert picks.count("常见") > 45
+    # 组内优先：取优先级最大的
+    favored = [
+        entry("甲", "门", priority=10, rules=LoreRules(groups=("g",), group_override=True)),
+        entry("乙", "门", priority=90, rules=LoreRules(groups=("g",), group_override=True)),
+        entry("丙", "门", priority=500, rules=LoreRules(groups=("g",))),
+    ]
+    assert names(run(snap(*favored), "门")) == ["乙"]
+    # 组打分：命中关键词多的留下
+    scored = [
+        entry("一个词", "门", rules=LoreRules(groups=("g",), group_scoring=True)),
+        entry("两个词", "门", "窗", rules=LoreRules(groups=("g",), group_scoring=True)),
+    ]
+    assert names(run(snap(*scored), "门和窗")) == ["两个词"]
+
+
+def test_a_group_already_used_this_turn_takes_no_more() -> None:
+    first = entry("王都住着国王", "王都", rules=LoreRules(groups=("人物",)))
+    second = entry("国王的事", "国王", rules=LoreRules(groups=("人物",)))
+    # 第一轮进了“人物”组的一条，递归那一轮同组的不再进
+    assert names(run(snap(first, second), "我进了王都")) == ["王都住着国王"]
+
+
+def test_probability_is_a_fixed_roll_per_turn() -> None:
+    maybe = snap(entry("偶尔", "门", rules=LoreRules(probability=30)))
+    hits = sum(bool(names(run(maybe, "门", seed=f"pt:{n}:0"))) for n in range(400))
+    assert 80 < hits < 160  # 大约三成
+    assert names(run(maybe, "门", seed="pt:3:0")) == names(run(maybe, "门", seed="pt:3:0"))
+    never = snap(entry("从不", "门", rules=LoreRules(probability=0)))
+    assert not any(names(run(never, "门", seed=f"x{n}")) for n in range(50))
+
+
+def test_sticky_keeps_an_entry_for_a_few_turns() -> None:
+    book = snap(entry("老周在旁边", "老周", rules=LoreRules(sticky=2)))
+    first = run(book, "林川: 找老周", turn=5)
+    assert names(first) == ["老周在旁边"]
+    assert first.record == {"hits": [0], "sticky": {"0": 7}, "cooldown": {}}
+    timers = LoreTimers.from_json(first.record)
+    for turn in (6, 7):  # 没人再提，也连着生效两回合
+        later = run(book, "林川: 坐下", turn=turn, timers=timers)
+        assert names(later) == ["老周在旁边"] and later.stats["sticky"] == [0]
+        timers = LoreTimers.from_json(later.record)
+    assert names(run(book, "林川: 坐下", turn=8, timers=timers)) == []
+
+
+def test_cooldown_blocks_and_starts_after_sticky() -> None:
+    cool = snap(entry("老周", "老周", rules=LoreRules(cooldown=2)))
+    first = run(cool, "老周", turn=1)
+    timers = LoreTimers.from_json(first.record)
+    assert first.record["cooldown"] == {"0": 3}
+    assert names(run(cool, "老周", turn=2, timers=timers)) == []
+    assert names(run(cool, "老周", turn=3, timers=timers)) == []
+    assert names(run(cool, "老周", turn=4, timers=timers)) == ["老周"]
+    both = snap(entry("老周", "老周", rules=LoreRules(sticky=1, cooldown=2)))
+    timers = LoreTimers.from_json(run(both, "老周", turn=1).record)
+    sticky_turn = run(both, "无关", turn=2, timers=timers)
+    assert names(sticky_turn) == ["老周"]  # 粘滞期里冷却不挡
+    timers = LoreTimers.from_json(sticky_turn.record)
+    assert sticky_turn.record["cooldown"] == {"0": 4}  # 粘滞结束后冷却两回合
+    assert names(run(both, "老周", turn=3, timers=timers)) == []
+    assert names(run(both, "老周", turn=5, timers=timers)) == ["老周"]
+
+
+def test_delay_and_trigger_types() -> None:
+    late = snap(entry("后来才有", "门", rules=LoreRules(delay=3)))
+    assert names(run(late, "门", turn=2)) == []
+    assert names(run(late, "门", turn=3)) == ["后来才有"]
+    swipe_only = snap(entry("重新生成时", "门", rules=LoreRules(triggers=("swipe",))))
+    assert names(run(swipe_only, "门")) == []
+    normal = snap(entry("普通生成", "门", rules=LoreRules(triggers=("normal", "swipe"))))
+    assert names(run(normal, "门")) == ["普通生成"]
+
+
+def test_scan_depth_and_extra_sources() -> None:
+    deep = snap(entry("记得渡口", "渡口", rules=LoreRules(scan_depth=4)))
+    assert names(run(deep, "林川: 坐下", "沈知微: 嗯", "林川: 去渡口")) == ["记得渡口"]
+    blind = snap(entry("看不见", "渡口", rules=LoreRules(scan_depth=0)))
+    assert names(run(blind, "去渡口")) == []
+    described = LoreSnapshot(
+        items=(
+            LoreItem(
+                entry=entry("掌柜的规矩", "掌柜", rules=LoreRules(match=("description",))),
+                source="card",
+                source_name="沈知微",
+            ),
+            LoreItem(
+                entry=entry("外乡人", "外乡", rules=LoreRules(match=("persona",))),
+                source="book",
+                source_name="书",
+            ),
+        ),
+        persona="外乡来的信使",
+        cards=(CardTexts(description="渡口茶馆的掌柜"),),
+    )
+    assert names(run(described, "林川: 坐下")) == ["掌柜的规矩", "外乡人"]
+
+
+def test_changing_constants_leave_the_system_prompt() -> None:
+    weather = [
+        entry(w, constant=True, rules=LoreRules(groups=("天气",))) for w in ("晴", "雨", "雪")
+    ]
+    book = snap(entry("背景", constant=True), *weather)
+    selection = run(book, "随便")
+    assert [i.entry.content for i in selection.constants] == ["背景"]
+    assert len(selection.triggered) == 1 and names(selection)[0] in ("晴", "雨", "雪")
+
+
+def test_timers_survive_bad_records() -> None:
+    assert LoreTimers.from_json(None) == LoreTimers()
+    timers = LoreTimers.from_json({"sticky": {"3": 9, "x": 1, "4": True}, "cooldown": []})
+    assert timers.sticky == {3: 9} and timers.cooldown == {}

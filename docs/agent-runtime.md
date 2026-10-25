@@ -394,7 +394,7 @@ run(spec, messages, ctx):
 - 每回合由 runner 在线程里挑条目（`runtime/context/lore.py` 的 `select_lore`），规则照 SillyTavern 新装默认设置：扫玩家这次的行动和上一段叙述（前面带说话人的名字），整词匹配、正则、次要关键词、递归，预算有效窗口的 25%、最多 12000 token；
 - 整局不变的常驻条目放进 system 的 `<lore>`（只看快照和窗口，前缀缓存一直有效；闪电模式的压缩请求也是这一段）；这一回合挑中的其余条目放进最后一条消息的 `<lore>`，在状态块和大纲后面、玩家行动前面。历史回合不带当时的条目；
 - 条目只放正文，过 `sanitize_for_fence()`；system 里说明它是剧本作者写的设定资料，要遵守，但不能改变规则和输出格式，和世界状态、原文冲突时以故事里发生过的为准；
-- 同样的快照和文字永远挑出同样的条目，回退、重试、重放都不用特别处理。导演那次运行的 `agent_runs.result.lore` 记挑中了哪几条（[data-model/infra.md](data-model/infra.md)），日志事件 `turn.lore`。
+- 粘滞、冷却按回合记在 `turns.lore`，下一回合读父回合的，回退以后自然跟着回去；概率和同组按权重抽用存档、回合号、时间线编号算的哈希当随机数，同一回合重试结果一样。除此之外同样的快照和文字永远挑出同样的条目，重放测试不用特别处理。导演那次运行的 `agent_runs.result.lore` 记挑中了哪几条（[data-model/infra.md](data-model/infra.md)），日志事件 `turn.lore`。
 
 ### 线索与伏笔
 

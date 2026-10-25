@@ -78,6 +78,8 @@ class AssembledContext:
     recall_before: int = 0
     # 这一回合的世界书用了哪几条（LoreSelection.stats）；这一局没有世界书时为空
     lore: dict[str, Any] | None = None
+    # 这一回合的世界书记录（LoreSelection.record），提交回合时写进 turns.lore
+    lore_record: dict[str, Any] | None = None
 
     @property
     def usage_ratio(self) -> float:
@@ -355,4 +357,5 @@ class ContextAssembler:
             prompt_versions=versions,
             recall_before=first_seq(len(keep)),
             lore=lore.stats if lore is not None else None,
+            lore_record=lore.record if lore is not None else None,
         )
