@@ -14,6 +14,8 @@ describe("导航的选中项", () => {
     assert.equal(isActive(item("saves"), "/playthroughs"), true);
     assert.equal(isActive(item("scenarios"), "/scenario/sc_1"), true);
     assert.equal(isActive(item("characters"), "/card/c1"), true);
+    assert.equal(isActive(item("characters"), "/lorebooks"), true);
+    assert.equal(isActive(item("characters"), "/lorebook/b1"), true);
     assert.equal(isActive(item("models"), "/models/r1"), true);
     assert.equal(isActive(item("settings"), "/settings/tools"), true);
     assert.equal(isActive(item("settings"), "/dev/probe"), true);

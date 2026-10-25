@@ -3,20 +3,23 @@
  * 1. 从角色卡仓库选一张或几张卡（最多 8 张，群像剧本），可以调先后，第一张是主角色；
  * 2. 剧本名（不填就用第一张卡的名字）；
  * 3. 默认主角和偏好：开新故事时预填（和“开始新的故事”是同一个表单，StartForm.tsx）；
- * 4. 开场：用其中一张卡的开场白或某条备选开场白（导演不重写），或者让导演根据设定写一个。
+ * 4. 开场：用其中一张卡的开场白或某条备选开场白（导演不重写），或者让导演根据设定写一个；
+ * 5. 世界书：从世界书仓库挂几本（最多 4 本，可以调先后），也能当场导入一本新的挂上。
  * 编辑时带版本号保存，别处改过（409 SCENARIO_CHANGED）就重新读一次。
  */
 
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
-import type { CardDetail, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
+import type { CardDetail, LorebookSummary, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
+import { LOREBOOK_LIMITS } from "@bettertavern/core/scenario/lorebook";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Button, cx, Dots, Field, IconButton, Notice, Pill, Toggle } from "../../components/controls.tsx";
+import { useLorebookImport, useLorebooks } from "../../data/lorebooks.ts";
 import { scenarioPath } from "../../data/scenarioActions.ts";
 import { scenariosKey, useCards } from "../../data/scenarios.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -28,6 +31,16 @@ import styles from "./scenario.module.css";
 import { StartForm, type StartValues } from "./StartForm.tsx";
 
 const MAX_CARDS = 8;
+
+/** 把第 index 项往前（-1）或往后（1）挪一位 */
+function moveIn<T>(list: T[], index: number, delta: -1 | 1): T[] {
+  const target = index + delta;
+  if (target < 0 || target >= list.length) return list;
+  const next = [...list];
+  const [item] = next.splice(index, 1);
+  if (item !== undefined) next.splice(target, 0, item);
+  return next;
+}
 
 type Opening = ScenarioSetup["opening"];
 
@@ -47,6 +60,15 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
   const [values, setValues] = useState<StartValues | null>(null);
   const [opening, setOpening] = useState<Opening>(scenario?.setup.opening ?? null);
   const [lightning, setLightning] = useState(scenario?.setup.lightning ?? false);
+  const [books, setBooks] = useState<string[]>(() => scenario?.lorebooks.map((b) => b.lorebook_id) ?? []);
+  const lorebooks = useLorebooks();
+  const bookInput = useRef<HTMLInputElement>(null);
+  const attach = useCallback(
+    (book: LorebookSummary) =>
+      setBooks((list) => (list.includes(book.id) || list.length >= LOREBOOK_LIMITS.perScenario ? list : [...list, book.id])),
+    [],
+  );
+  const bookImport = useLorebookImport(attach);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -105,6 +127,7 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
           name: name.trim() || undefined,
           card_ids: picked,
           setup,
+          lorebook_ids: books,
           version: scenario.version,
         });
         queries.setQueryData(["scenario", scenario.id], updated);
@@ -112,7 +135,12 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
         overlay.toast(t("scenario.saved"));
         navigate(scenarioPath(updated), { replace: true });
       } else {
-        const created = await api.scenarios.create({ name: name.trim() || null, card_ids: picked, setup });
+        const created = await api.scenarios.create({
+          name: name.trim() || null,
+          card_ids: picked,
+          setup,
+          lorebook_ids: books,
+        });
         void queries.invalidateQueries({ queryKey: scenariosKey });
         overlay.toast(t("newScenario.created", { name: created.name }));
         navigate(scenarioPath(created), { replace: true });
@@ -291,6 +319,115 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
             </button>
           );
         })}
+      </div>
+
+      <h2 className={styles.formSection}>{t("lorebook.formSection")}</h2>
+      <p className={styles.formHint}>{t("lorebook.formHint", { max: LOREBOOK_LIMITS.perScenario })}</p>
+      {bookImport.problem ? (
+        <Notice
+          message={
+            <>
+              <strong>{bookImport.problem.title}</strong> {bookImport.problem.message}
+            </>
+          }
+          onClose={bookImport.dismiss}
+        />
+      ) : null}
+      <div className={styles.pickList}>
+        {books.map((id, i) => {
+          const book = lorebooks.data?.find((b) => b.id === id) ?? scenario?.lorebooks.find((b) => b.lorebook_id === id);
+          const label = book?.name ?? id;
+          const entries = book ? ("entries" in book ? book.entries : 0) : 0;
+          return (
+            <div key={id} className={cx(styles.pickRow, styles.pickOn)}>
+              <span className={styles.pickIndex}>{i + 1}</span>
+              <span className={styles.castBody}>
+                <span className={styles.castName}>{label}</span>
+                <span className={styles.caption}>{t("lorebook.entries", { count: entries })}</span>
+              </span>
+              <IconButton
+                icon="chevronUp"
+                label={t("newScenario.moveUp")}
+                tone="plain"
+                diameter={32}
+                iconSize={16}
+                disabled={i === 0}
+                onClick={() => setBooks((list) => moveIn(list, i, -1))}
+              />
+              <IconButton
+                icon="chevronDown"
+                label={t("newScenario.moveDown")}
+                tone="plain"
+                diameter={32}
+                iconSize={16}
+                disabled={i === books.length - 1}
+                onClick={() => setBooks((list) => moveIn(list, i, 1))}
+              />
+              <IconButton
+                icon="close"
+                label={t("newScenario.remove")}
+                tone="plain"
+                diameter={32}
+                iconSize={16}
+                onClick={() => setBooks((list) => list.filter((x) => x !== id))}
+              />
+            </div>
+          );
+        })}
+        {(lorebooks.data ?? [])
+          .filter((b) => !books.includes(b.id))
+          .map((book) => (
+            <div key={book.id} className={styles.pickRow}>
+              <span className={styles.pickIndex} />
+              <button
+                type="button"
+                className={styles.pickButton}
+                disabled={books.length >= LOREBOOK_LIMITS.perScenario}
+                onClick={() => attach(book)}
+              >
+                <span className={styles.castBody}>
+                  <span className={styles.castName}>{book.name}</span>
+                  <span className={styles.caption}>
+                    {[t("lorebook.entries", { count: book.entries }), book.description].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </button>
+              <IconButton
+                icon="plus"
+                label={t("common.add")}
+                tone="plain"
+                diameter={32}
+                iconSize={16}
+                disabled={books.length >= LOREBOOK_LIMITS.perScenario}
+                onClick={() => attach(book)}
+              />
+            </div>
+          ))}
+        {lorebooks.data && lorebooks.data.length === 0 ? (
+          <span className={styles.formHint}>{t("lorebook.formNone")}</span>
+        ) : null}
+      </div>
+      <div>
+        <Button
+          label={bookImport.progress ? t("lorebook.importing", { name: bookImport.progress }) : t("lorebook.formImport")}
+          icon="import"
+          variant="secondary"
+          size="sm"
+          busy={bookImport.progress !== null}
+          disabled={books.length >= LOREBOOK_LIMITS.perScenario}
+          onClick={() => bookInput.current?.click()}
+        />
+        <input
+          ref={bookInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={(event) => {
+            const [file] = Array.from(event.target.files ?? []);
+            event.target.value = "";
+            if (file) void bookImport.importFile(file);
+          }}
+        />
       </div>
 
       <h2 className={styles.formSection}>{t("newScenario.lightning")}</h2>

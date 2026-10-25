@@ -12,7 +12,7 @@ import { ForgotPage } from "../pages/auth/ForgotPage.tsx";
 import { LoginPage } from "../pages/auth/LoginPage.tsx";
 import { RegisterPage } from "../pages/auth/RegisterPage.tsx";
 import { VerifyPage } from "../pages/auth/VerifyPage.tsx";
-import { CharactersPage, LibraryRedirect, ScenariosPage } from "../pages/library/LibraryPage.tsx";
+import { CharactersPage, LibraryRedirect, LorebooksPage, ScenariosPage } from "../pages/library/LibraryPage.tsx";
 import { NotFound } from "../pages/NotFound.tsx";
 import { Splash } from "../pages/Splash.tsx";
 import { StoriesPage } from "../pages/stories/StoriesPage.tsx";
@@ -56,6 +56,11 @@ export const router = createBrowserRouter([
       { path: "/playthroughs", element: <StoriesPage /> },
       { path: "/scenarios", element: <ScenariosPage /> },
       { path: "/characters", element: <CharactersPage /> },
+      { path: "/lorebooks", element: <LorebooksPage /> },
+      {
+        path: "/lorebook/:id",
+        lazy: async () => ({ Component: (await import("../pages/lorebook/LorebookPage.tsx")).LorebookPage }),
+      },
       { path: "/library", element: <LibraryRedirect /> },
       {
         path: "/scenario/:id",

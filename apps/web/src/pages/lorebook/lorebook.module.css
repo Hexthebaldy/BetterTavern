@@ -1,0 +1,189 @@
+/* 世界书详情（docs/lorebook.md 第 9.1 节）：版式同剧本详情（scenario.module.css 的 .split），样子是漫画分镜版 */
+
+/* ---- 版式 ---- */
+.split {
+  display: flex;
+  height: 100vh;
+  /* 左右给轮盘让出位置（AppShell 的 --page-left、--page-right），里面再各留 12 */
+  padding: 0 max(0px, calc(var(--page-right, 12px) - 12px)) 0 max(0px, calc(var(--page-left, 12px) - 12px));
+}
+.info {
+  width: calc(var(--scenario-info) + 2 * 12px);
+  flex: none;
+  overflow-y: auto;
+  padding-bottom: 48px;
+}
+.entries {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 24px 12px 96px;
+  max-width: calc(var(--readable) + 2 * 24px + 120px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.single {
+  max-width: calc(var(--readable) + 24px);
+  margin: 0 auto;
+  padding: 12px 12px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.loadError {
+  margin-top: 16px;
+}
+.topBar {
+  padding: 24px 12px 0;
+}
+.single .topBar {
+  padding: 0;
+}
+
+/* ---- 左栏 ---- */
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 24px 12px;
+}
+.single .titleBlock {
+  padding: 8px 0;
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hero {
+  flex: 1;
+  min-width: 0;
+  font-size: 40px;
+  line-height: 48px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.caption {
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--mut);
+}
+.failed {
+  color: var(--err);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 12px;
+}
+.single .stats {
+  margin: 0;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
+}
+.statValue {
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+}
+.block {
+  margin: 12px 12px 0;
+}
+.single .block {
+  margin: 0;
+}
+.report {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sectionLabel {
+  padding: 22px 24px 8px;
+  font-family: var(--font-mono), var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--mut);
+}
+.single .sectionLabel {
+  padding: 12px 0 0;
+}
+.panel {
+  margin: 0 12px;
+  padding: 6px 16px;
+  border-radius: 12px;
+  background: var(--paper);
+  border: var(--bw-sm) solid var(--frame);
+  display: flex;
+  flex-direction: column;
+}
+.single .panel {
+  margin: 0;
+}
+.panel > .caption {
+  padding: 10px 0;
+}
+.linkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 15px;
+}
+.linkRow + .linkRow {
+  border-top: 1.5px solid var(--grey2);
+}
+@media (hover: hover) and (pointer: fine) {
+  .linkRow:hover {
+    color: var(--acc);
+  }
+}
+.note {
+  margin: 16px 24px 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--mut);
+}
+.single .note {
+  margin: 4px 0 0;
+}
+.danger {
+  display: flex;
+  justify-content: center;
+  margin: 32px 12px 0;
+}
+
+/* ---- 右栏 ---- */
+.entriesBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 48px;
+}
+.entriesTitle {
+  font-size: 24px;
+  line-height: 30px;
+  font-family: var(--font-display);
+  font-weight: 900;
+}
+.spacer {
+  flex: 1;
+}

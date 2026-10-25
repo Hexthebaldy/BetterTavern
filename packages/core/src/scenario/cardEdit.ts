@@ -8,7 +8,15 @@
  * - 草稿可以暂时不完整（名字空着、条目没写内容）：自动保存照样存，检查结果里是 error，保存进仓库时才挡住。
  */
 
-import type { CharacterCard, CharacterCardInput, Draft, Issue, LoreLogic, LoreRules } from "../api/types.ts";
+import type {
+  CharacterCard,
+  CharacterCardInput,
+  Draft,
+  Issue,
+  LoreEntry,
+  LoreLogic,
+  LoreRules,
+} from "../api/types.ts";
 import { i18n } from "../i18n/index.ts";
 
 export const CARD_LIMITS = {
@@ -127,6 +135,43 @@ export function joinList(items: readonly string[]): string {
   return items.join("，");
 }
 
+const CLOSED_REGEX = /^\/[\s\S]+\/[gimsuy]*$/;
+const REGEX_END = /\/[gimsuy]*$/;
+
+/** 关键词：和 splitList 一样用逗号、顿号或换行分开，但写成 /……/flags 的正则里的逗号不算分隔
+ * （SillyTavern 的正则关键词，比如 /x{1,3}/）。只有后面真有收尾的 /flags 时才连起来，免得把以 / 开头的
+ * 普通关键词和后面的连成一个。 */
+export function splitKeys(text: string): string[] {
+  const parts = text.split(/([,，、\n])/);
+  const result: string[] = [];
+  const push = (value: string): void => {
+    const item = value.trim();
+    if (item && !result.includes(item)) result.push(item);
+  };
+  let i = 0;
+  while (i < parts.length) {
+    const part = parts[i] ?? "";
+    const trimmed = part.trim();
+    if (trimmed.startsWith("/") && !CLOSED_REGEX.test(trimmed)) {
+      let end = -1;
+      for (let j = i + 2; j < parts.length; j += 2) {
+        if (REGEX_END.test((parts[j] ?? "").trim())) {
+          end = j;
+          break;
+        }
+      }
+      if (end > 0) {
+        push(parts.slice(i, end + 1).join(""));
+        i = end + 2;
+        continue;
+      }
+    }
+    push(part);
+    i += 2;
+  }
+  return result;
+}
+
 export function newEntry(): EntryDraft {
   return {
     key: nextKey("e"),
@@ -160,18 +205,38 @@ export function draftOf(card: CharacterCard, displayName: string): CardDraft {
     creator_notes: card.creator_notes,
     greetings: card.alternate_greetings.map((text) => newGreeting(text)),
     tags: joinList(card.tags),
-    book: card.book.map((e) => ({
-      key: nextKey("e"),
-      name: e.name,
-      keys: joinList(e.keys),
-      content: e.content,
-      enabled: e.enabled,
-      constant: e.constant,
-      secondaryKeys: joinList(e.secondary_keys ?? []),
-      logic: e.logic ?? "any",
-      priority: e.priority ?? null,
-      rules: e.rules ?? null,
-    })),
+    book: card.book.map(entryDraftOf),
+  };
+}
+
+/** 一条世界书 → 表单里的草稿（卡里的世界书和独立世界书共用） */
+export function entryDraftOf(e: LoreEntry): EntryDraft {
+  return {
+    key: nextKey("e"),
+    name: e.name,
+    keys: joinList(e.keys),
+    content: e.content,
+    enabled: e.enabled,
+    constant: e.constant,
+    secondaryKeys: joinList(e.secondary_keys ?? []),
+    logic: e.logic ?? "any",
+    priority: e.priority ?? null,
+    rules: e.rules ?? null,
+  };
+}
+
+/** 表单里的一条 → 发给服务端的条目 */
+export function entryInput(e: EntryDraft): LoreEntry {
+  return {
+    name: e.name.trim(),
+    keys: splitKeys(e.keys),
+    content: e.content,
+    enabled: e.enabled,
+    constant: e.constant,
+    secondary_keys: splitKeys(e.secondaryKeys),
+    logic: e.logic,
+    priority: e.priority,
+    rules: e.rules,
   };
 }
 
@@ -191,17 +256,7 @@ export function cardOf(draft: CardDraft): CharacterCardInput {
     creator_notes: draft.creator_notes,
     alternate_greetings: draft.greetings.map((g) => g.text),
     tags: splitList(draft.tags),
-    book: draft.book.map((e) => ({
-      name: e.name.trim(),
-      keys: splitList(e.keys),
-      content: e.content,
-      enabled: e.enabled,
-      constant: e.constant,
-      secondary_keys: splitList(e.secondaryKeys),
-      logic: e.logic,
-      priority: e.priority,
-      rules: e.rules,
-    })),
+    book: draft.book.map(entryInput),
   };
 }
 
@@ -341,9 +396,9 @@ export const EMPTY_CODES: ReadonlySet<string> = new Set([
 
 /** 给人看的字段名：book.3.content → 世界书第 4 条的内容；alternate_greetings.1 → 第 2 条备选开场白 */
 export function describeField(field: string): string {
-  const entry = /^book\.(\d+)\.(name|keys|content)$/.exec(field);
+  const entry = /^book\.(\d+)\.(name|keys|content|secondary_keys)$/.exec(field);
   if (entry) {
-    const part = i18n.t(`cardEdit.entryParts.${entry[2] as "name" | "keys" | "content"}`);
+    const part = i18n.t(`cardEdit.entryParts.${entry[2] as "name" | "keys" | "content" | "secondary_keys"}`);
     return i18n.t("cardEdit.entryField", { n: Number(entry[1]) + 1, part });
   }
   const greeting = /^alternate_greetings\.(\d+)$/.exec(field);

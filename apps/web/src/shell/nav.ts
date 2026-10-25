@@ -1,6 +1,6 @@
 /**
  * 一级导航的六项，也是轮盘上的六块（从正上方开始顺时针）：存档、剧本、角色、工作台、模型、设置。
- * 剧本详情算在“剧本”下，角色卡详情算在“角色”下，草稿算在“工作台”下，模型详情算在“模型”下，
+ * 剧本详情算在“剧本”下，角色卡详情、世界书（列表和详情）算在“角色”下，草稿算在“工作台”下，模型详情算在“模型”下，
  * 外部服务（/settings/tools）和连接测试（/dev/probe）算在“设置”下。
  * 窄于 900 时是底部 Tab 栏：前四项（tab）放在栏里，模型和设置从“更多”进。
  */
@@ -20,7 +20,13 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { to: "/playthroughs", name: "saves", icon: "play", prefixes: ["/playthroughs"], tab: true },
   { to: "/scenarios", name: "scenarios", icon: "library", prefixes: ["/scenarios", "/scenario"], tab: true },
-  { to: "/characters", name: "characters", icon: "person", prefixes: ["/characters", "/card"], tab: true },
+  {
+    to: "/characters",
+    name: "characters",
+    icon: "person",
+    prefixes: ["/characters", "/card", "/lorebooks", "/lorebook"],
+    tab: true,
+  },
   { to: "/workbench", name: "workbench", icon: "workbench", prefixes: ["/workbench"], tab: true },
   { to: "/models", name: "models", icon: "key", prefixes: ["/models"], tab: false },
   { to: "/settings", name: "settings", icon: "settings", prefixes: ["/settings", "/dev"], tab: false },

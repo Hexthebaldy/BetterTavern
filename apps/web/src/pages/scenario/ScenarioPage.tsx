@@ -17,6 +17,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
+import { lorebookSummary } from "@bettertavern/core/scenario/lorebook";
 import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
 import { needsModelSettings } from "@bettertavern/core/settings/labels";
 
@@ -119,6 +120,10 @@ function Overview({ scenario, onEdit }: { scenario: Scenario; onEdit: () => void
         <div className={styles.setupRow}>
           <span className={styles.caption}>{t("scenario.opening")}</span>
           <span className={styles.setupValue}>{openingText(scenario)}</span>
+        </div>
+        <div className={styles.setupRow}>
+          <span className={styles.caption}>{t("lorebook.scenarioRow")}</span>
+          <span className={styles.setupValue}>{lorebookSummary(scenario.lorebooks.map((b) => b.name))}</span>
         </div>
       </div>
       {scenario.description_preview ? (

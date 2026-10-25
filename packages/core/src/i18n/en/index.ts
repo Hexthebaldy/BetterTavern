@@ -5,6 +5,7 @@ import type { zh } from "../zh/index.ts";
 import { auth } from "./auth.ts";
 import { common } from "./common.ts";
 import { library } from "./library.ts";
+import { lorebook } from "./lorebook.ts";
 import { play } from "./play.ts";
 import { settings } from "./settings.ts";
 import { shell } from "./shell.ts";
@@ -18,6 +19,7 @@ export const en: Messages<typeof zh> = {
   ...stories,
   ...play,
   ...library,
+  ...lorebook,
   ...workbench,
   ...settings,
 };

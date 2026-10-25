@@ -131,3 +131,74 @@
 .spacer {
   flex: 1;
 }
+/* 小标（分组、概率……）在窄的地方先藏起来 */
+.entryTag {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .entryTag {
+    display: none;
+  }
+}
+/* 次要关键词怎么算：一排可点的标签 */
+.logic {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.logicLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+.logicChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.warnLine {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--warn);
+}
+/* 更多设置 */
+.moreToggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--acc);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+.more {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1.5px dashed var(--grey2);
+}
+.moreRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .moreRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.moreNote {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--mut);
+}

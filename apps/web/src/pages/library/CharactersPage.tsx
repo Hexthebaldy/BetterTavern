@@ -29,6 +29,7 @@ import { castPage, castPages } from "../../theme/grid.ts";
 import pages from "../pages.module.css";
 import { matchesCard } from "./collection.ts";
 import { LibraryEmpty } from "./LibraryEmpty.tsx";
+import { LibrarySwitch } from "./LibrarySwitch.tsx";
 import styles from "./library.module.css";
 
 export function CharactersPage() {
@@ -84,6 +85,7 @@ export function CharactersPage() {
   return (
     <div className={pages.page}>
       <PageHeader title={t("nav.characters")} count={all ? all.length : null} sub={t("library.castSub")}>
+        <LibrarySwitch value="cards" />
         <HeaderSearch
           value={search}
           onChange={setSearch}
