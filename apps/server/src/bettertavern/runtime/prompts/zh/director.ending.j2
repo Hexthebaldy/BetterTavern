@@ -1,4 +1,4 @@
-{# version: 3 #}
+{# version: 4 #}
 {% if world_state %}
 {{ world_state }}
 
@@ -7,6 +7,7 @@
 {{ outline }}
 
 {% endif %}
+{% include "_lore.j2" %}
 {% if recall_before is defined and recall_before %}
 （现在是第 {{ seq }} 回合；上面的原文从第 {{ recall_before }} 回合开始，更早的回合需要细节时可以用工具查。）
 {% endif %}

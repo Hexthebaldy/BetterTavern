@@ -1,4 +1,4 @@
-{# version: 3 #}
+{# version: 4 #}
 {% if world_state %}
 {{ world_state }}
 
@@ -7,6 +7,7 @@
 {{ outline }}
 
 {% endif %}
+{% include "_lore.j2" %}
 {% if recall_before is defined and recall_before %}
 （いまは第 {{ seq }} ターン。上の本文は第 {{ recall_before }} ターンから始まる。それより前のターンは、詳細が必要ならツールで調べられる。）
 {% endif %}

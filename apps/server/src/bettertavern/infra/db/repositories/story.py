@@ -266,6 +266,34 @@ async def set_world_built(
     return count == 1
 
 
+async def insert_lore(
+    conn: AsyncConnection, playthrough_id: str, *, entries: list[Any], meta: dict[str, Any]
+) -> None:
+    """这一局的世界书快照（docs/lorebook.md 第 3.2 节），和世界状态在同一个事务里写；
+    已经有就不动。"""
+    await execute(
+        conn,
+        """
+        INSERT INTO playthrough_lore (playthrough_id, entries, meta)
+        VALUES (:id, CAST(:entries AS jsonb), CAST(:meta AS jsonb))
+        ON CONFLICT (playthrough_id) DO NOTHING
+        """,
+        {"id": playthrough_id, "entries": dumps(entries), "meta": dumps(meta)},
+    )
+
+
+async def get_lore(conn: AsyncConnection, playthrough_id: str) -> dict[str, Any] | None:
+    """世界书快照：{"entries": [...], "meta": {...}}；世界书功能上线前开局的存档没有，返回 None。"""
+    row = await fetch_one(
+        conn,
+        "SELECT entries, meta FROM playthrough_lore WHERE playthrough_id = :id",
+        {"id": playthrough_id},
+    )
+    if row is None:
+        return None
+    return {"entries": as_json(row["entries"], []) or [], "meta": as_json(row["meta"], {}) or {}}
+
+
 # 租约过期的回合：清除租约并把回合标为失败（runner 所在进程崩溃或卡死）
 SWEEP_EXPIRED_LEASES = """
 WITH expired AS (

@@ -36,6 +36,7 @@ from bettertavern.domain.memory.thresholds import overflow_retry_budget
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.world.card_source import CardSource, snapshot_cards
+from bettertavern.domain.world.lore import LoreSnapshot, build_snapshot
 from bettertavern.domain.world.seed import ProtagonistSeed, Seed, minimal_seed
 from bettertavern.providers import (
     CancelToken,
@@ -49,6 +50,7 @@ from .agent import StepLog
 from .agents.director_tools import RecallContext
 from .agents.world_builder import build_seed, failure_run
 from .context.assembler import AssembledContext, ContextAssembler, ContextTooLarge
+from .context.lore import LoreSelection, scan_of, select_lore
 from .director_loop import run_director
 from .events.buffer import EventStream, StreamClosed
 from .ports import (
@@ -402,7 +404,8 @@ class TurnRunner:
                     )
                 )
         cards = self._card_source(inp)
-        count = await self._store.save_world(header, seed, source, run, cards)
+        lore = self._lore(inp)
+        count = await self._store.save_world(header, seed, source, run, cards, lore)
         # source=minimal 表示 WorldBuilder 没成功（或没配模型），退回只用角色卡文字搭的最小世界
         log.info(
             "world.build.done",
@@ -419,13 +422,34 @@ class TurnRunner:
         return int((self._clock() - started) * 1000)
 
     def _card_source(self, inp: WorldBuildInput) -> CardSource | None:
-        """卡的原文快照：闪电模式放进导演的系统提示（docs/agent-runtime.md 的“闪电模式”）"""
+        """卡的原文快照：闪电模式放进导演的系统提示（docs/agent-runtime.md 的“闪电模式”）。
+        卡里的世界书不放进来，和挂的世界书一起走世界书快照（_lore）。"""
         if not inp.cards:
             return None
-        cards = snapshot_cards(inp.cards, protagonist_name=inp.protagonist_name)
+        cards = snapshot_cards(inp.cards, protagonist_name=inp.protagonist_name, lore=False)
         if cards.truncated:
             log.warning("world.cards_truncated", cards=len(cards.cards), chars=cards.chars())
         return cards
+
+    def _lore(self, inp: WorldBuildInput) -> LoreSnapshot:
+        """这一局的世界书快照（docs/lorebook.md 第 3.2 节）：几张卡自带的和剧本挂的合成一份。
+        没有世界书也存一份空的，表示这一局是世界书功能上线以后开的。"""
+        lore = build_snapshot(
+            inp.cards,
+            inp.lorebooks,
+            protagonist_name=inp.protagonist_name,
+            protagonist_summary=inp.protagonist_summary,
+        )
+        log.info(
+            "world.lore_built",
+            books=len(lore.books),
+            entries=len(lore.items),
+            constant=sum(1 for i in lore.items if i.entry.constant),
+            dropped=lore.dropped,
+        )
+        if lore.dropped:
+            log.warning("world.lore_truncated", dropped=lore.dropped, chars=lore.chars())
+        return lore
 
     async def _learn_window(self, header: TurnHeader, route: ResolvedRoute, window: int) -> None:
         """记下学到的窗口；记不下来（数据库出错）也不影响这一轮用它重试。"""
@@ -443,7 +467,7 @@ class TurnRunner:
         cancel: CancelToken,
     ) -> Generation:
         try:
-            context = self._assemble(header, ctx, route, route.window.effective_window)
+            context = await self._assemble(header, ctx, route, route.window.effective_window)
         except ContextTooLarge as exc:
             raise TurnFailed(
                 TurnFailure(code="CONTEXT_TOO_LARGE", message=str(exc), retryable=False)
@@ -486,7 +510,7 @@ class TurnRunner:
                         learned_window=limit if learned else None,
                     )
                     try:
-                        context = self._assemble(
+                        context = await self._assemble(
                             header,
                             ctx,
                             attempt_route,
@@ -504,7 +528,7 @@ class TurnRunner:
     def _offers_recall(self, route: ResolvedRoute) -> bool:
         return self._recall is not None and route.caps.tools
 
-    def _assemble(
+    async def _assemble(
         self,
         header: TurnHeader,
         ctx: TurnContext,
@@ -513,11 +537,24 @@ class TurnRunner:
         *,
         budget: int | None = None,
     ) -> AssembledContext:
+        lore: LoreSelection | None = None
+        if ctx.lore is not None and ctx.lore.items:
+            # 挑世界书条目可能要跑用户写的正则（有超时）：放到线程里，不占事件循环
+            lore = await asyncio.to_thread(select_lore, ctx.lore, scan_of(ctx), window=window)
+            log.info(
+                "turn.lore",
+                constant=lore.stats.get("constant", 0),
+                triggered=len(lore.triggered),
+                recursion=lore.stats.get("recursion", 0),
+                dropped=lore.stats.get("dropped", 0),
+                regex_timeouts=lore.stats.get("regex_timeouts", 0),
+            )
         return self._assembler_for(header).assemble(
             ctx,
             window,
             budget=budget,
             recall=self._offers_recall(route),
+            lore=lore,
         )
 
     async def _call_director(

@@ -13,12 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from bettertavern.domain.memory.chapters import raw_start
 from bettertavern.domain.memory.lightning import raw_start as lightning_raw_start
 from bettertavern.domain.memory.outline import outline_from_json, slice_of
-from bettertavern.domain.scenario.card import CharacterCard, greeting_narrative
+from bettertavern.domain.scenario.card import CharacterCard, LoreEntry, greeting_narrative
 from bettertavern.domain.scenario.setup import ScenarioSetup, greetings_of
 from bettertavern.domain.story.language import unnamed_protagonist
 from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
 from bettertavern.domain.world.card_source import CardSource
+from bettertavern.domain.world.lore import LoreItem, LoreSnapshot
 from bettertavern.domain.world.plan import plan_world
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import (
@@ -30,6 +31,7 @@ from bettertavern.domain.world.views import (
 )
 from bettertavern.infra.db.repositories import cards as cards_repo
 from bettertavern.infra.db.repositories import library as library_repo
+from bettertavern.infra.db.repositories import lorebooks as lorebooks_repo
 from bettertavern.infra.db.repositories import outline as outline_repo
 from bettertavern.infra.db.repositories import story as story_repo
 from bettertavern.infra.db.repositories import world as world_repo
@@ -264,6 +266,7 @@ class PgTurnStore:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id)
             assert pt is not None
             cards = await _scenario_cards(conn, pt.user_id, pt.scenario_id)
+            books = await _scenario_lorebooks(conn, pt.user_id, pt.scenario_id)
         protagonist = pt.settings.get("protagonist") or {}
         opening, opening_char = _chosen_greeting(pt.settings.get("opening"), cards)
         return WorldBuildInput(
@@ -274,6 +277,7 @@ class PgTurnStore:
             cards=tuple(card for _, card in cards),
             opening=opening,
             opening_char=opening_char,
+            lorebooks=books,
         )
 
     async def save_world(
@@ -283,6 +287,7 @@ class PgTurnStore:
         source: str,
         run: AgentRunRecord | None,
         cards: CardSource | None = None,
+        lore: LoreSnapshot | None = None,
     ) -> int:
         async with self._engine.begin() as conn:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id, lock=True)
@@ -296,6 +301,11 @@ class PgTurnStore:
                 seed=seed_json(seed, cards),
                 seed_source=source,
             )
+            if lore is not None:
+                entries, meta = lore_json(lore)
+                await story_repo.insert_lore(
+                    conn, header.playthrough_id, entries=entries, meta=meta
+                )
             if run is not None:
                 await insert_run(conn, header, run)
         return count
@@ -307,6 +317,21 @@ def seed_json(seed: Seed, cards: CardSource | None) -> dict[str, Any]:
     if cards is not None:
         data["cards"] = cards.model_dump(mode="json")
     return data
+
+
+def lore_json(lore: LoreSnapshot) -> tuple[list[Any], dict[str, Any]]:
+    """世界书快照 → playthrough_lore 的两列：条目，和其余的（名字、顺带扫描的文字、合了哪几本）。"""
+    data = lore.model_dump(mode="json")
+    return data.pop("items"), data
+
+
+def lore_of(row: dict[str, Any] | None) -> LoreSnapshot | None:
+    """playthrough_lore 的一行 → 世界书快照；世界书功能上线前开局的存档没有这一行。"""
+    if row is None:
+        return None
+    return LoreSnapshot.model_validate(
+        {**row["meta"], "items": [LoreItem.model_validate(i) for i in row["entries"]]}
+    )
 
 
 def cards_of(seed: Any) -> CardSource | None:
@@ -327,6 +352,23 @@ async def _scenario_cards(
         return []
     rows = await cards_repo.get_cards(conn, user_id, [c.card_id for c in scenario.cards])
     return [(row.id, CharacterCard.model_validate(row.card)) for row in rows]
+
+
+async def _scenario_lorebooks(
+    conn: AsyncConnection, user_id: str, scenario_id: str | None
+) -> tuple[tuple[str, tuple[LoreEntry, ...]], ...]:
+    """剧本挂的世界书（书名，条目），按挂的顺序，读此刻的内容（剧本实时引用世界书）。"""
+    if scenario_id is None:
+        return ()
+    scenario = await library_repo.get_scenario(conn, user_id, scenario_id)
+    if scenario is None or not scenario.lorebooks:
+        return ()
+    rows = await lorebooks_repo.get_lorebooks(
+        conn, user_id, [b.lorebook_id for b in scenario.lorebooks]
+    )
+    return tuple(
+        (row.name, tuple(LoreEntry.model_validate(e) for e in row.book or [])) for row in rows
+    )
 
 
 def _chosen_greeting(value: Any, cards: list[tuple[str, CharacterCard]]) -> tuple[str, str]:
@@ -361,6 +403,7 @@ async def load_turn_context(
     )
     history = await story_repo.list_chain(conn, pt.id, after_seq=start - 1, up_to_seq=up_to_seq)
     world = await load_world(conn, pt.id)
+    lore = lore_of(await story_repo.get_lore(conn, pt.id))
     memory = await load_story_memory(conn, pt.id, pt.summarized_seq)
     current = await outline_repo.current_outline(conn, pt.id)
     greeting, char = "", ""
@@ -396,4 +439,5 @@ async def load_turn_context(
         outline=slice_of(outline) if outline is not None else None,
         opening_greeting=greeting,
         cards=cards_of(pt.seed),
+        lore=lore,
     )

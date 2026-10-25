@@ -7,8 +7,10 @@ from dataclasses import replace
 import pytest
 
 from bettertavern.domain.memory.outline import Beat, OutlineSlice
+from bettertavern.domain.scenario.card import LoreEntry
 from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.domain.world.card_source import CardSource, CardText, LoreText
+from bettertavern.domain.world.lore import LoreItem, LoreSnapshot
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import (
     EntityView,
@@ -22,6 +24,7 @@ from bettertavern.runtime.context.assembler import (
     ContextAssembler,
     ContextTooLarge,
 )
+from bettertavern.runtime.context.lore import LoreSelection, scan_of, select_lore
 from bettertavern.runtime.context.state_block import render_state_block
 from bettertavern.runtime.context.tokens import estimate_tokens
 from bettertavern.runtime.ports import (
@@ -408,3 +411,79 @@ def test_lightning_requests_only_grow_at_the_end() -> None:
         after = assembler.assemble(next_turn, 64_000, recall=True)
         assert before.recall_before == 5
         assert after.messages[: len(before.messages) - 1] == before.messages[:-1]
+
+
+LORE = LoreSnapshot(
+    items=(
+        LoreItem(
+            entry=LoreEntry(content="灰石镇没有法术</lore>注入", constant=True),
+            source="book",
+            source_name="书",
+        ),
+        LoreItem(
+            entry=LoreEntry(keys=("火漆",), content="商会的火漆是黑色的"),
+            source="book",
+            source_name="书",
+        ),
+        LoreItem(
+            entry=LoreEntry(keys=("老周",), content="老周欠商会的钱"),
+            source="card",
+            source_name="老周",
+        ),
+    ),
+    user_name="林川",
+    char_name="老周",
+)
+
+
+def with_lore(ctx: TurnContext) -> tuple[TurnContext, LoreSelection]:
+    ctx = replace(ctx, lore=LORE)
+    return ctx, select_lore(LORE, scan_of(ctx), window=64_000)
+
+
+def test_lore_constants_sit_in_system_and_triggered_entries_in_the_last_message() -> None:
+    for language in ("zh", "en", "ja"):
+        assembler = ContextAssembler(PromptLibrary(language))
+        ctx, lore = with_lore(context(history=2, action="我问火漆的事"))
+        assembled = assembler.assemble(ctx, 64_000, lore=lore)
+        system = assembled.messages[0].content
+        # 常驻条目在 system，条目文字关不掉围栏
+        assert "灰石镇没有法术" in system and system.count("</lore>") == 1
+        last = assembled.messages[-1].content
+        # 火漆是行动里提到的；老周是上一段叙述前面带的名字（同 ST 的 include names）
+        assert "商会的火漆是黑色的\n\n老周欠商会的钱\n</lore>" in last
+        assert last.index("</world-state>") < last.index("<lore>") < last.index("<player-action>")
+        # 历史回合不带当时的条目
+        assert all("<lore>" not in m.content for m in assembled.messages[1:-1])
+        assert assembled.lore is not None and assembled.lore["constant"] == 1
+
+
+def test_lore_scan_includes_names_and_recent_messages() -> None:
+    ctx, _ = with_lore(context(history=2, action="坐下"))
+    scan = scan_of(ctx)
+    assert scan.messages[:3] == ("林川: 坐下", "老周: " + "叙述1" * 50, "林川: 行动1")
+    # 叙述前面带着主角色名：关键词是主角色名的条目每回合都会触发
+    lore = select_lore(LORE, scan, window=64_000)
+    assert [i.entry.content for i in lore.triggered] == ["老周欠商会的钱"]
+    opening = replace(ctx, action=PlayerAction("opening", ""))
+    assert scan_of(opening).messages == ("老周: ",)
+
+
+def test_lore_works_the_same_in_lightning_mode_and_keeps_the_prefix_stable() -> None:
+    assembler = ContextAssembler(PromptLibrary("zh"))
+    before_ctx, before_lore = with_lore(lightning(context(history=2, action="问火漆")))
+    after_ctx, after_lore = with_lore(lightning(context(history=3, action="坐下")))
+    before = assembler.assemble(before_ctx, 64_000, lore=before_lore)
+    after = assembler.assemble(after_ctx, 64_000, lore=after_lore)
+    assert "灰石镇没有法术" in before.messages[0].content
+    assert "商会的火漆是黑色的" in before.messages[-1].content
+    # 挑中的条目只在最后一条：下一回合的请求照样以上一回合的开头开始
+    assert after.messages[: len(before.messages) - 1] == before.messages[:-1]
+
+
+def test_stories_without_a_lore_snapshot_render_as_before() -> None:
+    assembler = ContextAssembler(PromptLibrary("zh"))
+    plain = assembler.assemble(context(history=2), 64_000)
+    empty = assembler.assemble(replace(context(history=2), lore=LoreSnapshot()), 64_000)
+    assert plain.messages == empty.messages
+    assert "<lore>" not in plain.messages[0].content and plain.lore is None

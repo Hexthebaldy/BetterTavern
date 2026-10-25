@@ -13,6 +13,10 @@
 章节摘要之前的回合不在上下文里，导演用召回工具查（第 7 节“召回”）。超过有效窗口 95% 时只截断
 发送视图，从最旧的回合开始丢，至少保留最近 2 个回合，直到不超过 90%：这是整理跟不上时的保护。
 
+世界书（docs/lorebook.md 第 7 节）：整局不变的常驻条目放进 system（runtime/context/lore.py 的
+constant_items，只看快照和窗口）；这一回合按关键词挑中的条目由调用方挑好（select_lore，在线程里跑）
+传进来，放进最后一条 user 的 <lore>，在状态块和大纲后面、玩家行动前面。历史回合不带当时的条目。
+
 闪电模式（ctx.header.mode，docs/agent-runtime.md 的“闪电模式”）：system 里多一节卡的原文
 （开局时的快照），回顾里只有一版梗概，最后一条消息里没有状态块和大纲。下一回合的请求
 以这一回合的请求开头（最后一条行动里的召回提示除外），整段命中前缀缓存。
@@ -34,6 +38,7 @@ from bettertavern.runtime.ports import TurnContext
 from bettertavern.runtime.prompts import PromptLibrary, RenderedPrompt
 
 from .fences import sanitize_for_fence
+from .lore import LoreSelection, constant_items
 from .state_block import render_state_block
 from .tokens import estimate_messages
 
@@ -71,6 +76,8 @@ class AssembledContext:
     prompt_versions: dict[str, str] = field(default_factory=dict)
     # 上下文里的原文从第几回合开始：更早的回合不在上下文里，召回工具只查它们。0 表示没有可查的
     recall_before: int = 0
+    # 这一回合的世界书用了哪几条（LoreSelection.stats）；这一局没有世界书时为空
+    lore: dict[str, Any] | None = None
 
     @property
     def usage_ratio(self) -> float:
@@ -93,7 +100,7 @@ class ContextAssembler:
     def __init__(self, prompts: PromptLibrary) -> None:
         self._prompts = prompts
 
-    def system_prompt(self, ctx: TurnContext) -> RenderedPrompt:
+    def system_prompt(self, ctx: TurnContext, window: int) -> RenderedPrompt:
         seed = ctx.seed
         prefs = ctx.preferences
         world_text = ""
@@ -128,6 +135,10 @@ class ContextAssembler:
             length=prefs.length,
             lightning=is_lightning(ctx.header.mode),
             cards=self.card_source(ctx),
+            has_lore=ctx.lore is not None and bool(ctx.lore.items),
+            lore_constant=[
+                sanitize_for_fence(item.entry.content) for item in constant_items(ctx.lore, window)
+            ],
         )
 
     def card_source(self, ctx: TurnContext) -> list[dict[str, Any]]:
@@ -216,11 +227,19 @@ class ContextAssembler:
         )
 
     def final_message(
-        self, ctx: TurnContext, window: int, *, recall_before: int = 0
+        self,
+        ctx: TurnContext,
+        window: int,
+        *,
+        recall_before: int = 0,
+        lore: LoreSelection | None = None,
     ) -> RenderedPrompt:
         """recall_before 大于 0 时（提供了召回工具）提示导演：
-        现在是第几回合，原文从第几回合开始。"""
+        现在是第几回合，原文从第几回合开始。lore 是这一回合挑中的世界书条目。"""
         lightning = is_lightning(ctx.header.mode)
+        triggered = [
+            sanitize_for_fence(item.entry.content) for item in (lore.triggered if lore else ())
+        ]
         state_budget = min(math.floor(window * STATE_BLOCK_RATIO), STATE_BLOCK_CAP)
         last_narrative = ctx.history[-1].narrative if ctx.history else ""
         world_state = (
@@ -245,6 +264,7 @@ class ContextAssembler:
                 situation=sanitize_for_fence(opening.situation) if opening else "",
                 hook=sanitize_for_fence(opening.hook) if opening else "",
                 reference_opening="",
+                lore=triggered,
             )
         action_chars = max(math.floor(window * ACTION_RATIO), 200)
         action = clip_middle(sanitize_for_fence(ctx.action.text), action_chars)
@@ -253,6 +273,7 @@ class ContextAssembler:
             "seq": ctx.header.seq,
             "recall_before": recall_before,
             "outline": outline.text if outline is not None else "",
+            "lore": triggered,
         }
         if ctx.action.source == "ending":
             return self._prompts.render(
@@ -267,10 +288,11 @@ class ContextAssembler:
         *,
         budget: int | None = None,
         recall: bool = False,
+        lore: LoreSelection | None = None,
     ) -> AssembledContext:
         """budget 不为空时（厂商报超窗后的重试）直接截断到不超过 budget。
-        recall 为真表示这一回合会给导演召回工具。"""
-        system = self.system_prompt(ctx)
+        recall 为真表示这一回合会给导演召回工具。lore 是这一回合挑中的世界书条目（调用方挑好）。"""
+        system = self.system_prompt(ctx, window)
         recap = self.recap(ctx)
         seqs = [t.seq for t in ctx.history]
         pairs = self.history_messages(ctx)
@@ -287,7 +309,7 @@ class ContextAssembler:
         def final(kept: int) -> RenderedPrompt:
             before = first_seq(kept)
             if before not in finals:
-                finals[before] = self.final_message(ctx, window, recall_before=before)
+                finals[before] = self.final_message(ctx, window, recall_before=before, lore=lore)
             return finals[before]
 
         def build(keep: list[tuple[Message, Message]]) -> list[Message]:
@@ -332,4 +354,5 @@ class ContextAssembler:
             dropped_turns=dropped,
             prompt_versions=versions,
             recall_before=first_seq(len(keep)),
+            lore=lore.stats if lore is not None else None,
         )

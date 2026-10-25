@@ -1,9 +1,10 @@
 """开局构建（WorldBuilder）：把角色卡变成第一人称故事的起点 Seed。一次结构化调用，限时由调用方控制。
 
 角色卡文字按“数据”放进 <character-card> 围栏，不当指令；{{user}} 换成主角名，{{char}} 换成角色名。
-角色卡内嵌的 character_book 只做一次性提炼：最多 40 条，常驻条目优先。
+世界书（几张卡自带的，加上剧本挂的）在这里只做一次性提炼：最多 40 条，常驻条目优先，其次优先级数字
+大的（同 SillyTavern）；之后每回合按关键词带原文（runtime/context/lore.py）。
 群像剧本有几张卡：第一张是主角色卡，其余的作为“另一位关键人物”一起交给模型（每张的字数按张数分摊）；
-几张卡的世界书合在一起，名字重复的条目按卡的顺序取第一张的。剧本设置里选了开场白时，
+几张卡的世界书和挂的书合在一起，名字重复的条目按先后取第一条。剧本设置里选了开场白时，
 把它当作故事的开头交给模型，开场设定要和它衔接。
 """
 
@@ -14,6 +15,7 @@ from dataclasses import dataclass
 
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.scenario.card import CharacterCard, LoreEntry, apply_macros
+from bettertavern.domain.scenario.edit import book_in_order
 from bettertavern.domain.world.names import normalize_name
 from bettertavern.domain.world.seed import Seed, normalize_seed
 from bettertavern.providers import (
@@ -56,38 +58,42 @@ class WorldBuildResult:
     run: AgentRunRecord
 
 
-def select_book(entries: tuple[LoreEntry, ...]) -> list[LoreEntry]:
-    """常驻条目优先，其次按插入顺序；总字数有上限。"""
-    enabled = [e for e in entries if e.enabled and e.content.strip()]
-    enabled.sort(key=lambda e: (not e.constant, e.order))
-    picked: list[LoreEntry] = []
+def select_book(entries: Sequence[tuple[LoreEntry, str]]) -> list[tuple[LoreEntry, str]]:
+    """常驻条目优先，其次优先级数字大的，一样的按先后；总字数有上限。条目带着它属于的角色名。"""
+    enabled = [(i, e, o) for i, (e, o) in enumerate(entries) if e.enabled and e.content.strip()]
+    enabled.sort(key=lambda t: (not t[1].constant, -t[1].effective_priority(), t[0]))
+    picked: list[tuple[LoreEntry, str]] = []
     total = 0
-    for entry in enabled:
+    for _, entry, owner in enabled:
         if len(picked) >= BOOK_ENTRIES:
             break
         content = entry.content.strip()[:BOOK_ENTRY_CHARS]
         if total + len(content) > BOOK_TOTAL_CHARS:
             break
         total += len(content)
-        picked.append(entry.model_copy(update={"content": content}))
+        picked.append((entry.model_copy(update={"content": content}), owner))
     return picked
 
 
-def merged_book(cards: Sequence[CharacterCard]) -> list[tuple[LoreEntry, str]]:
-    """几张卡的世界书合在一起：名字重复的条目按卡的顺序取第一张的。返回（条目，它属于的角色名）。"""
+def merged_book(
+    cards: Sequence[CharacterCard],
+    books: Sequence[tuple[str, Sequence[LoreEntry]]] = (),
+) -> list[tuple[LoreEntry, str]]:
+    """几张卡的世界书和剧本挂的书合在一起：名字重复的条目按先后取第一条。
+    返回（条目，它属于的角色名）；挂的书属于主角色卡（{{char}} 换成主角色名）。"""
     seen: set[str] = set()
     merged: list[tuple[LoreEntry, str]] = []
-    for index, card in enumerate(cards):
-        for entry in card.book:
+    lead = cards[0].name if cards else ""
+    sources = [(card.name, book_in_order(card.book)) for card in cards]
+    sources += [(lead, tuple(sorted(entries, key=lambda e: e.order))) for _, entries in books]
+    for owner, entries in sources:
+        for entry in entries:
             key = normalize_name(entry.name) if entry.name.strip() else ""
             if key and key in seen:
                 continue
             if key:
                 seen.add(key)
-            # 先按卡的顺序、再按卡里的顺序排：order 加上卡的序号作为高位
-            merged.append(
-                (entry.model_copy(update={"order": index * 100_000 + entry.order}), card.name)
-            )
+            merged.append((entry, owner))
     return merged
 
 
@@ -101,11 +107,6 @@ def render_prompt_context(card: CharacterCard, inp: WorldBuildInput) -> dict[str
         text = apply_macros(getattr(c, name), user=user, char=c.name)[:limit]
         return sanitize_for_fence(text.strip())
 
-    owners: dict[int, str] = {}
-    book_entries: list[LoreEntry] = []
-    for entry, owner in merged_book(cards):
-        owners[entry.order] = owner
-        book_entries.append(entry)
     opening_chosen = bool(inp.opening.strip())
     opening = (
         apply_macros(inp.opening, user=user, char=inp.opening_char or card.name)[
@@ -136,14 +137,10 @@ def render_prompt_context(card: CharacterCard, inp: WorldBuildInput) -> dict[str
         ],
         "book": [
             {
-                "name": sanitize_for_fence(
-                    apply_macros(e.name, user=user, char=owners.get(e.order, card.name))
-                ),
-                "content": sanitize_for_fence(
-                    apply_macros(e.content, user=user, char=owners.get(e.order, card.name))
-                ),
+                "name": sanitize_for_fence(apply_macros(e.name, user=user, char=owner)),
+                "content": sanitize_for_fence(apply_macros(e.content, user=user, char=owner)),
             }
-            for e in select_book(tuple(book_entries))
+            for e, owner in select_book(merged_book(cards, inp.lorebooks))
         ],
         "style": sanitize_for_fence(inp.preferences.style),
         "boundaries": sanitize_for_fence(inp.preferences.boundaries),

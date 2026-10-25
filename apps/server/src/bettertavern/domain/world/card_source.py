@@ -5,6 +5,8 @@
 
 - 开局搭世界时写入，之后改卡不影响这一局；系统提示开局后不变，前缀缓存一直有效。
 - 宏（{{user}}、{{char}}）在这里换成主角名和角色名；世界书里停用的、没有内容的条目不要。
+- 世界书功能上线（2026-10-25）以后开的局不放卡里的世界书（lore=False）：世界书和剧本挂的一起
+  走世界书快照（domain/world/lore.py），按关键词带进上下文；以前开的闪电存档快照里还有。
 - 整份最多 CARD_SOURCE_CHARS 字，超出时依次：去掉世界书里不是常驻的条目、截短对话示例、
   去掉常驻条目、截短场景、性格、描述，每一步都从最后一张卡往前，够了就停；truncated 记为真。
 """
@@ -119,10 +121,16 @@ def _clip_field(cards: list[CardText], over: int, field: str) -> int:
 
 
 def snapshot_cards(
-    cards: Sequence[CharacterCard], *, protagonist_name: str, limit: int = CARD_SOURCE_CHARS
+    cards: Sequence[CharacterCard],
+    *,
+    protagonist_name: str,
+    limit: int = CARD_SOURCE_CHARS,
+    lore: bool = True,
 ) -> CardSource:
     user = clean_display_name(protagonist_name)
     texts = [_card_text(card, user) for card in cards]
+    if not lore:
+        texts = [t.model_copy(update={"lore": ()}) for t in texts]
     over = sum(t.chars() for t in texts) - limit
     if over <= 0:
         return CardSource(cards=tuple(texts))

@@ -12,9 +12,10 @@ from typing import Any, Literal, Protocol
 from bettertavern.domain.billing import TokenPrices
 from bettertavern.domain.memory.outline import Beat, Outline, OutlineSlice
 from bettertavern.domain.routing import RouteTask
-from bettertavern.domain.scenario.card import CharacterCard
+from bettertavern.domain.scenario.card import CharacterCard, LoreEntry
 from bettertavern.domain.story.turn import PlayerAction, TurnOption
 from bettertavern.domain.world.card_source import CardSource
+from bettertavern.domain.world.lore import LoreSnapshot
 from bettertavern.domain.world.records import RowChange, WorldRecords
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import ThreadView, WorldSnapshot
@@ -106,6 +107,9 @@ class TurnContext:
     # 开局时卡的原文快照（domain/world/card_source.py）：闪电模式放进导演的系统提示；
     # 开局前、以及这个功能上线前开局的存档没有
     cards: CardSource | None = None
+    # 这一局的世界书快照（domain/world/lore.py），每回合按关键词挑条目（runtime/context/lore.py）；
+    # 世界书功能上线（2026-10-25）前开局的存档没有，那时卡里的世界书在 cards 快照里
+    lore: LoreSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,6 +175,8 @@ class WorldBuildInput:
     # 选定的开场白原文（宏没替换）和它属于哪张卡；没选时为空，用主角色卡的 first_mes 作参考
     opening: str = ""
     opening_char: str = ""
+    # 剧本挂的世界书（书名，条目），按挂的顺序
+    lorebooks: tuple[tuple[str, tuple[LoreEntry, ...]], ...] = ()
 
 
 class TurnStore(Protocol):
@@ -197,8 +203,9 @@ class TurnStore(Protocol):
         source: str,
         run: AgentRunRecord | None,
         cards: CardSource | None = None,
+        lore: LoreSnapshot | None = None,
     ) -> int:
-        """写入开局世界（实体、关系、事实）和卡的原文快照，playthrough 置为 active。
+        """写入开局世界（实体、关系、事实）、卡的原文快照和世界书快照，playthrough 置为 active。
         返回实体数量。"""
         ...
 

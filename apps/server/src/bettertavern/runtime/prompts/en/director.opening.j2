@@ -1,8 +1,9 @@
-{# version: 1 #}
+{# version: 2 #}
 {% if world_state %}
 {{ world_state }}
 
 {% endif %}
+{% include "_lore.j2" %}
 <opening-brief>
 {% if location %}
 Opening location: {{ location }}

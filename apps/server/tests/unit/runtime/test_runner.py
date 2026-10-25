@@ -420,7 +420,8 @@ async def test_opening_builds_world_and_falls_back_to_minimal_seed() -> None:
 
 
 async def test_lightning_opening_builds_the_world_and_keeps_the_card_text() -> None:
-    """闪电模式开局和普通模式一样请 WorldBuilder 搭世界；卡的原文存成快照，导演的系统提示里有它"""
+    """闪电模式开局和普通模式一样请 WorldBuilder 搭世界；卡的原文存成快照，导演的系统提示里有它。
+    卡里的世界书走世界书快照：常驻的在系统提示里，其余的要等关键词出现才带"""
     hub, adapters = scripted_hub("fake")
     seed = {"world": {"title": "雨夜", "setting": "灰石镇"}, "protagonist": {"name": "林川"}}
     adapters["fake"].completions.append(result(json.dumps(seed, ensure_ascii=False)))
@@ -429,7 +430,10 @@ async def test_lightning_opening_builds_the_world_and_keeps_the_card_text() -> N
         spec="card_v2",
         name="阿苓",
         description="{{char}} 是酒馆帮工，认识 {{user}}",
-        book=(LoreEntry(keys=("火漆",), content="商会的火漆是黑色的"),),
+        book=(
+            LoreEntry(keys=("火漆",), content="商会的火漆是黑色的"),
+            LoreEntry(content="灰石镇入夜后宵禁", constant=True, order=1),
+        ),
     )
     store = FakeStore(
         world_input=WorldBuildInput(
@@ -447,8 +451,11 @@ async def test_lightning_opening_builds_the_world_and_keeps_the_card_text() -> N
     assert source == "world_builder"
     assert store.cards is not None and not store.cards.truncated
     assert store.cards.cards[0].description == "阿苓 是酒馆帮工，认识 林川"
+    assert store.cards.cards[0].lore == ()
+    assert store.lore is not None and len(store.lore.items) == 2
     system = adapters["fake"].requests[-1].messages[0].content
-    assert "阿苓 是酒馆帮工，认识 林川" in system and "商会的火漆是黑色的" in system
+    assert "阿苓 是酒馆帮工，认识 林川" in system and "灰石镇入夜后宵禁" in system
+    assert "商会的火漆是黑色的" not in adapters["fake"].requests[-1].messages[-1].content
 
 
 async def test_pool_shutdown_cancels_slow_turns() -> None:

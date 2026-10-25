@@ -64,7 +64,8 @@ def test_world_builder_prompt_lists_every_card() -> None:
     assert "林川" in others[0]["description"]  # 每张卡的宏按自己的角色名换
     book = context["book"]
     assert isinstance(book, list)
-    assert [b["content"] for b in book] == ["三不当", "城南的当铺", "阿七 不敢去后院"]
+    # 常驻的在前，其余的优先级数字大的在前（同 SillyTavern；没写优先级的按列表位置算）
+    assert [b["content"] for b in book] == ["三不当", "阿七 不敢去后院", "城南的当铺"]
     assert context["opening_chosen"] is False
     text = PromptLibrary("zh").render("world_builder", schema="", **context).text
     assert "群像故事" in text and "另一位关键人物：阿七" in text

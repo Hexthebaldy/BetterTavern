@@ -17,7 +17,7 @@ from typing import Any
 import httpx
 import pytest
 
-from tests.e2e.m1_app import Running, import_scenario, serve, setup_account
+from tests.e2e.m1_app import Running, import_scenario, read_events, serve, setup_account
 from tests.fakes.llm_server import RunningFakeLLM
 from tests.support.pg import database_url
 
@@ -203,3 +203,63 @@ async def test_other_users_cannot_see_or_attach(running: Running) -> None:
         )
         assert r.status_code == 404
         assert (await client.delete(f"/v1/lorebooks/{book_id}", headers=other)).status_code == 404
+
+
+async def test_the_director_gets_entries_by_keyword(running: Running) -> None:
+    async with httpx.AsyncClient(base_url=running.base_url, timeout=30) as client:
+        account = await setup_account(client, running.fake)
+        token = account["token"]
+        auth = {"Authorization": f"Bearer {token}"}
+        world = {
+            "entries": {
+                "0": {"uid": 0, "key": [], "content": "灰石镇没有法术。", "constant": True},
+                # 选项里写着“问老周认不认识火漆”
+                "1": {"uid": 1, "key": ["火漆"], "content": "火漆印是北境商会的暗号。"},
+                "2": {"uid": 2, "key": ["暗号"], "content": "暗号每月初一更换。"},  # 递归带出
+                "3": {"uid": 3, "key": ["码头"], "content": "码头归漕帮管。"},  # 没人提
+            }
+        }
+        r = await client.post("/v1/lorebooks/import", headers=auth, files=file_of(world, "镇.json"))
+        book_id = r.json()["lorebook"]["lorebook"]["id"]
+        saved: dict[str, Any] = await import_scenario(client, auth)
+        sid = saved["scenario"]["id"]
+        r = await client.patch(
+            f"/v1/scenarios/{sid}", headers=auth, json={"lorebook_ids": [book_id]}
+        )
+        assert r.status_code == 200, r.text
+
+        r = await client.post(
+            "/v1/playthroughs",
+            headers=auth,
+            json={"scenario_id": sid, "protagonist": {"name": "林川"}},
+        )
+        assert r.status_code == 202, r.text
+        created = r.json()
+        playthrough_id = created["playthrough"]["id"]
+        await read_events(client, created["events_url"], token)
+        # 开局后改书不影响这一局
+        r = await client.get(f"/v1/lorebooks/{book_id}", headers=auth)
+        await client.put(
+            f"/v1/lorebooks/{book_id}/book",
+            headers=auth,
+            json={"version": r.json()["lorebook"]["version"], "book": []},
+        )
+
+        detail = (await client.get(f"/v1/playthroughs/{playthrough_id}", headers=auth)).json()
+        body = {
+            "parent_turn_id": detail["playthrough"]["head_turn_id"],
+            "action": {"source": "option", "option_id": "o1"},
+        }
+        r = await client.post(f"/v1/playthroughs/{playthrough_id}/turns", headers=auth, json=body)
+        assert r.status_code == 201, r.text
+        await read_events(client, r.json()["events_url"], token)
+
+        request = [q for q in running.fake.app.chat_requests if q.body.get("stream")][-1]
+        messages = request.body["messages"]
+        system, last = messages[0]["content"], messages[-1]["content"]
+        # 常驻的在系统提示里（卡自带的世界书里那条常驻的也在）
+        assert "灰石镇没有法术。" in system and "北境商会的火漆是黑色的。" in system
+        lore = last[last.index("<lore>") : last.index("</lore>")]
+        assert "火漆印是北境商会的暗号。" in lore and "暗号每月初一更换。" in lore
+        assert "码头归漕帮管。" not in last
+        assert last.index("<lore>") < last.index("<player-action>")

@@ -310,7 +310,7 @@ def director_run(
 
 
 def context_result(route: ResolvedRoute, context: AssembledContext) -> dict[str, Any]:
-    return {
+    result: dict[str, Any] = {
         "route_id": route.route_id,
         "estimated_tokens": context.estimated_tokens,
         "usage_ratio": round(context.usage_ratio, 4),
@@ -318,3 +318,7 @@ def context_result(route: ResolvedRoute, context: AssembledContext) -> dict[str,
         "recall_before": context.recall_before,
         "prompt_versions": context.prompt_versions,
     }
+    if context.lore is not None:
+        # 这一回合的世界书用了哪几条（快照里的序号），不记内容
+        result["lore"] = context.lore
+    return result

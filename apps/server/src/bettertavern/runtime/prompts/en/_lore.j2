@@ -1,0 +1,12 @@
+{# 这一回合挑中的世界书条目（runtime/context/lore.py）：只有正文，条目之间空一行 #}
+{% if lore is defined and lore %}
+<lore>
+{% for text in lore %}
+{{ text }}
+{% if not loop.last %}
+
+{% endif %}
+{% endfor %}
+</lore>
+
+{% endif %}

@@ -26,6 +26,7 @@ FENCE_TAGS = (
     "outline-source",
     "card-source",
     "synopsis",
+    "lore",
 )
 
 _NAMES = "|".join(re.escape(t) for t in FENCE_TAGS)

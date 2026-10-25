@@ -14,6 +14,7 @@ from bettertavern.domain.memory.thresholds import effective_window
 from bettertavern.domain.routing import RouteParams, RouteTask
 from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.domain.world.card_source import CardSource
+from bettertavern.domain.world.lore import LoreSnapshot
 from bettertavern.domain.world.records import WorldRecords
 from bettertavern.domain.world.seed import Seed
 from bettertavern.domain.world.views import WorldSnapshot
@@ -226,6 +227,7 @@ class FakeStore:
     world: WorldSnapshot = field(default_factory=WorldSnapshot)
     seed: Seed | None = None
     cards: CardSource | None = None  # 开局时卡的原文快照
+    lore: LoreSnapshot | None = None  # 这一局的世界书快照
     history: list[HistoryTurn] = field(default_factory=list)
     action: PlayerAction = field(default_factory=lambda: PlayerAction("text", "我推门"))
     state_seq: int = -1  # 世界状态已整理到第几回合
@@ -253,6 +255,7 @@ class FakeStore:
             state_seq=self.state_seq,
             memory=self.memory,
             cards=self.cards,
+            lore=self.lore,
         )
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:
@@ -279,10 +282,12 @@ class FakeStore:
         source: str,
         run: AgentRunRecord | None,
         cards: CardSource | None = None,
+        lore: LoreSnapshot | None = None,
     ) -> int:
         self.saved_world.append((seed, source, run))
         self.seed = seed
         self.cards = cards
+        self.lore = lore
         return 3
 
 
