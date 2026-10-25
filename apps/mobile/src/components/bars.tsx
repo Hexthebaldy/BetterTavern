@@ -183,7 +183,7 @@ export function BackBar({ onBack, right }: { onBack?: () => void; right?: ReactN
   );
 }
 
-/** 切换标签时页面交叉淡入淡出的时长（app/(tabs)/_layout.tsx） */
+/** 切换标签时新页面淡入的时长（TabScene.tsx） */
 export const TAB_FADE_MS = 220;
 
 const styles = StyleSheet.create({

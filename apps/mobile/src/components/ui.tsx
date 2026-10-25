@@ -6,7 +6,8 @@
  * - rows.tsx：分组、列表行、分区标题
  * - feedback.tsx：提示条、标签、状态、加载失败
  * - controls.tsx：输入框、分段、标签、勾选、单选、开关
- * - bars.tsx：一级页大标题、二级页导航栏（useTabBarSpace() 给内容让位）；tabBar.tsx：浮动的 Tab 栏 / 宽屏的左侧导航栏
+ * - bars.tsx：一级页大标题、二级页导航栏（useTabBarSpace() 给内容让位）；tabBar.tsx：浮动的 Tab 栏 / 宽屏的左侧导航栏；
+ *   TabScene.tsx：切换标签时新页面的淡入
  * - sheet.tsx：浮起的面板（手机底部面板；平板换成居中对话框、贴按钮的菜单、右侧滑出）；menu.tsx：面板里的菜单
  * - overlay.tsx：浮条、长按菜单、useOverlay()；dialog.tsx：对话框
  *
@@ -25,5 +26,6 @@ export * from "./primitives.tsx";
 export * from "./rows.tsx";
 export * from "./sheet.tsx";
 export * from "./tabBar.tsx";
+export { TabScene } from "./TabScene.tsx";
 export { press } from "./press.ts";
 export { Icon, type IconName } from "./icons.tsx";
