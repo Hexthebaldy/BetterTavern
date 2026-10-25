@@ -163,6 +163,32 @@ export const EVENTS: Record<string, EventInfo> = {
         f.error_class ? errorClass(f.error_class) : null,
       ),
   },
+  "world.lore_built": {
+    label: "合成世界书",
+    category: "turn",
+    say: (f) =>
+      plus(
+        `${str(f.books)} 本挂上的书，合成 ${str(f.entries)} 条`,
+        num(f.constant) ? `常驻 ${str(f.constant)} 条` : null,
+        num(f.dropped) ? `超出上限丢掉 ${str(f.dropped)} 条` : null,
+      ),
+  },
+  "world.lore_truncated": {
+    label: "世界书超出上限",
+    category: "turn",
+    say: (f) => `世界书太大，丢掉了 ${str(f.dropped)} 条（留下约 ${str(f.chars)} 字）`,
+  },
+  "turn.lore": {
+    label: "挑世界书条目",
+    category: "turn",
+    say: (f) =>
+      plus(
+        `系统提示里常驻 ${str(f.constant)} 条，这一回合挑中 ${str(f.triggered)} 条`,
+        num(f.recursion) ? `其中递归带出 ${str(f.recursion)} 条` : null,
+        num(f.dropped) ? `预算装不下 ${str(f.dropped)} 条` : null,
+        num(f.regex_timeouts) ? `正则超时 ${str(f.regex_timeouts)} 次` : null,
+      ),
+  },
   "context.assembled": {
     label: "组装上下文",
     category: "turn",

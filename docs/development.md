@@ -31,6 +31,8 @@
 先看[架构图解](agent-runtime-architecture.md)能最快弄懂整体；每个阶段的试玩结果在 [agent-runtime.md 第 13 节](agent-runtime.md)和 [evals.md](evals.md)，
 还没解决的问题在[待优化清单](backlog.md)。
 
+**世界书**（2026-10-25 加的，[lorebook.md](lorebook.md)）：导入 SillyTavern 的世界书文件，放进世界书仓库（也能新建、改条目），挂到剧本上；开局时几张卡自带的和剧本挂的合成一份，之后每回合照 ST 的规则按关键词把条目原文带给导演。网页和 App 都有。
+
 **还没做**：M4 的加固与发布（安全审查、压测、自托管文档、上架）；App 界面的自动化测试；契约工具链（客户端类型现在是手写的）。
 和设计文档相比的简化见 [backend.md 第 12 节](backend.md)和 [client.md 第 3 节](client.md)。
 

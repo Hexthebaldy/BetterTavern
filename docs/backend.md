@@ -826,7 +826,7 @@ apps/server/
 2. `domain` 不 import 本项目的任何其他包，只用标准库和 pydantic，所以能脱离 FastAPI 和数据库单测。
 3. `providers` 不 import 本项目的任何其他包；只有 `runtime` 和 `services`（模型列表和探测在 `route_service`）可以使用它。
 4. `infra` 是叶子：可以 import `domain` 来映射对象，不能 import `runtime`、`services`、`api`。
-5. `importers` 把外部格式（角色卡，以后还有世界书）翻译成 `domain` 的数据：本项目里只 import `domain`，PNG、各版本 JSON 这些格式细节不进 `domain`。
+5. `importers` 把外部格式（角色卡、世界书）翻译成 `domain` 的数据：本项目里只 import `domain`，PNG、各版本 JSON 这些格式细节不进 `domain`。
 6. `runtime` 不直接访问数据库：它通过 `runtime/ports.py` 里的接口读写，具体实现由 `services` 和 `infra` 提供，在 `entrypoints/` 里注入。这是为了让 agent 和工具能用内存假实现测试。
 7. `api` 不直接访问数据库，只通过 `services`。
 8. 提示词是数据文件：Python 里不写超过一行的提示词字符串（代码审查时检查；测试不读源码）。
@@ -843,7 +843,7 @@ apps/server/
 | 新增一种实体类型 | `domain/world/records.py`、`draft.py`（修改的检查）、`invariants.py`、状态块（`runtime/context/state_block.py`）、提示词里的类型说明、数据库迁移 |
 | 新增一个 SSE 事件 | 发出事件的位置（`runtime/`）、[api/events.md](api/events.md)、客户端的事件处理和回合状态机（`packages/core`） |
 | 向量检索（计划中） | 召回的查询在 `services/recall_store.py` 和 `infra/db/repositories/recall.py`，按意思检索加在这里，pgvector 迁移 |
-| 导入 ST 世界书 | `importers/lorebook/`，输出 `Seed` 的片段（entities 与 facts） |
+| 认一种新的世界书格式（NovelAI、Agnai、RisuAI 等） | `importers/lorebook/` 里加识别和映射，输出 `LoreEntry` 列表和导入报告（[lorebook.md](lorebook.md) 第 6 节）；仓库、剧本和运行时不用动 |
 | RPG 模式 | 新增 `domain/rules/` 与裁决 agent，扩展 `user_action` 类型；回合协议其余部分不变 |
 | 新增一种语言 | `runtime/prompts/<lang>/` 放同名的模板和数据文件，`domain/story/language.py` 和迁移的 CHECK 加上它；客户端在 `packages/core/src/i18n/` 加语言文件（[i18n.md](i18n.md)） |
 
