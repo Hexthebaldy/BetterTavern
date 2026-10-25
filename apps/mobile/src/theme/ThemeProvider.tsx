@@ -2,7 +2,9 @@
  * 当前主题的上下文。根布局按用户的外观设置包一层 ThemeProvider，页面用 useComic() / useIsDark() 取值。
  *
  * 选了固定主题时用 Appearance.setColorScheme() 覆盖系统的深浅，键盘、系统弹窗、状态栏跟着 App 走；
- * 跟随系统时清掉覆盖。覆盖期间 useColorScheme() 返回的是覆盖后的值，所以只在“跟随系统”时才看它。
+ * 跟随系统时清掉覆盖。系统的深浅由这里自己存一份（system）：清掉覆盖时 RN 只更新它缓存的值、不发 change 事件
+ * （Expo Go 里原生那边也收不到深浅变化的通知），光靠 useColorScheme() 会停在覆盖时的值——从“夜间”切回
+ * “跟随系统”还是黑的。所以清掉覆盖后马上读一次；覆盖期间收到的变化是覆盖后的值，不当成系统的。
  *
  * 漫画风的颜色（@bettertavern/design 的 comic.ts）按主题取，useComic() 拿当前这一套。
  *
@@ -10,8 +12,8 @@
  * 页面主体不用改就能放进去。浮起来的面板、对话框用 BaseSurface 换回原来的颜色。
  */
 
-import { createContext, useContext, useEffect, type ReactNode } from "react";
-import { Appearance, useColorScheme } from "react-native";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Appearance, useColorScheme, type ColorSchemeName } from "react-native";
 
 import { COMIC_COLORS, type ComicColors } from "@bettertavern/design/comic";
 import {
@@ -33,12 +35,27 @@ const RAISED_COMIC: Record<ThemeId, ComicColors> = {
 };
 
 export function ThemeProvider({ setting, children }: { setting: ThemeSetting; children: ReactNode }) {
-  const system = useColorScheme();
+  // 挂上时还没有覆盖，读到的就是系统的
+  const [system, setSystem] = useState<ColorSchemeName | null | undefined>(() => Appearance.getColorScheme());
+  const settingRef = useRef(setting);
+  settingRef.current = setting;
   const theme = THEMES[resolveTheme(setting, system)];
 
   useEffect(() => {
-    Appearance.setColorScheme(setting === "system" ? "unspecified" : theme.scheme);
-  }, [setting, theme.scheme]);
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      if (settingRef.current === "system") setSystem(colorScheme);
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (setting === "system") {
+      Appearance.setColorScheme("unspecified");
+      setSystem(Appearance.getColorScheme());
+    } else {
+      Appearance.setColorScheme(THEMES[setting].scheme);
+    }
+  }, [setting]);
 
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 }
