@@ -32,12 +32,15 @@ function Item({
   focused,
   onPress,
   height,
+  vertical,
 }: {
   item: NavItem;
   label: string;
   focused: boolean;
   onPress: () => void;
   height: number;
+  /** 竖着的侧栏：每块按 height 排；横着的 Tab 栏：平分宽度 */
+  vertical?: boolean;
 }) {
   const c = useComic();
   return (
@@ -46,7 +49,7 @@ function Item({
       accessibilityState={{ selected: focused }}
       accessibilityLabel={label}
       onPress={onPress}
-      style={[styles.item, { height }]}
+      style={[styles.item, vertical ? null : styles.itemRow, { height }]}
     >
       {focused ? <FilledIcon name={item.icon} size={26} /> : <Icon name={item.icon} size={26} color={c.iconMut} />}
       <Text
@@ -103,6 +106,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         focused={item.key === active}
         onPress={() => press(item)}
         height={itemHeight}
+        vertical
       />
     ));
     return (
@@ -153,7 +157,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  item: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3 },
+  item: { alignItems: "center", justifyContent: "center", gap: 3 },
+  /** 横排时平分宽度（竖排不能用 flex: 1：侧栏的高度跟着内容走，flex: 1 会把每块压成 0 高） */
+  itemRow: { flex: 1 },
   label: { fontSize: 11.5, lineHeight: 14 },
   railHost: { position: "absolute", left: rail.left, width: rail.width, justifyContent: "center" },
   rail: {

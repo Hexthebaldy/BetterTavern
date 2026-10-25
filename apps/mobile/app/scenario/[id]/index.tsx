@@ -239,7 +239,10 @@ export default function ScenarioScreen() {
   const cover = (
     <View
       style={[
-        compact ? [styles.coverBleed, { borderBottomColor: c.ink }] : [styles.coverFramed, { borderColor: c.ink }],
+        compact
+          ? [styles.coverBleed, { borderBottomColor: c.ink }]
+          : // 平板上封面是框着的格子，放在状态栏下面
+            [styles.coverFramed, { marginTop: insets.top + space.s, borderColor: c.ink }],
       ]}
     >
       <Cover seed={scenario.id} blobId={scenario.cover_blob_id} width={coverWidth} height={coverHeight} rounded={0} />
@@ -383,7 +386,6 @@ export default function ScenarioScreen() {
 const styles = StyleSheet.create({
   coverBleed: { borderBottomWidth: comicStroke.frame },
   coverFramed: {
-    marginTop: space.list,
     marginHorizontal: space.list,
     borderWidth: comicStroke.frame,
     borderRadius: comicRadius.frame,
