@@ -87,6 +87,7 @@ Expo 文档称 `expo/fetch` 符合 WinterCG 规范，可以通过 `response.body
 | `settings/models` | 模型 | 配好的模型列表；添加模型时 Key、端点、模型名、窗口一次填完 |
 | `settings/model/[id]` | 模型详情 | 测试、设为导演、用于后台整理、用于工作台、窗口上限（显示当前模型能否满足）与思考开关、更换 Key |
 | `settings/tools` | 外部服务 | 网页搜索、读网页、生成封面的服务（工作台用） |
+| `settings/personas` | 人设 | 人设库：玩家扮演的“我”，名字、描述、头像（[personas.md](personas.md)） |
 | `settings/account` | 账户 | 导出数据、删除账户 |
 
 **发布**：EAS Build 出包，EAS Update 推 JS 补丁；补丁与服务端的兼容性靠 `X-Client-Version` 加服务端的最低版本检查兜住（[backend.md 第 9 节](backend.md)）。
@@ -167,6 +168,7 @@ apps/mobile/
 | `settings/models` | 模型列表（导演和后台模型那一行带标记）和添加模型：服务商图块（DeepSeek、OpenAI、Grok、Gemini、Hugging Face、自定义兼容端点，一行三块；圆标里是各家的标志，取自 Lobe Icons，形状数据在 `@bettertavern/design/providerLogos`，可以带线性渐变（Gemini 的彩色四角星），自定义端点写 { }）→ Key（每次都新填，可粘贴；不列出已配置过的 Key）→ 端点（使用官方地址）→ 模型列表（Key 和端点填好后自动获取，也可以手动重新获取）、搜索兼手动输入 → 上下文窗口（只有服务商列表和内置资料都不知道时才让填，不知道就按 32K 估计）→ 备注名、是否设为导演 → 保存。一个 Key 配几个模型时每个模型一行 |
 | `settings/model/[id]` | 模型详情：服务商、Key、模型名、端点；测试这个模型（结果存在模型上）、设为导演；“能记住多少”格子图，标出窗口的来源（服务商提供、内置资料、你填的、按服务商报错纠正、估计值），估计值和手填的可以改；工作窗口上限、深度思考；“用于后台整理”“用于工作台”开关（点了立刻保存；模型不能调用工具时打不开，并说明原因）；编辑备注名、模型名和端点；更换 Key（别的模型也用这个 Key 时可以一起换）；取消导演；删除 |
 | `settings/tools` | 外部服务：网页搜索、读网页、生成封面三种，每种可以配几个、一个默认；测试、设为默认、换 Key、删除；添加用底部面板，加好就测一次 |
+| `settings/personas`、`settings/persona/[id]` | 人设库（设置首页“配置”里第二行进来）：一行一个人设（头像、名字、默认、描述的开头），顶上是新建、导入 SillyTavern 的人设备份；编辑页是头像（选图后服务端裁成正方形）、名字、描述、设为默认、保存、删除（`id` 为 `new` 是新建）。宽屏设置两栏时嵌在右栏里。开新故事和剧本设置的第 1 步“你扮演谁”从这里选（[personas.md](personas.md) 第 3 节）；阅读页书名页“我是 林川”前面放开局时那个人设的头像 |
 | `settings/account` | 退出登录；删除账户（展开后列出会删掉的故事、剧本、模型数，输入密码确认） |
 | 设置首页的“语言” | 选择面板（手机是底部面板，平板是对话框）：跟随系统（下面注明系统语言）、中文、English、日本語；每种语言用它自己的文字写 |
 | `dev/probe` | 连接测试（M0 的 SSE 探针），登录前后都能打开；时长分段、延迟走势、报告 |
@@ -273,7 +275,7 @@ apps/mobile/
     │   │             ManualPane.tsx  BookEditor.tsx  PreviewSheet.tsx  CoverSheet.tsx
     │   ├── settings/ servers.ts  AddModelForm.tsx  ModelPicker.tsx  ModelSheets.tsx
     │   │             MemoryBlocks.tsx  ProbeResults.tsx  AppearanceSheet.tsx  LanguageSheet.tsx  nav.tsx  SettingsPane.tsx
-    │   │             screens/（模型列表、模型详情、外部服务、账户的页面主体）
+    │   │             screens/（模型列表、模型详情、外部服务、人设、账户的页面主体）
     │   └── probe/    DiagnosticsCard.tsx  ProbeBody.tsx   # 连接测试；诊断日志的导出和清空
     ├── components/ ui.tsx（门面）primitives  buttons  rows  feedback  controls  bars  tabBar  sheet  menu  overlay  dialog  icons
     │               press.ts（按下的效果）navItems.ts（Tab 栏和侧栏的表）
@@ -309,7 +311,7 @@ apps/mobile/
 | --- | --- | --- |
 | 构建 | Vite + TypeScript（strict） | 开发和预览服务器把 `/v1`、`/health`、`/ready` 转给后端（默认 `http://localhost:8000`，`BT_API_URL` 可以改） |
 | 界面 | React 19，浏览器的 DOM 和 CSS | 不用 react-native-web：链接、表单自动填充、`:focus-visible`、悬停、右键菜单、拖放、选中复制都是浏览器原生的 |
-| 路由 | react-router 7 | `/login`、`/register`、`/verify`、`/forgot`、`/terms`、`/privacy`、`/rules`、`/playthroughs`、`/scenarios`、`/characters`、`/scenario/:id`、`/scenario/:id/edit`、`/card/:id`、`/workbench`、`/workbench/d/:id`、`/play/:id`、`/models`、`/models/:id`、`/settings`、`/settings/tools`、`/dev/probe`。和 App 不再一一对应：剧本和角色分开，模型从设置里拿出来，外部服务是设置的子页面；旧地址 `/library`、`/tools`、`/settings/models`、`/settings/model/:id`、`/settings/account` 跳到新地址 |
+| 路由 | react-router 7 | `/login`、`/register`、`/verify`、`/forgot`、`/terms`、`/privacy`、`/rules`、`/playthroughs`、`/scenarios`、`/characters`、`/scenario/:id`、`/scenario/:id/edit`、`/card/:id`、`/workbench`、`/workbench/d/:id`、`/play/:id`、`/models`、`/models/:id`、`/settings`、`/settings/tools`、`/settings/personas`、`/dev/probe`。和 App 不再一一对应：剧本和角色分开，模型从设置里拿出来，外部服务是设置的子页面；旧地址 `/library`、`/tools`、`/settings/models`、`/settings/model/:id`、`/settings/account` 跳到新地址 |
 | 服务端数据 | TanStack Query | 没有下拉刷新：回到标签页、窗口回到前台时自动刷新 |
 | 样式 | CSS Modules + CSS 变量 | 变量名同 `docs/design/ui/web/tokens.css`，加上漫画版的描边、硬投影（`--x*` 墨色、`--b*` 蓝色）、三种网点底和圆角（`theme/tokens.css`）；色板由 `ThemeProvider` 从 `@bettertavern/design` 写到 `<html>` 上，夜间模式墨和纸对调、蓝用 `#8597FF`；页面底色是网页端单独的 `--page`（很浅的灰 `#F8F8F5`，夜间 `#0B0B0D`），白格子放在上面分得开，色板里 App 共用的 `--bg` 不动 |
 | 字体 | 自己托管 | 标题的思源宋体 900、标签和键帽的 IBM Plex Mono 500 / 700（`@fontsource`，按 unicode-range 切片，`theme/fonts.ts`）；正文的宋体和黑体用系统字体 |
@@ -351,6 +353,7 @@ apps/mobile/
 | `/models`、`/models/:id` | 模型（漫画稿 07）：“分工”三行（导演、后台整理、工作台各用哪个模型，下拉框直接换）、官方模型的点数（蓝网点一格）、我的模型列表（状态点、用途标签、服务商、Key 尾号、工作窗口、测试结果；点一行在窗口正中的对话框里打开详情）、添加模型三步（对话框）；页头是连接测试 |
 | `/settings` | 设置（漫画稿 08）：账户（头像、昵称、邮箱、注册时间、存档 / 剧本 / 模型数量，修改密码、退出登录、删除账户，三份条款）、外观（带预览）、语言、阅读（字号、字体）、键盘快捷键（含单键开关）、外部服务三项的状态、连接测试，各占一格 |
 | `/settings/tools` | 外部服务（设置的子页面）：网页搜索、读网页、生成封面三栏并排，每栏是配好的服务，添加用对话框 |
+| `/settings/personas` | 人设（设置的子页面，设置页第四行那一格也进这里）：左边一列人设，右边编辑选中的（`?id=`，`?id=new` 是新建）：头像、名字、描述、设为默认、删除；顶上能导入 SillyTavern 的人设备份。开新故事和剧本设置的第 1 步“你扮演谁”从这里选；阅读页页头和存档列表里“我是 林川”前面放开局时那个人设的头像（[personas.md](personas.md)） |
 
 和 App 不同的只是布局和输入方式：文案、状态、错误提示、接口调用都照 App 的页面写，纯逻辑直接用 `@bettertavern/core`。
 

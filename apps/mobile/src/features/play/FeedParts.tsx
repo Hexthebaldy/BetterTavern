@@ -63,7 +63,7 @@ export function useNarrativeStyle(
 export type Narr = ReturnType<typeof useNarrativeStyle>;
 
 /** 书名页：往上翻到顶看到的第一屏（白底墨线的格子：封面在上，下面剧本名、主角色和“我是 林川”）。
- * 开局时用了人设的，“我是 林川”前面放它的头像（docs/personas.md 第 6 节：阅读页只放在这里） */
+ * 开局时用了人设的，“我是 林川”前面放它的头像（docs/personas.md 第 5、7 节：阅读页只放在这里） */
 export function BookHeader({
   seed,
   blobId,

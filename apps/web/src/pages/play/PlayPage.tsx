@@ -290,7 +290,7 @@ function PlayPage({ id }: { id: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [singleKeys, controls, jumpToLatest, toggleWorld, toggleRecap, lightning]);
 
-  // 开局时用的人设：页头“我是 林川”前面放它的头像（docs/personas.md 第 6 节：阅读页只在这里放）
+  // 开局时用的人设：页头“我是 林川”前面放它的头像（docs/personas.md 第 5、7 节：阅读页只在这里放）
   const persona = usePersona(state.personaId);
   const sub = [scenario.data?.name, state.protagonist ? t("play.iAm", { name: state.protagonist }) : null]
     .filter(Boolean)
