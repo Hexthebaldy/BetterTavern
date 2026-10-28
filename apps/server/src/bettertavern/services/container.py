@@ -34,6 +34,7 @@ from .lorebook_service import LorebookService
 from .maintenance import Maintenance
 from .memory_store import PgMemoryStore
 from .outline_store import PgOutlineStore
+from .persona_service import PersonaService
 from .platform import PlatformModel
 from .playthrough_service import PlaythroughService
 from .quotas import Quotas
@@ -60,6 +61,7 @@ class Services:
     scenarios: ScenarioService
     cards: CardService
     lorebooks: LorebookService
+    personas: PersonaService
     drafts: DraftService
     workbench: WorkbenchService
     tool_routes: ToolRouteService
@@ -144,6 +146,7 @@ def build_services(
         scenarios=scenarios,
         cards=CardService(engine),
         lorebooks=LorebookService(engine, quotas),
+        personas=PersonaService(engine, quotas),
         drafts=DraftService(engine, scenarios, quotas),
         workbench=WorkbenchService(engine, quotas=quotas, credits=credits),
         tool_routes=tool_routes,

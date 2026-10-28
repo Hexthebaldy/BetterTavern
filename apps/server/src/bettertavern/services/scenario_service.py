@@ -2,13 +2,13 @@
 换世界书，删除。
 
 剧本实时引用角色卡和世界书：只记 id，开新故事时读它们当时最新的内容；已经开始的故事不受影响。
-剧本的设置（默认主角、偏好、用哪条开场白）开新故事时预填。改名字、设置、换卡、换世界书
-都让版本号加 1。
+剧本的设置（默认人设、偏好、用哪条开场白）开新故事时预填。改名字、设置、换卡、换世界书
+都让版本号加 1。选了默认人设时，设置里的 protagonist 写成那个人设的副本（给旧版 App 读）。
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any
 
@@ -25,6 +25,7 @@ from bettertavern.domain.scenario.setup import (
 from bettertavern.infra.db.repositories import cards as cards_repo
 from bettertavern.infra.db.repositories import library as repo
 from bettertavern.infra.db.repositories import lorebooks as lorebooks_repo
+from bettertavern.infra.db.repositories import personas as personas_repo
 from bettertavern.infra.db.sqlutil import is_uuid
 
 from .card_service import preview, strip_nul
@@ -159,6 +160,19 @@ class ScenarioService:
         )
         if problem is not None:
             raise Invalid(problem, field="setup.opening")
+        if parsed.persona_id is not None:
+            persona = (
+                await personas_repo.get_persona(conn, user_id, parsed.persona_id)
+                if is_uuid(parsed.persona_id)
+                else None
+            )
+            if persona is None:
+                raise Invalid("That persona doesn't exist", field="setup.persona_id")
+            parsed = replace(
+                parsed,
+                protagonist_name=persona.name,
+                protagonist_summary=persona.description[: personas_repo.MIRROR_SUMMARY_CHARS],
+            )
         return rows, parsed.to_json()
 
     async def create(

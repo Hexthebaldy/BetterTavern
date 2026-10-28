@@ -94,10 +94,12 @@ class Settings(BaseSettings):
 
     # 工作台（按用户）：开始、发消息、接着写、导入、上传、生成封面、测试外部服务合在一起，每分钟次数
     rate_limit_workbench_per_min: int = Field(default=20, ge=1)
-    # 每个用户同时在写的 agent 最多几个、没保存的草稿最多几份、世界书最多几本、图片一共多大
+    # 每个用户同时在写的 agent 最多几个、没保存的草稿最多几份、世界书最多几本、人设最多几个、
+    # 图片一共多大
     max_running_agents: int = Field(default=2, ge=1)
     max_open_drafts: int = Field(default=50, ge=1)
     max_lorebooks: int = Field(default=100, ge=1)
+    max_personas: int = Field(default=200, ge=1)
     max_image_bytes_per_user: int = Field(default=200 * 1024 * 1024, ge=1024 * 1024)
 
     # 内容边界：sfw 时，写故事和写卡的提示词里加上“不写露骨的性描写”，只管模型写什么，

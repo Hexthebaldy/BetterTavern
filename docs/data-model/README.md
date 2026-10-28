@@ -2,9 +2,9 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [人设库](personas.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
-这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0028`）。
+这个目录记录数据库里**实际存在**的表，以 `apps/server/migrations/versions/` 里的迁移为准（目前是 `0001` 到 `0029`）。
 设计意图和还没建的表见 [backend.md 第 2 节](../backend.md)。
 
 表按领域分文件。每个领域文件写这个领域的表（列、类型、约束、索引）、JSON 列的结构和状态变化；本页写各领域共用的约定、
@@ -17,6 +17,7 @@
 | [credits.md](credits.md) | 点数和官方服务的用量（官方模型的余额、账本、体验额度；官方搜索的次数） | `credit_ledger`、`credit_grants`、`platform_usage` |
 | [tools.md](tools.md) | 外部服务（搜索、读网页、文生图）和读过的网页 | `tool_routes`、`web_pages` |
 | [library.md](library.md) | 角色卡仓库、剧本仓库与世界书仓库 | `blobs`、`cards`、`card_revisions`、`scenarios`、`scenario_cards`、`lorebooks`、`scenario_lorebooks` |
+| [personas.md](personas.md) | 人设库：玩家扮演的“我” | `personas` |
 | [workbench.md](workbench.md) | 工作台 | `workbench_drafts`、`workbench_messages`、`workbench_events`、`workbench_assets`、`workbench_notes` |
 | [story.md](story.md) | 游玩与回合，以及热路径的并发控制 | `playthroughs`、`turns`、`idempotency_keys`、`playthrough_lore` |
 | [world.md](world.md) | 世界状态 | `entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes` |
@@ -56,6 +57,7 @@ erDiagram
     users ||--o{ cards : "user_id"
     users ||--o{ scenarios : "user_id"
     users ||--o{ lorebooks : "user_id"
+    users ||--o{ personas : "user_id"
     users ||--o{ workbench_drafts : "user_id"
     users ||--o{ workbench_assets : "user_id"
     users ||--o{ tool_routes : "user_id"
@@ -66,6 +68,7 @@ erDiagram
     blobs |o--o{ cards : "cover_blob_id"
     blobs |o--o{ card_revisions : "cover_blob_id"
     blobs ||--o{ workbench_assets : "blob_id"
+    blobs |o--o{ personas : "avatar_blob_id"
     cards ||--o{ card_revisions : "card_id"
     cards ||--o{ scenario_cards : "card_id (RESTRICT)"
     scenarios ||--o{ scenario_cards : "scenario_id"
@@ -121,6 +124,8 @@ erDiagram
 | `threads.entity_ids` | `entities.id` | uuid 数组 |
 | `threads.source_turn_id` | `turns.id` | 记下这条线索的回合 |
 | `threads.merged_into` | `threads.id` | 合进了哪一条线索 |
+| `scenarios.setup.persona_id` | `personas.id` | 剧本的默认人设（JSON 里）；删人设时一起去掉 |
+| `playthroughs.settings.protagonist.persona_id` | `personas.id` | 开局时用的人设（JSON 里），只用来显示头像；人设删了就不显示 |
 | `facts.entity_ids`、`facts.known_by` | `entities.id` | uuid 数组，数组元素不能加外键 |
 | `agent_runs.turn_id` | `turns.id` | 这次调用所属的回合 |
 | `idempotency_keys.turn_id` | `turns.id` | 这个幂等键创建的回合 |
@@ -131,9 +136,10 @@ erDiagram
 
 | 操作 | 连带删除或修改 |
 | --- | --- |
-| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`email_codes`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`、`scenario_lorebooks`）、`lorebooks`、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys`、`credit_ledger`、`platform_usage`。`credit_grants` 不删（同一个邮箱重新注册不再送体验额度） |
+| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`email_codes`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`、`scenario_lorebooks`）、`lorebooks`、`personas`、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys`、`credit_ledger`、`platform_usage`。`credit_grants` 不删（同一个邮箱重新注册不再送体验额度） |
 | 删除游玩 | 级联删除 `playthrough_lore`、`turns`、`entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes`、`story_summaries`、`player_profiles`、`outline_revisions` 和 `agent_runs`（连同 `agent_steps`；`credit_ledger` 里这些运行的扣点记录留着，`run_id` 置空）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 级联删除 `scenario_cards`、`scenario_lorebooks`，卡和世界书不动；`playthroughs.scenario_id` 置空 |
+| 删除人设 | 选了它的剧本去掉 `setup.persona_id`、清空 `setup.protagonist`；已经开始的故事不受影响（只是不再显示头像）；头像没有别处在用时一起删掉 |
 | 删除世界书 | 级联删除 `scenario_lorebooks`（从挂着它的剧本上摘掉，剧本的版本号不变）；已经开始的故事不受影响 |
 | 删除角色卡 | `scenario_cards` 里有这张卡就拒绝（409 `CARD_IN_USE`，外键也是 RESTRICT）。级联删除 `card_revisions`；指向它的草稿 `card_id` 置空。它和它的版本用过的封面没有别处在用时一起删掉 |
 | 删除草稿 | 正在跑的 agent 先置停止；级联删除 `workbench_assets`、`workbench_messages`、`workbench_events`、`workbench_notes` 和记在它上面的 `agent_runs`（连同 `agent_steps`）；`card_revisions.draft_id` 置空。草稿里的图没有别处在用（不是哪张卡或哪个版本的封面）时一起删掉 |

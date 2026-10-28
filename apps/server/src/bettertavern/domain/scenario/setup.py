@@ -1,6 +1,8 @@
-"""剧本的设置（scenarios.setup）：默认主角、偏好、用哪张卡的哪条开场白、是不是闪电模式。
+"""剧本的设置（scenarios.setup）：默认人设、默认主角、偏好、用哪张卡的哪条开场白、是不是闪电模式。
 
 开新故事时用它预填没填的字段；opening 为空时由导演写开场。
+默认人设（persona_id，F3）选了的时候，protagonist 是那个人设的名字和描述的副本（描述截到 400 字），
+给还不认识人设的旧版 App 读；人设改了、删了由人设服务跟着改（services/persona_service.py）。
 这里只做形状和长度的规整；opening 指向的卡是否在剧本里、开场白编号是否存在，
 由 opening_problem 检查。
 """
@@ -30,6 +32,7 @@ class Opening:
 
 @dataclass(frozen=True, slots=True)
 class ScenarioSetup:
+    persona_id: str | None = None
     protagonist_name: str = ""
     protagonist_summary: str = ""
     length: Length = "medium"
@@ -58,7 +61,9 @@ class ScenarioSetup:
             protagonist = {}
         if not isinstance(preferences, Mapping):
             preferences = {}
+        persona_id = _clean(data.get("persona_id"), 64)
         return cls(
+            persona_id=persona_id or None,
             protagonist_name=_clean(protagonist.get("name"), MAX_PROTAGONIST_NAME),
             protagonist_summary=_clean(protagonist.get("summary"), MAX_PROTAGONIST_SUMMARY),
             length=length if length in ("short", "medium", "long") else "medium",
@@ -70,6 +75,7 @@ class ScenarioSetup:
 
     def to_json(self) -> dict[str, Any]:
         return {
+            "persona_id": self.persona_id,
             "protagonist": {"name": self.protagonist_name, "summary": self.protagonist_summary},
             "preferences": {
                 "length": self.length,

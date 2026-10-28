@@ -2,12 +2,12 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [人设库](personas.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 这里有三个仓库：
 
 - **角色卡仓库**：正式保存的角色卡。卡只从[工作台](workbench.md)保存进来（新建、导入、修改都先是草稿）；这里能看、删、看版本历史、恢复旧版、导出。
-- **剧本仓库**：从角色卡仓库里选一张或几张卡（群像剧本）建剧本，再加上剧本的设置（默认主角、偏好、用哪条开场白），可以挂几本世界书。
+- **剧本仓库**：从角色卡仓库里选一张或几张卡（群像剧本）建剧本，再加上剧本的设置（默认人设、偏好、用哪条开场白），可以挂几本世界书。
 - **世界书仓库**：导入 SillyTavern 的世界书文件，或者新建空白的；能改名、改条目、删除。设计见 [lorebook.md](../lorebook.md)。
 
 剧本**实时引用**角色卡和世界书：只记 id，开新故事时读它们当时最新的内容；已经开始的故事不受影响。有剧本在用的卡不能删；世界书删掉时自动从剧本上摘掉。
@@ -133,7 +133,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `protagonist` | [`SetupProtagonist`](#setupprotagonist) | 否 | 默认主角 |
+| `persona_id` | string / null | 否 | 默认人设（[人设库](personas.md)）：开新故事时先替玩家选好它。必须是自己的人设，不存在时 422（`field: "setup.persona_id"`）。选了的时候，服务端把 `protagonist` 写成这个人设的名字和描述的副本（描述截到 400 字），人设改了跟着改、删了一起清空，给还不认识人设的旧版客户端读 |
+| `protagonist` | [`SetupProtagonist`](#setupprotagonist) | 否 | 默认主角（选了默认人设时是它的副本，见上一行）。旧版客户端只读写这一项，不带 `persona_id` 保存时剧本就不再选人设 |
 | `preferences` | [`SetupPreferences`](#setuppreferences) | 否 | 默认偏好 |
 | `opening` | [`SetupOpening`](#setupopening) / null | 否 | 用哪张卡的哪条开场白开场；为 null 时由导演写开场 |
 | `lightning` | boolean | 否 | 闪电模式，默认 `false`。开着时这个剧本开的新故事花费更少、没有世界状态（存档的 `mode` 是 `lightning`）；已经开始的故事不受影响 |

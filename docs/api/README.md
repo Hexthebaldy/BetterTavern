@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [人设库](personas.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 这个目录说明服务端**已经实现**的全部接口，内容以代码为准。完整的接口设计（包括还没做的会话通道、导出，以及决定不做的重新生成）见 [backend.md 第 9 节](../backend.md)，
 实现与设计的差异见 [backend.md 第 12 节](../backend.md)。非生产环境下，服务端在 `/docs` 提供交互式文档，OpenAPI 在 `/openapi.json`。
@@ -15,6 +15,7 @@
 | [models.md](models.md) | 服务商与模型路由（玩家配好的模型，含 Key 和端点） | `/v1/providers*`、`/v1/model-routes*` |
 | [tools.md](tools.md) | 外部服务：搜索、读网页、文生图的配置 | `/v1/tool-providers`、`/v1/tool-routes*` |
 | [library.md](library.md) | 角色卡仓库、剧本仓库与世界书仓库 | `/v1/cards*`、`/v1/scenarios*`、`/v1/lorebooks*`、`/v1/blobs/*` |
+| [personas.md](personas.md) | 人设库：玩家扮演的“我” | `/v1/personas*` |
 | [workbench.md](workbench.md) | 工作台：草稿、图片、保存到角色卡仓库 | `/v1/workbench/*` |
 | [play.md](play.md) | 游玩与回合 | `/v1/playthroughs*`、`/v1/turns/*` |
 | [events.md](events.md) | 回合事件流（SSE）的格式 | `/v1/turns/{turn_id}/events` 推送的内容（接口本身在 play.md） |
@@ -93,10 +94,10 @@
 | 用户 | 5（`RATE_LIMIT_AUTH_PER_MIN`） | `POST /v1/me/password` |
 | 用户 | 30（`RATE_LIMIT_TURNS_PER_MIN`），两个接口共用一个计数 | `POST /v1/playthroughs`、`POST /v1/playthroughs/{playthrough_id}/turns` |
 | 用户 | 5（`RATE_LIMIT_PROBE_PER_MIN`），三个接口各自计数 | `POST /v1/model-routes/{route_id}/probe`、`POST /v1/providers/{provider}/models`、`POST /v1/tool-routes/{route_id}/test` |
-| 用户 | 20（`RATE_LIMIT_WORKBENCH_PER_MIN`），八个接口共用一个计数 | `POST /v1/workbench/drafts`、`POST /v1/workbench/drafts/import`、`POST /v1/workbench/drafts/{draft_id}/assets`、`POST /v1/workbench/drafts/{draft_id}/covers`、`POST /v1/workbench/drafts/{draft_id}/messages`、`POST /v1/workbench/drafts/{draft_id}/continue`、`POST /v1/lorebooks`、`POST /v1/lorebooks/import` |
+| 用户 | 20（`RATE_LIMIT_WORKBENCH_PER_MIN`），十个接口共用一个计数 | `POST /v1/workbench/drafts`、`POST /v1/workbench/drafts/import`、`POST /v1/workbench/drafts/{draft_id}/assets`、`POST /v1/workbench/drafts/{draft_id}/covers`、`POST /v1/workbench/drafts/{draft_id}/messages`、`POST /v1/workbench/drafts/{draft_id}/continue`、`POST /v1/lorebooks`、`POST /v1/lorebooks/import`、`POST /v1/personas/import`、`PUT /v1/personas/{persona_id}/avatar` |
 
 另外每个用户有用量上限（不是按时间，是同时存在的数量）：同时在写的 agent 最多 2 个（`MAX_RUNNING_AGENTS`），
-没保存的草稿最多 50 份（`MAX_OPEN_DRAFTS`），世界书最多 100 本（`MAX_LOREBOOKS`），存的图一共最多 200 MB（`MAX_IMAGE_BYTES_PER_USER`），超过时返回 409，见下面的错误码。
+没保存的草稿最多 50 份（`MAX_OPEN_DRAFTS`），世界书最多 100 本（`MAX_LOREBOOKS`），人设最多 200 个（`MAX_PERSONAS`），存的图一共最多 200 MB（`MAX_IMAGE_BYTES_PER_USER`），超过时返回 409，见下面的错误码。
 
 客户端 IP 取的是连接的对端地址；对端在 `FORWARDED_ALLOW_IPS`（默认 `127.0.0.1,::1`，可以写网段）里时，改用它带来的 `X-Forwarded-For`
 里最后一个不受信任的地址，也就是代理看到的真实 IP。服务部署在反向代理后面时，要把代理的地址加进这个变量，否则所有玩家会共用代理的 IP 计数。
@@ -166,6 +167,7 @@
 | `TOO_MANY_RUNS` | 409 | 同时在写的 agent 已经到上限（别的草稿还在写） | `limit` |
 | `TOO_MANY_DRAFTS` | 409 | 没保存的草稿已经到上限 | `limit` |
 | `TOO_MANY_LOREBOOKS` | 409 | 世界书已经到上限 | `limit` |
+| `TOO_MANY_PERSONAS` | 409 | 人设已经到上限 | `limit` |
 | `STORAGE_FULL` | 409 | 存的图已经到上限 | `limit_mb` |
 | `TOOL_ROUTE_MISSING` | 409 | 封面面板直接出图时，还没配文生图 |  |
 | `TOOL_ROUTE_INVALID` | 502 | 文生图服务出错（Key 不对、额度用完、内容策略、网络） | `reason`（`auth` / `quota` / `blocked` / `http` / `network` / `bad_response`） |
@@ -179,6 +181,7 @@
 | `CARD_INVALID` | 422 | 角色卡无法解析 |  |
 | `LOREBOOK_INVALID` | 422 | 世界书无法解析（不是世界书、坏了、没有能用的条目、太长） |  |
 | `LOREBOOK_IS_CARD` | 422 | 导入世界书时传的是角色卡 |  |
+| `PERSONA_BACKUP_INVALID` | 422 | 导入的不是 SillyTavern 的人设备份（不是 JSON，或者没有 `personas`） |  |
 | `CARD_CHECK_FAILED` | 422 | 草稿保存进仓库前没通过检查 | `issues`（问题清单，见 [workbench.md](workbench.md#issueout)）、`field` |
 | `IMAGE_INVALID` | 422 | 上传的不是 PNG、JPEG、WebP，或者解码失败、像素太多 | `field` |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | 同一个 `Idempotency-Key` 对应了不同的请求内容 |  |

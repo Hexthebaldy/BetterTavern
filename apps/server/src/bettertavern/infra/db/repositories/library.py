@@ -99,7 +99,8 @@ async def get_blob(conn: AsyncConnection, user_id: str, blob_id: str) -> BlobRow
 
 
 async def delete_orphan_blobs(conn: AsyncConnection, user_id: str, blob_ids: Sequence[str]) -> int:
-    """删掉这几张图里已经没人用的：不是哪张卡或哪个版本的封面，也不在哪份草稿的图片里。"""
+    """删掉这几张图里已经没人用的：不是哪张卡或哪个版本的封面、哪个人设的头像，
+    也不在哪份草稿的图片里。"""
     ids = sorted({b for b in blob_ids if b})
     if not ids:
         return 0
@@ -111,6 +112,7 @@ async def delete_orphan_blobs(conn: AsyncConnection, user_id: str, blob_ids: Seq
           AND NOT EXISTS (SELECT 1 FROM cards WHERE cover_blob_id = b.id)
           AND NOT EXISTS (SELECT 1 FROM card_revisions WHERE cover_blob_id = b.id)
           AND NOT EXISTS (SELECT 1 FROM workbench_assets WHERE blob_id = b.id)
+          AND NOT EXISTS (SELECT 1 FROM personas WHERE avatar_blob_id = b.id)
         """,
         {"u": user_id, "ids": as_uuid_list(ids)},
     )

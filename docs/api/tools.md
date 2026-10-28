@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](../data-model/README.md) · [接口](README.md)
 >
-> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
+> 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [人设库](personas.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 工作台的 agent 联网和出图用的外部服务：网页搜索（含搜图）、读网页的服务商（可选）、文生图（生成封面）。和模型路由分开配：
 模型那边的上下文窗口、能力表、导演这些和外部服务无关。设计见 [workbench.md 第 5、6 节](../workbench.md)，表见 [数据模型：外部服务](../data-model/tools.md)。

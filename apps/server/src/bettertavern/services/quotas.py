@@ -1,4 +1,4 @@
-"""每个用户的用量上限：同时在写的 agent、没保存的草稿、世界书几本、存的图一共多大
+"""每个用户的用量上限：同时在写的 agent、没保存的草稿、世界书几本、人设几个、存的图一共多大
 （数值在 settings.py）。
 
 公开部署时防止一个账号占满整台机器：超过时返回 409，客户端按错误码提示。
@@ -16,6 +16,7 @@ from bettertavern.infra.db.repositories import accounts as accounts_repo
 from bettertavern.infra.db.repositories import drafts as drafts_repo
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import lorebooks as lorebooks_repo
+from bettertavern.infra.db.repositories import personas as personas_repo
 from bettertavern.infra.db.repositories import workbench as workbench_repo
 
 from .errors import AppError
@@ -28,6 +29,7 @@ class Quotas:
     max_running_agents: int = 2
     max_open_drafts: int = 50
     max_lorebooks: int = 100
+    max_personas: int = 200
     max_image_bytes: int = 200 * MIB
     # 官方搜索：每个用户每天几次、全站每个月几次（用完了查维基百科，不报错）
     platform_searches_per_day: int = 30
@@ -65,6 +67,18 @@ async def check_lorebooks(conn: AsyncConnection, user_id: str, quotas: Quotas) -
             code="TOO_MANY_LOREBOOKS",
             status=409,
             limit=quotas.max_lorebooks,
+        )
+
+
+async def check_personas(
+    conn: AsyncConnection, user_id: str, quotas: Quotas, adding: int = 1
+) -> None:
+    if await personas_repo.count_personas(conn, user_id) + adding > quotas.max_personas:
+        raise AppError(
+            "Too many personas, delete some first",
+            code="TOO_MANY_PERSONAS",
+            status=409,
+            limit=quotas.max_personas,
         )
 
 

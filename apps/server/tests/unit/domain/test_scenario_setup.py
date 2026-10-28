@@ -13,6 +13,7 @@ LIN = CharacterCard(
 def test_empty_setup_has_defaults() -> None:
     setup = ScenarioSetup.from_json({})
     assert setup.to_json() == {
+        "persona_id": None,
         "protagonist": {"name": "", "summary": ""},
         "preferences": {"length": "medium", "style": "", "boundaries": ""},
         "opening": None,
@@ -49,3 +50,9 @@ def test_opening_must_point_at_an_existing_greeting() -> None:
     assert opening_problem(Opening("c1", 1), cards) is not None  # 空的那条
     assert opening_problem(Opening("c1", 3), cards) is not None
     assert opening_problem(Opening("c2", 0), cards) is not None
+
+
+def test_the_default_persona_is_kept() -> None:
+    setup = ScenarioSetup.from_json({"persona_id": " p1 ", "protagonist": {"name": "林川"}})
+    assert setup.persona_id == "p1" and setup.to_json()["persona_id"] == "p1"
+    assert ScenarioSetup.from_json({"persona_id": ""}).persona_id is None

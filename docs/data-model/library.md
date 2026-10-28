@@ -2,7 +2,7 @@
 
 > 文档索引：[总览](../README.md) · [后端](../backend.md) · [客户端](../client.md) · [测试](../testing.md) · [数据模型](README.md) · [接口](../api/README.md)
 >
-> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
+> 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [人设库](personas.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
 角色卡仓库（`cards`、`card_revisions`）、剧本仓库（`scenarios`、`scenario_cards`、`scenario_lorebooks`）、世界书仓库（`lorebooks`，设计见 [lorebook.md](../lorebook.md)）和图片文件（`blobs`）。
 对应的接口见 [api/library.md](../api/library.md)；卡从工作台的草稿保存进来，草稿的表见 [workbench.md](workbench.md)。
@@ -31,8 +31,8 @@
 
 约束与索引：`size >= 0`、`width > 0`、`height > 0` 的 CHECK；`blobs_user_sha_idx (user_id, sha256)`。
 
-一张图可能同时被卡的封面、旧版本的封面和草稿里的图片记录引用。删卡、删草稿、版本被淘汰时，调用方把涉及的图交给
-`delete_orphan_blobs`，它只删三处都没人用的。以后换成对象存储，只需要改 `infra/db/repositories/library.py`（[backend.md 第 12 节](../backend.md)）。
+一张图可能同时被卡的封面、旧版本的封面、草稿里的图片记录和人设的头像引用。删卡、删草稿、版本被淘汰、换头像、删人设时，调用方把涉及的图交给
+`delete_orphan_blobs`，它只删四处都没人用的。以后换成对象存储，只需要改 `infra/db/repositories/library.py`（[backend.md 第 12 节](../backend.md)）。
 
 ### `cards`
 
@@ -240,7 +240,8 @@
 
 ```jsonc
 {
-  "protagonist": { "name": "宝玉", "summary": "荣国府的二公子" },          // 默认主角；name 最多 40 字，summary 最多 400 字
+  "persona_id": "…",                                                      // 默认人设（personas.id），可以为 null；迁移 0029 前没有这个键
+  "protagonist": { "name": "宝玉", "summary": "荣国府的二公子" },          // 默认主角；name 最多 40 字，summary 最多 400 字。选了默认人设时是它的副本（给旧版 App 读）
   "preferences": { "length": "medium", "style": "", "boundaries": "" },  // 默认偏好，含义同开局时的偏好
   "opening": { "card_id": "…", "greeting": 0 },                          // 用哪张卡的哪条开场白：0 是 first_mes，1 起是备选开场白；为 null 时由导演写开场
   "lightning": false                                                      // 闪电模式：这个剧本开的新故事不在后台整理世界状态（playthroughs.mode）；只影响之后开始的故事

@@ -101,3 +101,27 @@ def cover_png(data: bytes | None, *, width: int = 512, height: int = 768) -> byt
     out = io.BytesIO()
     image.save(out, format="PNG", optimize=True)
     return out.getvalue()
+
+
+def avatar_image(data: bytes, *, side: int = 512) -> CleanImage:
+    """人设的头像：先按 clean_image 清洗，再居中裁成正方形、缩到 side×side。格式不变。"""
+    clean = clean_image(data)
+    with Image.open(io.BytesIO(clean.data)) as source:
+        source.load()
+        fmt = source.format or "PNG"
+        image = ImageOps.fit(source, (side, side)) if source.size != (side, side) else source.copy()
+    out = io.BytesIO()
+    if fmt == "JPEG":
+        image.convert("RGB").save(out, format="JPEG", quality=90, optimize=True)
+    elif fmt == "WEBP":
+        image.save(out, format="WEBP", quality=90)
+    else:
+        image.save(out, format="PNG", optimize=True)
+    encoded = out.getvalue()
+    return CleanImage(
+        data=encoded,
+        mime=clean.mime,
+        width=side,
+        height=side,
+        sha256=hashlib.sha256(encoded).hexdigest(),
+    )

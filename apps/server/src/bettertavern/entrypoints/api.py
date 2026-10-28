@@ -32,6 +32,13 @@ from bettertavern.api.v1.lorebooks import (
 )
 from bettertavern.api.v1.lorebooks import IMPORT_PATH as LOREBOOK_IMPORT_PATH
 from bettertavern.api.v1.lorebooks import router as lorebooks_router
+from bettertavern.api.v1.personas import (
+    AVATAR_PATH_PATTERN,
+    MAX_AVATAR_BODY_BYTES,
+)
+from bettertavern.api.v1.personas import IMPORT_PATH as PERSONA_IMPORT_PATH
+from bettertavern.api.v1.personas import MAX_IMPORT_BODY_BYTES as MAX_PERSONA_IMPORT_BYTES
+from bettertavern.api.v1.personas import router as personas_router
 from bettertavern.api.v1.playthroughs import router as playthroughs_router
 from bettertavern.api.v1.routes import router as routes_router
 from bettertavern.api.v1.scenarios import router as scenarios_router
@@ -202,11 +209,13 @@ def create_app(
         limits={
             IMPORT_PATH: MAX_UPLOAD_BYTES + 256 * 1024,
             LOREBOOK_IMPORT_PATH: MAX_IMPORT_BODY_BYTES,
+            PERSONA_IMPORT_PATH: MAX_PERSONA_IMPORT_BYTES,
         },
         patterns=[
             (CARD_PATH_PATTERN, MAX_CARD_BODY_BYTES),
             (ASSET_PATH_PATTERN, MAX_IMAGE_BYTES + 256 * 1024),
             (BOOK_PATH_PATTERN, MAX_BOOK_BODY_BYTES),
+            (AVATAR_PATH_PATTERN, MAX_AVATAR_BODY_BYTES),
         ],
     )
     if settings.cors_origin_list:
@@ -226,6 +235,7 @@ def create_app(
     app.include_router(cards_router)
     app.include_router(scenarios_router)
     app.include_router(lorebooks_router)
+    app.include_router(personas_router)
     app.include_router(workbench_router)
     app.include_router(tools_router)
     app.include_router(playthroughs_router)

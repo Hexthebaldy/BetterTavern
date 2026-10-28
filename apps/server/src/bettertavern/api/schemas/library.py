@@ -201,6 +201,8 @@ class SetupOpening(BaseModel):
 
 
 class ScenarioSetupModel(BaseModel):
+    # 默认人设（F3）：开新故事时先替玩家选好它；选了的时候 protagonist 是它的副本，旧版客户端读
+    persona_id: str | None = None
     protagonist: SetupProtagonist = Field(default_factory=SetupProtagonist)
     preferences: SetupPreferences = Field(default_factory=SetupPreferences)
     # 用哪张卡的哪条开场白；为空时由导演写开场
