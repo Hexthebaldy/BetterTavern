@@ -11,6 +11,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 
 import type { Draft, Issue } from "@bettertavern/core/api/types";
 import {
+  ADVANCED_FIELDS,
   CARD_LIMITS,
   charCount,
   EMPTY_CODES,
@@ -38,7 +39,7 @@ function sectionOf(field: string): Section {
   if (field === "description" || field === "personality") return "character";
   if (field === "scenario" || field === "first_mes") return "opening";
   if (field === "mes_example") return "speech";
-  if (field === "system_prompt" || field === "creator_notes") return "advanced";
+  if (ADVANCED_FIELDS.includes(field)) return "advanced";
   return "basic";
 }
 
@@ -230,6 +231,8 @@ export const ManualPane = forwardRef<
 
         {heading("advanced")}
         {textField("system_prompt", 100, t("cardEdit.hints.system_prompt"))}
+        {textField("post_history_instructions", 80, t("cardEdit.hints.post_history_instructions"))}
+        {textField("depth_prompt", 80, t("cardEdit.hints.depth_prompt"))}
         {textField("creator_notes", 100, t("cardEdit.hints.creator_notes"))}
 
         {heading("book", t("cardEdit.entries", { count: form.book.length }))}

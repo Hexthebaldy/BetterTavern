@@ -41,9 +41,19 @@ export const TEXT_FIELDS = [
   "first_mes",
   "mes_example",
   "system_prompt",
+  "post_history_instructions",
+  "depth_prompt",
   "creator_notes",
 ] as const;
 export type TextField = (typeof TEXT_FIELDS)[number];
+
+/** “给导演的指令与作者备注”那一节：一般不用写，空着的时候预览里不显示 */
+export const ADVANCED_FIELDS: readonly string[] = [
+  "system_prompt",
+  "post_history_instructions",
+  "depth_prompt",
+  "creator_notes",
+] satisfies TextField[];
 
 export type LabeledField = TextField | "name" | "display_name" | "tags" | "alternate_greetings";
 
@@ -101,6 +111,8 @@ export type CardDraft = {
   first_mes: string;
   mes_example: string;
   system_prompt: string;
+  post_history_instructions: string;
+  depth_prompt: string;
   creator_notes: string;
   greetings: GreetingDraft[];
   tags: string;
@@ -202,6 +214,9 @@ export function draftOf(card: CharacterCard, displayName: string): CardDraft {
     first_mes: card.first_mes,
     mes_example: card.mes_example,
     system_prompt: card.system_prompt,
+    post_history_instructions: card.post_history_instructions ?? "",
+    // 更新前的服务端没有这一项
+    depth_prompt: card.depth_prompt ?? "",
     creator_notes: card.creator_notes,
     greetings: card.alternate_greetings.map((text) => newGreeting(text)),
     tags: joinList(card.tags),
@@ -253,6 +268,8 @@ export function cardOf(draft: CardDraft): CharacterCardInput {
     first_mes: draft.first_mes,
     mes_example: draft.mes_example,
     system_prompt: draft.system_prompt,
+    post_history_instructions: draft.post_history_instructions,
+    depth_prompt: draft.depth_prompt,
     creator_notes: draft.creator_notes,
     alternate_greetings: draft.greetings.map((g) => g.text),
     tags: splitList(draft.tags),

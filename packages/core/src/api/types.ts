@@ -189,6 +189,10 @@ export type CharacterCard = {
   first_mes: string;
   mes_example: string;
   system_prompt: string;
+  /** 历史后置指令：导演每回合放在玩家行动后面看 */
+  post_history_instructions: string;
+  /** 角色备注（SillyTavern 的 Character's Note）：和后置指令放在一起 */
+  depth_prompt: string;
   creator_notes: string;
   alternate_greetings: string[];
   tags: string[];
@@ -196,7 +200,6 @@ export type CharacterCard = {
   /** 下面几项不能在 BetterTavern 里改，原样保留 */
   creator: string;
   character_version: string;
-  post_history_instructions: string;
   /** 导入时因为太长被截断、之后没改过的字段 */
   truncated: string[];
 };
@@ -211,6 +214,8 @@ export type CharacterCardInput = Pick<
   | "first_mes"
   | "mes_example"
   | "system_prompt"
+  | "post_history_instructions"
+  | "depth_prompt"
   | "creator_notes"
   | "alternate_greetings"
   | "tags"

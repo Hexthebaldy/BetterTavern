@@ -10,7 +10,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Hunk, Issue } from "@bettertavern/core/api/types";
-import { describeIssue, fieldLabel, TEXT_FIELDS, type TextField } from "@bettertavern/core/scenario/cardEdit";
+import {
+  ADVANCED_FIELDS,
+  describeIssue,
+  fieldLabel,
+  TEXT_FIELDS,
+  type TextField,
+} from "@bettertavern/core/scenario/cardEdit";
 import { awaitedMessage, type WorkbenchState } from "@bettertavern/core/workbench/session";
 import { fieldList } from "@bettertavern/core/workbench/labels";
 
@@ -73,7 +79,7 @@ function CardTab({ state, onOpenCover }: { state: WorkbenchState; onOpenCover: (
     const live = writing?.target === `field:${field}` ? writing.text : null;
     const changed = pending.fields.get(field);
     const text = live ?? changed ?? card[field];
-    if (!text.trim() && live === null && (field === "system_prompt" || field === "creator_notes")) return null;
+    if (!text.trim() && live === null && ADVANCED_FIELDS.includes(field)) return null;
     return (
       <div
         key={field}

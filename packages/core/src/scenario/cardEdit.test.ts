@@ -42,6 +42,8 @@ const CARD: CharacterCard = {
   first_mes: "外乡人？",
   mes_example: "",
   system_prompt: "",
+  post_history_instructions: "别让 {{char}} 太快信任 {{user}}",
+  depth_prompt: "",
   creator_notes: "",
   alternate_greetings: ["雨停了。"],
   tags: ["酒馆", "雨夜"],
@@ -61,7 +63,6 @@ const CARD: CharacterCard = {
   ],
   creator: "",
   character_version: "",
-  post_history_instructions: "",
   truncated: [],
 };
 
@@ -81,6 +82,12 @@ describe("编辑角色卡", () => {
     assert.deepEqual(input.card.alternate_greetings, ["雨停了。"]);
     assert.deepEqual(input.card.book[0], CARD.book[0]);
     assert.deepEqual(input.card.book[1], CARD.book[1]);
+    // 后置指令和角色备注也能改，跟着请求发出去
+    assert.equal(input.card.post_history_instructions, "别让 {{char}} 太快信任 {{user}}");
+    assert.equal(toInput({ ...draft, depth_prompt: "嘴硬心软" }).card.depth_prompt, "嘴硬心软");
+    // 更新前的服务端没有角色备注：当作空的
+    const { depth_prompt: _, ...old } = CARD;
+    assert.equal(draftOf(old as CharacterCard, "").depth_prompt, "");
   });
 
   it("改过没有：空白和分隔符写法不算改动", () => {
@@ -90,6 +97,7 @@ describe("编辑角色卡", () => {
     assert.equal(isDirty(original, { ...original, description: `${original.description}\n` }), false);
     assert.equal(isDirty(original, { ...original, description: "改了" }), true);
     assert.equal(isDirty(original, { ...original, creator_notes: "备注" }), true);
+    assert.equal(isDirty(original, { ...original, depth_prompt: "角色备注" }), true);
     assert.equal(isDirty(original, { ...original, greetings: [] }), true);
     assert.equal(isDirty(original, { ...original, book: moveEntry(original.book, 0, 1) }), true);
   });

@@ -11,6 +11,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-na
 
 import type { Hunk, Issue } from "@bettertavern/core/api/types";
 import {
+  ADVANCED_FIELDS,
   charCount,
   describeIssue,
   fieldLabel,
@@ -114,7 +115,7 @@ function CardBody({ state, onOpenCover }: { state: WorkbenchState; onOpenCover: 
     const live = writing?.target === `field:${f}` ? writing.text : null;
     const changed = pending.fields.get(f);
     const text = live ?? changed ?? card[f];
-    if (!text.trim() && live === null && (f === "system_prompt" || f === "creator_notes")) return null;
+    if (!text.trim() && live === null && ADVANCED_FIELDS.includes(f)) return null;
     return (
       <Block
         key={f}
