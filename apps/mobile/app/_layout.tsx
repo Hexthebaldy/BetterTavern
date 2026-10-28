@@ -101,6 +101,8 @@ function RootNavigator() {
           <Stack.Screen name="play/[id]/index" />
           <Stack.Screen name="settings/models" />
           <Stack.Screen name="settings/tools" />
+          <Stack.Screen name="settings/personas" />
+          <Stack.Screen name="settings/persona/[id]" />
           <Stack.Screen name="settings/model/[id]" />
           <Stack.Screen name="settings/account" />
         </Stack.Protected>

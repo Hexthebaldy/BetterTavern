@@ -19,6 +19,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { CardDetail, LorebookSummary, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
 import { LOREBOOK_LIMITS } from "@bettertavern/core/scenario/lorebook";
+import { BLANK, setupChoice, setupFields } from "@bettertavern/core/scenario/persona";
 
 import { Cover } from "../../src/components/Cover.tsx";
 import {
@@ -39,6 +40,7 @@ import {
   useOverlay,
 } from "../../src/components/ui.tsx";
 import { useLorebookImport } from "../../src/features/library/lorebookActions.ts";
+import { usePersonas } from "../../src/features/personas/usePersonas.ts";
 import { StartForm, type StartValues } from "../../src/features/scenario/StartForm.tsx";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
@@ -70,6 +72,8 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
   );
   const [name, setName] = useState(scenario?.name ?? "");
   const [values, setValues] = useState<StartValues | null>(null);
+  const personas = usePersonas();
+  const personaList = personas.data ?? [];
   const [opening, setOpening] = useState<Opening>(scenario?.setup.opening ?? null);
   const [lightning, setLightning] = useState(scenario?.setup.lightning ?? false);
   const [details, setDetails] = useState<Map<string, CardDetail>>(new Map());
@@ -125,7 +129,7 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
     setSaving(true);
     setProblem(null);
     const setup: ScenarioSetup = {
-      protagonist: { name: values.name, summary: values.summary },
+      ...setupFields(values.choice, personaList),
       preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
       opening,
       lightning,
@@ -289,16 +293,20 @@ function Form({ scenario, presetCard, onChanged }: { scenario: Scenario | null; 
 
           <SectionHeader title={t("newScenario.protagonist")} style={styles.section} />
           <Text style={[styles.hint, { color: c.mut }]}>{t("newScenario.protagonistHint")}</Text>
-          {/* 五步的格子自己离边 20：抵掉这一页的左右边距 */}
+          {/* 四步的格子自己离边 20：抵掉这一页的左右边距 */}
           <View style={{ marginHorizontal: -space.page }}>
-            <StartForm
-              initial={
-                scenario
-                  ? { name: scenario.setup.protagonist.name, summary: scenario.setup.protagonist.summary, ...scenario.setup.preferences }
-                  : undefined
-              }
-              onChange={(next) => setValues(next)}
-            />
+            {personas.loading && !personas.data ? null : (
+              <StartForm
+                mode="scenario"
+                personas={personaList}
+                initial={
+                  scenario
+                    ? { choice: setupChoice(scenario.setup, personaList), ...scenario.setup.preferences }
+                    : { choice: BLANK }
+                }
+                onChange={(next) => setValues(next)}
+              />
+            )}
           </View>
 
           <SectionHeader title={t("newScenario.opening")} style={styles.section} />

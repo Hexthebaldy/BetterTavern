@@ -7,6 +7,8 @@ export const settings: MessagesOtherOnly<typeof source> = {
       models: "モデル",
       model: "モデルの詳細",
       tools: "外部サービス",
+      personas: "ペルソナ",
+      persona: "ペルソナ",
       account: "アカウント",
       probe: "接続テスト",
       addModel: "モデルを追加",

@@ -6,6 +6,8 @@ export const settings = {
       models: "模型",
       model: "模型详情",
       tools: "外部服务",
+      personas: "人设",
+      persona: "人设",
       account: "账户",
       probe: "连接测试",
       addModel: "添加模型",

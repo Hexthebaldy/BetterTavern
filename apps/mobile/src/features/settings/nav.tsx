@@ -1,7 +1,7 @@
 /**
  * 设置里的页面怎么往下走一层、怎么返回。
  *
- * 设置子页（模型列表、模型详情、外部服务、账户、连接测试）的主体在 features/settings/screens/ 里，
+ * 设置子页（模型列表、模型详情、外部服务、人设、账户、连接测试）的主体在 features/settings/screens/ 里，
  * 既能当路由页面（手机、中屏，app/settings/*.tsx 只是转一下），
  * 也能嵌进宽屏设置两栏的右栏（SettingsPane.tsx）。主体用 useSettingsNav() 跳转：
  * 路由页面里就是 router.push / router.back；嵌在右栏里时改成右栏自己的一个小栈，左栏不动。
@@ -16,6 +16,9 @@ export type SettingsTarget =
   | { screen: "models" }
   | { screen: "model"; id: string }
   | { screen: "tools" }
+  /** 人设库和编辑一个人设（id 为 new 是新建） */
+  | { screen: "personas" }
+  | { screen: "persona"; id: string }
   | { screen: "account" }
   | { screen: "probe" }
   /** 添加模型：只在宽屏设置的右栏里单独打开（左栏“模型”的加号）；手机上添加表单在模型页里 */
@@ -49,6 +52,9 @@ export function useSettingsNav(): SettingsNav {
           else if (target.screen === "model")
             router.push({ pathname: "/settings/model/[id]", params: { id: target.id } });
           else if (target.screen === "tools") router.push("/settings/tools");
+          else if (target.screen === "personas") router.push("/settings/personas");
+          else if (target.screen === "persona")
+            router.push({ pathname: "/settings/persona/[id]", params: { id: target.id } });
           else if (target.screen === "account") router.push("/settings/account");
           else router.push("/dev/probe");
         },

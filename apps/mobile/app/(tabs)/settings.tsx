@@ -1,6 +1,6 @@
 /**
  * 设置首页（漫画风，docs/design/comic/mobile/png/29）：最上面是墨底的导演模型格（蓝投影 4；没设置时是引导格），
- * 下面两组：配置（第一行是登录的账户）、其他。“其他”里的“外观”打开主题面板（跟随系统 / 浅色 / 夜间），选了立刻生效；
+ * 下面两组：配置（第一行是登录的账户，第二行是人设库）、其他。“其他”里的“外观”打开主题面板（跟随系统 / 浅色 / 夜间），选了立刻生效；
  * 平板上它是居中对话框。
  *
  * 平板（theme/layout.ts）：中屏单栏，宽 640，居中，逐层进入，和手机一样；
@@ -45,6 +45,7 @@ import { useSettingsNav, type SettingsTarget } from "../../src/features/settings
 import { ModelRow } from "../../src/features/settings/screens/ModelsBody.tsx";
 import { displayServer } from "../../src/features/settings/servers.ts";
 import { SettingsPane } from "../../src/features/settings/SettingsPane.tsx";
+import { usePersonas } from "../../src/features/personas/usePersonas.ts";
 import { useAsync } from "../../src/hooks/useAsync.ts";
 import { useLayout } from "../../src/hooks/useLayout.ts";
 import { useApp } from "../../src/state/AppProvider.tsx";
@@ -185,6 +186,7 @@ export default function SettingsScreen() {
     ]);
     return { director: routes.find((r) => r.is_director) ?? null, routes, credits };
   }, [api]);
+  const personas = usePersonas();
   const reloadQuietly = useCallback(() => void refresh(), [refresh]);
 
   const { bottom: bottomSpace } = useTabBarSpace();
@@ -286,6 +288,18 @@ export default function SettingsScreen() {
               }
               onPress={() => open({ screen: "account" })}
               selected={isOpen("account")}
+            />
+            <ListRow
+              key="personas"
+              title={t("personas.title")}
+              subtitle={
+                personas.data?.length
+                  ? t("personas.count", { count: personas.data.length })
+                  : t("personas.noneHint")
+              }
+              leading={<RowIcon name="person" />}
+              onPress={() => open({ screen: "personas" })}
+              selected={isOpen("personas") || isOpen("persona")}
             />
             {data && !director && !expanded ? (
               <ListRow

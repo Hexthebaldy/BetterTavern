@@ -7,6 +7,8 @@ export const settings: Messages<typeof source> = {
       models: "Models",
       model: "Model details",
       tools: "External services",
+      personas: "Personas",
+      persona: "Persona",
       account: "Account",
       probe: "Connection test",
       addModel: "Add a model",

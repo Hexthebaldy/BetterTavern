@@ -11,9 +11,11 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View, type TextStyle } from "react-native";
 
+import type { Persona } from "@bettertavern/core/api/types";
 import { BASE_SIZE, lineHeightFor, MAX_SIZE, readingSize, type ReadingPrefs } from "@bettertavern/core/play/reading";
 
 import { Cover } from "../../components/Cover.tsx";
+import { Portrait } from "../../components/Portrait.tsx";
 import { Icon, Pill } from "../../components/ui.tsx";
 import { comicRadius, comicStroke, serifFor, size, space, useComic } from "../../theme/index.ts";
 
@@ -60,13 +62,15 @@ export function useNarrativeStyle(
 
 export type Narr = ReturnType<typeof useNarrativeStyle>;
 
-/** 书名页：往上翻到顶看到的第一屏（白底墨线的格子：封面在上，下面剧本名、主角色和“我是 林川”） */
+/** 书名页：往上翻到顶看到的第一屏（白底墨线的格子：封面在上，下面剧本名、主角色和“我是 林川”）。
+ * 开局时用了人设的，“我是 林川”前面放它的头像（docs/personas.md 第 6 节：阅读页只放在这里） */
 export function BookHeader({
   seed,
   blobId,
   title,
   card,
   protagonist,
+  persona,
   width,
 }: {
   seed: string;
@@ -74,6 +78,7 @@ export function BookHeader({
   title: string;
   card: string | null;
   protagonist: string;
+  persona?: Persona;
   width: number;
 }) {
   const c = useComic();
@@ -89,6 +94,9 @@ export function BookHeader({
         {card || protagonist ? (
           <View style={styles.bookChips}>
             {card ? <Pill label={card} tone="card" height={26} /> : null}
+            {protagonist && persona ? (
+              <Portrait name={persona.name} seed={persona.id} blobId={persona.avatar_blob_id} size={26} rounded={13} />
+            ) : null}
             {protagonist ? <Pill label={t("play.iAm", { name: protagonist })} tone="accSolid" height={26} /> : null}
           </View>
         ) : null}
@@ -255,7 +263,7 @@ const styles = StyleSheet.create({
   bookCover: { borderBottomWidth: comicStroke.frame },
   bookBody: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14, gap: 10 },
   bookTitle: { fontSize: 28, lineHeight: 34, fontWeight: "900", letterSpacing: -0.6 },
-  bookChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  bookChips: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   /** 蓝线在正文的左边距上，字往里缩 13 */
   note: {
     marginBottom: PARAGRAPH_GAP,

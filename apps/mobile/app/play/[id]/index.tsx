@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { canAct, headTurn, isEnded, rollbackStatus, turnsAfter } from "@bettertavern/core/play/turnMachine";
+import { personaOf } from "@bettertavern/core/scenario/persona";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
 
 import { Dots, ErrorState, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
@@ -30,6 +31,7 @@ import { BookHeader } from "../../../src/features/play/FeedParts.tsx";
 import { columnWidth, StoryFeed, type StoryFeedHandle } from "../../../src/features/play/StoryFeed.tsx";
 import { TurnActions } from "../../../src/features/play/TurnActions.tsx";
 import { usePlaySession } from "../../../src/features/play/usePlaySession.ts";
+import { usePersonas } from "../../../src/features/personas/usePersonas.ts";
 import { WorldDock, WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
 import { useLayout } from "../../../src/hooks/useLayout.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
@@ -101,6 +103,8 @@ export default function PlayScreen() {
   const { width } = useLayout();
   const controls = usePlaySession(id);
   const { state } = controls;
+  // 开局时用的人设：书名页“我是 林川”前面放它的头像
+  const personas = usePersonas();
   const [title, setTitle] = useState<string | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const worldMode = worldPresentation(width);
@@ -308,6 +312,7 @@ export default function PlayScreen() {
                 title={shownTitle}
                 card={scenario?.name ?? null}
                 protagonist={state.protagonist}
+                persona={personaOf(state.personaId, personas.data)}
                 width={columnWidth(available)}
               />
             }

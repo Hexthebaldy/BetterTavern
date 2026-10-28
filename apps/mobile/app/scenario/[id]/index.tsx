@@ -22,6 +22,7 @@ import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
 import { lorebookSummary } from "@bettertavern/core/scenario/lorebook";
+import { choiceName, startChoice, startFields } from "@bettertavern/core/scenario/persona";
 import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
 import { needsModelSettings } from "@bettertavern/core/settings/labels";
 import { pane } from "@bettertavern/design/layout";
@@ -40,6 +41,7 @@ import {
   useColumnStyle,
   useOverlay,
 } from "../../../src/components/ui.tsx";
+import { usePersonas } from "../../../src/features/personas/usePersonas.ts";
 import { StartForm, type StartValues } from "../../../src/features/scenario/StartForm.tsx";
 import { useAsync } from "../../../src/hooks/useAsync.ts";
 import { useLayout } from "../../../src/hooks/useLayout.ts";
@@ -170,6 +172,9 @@ export default function ScenarioScreen() {
   // 宽屏右栏底部浮着的摘要栏有多高：表单最后留出这么多
   const [barHeight, setBarHeight] = useState(120);
   const { data: scenario, error, loading, reload } = useAsync(() => api.scenarios.get(id), [api, id]);
+  // 人设库：开新故事时先替你选好一个（docs/personas.md 第 3 节）；没加载出来前不显示表单
+  const personas = usePersonas();
+  const personaList = personas.data ?? [];
   const [values, setValues] = useState<StartValues | null>(null);
   const [summary, setSummary] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
@@ -190,13 +195,19 @@ export default function ScenarioScreen() {
   }
 
   const start = async (): Promise<void> => {
-    if (!values?.name) return;
+    if (!values || !choiceName(values.choice, personaList)) return;
     setStarting(true);
     setStartError(null);
     try {
+      let who = startFields(values.choice);
+      if (values.saveToLibrary && "protagonist" in who) {
+        // 临时填的、勾了“存进人设库”：先存成人设，再用它开局
+        const saved = await api.personas.create({ name: who.protagonist.name, description: who.protagonist.summary });
+        who = { persona_id: saved.id };
+      }
       const created = await api.playthroughs.create({
         scenario_id: scenario.id,
-        protagonist: { name: values.name, summary: values.summary },
+        ...who,
         preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
         // 提示词按当前的界面语言（docs/i18n.md 第 4 节）
         language: currentLanguage(),
@@ -262,12 +273,13 @@ export default function ScenarioScreen() {
       <Text style={[styles.caption, { color: c.mut }]}>{t("start.hint")}</Text>
     </View>
   );
-  const { protagonist, preferences } = scenario.setup;
-  const form = (
+  const { preferences } = scenario.setup;
+  const form = personas.loading && !personas.data ? null : (
     <StartForm
       key={scenario.version}
       wide={expanded}
-      initial={{ name: protagonist.name, summary: protagonist.summary, ...preferences }}
+      personas={personaList}
+      initial={{ choice: startChoice(scenario.setup, personaList), ...preferences }}
       onChange={(next, parts) => {
         setValues(next);
         setSummary(parts);
@@ -281,7 +293,7 @@ export default function ScenarioScreen() {
       between
       onPress={() => void start()}
       busy={starting}
-      disabled={!values?.name}
+      disabled={!values || !choiceName(values.choice, personaList)}
       style={styles.startButton}
     />
   );
