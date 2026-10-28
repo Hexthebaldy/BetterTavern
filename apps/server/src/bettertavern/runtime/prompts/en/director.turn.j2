@@ -1,4 +1,4 @@
-{# version: 4 #}
+{# version: 5 #}
 {% if world_state is defined and world_state %}
 {{ world_state }}
 
@@ -14,4 +14,5 @@
 <player-action>
 {{ action }}
 </player-action>
+{% include "_card_reminder.j2" %}
 (Reply in the <narrative> and <options> format, with exactly 2 choices.)

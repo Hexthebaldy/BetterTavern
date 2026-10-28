@@ -378,9 +378,11 @@ def test_lightning_context_has_the_card_source_but_no_world_state_or_outline() -
     assert "<narrative>" in system and "灰石镇" in system
     # 卡的原文整段放进 system，卡里的文字不能关掉围栏
     source = system[system.index("<card-source>") : system.rindex("</card-source>")]
-    for text in ("灰石酒馆的掌柜", "嘴硬心软", "要喝就快点", "灰石镇：雨季很长的小镇"):
+    for text in ("灰石酒馆的掌柜", "嘴硬心软", "灰石镇：雨季很长的小镇"):
         assert text in source
     assert system.count("</card-source>") == 1
+    # 对话示例单独一节（普通模式也有，见 test_card_instructions.py）
+    assert "要喝就快点" not in source and "要喝就快点" in system
     last = assembled.messages[-1].content
     assert last.startswith("<player-action>") and "<world-state>" not in last
     assert "<outline>" not in last

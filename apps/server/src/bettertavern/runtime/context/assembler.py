@@ -17,6 +17,10 @@
 constant_items，只看快照和窗口）；这一回合按关键词挑中的条目由调用方挑好（select_lore，在线程里跑）
 传进来，放进最后一条 user 的 <lore>，在状态块和大纲后面、玩家行动前面。历史回合不带当时的条目。
 
+卡作者的指令（docs/agent-runtime.md 的“卡作者的指令”，取自开局时的快照 ctx.cards）：卡里的系统提示
+和对话示例放进 system（整局不变）；后置指令和角色备注放进最后一条 user 的最后、玩家行动后面
+（<card-reminder>），离生成点最近。历史回合不带它们，和状态块一样。
+
 闪电模式（ctx.header.mode，docs/agent-runtime.md 的“闪电模式”）：system 里多一节卡的原文
 （开局时的快照），回顾里只有一版梗概，最后一条消息里没有状态块和大纲。下一回合的请求
 以这一回合的请求开头（最后一条行动里的召回提示除外），整段命中前缀缓存。
@@ -33,6 +37,7 @@ from bettertavern.domain.memory.outline import Beat
 from bettertavern.domain.memory.thresholds import EMERGENCY_LINE, emergency_budget
 from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.story.turn import clip_middle
+from bettertavern.domain.world.card_source import EXAMPLES_CHARS, example_blocks, fit_examples
 from bettertavern.providers import Message
 from bettertavern.runtime.ports import TurnContext
 from bettertavern.runtime.prompts import PromptLibrary, RenderedPrompt
@@ -40,11 +45,12 @@ from bettertavern.runtime.prompts import PromptLibrary, RenderedPrompt
 from .fences import sanitize_for_fence
 from .lore import LoreSelection, constant_items
 from .state_block import render_state_block
-from .tokens import estimate_messages
+from .tokens import estimate_messages, estimate_tokens
 
 STATE_BLOCK_RATIO = 0.12
 STATE_BLOCK_CAP = 2500
 ACTION_RATIO = 0.03
+EXAMPLES_RATIO = 0.10  # 对话示例最多占窗口的这么多
 MIN_KEEP_TURNS = 2
 MAX_SYSTEM_CHARACTERS = 8
 
@@ -137,6 +143,9 @@ class ContextAssembler:
             length=prefs.length,
             lightning=is_lightning(ctx.header.mode),
             cards=self.card_source(ctx),
+            card_instructions=self.card_instructions(ctx),
+            card_examples=self.card_examples(ctx, window),
+            has_reminder=bool(self.card_reminder(ctx)),
             has_lore=ctx.lore is not None and bool(ctx.lore.items),
             lore_constant=[
                 sanitize_for_fence(item.entry.content) for item in constant_items(ctx.lore, window)
@@ -154,13 +163,50 @@ class ContextAssembler:
                 "description": sanitize_for_fence(card.description),
                 "personality": sanitize_for_fence(card.personality),
                 "scenario": sanitize_for_fence(card.scenario),
-                "examples": sanitize_for_fence(card.examples),
                 "lore": [
                     {"name": sanitize_for_fence(e.name), "content": sanitize_for_fence(e.content)}
                     for e in card.lore
                 ],
             }
             for card in ctx.cards.cards
+        ]
+
+    def card_instructions(self, ctx: TurnContext) -> list[dict[str, str]]:
+        """卡作者写的系统提示（开局时的快照），每张卡一段；两种模式都放。"""
+        if ctx.cards is None:
+            return []
+        return [
+            {"name": sanitize_for_fence(c.name), "text": sanitize_for_fence(c.system_prompt)}
+            for c in ctx.cards.cards
+            if c.system_prompt
+        ]
+
+    def card_examples(self, ctx: TurnContext, window: int) -> list[dict[str, Any]]:
+        """对话示例，每张卡几段。快照里已经限过字数（以前的快照没限），这里再按窗口限一次：
+        窗口小的模型从最后一段往前去掉。"""
+        if ctx.cards is None:
+            return []
+        groups = [example_blocks(c.examples) for c in ctx.cards.cards]
+        groups, _ = fit_examples(groups, limit=EXAMPLES_CHARS)
+        budget = math.floor(window * EXAMPLES_RATIO)
+        groups, _ = fit_examples(groups, limit=budget, size=estimate_tokens)
+        return [
+            {
+                "name": sanitize_for_fence(card.name),
+                "blocks": [sanitize_for_fence(b) for b in blocks],
+            }
+            for card, blocks in zip(ctx.cards.cards, groups, strict=True)
+            if blocks
+        ]
+
+    def card_reminder(self, ctx: TurnContext) -> list[dict[str, str]]:
+        """后置指令和角色备注，放在最后一条消息的最后。"""
+        if ctx.cards is None:
+            return []
+        return [
+            {"name": sanitize_for_fence(c.name), "text": sanitize_for_fence(c.reminder())}
+            for c in ctx.cards.cards
+            if c.reminder()
         ]
 
     def recap(self, ctx: TurnContext) -> RenderedPrompt | None:
@@ -239,6 +285,7 @@ class ContextAssembler:
         """recall_before 大于 0 时（提供了召回工具）提示导演：
         现在是第几回合，原文从第几回合开始。lore 是这一回合挑中的世界书条目。"""
         lightning = is_lightning(ctx.header.mode)
+        reminder = self.card_reminder(ctx)
         triggered = [
             sanitize_for_fence(item.entry.content) for item in (lore.triggered if lore else ())
         ]
@@ -267,6 +314,7 @@ class ContextAssembler:
                 hook=sanitize_for_fence(opening.hook) if opening else "",
                 reference_opening="",
                 lore=triggered,
+                card_reminder=reminder,
             )
         action_chars = max(math.floor(window * ACTION_RATIO), 200)
         action = clip_middle(sanitize_for_fence(ctx.action.text), action_chars)
@@ -276,6 +324,7 @@ class ContextAssembler:
             "recall_before": recall_before,
             "outline": outline.text if outline is not None else "",
             "lore": triggered,
+            "card_reminder": reminder,
         }
         if ctx.action.source == "ending":
             return self._prompts.render(

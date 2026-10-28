@@ -1,4 +1,4 @@
-{# version: 4 #}
+{# version: 5 #}
 {% if world_state %}
 {{ world_state }}
 
@@ -16,6 +16,7 @@
 {{ wish }}
 </ending-wish>
 {% endif %}
+{% include "_card_reminder.j2" %}
 The player has decided to end the story here. Continue from the last part and write the final part of the whole story as its ending:
 - Don't retell what has already happened;
 - Wrap up the main plot, answer the open questions and promises, and say where the main characters end up;

@@ -1,4 +1,4 @@
-{# version: 5 #}
+{# version: 6 #}
 {% if world_state is defined and world_state %}
 {{ world_state }}
 
@@ -14,4 +14,5 @@
 <player-action>
 {{ action }}
 </player-action>
+{% include "_card_reminder.j2" %}
 （按 <narrative> 与 <options> 的格式回复，恰好给出 2 个选项。）

@@ -165,15 +165,17 @@
 
 数量上限：`characters` 12 个，`locations` 12 个，`items` 16 个，`organizations` 8 个，`facts` 40 条。字段长度上限见 `seed.py`；模型输出超长时截断，不会被拒绝。
 
-开局设定里还有一个 `cards` 键：开局时剧本里每张卡的原文快照（`domain/world/card_source.py`），由代码写入，不是模型输出的一部分。闪电模式把它放进导演的系统提示（[agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)），普通模式现在不读。宏（`{{user}}`、`{{char}}`）已经换成主角名和角色名；世界书里停用的、没有内容的条目不存。迁移 `0026`（世界书快照）以后开局的存档，这里的 `lore` 一律是空的：卡里的世界书和剧本挂的一起放在 `playthrough_lore`，按关键词带进上下文。整份最多 15000 字，超出时依次去掉世界书里不是常驻的条目、截短对话示例、去掉常驻条目、截短场景、性格、描述（都从最后一张卡往前），`truncated` 记为 `true`。这个功能上线（2026-10-25）前开局的存档没有这个键。
+开局设定里还有一个 `cards` 键：开局时剧本里每张卡的原文快照（`domain/world/card_source.py`），由代码写入，不是模型输出的一部分。卡作者的指令和对话示例两种模式的导演都看（[agent-runtime.md 第 6 节“卡作者的指令”](../agent-runtime.md#卡作者的指令)），描述、性格、场景只有闪电模式放进导演的系统提示（[“闪电模式”](../agent-runtime.md#闪电模式)）。宏（`{{user}}`、`{{char}}`）已经换成主角名和角色名，其他宏去掉；世界书里停用的、没有内容的条目不存；几张卡换完名字以后一字不差的指令只留第一张卡的。迁移 `0026`（世界书快照）以后开局的存档，这里的 `lore` 一律是空的：卡里的世界书和剧本挂的一起放在 `playthrough_lore`，按关键词带进上下文。上限各算各的（都从最后一张卡往前截），截过时 `truncated` 记为 `true`：系统提示每张卡 3000 字、合计 6000 字；后置指令和角色备注合计 1500 字；对话示例合计 6000 字，按 `<START>` 分开的段去掉；描述、性格、场景和 `lore` 合计 15000 字，超出时依次去掉世界书里不是常驻的条目、去掉常驻条目、截短场景、性格、描述。这个功能上线（2026-10-25）前开局的存档没有这个键；F2（2026-10-28）以前开局的没有三项指令（读出来是空的）。
 
 ```jsonc
 "cards": {
   "cards": [
     {
       "name": "阿苓", "description": "…", "personality": "…", "scenario": "…",
-      "examples": "…",                                                  // 对话示例（mes_example）
-      "lore": [{ "name": "火漆", "content": "…", "constant": true }]    // 卡里的世界书，name 最多 80 字
+      "examples": "<START>\n…",                                         // 对话示例（mes_example），段与段之间是 <START>
+      "lore": [{ "name": "火漆", "content": "…", "constant": true }],   // 卡里的世界书，name 最多 80 字
+      "system_prompt": "…",                                             // 卡作者的系统提示
+      "post_history_instructions": "…", "depth_prompt": "…"             // 历史后置指令、角色备注
     }
   ],
   "truncated": false

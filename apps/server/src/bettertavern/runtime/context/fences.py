@@ -25,6 +25,9 @@ FENCE_TAGS = (
     "outline",
     "outline-source",
     "card-source",
+    "card-instructions",
+    "card-examples",
+    "card-reminder",
     "synopsis",
     "lore",
 )

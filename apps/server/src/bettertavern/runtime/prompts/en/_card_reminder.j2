@@ -1,0 +1,12 @@
+{# 卡作者的后置指令和角色备注（开局时的快照），每张卡一段；怎么对待写在 director.system 里 #}
+{% if card_reminder is defined and card_reminder %}
+<card-reminder>
+{% for card in card_reminder %}
+### {{ card.name }}
+{{ card.text }}
+{% if not loop.last %}
+
+{% endif %}
+{% endfor %}
+</card-reminder>
+{% endif %}
