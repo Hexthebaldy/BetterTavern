@@ -28,6 +28,7 @@ FENCE_TAGS = (
     "card-instructions",
     "card-examples",
     "card-reminder",
+    "persona",
     "synopsis",
     "lore",
 )

@@ -26,14 +26,15 @@
 开新故事的表单上先替玩家选好一个，顺序是：
 
 1. 剧本设置里选的人设（`scenarios.setup.persona_id`，人设还在的话）；
-2. 没有的话用默认人设；
-3. 都没有就像以前一样临时填名字和描述（不进人设库，除非勾选“存进人设库”）。
+2. 剧本设置里没选人设、但有旧版 App 写的默认主角（`setup.protagonist`）时，用它临时填好；
+3. 都没有就用默认人设；
+4. 还没有就像以前一样空着让玩家临时填名字和描述（不进人设库，除非勾选“存进人设库”）。
 
-玩家可以点别的人设换掉，也可以改成临时填。规则在 `domain/scenario/persona.py` 的 `choose_persona`（客户端在 `packages/core` 里用同样的顺序）。
+玩家可以点别的人设换掉，也可以改成临时填。规则在 `domain/scenario/persona.py` 的 `choose_persona` 和
+`services/playthrough_service.py` 的 `_protagonist`，客户端在 `packages/core` 里用同样的顺序。
 
-服务端收到开局请求时：带了 `persona_id` 就用那个人设；带了 `protagonist` 就用临时填的；都没带时按上面的顺序取，最后退回剧本设置里旧的
-`protagonist`（旧版 App 写的）。名字和描述存进 `playthroughs.settings.protagonist`（`persona_id` 也记下，只用来显示头像），
-之后改人设不影响这一局。
+服务端收到开局请求时：带了 `persona_id` 就用那个人设；带了 `protagonist` 就用临时填的；都没带时按上面的顺序取。
+名字和描述存进 `playthroughs.settings.protagonist`（用人设时 `persona_id` 也记下，只用来显示头像），之后改人设不影响这一局。
 
 ## 4 导演看到什么
 

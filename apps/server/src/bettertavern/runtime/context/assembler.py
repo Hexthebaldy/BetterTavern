@@ -35,6 +35,7 @@ from typing import Any
 
 from bettertavern.domain.memory.outline import Beat
 from bettertavern.domain.memory.thresholds import EMERGENCY_LINE, emergency_budget
+from bettertavern.domain.scenario.card import apply_macros
 from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.story.turn import clip_middle
 from bettertavern.domain.world.card_source import EXAMPLES_CHARS, example_blocks, fit_examples
@@ -128,12 +129,16 @@ class ContextAssembler:
                 for c in seed.characters[:MAX_SYSTEM_CHARACTERS]
             ]
             style = style or seed.world.style
+        persona = self.persona(ctx)
+        if persona and ctx.protagonist_description.strip().startswith(protagonist_desc.strip()):
+            protagonist_desc = ""  # 开局时没调到模型，主角简介就是描述的开头，不重复写
         return self._prompts.render(
             "director.system",
             protagonist={
                 "name": sanitize_for_fence(ctx.protagonist_name),
                 "description": sanitize_for_fence(protagonist_desc),
             },
+            persona=persona,
             title=sanitize_for_fence(title),
             world=sanitize_for_fence(world_text),
             rules=rules,
@@ -151,6 +156,18 @@ class ContextAssembler:
                 sanitize_for_fence(item.entry.content) for item in constant_items(ctx.lore, window)
             ],
         )
+
+    def persona(self, ctx: TurnContext) -> str:
+        """玩家给主角写的描述原文（docs/personas.md 第 4 节）：
+        {{user}} 换成主角名，{{char}} 换成主角色名。"""
+        text = ctx.protagonist_description.strip()
+        if not text:
+            return ""
+        if ctx.cards is not None and ctx.cards.cards:
+            lead = ctx.cards.cards[0].name
+        else:
+            lead = ctx.seed.characters[0].name if ctx.seed and ctx.seed.characters else ""
+        return sanitize_for_fence(apply_macros(text, user=ctx.protagonist_name, char=lead).strip())
 
     def card_source(self, ctx: TurnContext) -> list[dict[str, Any]]:
         """闪电模式的系统提示里放卡的原文（开局时的快照）：没有世界状态，人物和世界照它写。

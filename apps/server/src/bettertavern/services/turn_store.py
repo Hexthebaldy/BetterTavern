@@ -418,7 +418,8 @@ async def load_turn_context(
         greeting, char = _chosen_greeting(pt.settings.get("opening"), cards)
     outline = outline_from_json(current.content) if current else None
     seed = Seed.model_validate(pt.seed) if pt.seed else None
-    protagonist = (pt.settings.get("protagonist") or {}).get("name") or (
+    chosen = pt.settings.get("protagonist") or {}
+    protagonist = chosen.get("name") or (
         seed.protagonist.name if seed else unnamed_protagonist(pt.language)
     )
     if greeting:
@@ -447,4 +448,5 @@ async def load_turn_context(
         cards=cards_of(pt.seed),
         lore=lore,
         lore_record=lore_record,
+        protagonist_description=str(chosen.get("summary") or ""),
     )

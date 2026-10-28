@@ -19,7 +19,7 @@ import httpx
 import pytest
 from PIL import Image
 
-from tests.e2e.m1_app import Running, import_scenario, serve, setup_account
+from tests.e2e.m1_app import Running, import_scenario, read_events, serve, setup_account
 from tests.fakes.llm_server import RunningFakeLLM
 from tests.support.pg import database_url
 
@@ -154,3 +154,71 @@ async def test_personas_and_the_scenarios_that_use_them(running: Running) -> Non
             f"/v1/scenarios/{theirs['scenario']['id']}", headers=other, json={"setup": setup}
         )
         assert r.status_code == 422
+
+
+async def start(client: httpx.AsyncClient, auth: dict[str, str], body: dict[str, Any]) -> Any:
+    r = await client.post("/v1/playthroughs", headers=auth, json=body)
+    return r
+
+
+async def test_new_stories_use_the_chosen_persona(running: Running) -> None:
+    async with httpx.AsyncClient(base_url=running.base_url, timeout=30) as client:
+        account = await setup_account(client, running.fake)
+        token = account["token"]
+        auth = {"Authorization": f"Bearer {token}"}
+        saved: dict[str, Any] = await import_scenario(client, auth)
+        sid = saved["scenario"]["id"]
+        r = await client.post(
+            "/v1/personas",
+            headers=auth,
+            json={"name": "沈砚", "description": "落魄书生，{{char}} 的旧识"},
+        )
+        shen = r.json()
+        r = await client.post(
+            "/v1/personas", headers=auth, json={"name": "林川", "is_default": True}
+        )
+        lin = r.json()
+
+        # 指定人设：名字和描述存进这一局，导演的系统提示里有描述原文（宏换好）
+        r = await start(client, auth, {"scenario_id": sid, "persona_id": shen["id"]})
+        assert r.status_code == 202, r.text
+        created = r.json()
+        assert created["playthrough"]["protagonist_name"] == "沈砚"
+        assert created["playthrough"]["persona_id"] == shen["id"]
+        await read_events(client, created["events_url"], token)
+        request = [q for q in running.fake.app.chat_requests if q.body.get("stream")][-1]
+        system = request.body["messages"][0]["content"]
+        persona = system[system.index("<persona>\n") : system.index("</persona>")]
+        assert "落魄书生，阿苓 的旧识" in persona
+
+        # 什么都没带：剧本没选人设时用默认人设；剧本选了就用剧本的
+        r = await start(client, auth, {"scenario_id": sid})
+        assert r.json()["playthrough"]["persona_id"] == lin["id"]
+        await read_events(client, r.json()["events_url"], token)
+        setup = {**saved["scenario"]["setup"], "persona_id": shen["id"]}
+        await client.patch(f"/v1/scenarios/{sid}", headers=auth, json={"setup": setup})
+        r = await start(client, auth, {"scenario_id": sid})
+        assert r.json()["playthrough"]["persona_id"] == shen["id"]
+        await read_events(client, r.json()["events_url"], token)
+
+        # 临时填的：不记人设；描述最多 2000 字
+        r = await start(
+            client,
+            auth,
+            {"scenario_id": sid, "protagonist": {"name": "路人", "summary": "字" * 2000}},
+        )
+        temporary = r.json()["playthrough"]
+        assert (temporary["protagonist_name"], temporary["persona_id"]) == ("路人", None)
+        await read_events(client, r.json()["events_url"], token)
+
+        r = await start(
+            client, auth, {"scenario_id": sid, "persona_id": "00000000-0000-0000-0000-000000000000"}
+        )
+        assert r.status_code == 422 and r.json()["field"] == "persona_id"
+
+        # 改人设不影响已经开始的故事
+        await client.patch(f"/v1/personas/{shen['id']}", headers=auth, json={"name": "沈墨"})
+        detail = (
+            await client.get(f"/v1/playthroughs/{created['playthrough']['id']}", headers=auth)
+        ).json()
+        assert detail["playthrough"]["protagonist_name"] == "沈砚"

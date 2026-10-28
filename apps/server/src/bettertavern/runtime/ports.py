@@ -112,6 +112,9 @@ class TurnContext:
     lore: LoreSnapshot | None = None
     # 上一回合（父回合）的世界书记录 turns.lore：哪些条目还在粘滞期、冷却期
     lore_record: Mapping[str, Any] | None = None
+    # 玩家给主角写的描述原文（人设的描述或临时填的，开局时存进 playthroughs.settings），
+    # 导演的系统提示里放 <persona>（docs/personas.md 第 4 节）
+    protagonist_description: str = ""
 
 
 @dataclass(frozen=True, slots=True)

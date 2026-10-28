@@ -53,6 +53,7 @@ class PlaythroughView:
     language: str
     mode: str  # standard / lightning
     protagonist_name: str
+    persona_id: str | None  # 开局时用的人设（只用来显示头像）
     preferences: dict[str, Any]
     head_turn_id: str | None
     head_seq: int | None
@@ -82,6 +83,7 @@ class PlaythroughView:
             language=row.language,
             mode=row.mode,
             protagonist_name=str(protagonist.get("name") or ""),
+            persona_id=str(protagonist["persona_id"]) if protagonist.get("persona_id") else None,
             preferences=dict(row.settings.get("preferences") or {}),
             head_turn_id=row.head_turn_id,
             head_seq=head_seq,

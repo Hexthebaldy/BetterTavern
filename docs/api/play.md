@@ -19,8 +19,9 @@
 - 鉴权：需要；按用户限流，和提交行动共用一个计数。
 - 请求体：[`PlaythroughIn`](#playthroughin)
 - 成功：`202`，返回 [`PlaythroughCreatedOut`](#playthroughcreatedout)。
-- 剧本的设置（[`ScenarioSetupModel`](library.md#scenariosetupmodel)）补上没填的字段：没传 `protagonist` 时用设置里的默认主角，
-  没传 `preferences` 时用设置里的偏好；设置里选了开场白时，记进这一局（`playthroughs.settings.opening`）。
+- 主角（[personas.md](../personas.md) 第 3 节）：传了 `persona_id` 就用这个人设；传了 `protagonist` 就用临时填的；都没传时依次用剧本选的人设、
+  剧本设置里旧版客户端写的默认主角、默认人设。名字和描述存进 `playthroughs.settings.protagonist`，之后改人设不影响这一局。
+- 剧本的设置（[`ScenarioSetupModel`](library.md#scenariosetupmodel)）补上没填的偏好：没传 `preferences` 时用设置里的偏好；设置里选了开场白时，记进这一局（`playthroughs.settings.opening`）。
 - 剧本实时引用角色卡：搭建世界时读剧本里几张卡此刻的正式版本，之后卡再改也不影响这一局。
   群像剧本的几张卡一起交给 WorldBuilder：每张卡的角色都建成人物，几张卡的世界书合在一起（名字重复的条目按卡的顺序取第一张的）。
 - 剧本设置里选了开场白（`setup.opening`）时，开场回合不调导演：叙述就是那条开场白（`{{user}}` 换成主角名、`{{char}}` 换成那张卡的角色名，
@@ -31,7 +32,7 @@
 
 | HTTP | code | 情形 |
 | --- | --- | --- |
-| 422 | `VALIDATION_ERROR` | 主角名整理后为空，剧本设置里也没有默认主角（`field: "protagonist_name"`）；剧本里没有卡（`field: "scenario_id"`） |
+| 422 | `VALIDATION_ERROR` | 没传人设、主角名整理后为空，剧本和人设库里也找不到能用的（`field: "protagonist_name"`）；`persona_id` 不是自己的人设（`field: "persona_id"`）；剧本里没有卡（`field: "scenario_id"`） |
 | 404 | `NOT_FOUND` | 剧本不存在 |
 | 409 | `ROUTE_MISSING` | 还没有设置导演模型 |
 | 409 | `CREDENTIAL_UNREADABLE` | 导演模型的 Key 无法解密 |
@@ -46,7 +47,8 @@
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `scenario_id` | string | 是 | 用哪个剧本开局 |
-| `protagonist` | [`ProtagonistIn`](#protagonistin) / null | 否 | 玩家扮演的主角；不传时用剧本设置里的默认主角 |
+| `persona_id` | string / null | 否 | 用人设库里的哪个人设（[人设库](personas.md)）；和 `protagonist` 都传时以人设为准 |
+| `protagonist` | [`ProtagonistIn`](#protagonistin) / null | 否 | 临时填的主角（不进人设库）；和 `persona_id` 都不传时按上面的顺序取 |
 | `title` | string / null | 否 | 标题，最多 80 个字符；不填时用剧本名 |
 | `preferences` | [`PreferencesIn`](#preferencesin) / null | 否 | 叙述偏好；不传时用剧本设置里的偏好 |
 | `language` | string | 否 | 这一局给 agent 的提示词用哪种语言：`zh`（默认）/ `en` / `ja`。客户端传当前的界面语言；之后不能改，也不影响故事正文用什么语言（见 [i18n.md](../i18n.md) 第 4 节） |
@@ -56,7 +58,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `name` | string | 是 | 主角的名字，1 到 40 个字符。服务端会做 NFKC 规范化、合并连续空白 |
-| `summary` | string | 否 | 主角的外貌、身份等，最多 400 个字符 |
+| `summary` | string | 否 | 主角的外貌、经历、性格等，最多 2000 个字符；导演每回合都看原文 |
 
 #### `PreferencesIn`
 
@@ -276,6 +278,7 @@
 | `language` | string | 提示词的语言：`zh` / `en` / `ja`，开局时定下 |
 | `mode` | string | `standard` / `lightning`（闪电模式：没有世界状态，客户端不显示世界状态的入口）。开局时按剧本的 `setup.lightning` 定下，之后不变 |
 | `protagonist_name` | string | 主角的名字 |
+| `persona_id` | string / null | 开局时用的人设，客户端用它显示头像（人设删了就找不到，不显示）；临时填的主角、人设功能上线前开的局为 null |
 | `preferences` | object | 叙述偏好 `{"length", "style", "boundaries"}`，含义同 [`PreferencesIn`](#preferencesin) |
 | `head_turn_id` | string / null | 头部回合，也就是最新一个完成的回合；开场完成前为 null |
 | `head_seq` | integer / null | 头部回合的 `seq`。只有游玩列表和游玩详情会填，其他接口的响应里是 null |

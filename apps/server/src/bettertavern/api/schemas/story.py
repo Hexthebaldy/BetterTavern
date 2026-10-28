@@ -14,7 +14,7 @@ from .common import Out
 
 class ProtagonistIn(BaseModel):
     name: str = Field(min_length=1, max_length=40)
-    summary: str = Field(default="", max_length=400)
+    summary: str = Field(default="", max_length=2000)
 
 
 class PreferencesIn(BaseModel):
@@ -25,7 +25,10 @@ class PreferencesIn(BaseModel):
 
 class PlaythroughIn(BaseModel):
     scenario_id: str
-    # 不传时用剧本设置（scenarios.setup）里的默认主角和偏好
+    # 用人设库里的哪个人设（F3）；和 protagonist 都不传时，按剧本选的人设、默认人设、
+    # 剧本设置里旧的默认主角的顺序取
+    persona_id: str | None = None
+    # 临时填的主角（不进人设库）
     protagonist: ProtagonistIn | None = None
     title: str | None = Field(default=None, max_length=80)
     preferences: PreferencesIn | None = None
@@ -66,6 +69,8 @@ class PlaythroughOut(Out):
     language: str
     mode: Literal["standard", "lightning"]
     protagonist_name: str
+    # 开局时用的人设（只用来显示头像）；临时填的、人设功能上线前开的为 null
+    persona_id: str | None
     preferences: dict[str, Any]
     head_turn_id: str | None
     head_seq: int | None

@@ -1,7 +1,8 @@
 """人设（F3，docs/personas.md）：玩家扮演的“我”，存在设置里的人设库，好几个剧本、好几局都能用。
 
 一个人设有名字、描述、头像（可以没有）；每个用户最多一个默认人设。开新故事时先替玩家选好一个：
-剧本设置里选的人设，没有就用默认人设，都没有就让玩家临时填（choose_persona）。
+剧本设置里选的人设，没有就用默认人设，都没有就让玩家临时填（choose_persona；剧本设置里还有旧版 App
+写的默认主角时它排在默认人设前面，见 services/playthrough_service.py 的 _protagonist）。
 开局时把名字和描述存进这一局（playthroughs.settings.protagonist），之后改人设不影响已经开始的故事。
 """
 

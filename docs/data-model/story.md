@@ -135,7 +135,8 @@
 
 ```jsonc
 {
-  "protagonist": { "name": "林川", "summary": "一名信使" },  // name：NFKC、合并空白，最多 40 字；summary 最多 400 字
+  "protagonist": { "name": "林川", "summary": "一名信使", "persona_id": "…" },  // name：NFKC、合并空白，最多 40 字；summary 最多 2000 字（2026-10-29 以前最多 400 字），导演每回合都看原文；
+                                                // persona_id：用人设开局时才有，只用来显示头像（docs/personas.md）
   "preferences": { "length": "medium", "style": "", "boundaries": "" },  // length：short / medium / long；style 最多 200 字；boundaries 最多 300 字
   "opening": { "card_id": "…", "greeting": 0 }  // 剧本设置里选了开场白时才有：用哪张卡的哪条开场白开场
 }

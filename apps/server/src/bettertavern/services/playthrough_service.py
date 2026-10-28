@@ -11,12 +11,18 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.scenario.persona import (
+    MAX_PERSONA_DESCRIPTION,
+    PersonaChoice,
+    choose_persona,
+)
 from bettertavern.domain.scenario.setup import ScenarioSetup
 from bettertavern.domain.story.language import DEFAULT_LANGUAGE, parse_language
 from bettertavern.domain.world.names import clean_display_name
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import memory as memory_repo
 from bettertavern.infra.db.repositories import outline as outline_repo
+from bettertavern.infra.db.repositories import personas as personas_repo
 from bettertavern.infra.db.repositories import rollback as rollback_repo
 from bettertavern.infra.db.repositories import state as state_repo
 from bettertavern.infra.db.repositories import story as repo
@@ -39,9 +45,11 @@ log = structlog.get_logger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class NewPlaythrough:
-    """主角名和偏好可以不填，用剧本的设置补上。"""
+    """主角和偏好可以不填，用剧本的设置补上。persona_id 是人设库里的人设；
+    protagonist_name 是临时填的主角（两个都给时以人设为准）。"""
 
     scenario_id: str
+    persona_id: str | None = None
     protagonist_name: str = ""
     protagonist_summary: str = ""
     title: str | None = None
@@ -83,6 +91,40 @@ class WorldView:
     hidden_facts: int
     state_seq: int  # 世界状态已整理到第几回合，-1 表示还是开局时的样子
     state_issue: WorldStateIssueView | None
+
+
+async def _protagonist(
+    conn: Any, user_id: str, data: NewPlaythrough, setup: ScenarioSetup
+) -> dict[str, Any]:
+    """这一局的主角（docs/personas.md 第 3 节）：请求里的人设 → 请求里临时填的 → 剧本选的人设
+    → 剧本设置里旧版 App 写的默认主角 → 默认人设。用人设时记下 persona_id（只用来显示头像）。"""
+    if data.persona_id is not None:
+        persona = (
+            await personas_repo.get_persona(conn, user_id, data.persona_id)
+            if is_uuid(data.persona_id)
+            else None
+        )
+        if persona is None:
+            raise Invalid("That persona doesn't exist", field="persona_id")
+        return _from_persona(persona)
+    name = clean_display_name(data.protagonist_name)
+    if name:
+        return {"name": name, "summary": data.protagonist_summary.strip()[:MAX_PERSONA_DESCRIPTION]}
+    personas = await personas_repo.list_personas(conn, user_id)
+    chosen = choose_persona(setup.persona_id, [PersonaChoice(p.id, p.is_default) for p in personas])
+    if chosen is not None and (not setup.protagonist_name or chosen == setup.persona_id):
+        return _from_persona(next(p for p in personas if p.id == chosen))
+    if setup.protagonist_name:
+        return {"name": setup.protagonist_name, "summary": setup.protagonist_summary}
+    raise Invalid("Enter a name for the protagonist", field="protagonist_name")
+
+
+def _from_persona(persona: personas_repo.PersonaRow) -> dict[str, Any]:
+    return {
+        "name": clean_display_name(persona.name),
+        "summary": persona.description,
+        "persona_id": persona.id,
+    }
 
 
 class PlaythroughService:
@@ -140,12 +182,7 @@ class PlaythroughService:
             if not scenario.cards:  # 迁移前的旧数据才可能出现
                 raise Invalid("This scenario has no character card", field="scenario_id")
             setup = ScenarioSetup.from_json(scenario.setup)
-            name = clean_display_name(data.protagonist_name) or setup.protagonist_name
-            if not name:
-                raise Invalid("Enter a name for the protagonist", field="protagonist_name")
-            summary = data.protagonist_summary.strip()[:400] or (
-                setup.protagonist_summary if not data.protagonist_name.strip() else ""
-            )
+            protagonist = await _protagonist(conn, user_id, data, setup)
             prefs = (
                 Preferences.from_json(data.preferences)
                 if data.preferences is not None
@@ -154,7 +191,7 @@ class PlaythroughService:
                 )
             )
             settings: dict[str, Any] = {
-                "protagonist": {"name": name, "summary": summary},
+                "protagonist": protagonist,
                 "preferences": {
                     "length": prefs.length,
                     "style": prefs.style,

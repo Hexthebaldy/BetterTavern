@@ -59,6 +59,7 @@ async def create_playthrough(
         user_id,
         NewPlaythrough(
             scenario_id=body.scenario_id,
+            persona_id=body.persona_id,
             protagonist_name=body.protagonist.name if body.protagonist else "",
             protagonist_summary=body.protagonist.summary if body.protagonist else "",
             title=body.title,
