@@ -3,8 +3,9 @@
 导入时超长的部分会被截断（不能因为一个字段太长就整张卡导入失败）；编辑时超长就拒绝并指出是哪个字段，
 用户自己写的内容不能被悄悄截掉。改过的字段从 truncated（导入时被截断的记录）里去掉。
 
-能改的是：角色名、七个文本字段（含系统提示和作者备注）、备选开场白、标签，以及卡片自带的世界书条目。
-其余字段（作者、版本号、后置指令等）原样保留。
+能改的是：角色名、九个文本字段（含系统提示、后置指令、角色备注和作者备注）、备选开场白、标签，
+以及卡片自带的世界书条目。其余字段（作者、版本号等）原样保留。
+后置指令和角色备注是后加的（F2），旧版客户端不带这两项：为 None 时不改。
 世界书条目按列表顺序重新编号（order，只管显示的先后）；优先级数字（priority）和其余触发设置跟着条目走，
 不因为挪了位置而变（docs/lorebook.md 第 3.3 节）。条目的校验（edit_entry）独立世界书也用。
 
@@ -35,6 +36,8 @@ EDITABLE_TEXT_FIELDS = (
     "first_mes",
     "mes_example",
     "system_prompt",
+    "post_history_instructions",
+    "depth_prompt",
     "creator_notes",
 )
 MAX_NAME_CHARS = 80
@@ -92,6 +95,8 @@ class CardEdit:
     first_mes: str = ""
     mes_example: str = ""
     system_prompt: str = ""
+    post_history_instructions: str | None = None  # None：不改（旧版客户端不带）
+    depth_prompt: str | None = None
     creator_notes: str = ""
     alternate_greetings: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
@@ -206,7 +211,10 @@ def apply_edit(card: CharacterCard, edit: CardEdit, *, lenient: bool = False) ->
         raise EditError("name", f"The character name can be at most {MAX_NAME_CHARS} characters")
     texts: dict[str, str] = {}
     for field in EDITABLE_TEXT_FIELDS:
-        text = _clean(getattr(edit, field))
+        value: str | None = getattr(edit, field)
+        if value is None:
+            continue
+        text = _clean(value)
         if len(text) > MAX_FIELD_CHARS:
             raise EditError(field, f"At most {MAX_FIELD_CHARS} characters (now {len(text)})")
         texts[field] = text

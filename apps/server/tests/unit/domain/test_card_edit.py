@@ -62,6 +62,21 @@ def test_edits_the_open_fields_and_keeps_the_rest() -> None:
     assert changed_fields(CARD, after) == ["name", "description", "tags"]
 
 
+def test_the_instructions_are_kept_when_an_old_client_leaves_them_out() -> None:
+    card = CARD.model_copy(
+        update={"post_history_instructions": "后置指令", "depth_prompt": "角色备注"}
+    )
+    # 旧版客户端的请求里没有这两项（None）：原样保留
+    kept = apply_edit(card, CardEdit(name="阿苓"))
+    assert kept.post_history_instructions == "后置指令" and kept.depth_prompt == "角色备注"
+    edited = apply_edit(card, edit_of(card, post_history_instructions=" 新的 ", depth_prompt=""))
+    assert edited.post_history_instructions == "新的" and edited.depth_prompt == ""
+    assert changed_fields(card, edited) == ["post_history_instructions", "depth_prompt"]
+    with pytest.raises(EditError) as error:
+        apply_edit(card, edit_of(card, depth_prompt="x" * (MAX_FIELD_CHARS + 1)))
+    assert error.value.field == "depth_prompt"
+
+
 def test_edited_fields_are_no_longer_marked_truncated() -> None:
     after = apply_edit(CARD, edit_of(CARD, description="重写过了"))
     assert after.truncated == ("system_prompt",)

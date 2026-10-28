@@ -45,7 +45,7 @@ class CardTexts(BaseModel):
     personality: str = ""
     scenario: str = ""
     creator_notes: str = ""
-    depth_prompt: str = ""  # 卡的深度提示（我们不存这个字段，一直是空的）
+    depth_prompt: str = ""  # 角色备注
 
     def text(self, which: LoreMatch) -> str:
         return "" if which == "persona" else getattr(self, which)
@@ -149,4 +149,5 @@ def _card_texts(card: CharacterCard, user: str) -> CardTexts:
         personality=text(card.personality),
         scenario=text(card.scenario),
         creator_notes=text(card.creator_notes),
+        depth_prompt=text(card.depth_prompt),
     )

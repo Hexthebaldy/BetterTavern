@@ -145,6 +145,22 @@ def test_json_v1_and_v3() -> None:
     assert len(card.description) == 60_000 and card.truncated == ("description",)
 
 
+def test_the_depth_prompt_is_read_from_the_extensions() -> None:
+    note = {"prompt": "  {{char}} 不轻易信人。\r\n  ", "depth": 2, "role": "system"}
+    v2 = {"spec": "chara_card_v2", "data": {"name": "阿苓", "extensions": {"depth_prompt": note}}}
+    assert import_card(json.dumps(v2).encode()).card.depth_prompt == "{{char}} 不轻易信人。"
+    long = {
+        "spec": "chara_card_v2",
+        "data": {"name": "阿苓", "extensions": {"depth_prompt": {"prompt": "x" * 70_000}}},
+    }
+    card = import_card(json.dumps(long).encode()).card
+    assert len(card.depth_prompt) == 60_000 and card.truncated == ("depth_prompt",)
+    # 没有、或者写错了形状的都当作空
+    for ext in (None, {"depth_prompt": "不是对象"}, {"depth_prompt": {"depth": 4}}):
+        odd = {"spec": "chara_card_v2", "data": {"name": "阿苓", "extensions": ext}}
+        assert import_card(json.dumps(odd).encode()).card.depth_prompt == ""
+
+
 def test_identical_files_have_identical_hashes() -> None:
     data = json.dumps(V2).encode()
     assert import_card(data).sha256 == import_card(data).sha256

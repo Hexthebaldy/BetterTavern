@@ -133,6 +133,8 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 | `first_mes` | string | 否 | 开场白 |
 | `mes_example` | string | 否 | 对话示例 |
 | `system_prompt` | string | 否 | 系统提示 |
+| `post_history_instructions` | string / null | 否 | 历史后置指令；不带或为 null 时不改（旧版客户端没有这一项） |
+| `depth_prompt` | string / null | 否 | 角色备注；同上 |
 | `creator_notes` | string | 否 | 作者备注 |
 | `alternate_greetings` | array of string | 否 | 备选开场白，按顺序 |
 | `tags` | array of string | 否 | 标签 |

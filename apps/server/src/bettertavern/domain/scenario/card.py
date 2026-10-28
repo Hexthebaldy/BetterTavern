@@ -21,7 +21,7 @@ MAX_BOOK_ENTRIES = 1000
 # 世界书条目的触发设置照 SillyTavern（docs/lorebook.md 第 6.1 节）
 # 次要关键词的逻辑：再命中任一个 / 全命中 / 一个都不命中 / 不全命中
 LoreLogic = Literal["any", "all", "not_any", "not_all"]
-# 顺带扫描哪段文字：主角介绍、卡的描述、性格、深度提示、场景、作者备注
+# 顺带扫描哪段文字：主角介绍、卡的描述、性格、角色备注、场景、作者备注
 LoreMatch = Literal[
     "persona", "description", "personality", "depth_prompt", "scenario", "creator_notes"
 ]
@@ -108,6 +108,7 @@ class CharacterCard(BaseModel):
     alternate_greetings: tuple[str, ...] = ()
     system_prompt: str = ""
     post_history_instructions: str = ""
+    depth_prompt: str = ""  # 角色备注（ST 的 Character's Note，原卡里在 extensions.depth_prompt）
     creator_notes: str = ""
     creator: str = ""
     character_version: str = ""
@@ -126,6 +127,7 @@ class CharacterCard(BaseModel):
             self.mes_example,
             self.system_prompt,
             self.post_history_instructions,
+            self.depth_prompt,
             self.creator_notes,
             *self.alternate_greetings,
         ]

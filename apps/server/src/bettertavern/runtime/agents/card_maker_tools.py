@@ -40,7 +40,13 @@ from bettertavern.runtime.agent import Tool, ToolError, ToolRegistry
 from bettertavern.runtime.ports import WorkbenchAsset, WorkbenchRun, WorkbenchStore
 from bettertavern.runtime.workbench_events import EventBatcher
 
-WRITABLE_FIELDS = ("name", "display_name", "tags", *EDITABLE_TEXT_FIELDS)
+# 后置指令和角色备注 agent 不写（卡作者给模型的额外指令，一般用不着）
+WRITABLE_FIELDS = (
+    "name",
+    "display_name",
+    "tags",
+    *(f for f in EDITABLE_TEXT_FIELDS if f not in ("post_history_instructions", "depth_prompt")),
+)
 FREE_LICENSES = ("public_domain", "own")
 MAX_TODOS = 12
 

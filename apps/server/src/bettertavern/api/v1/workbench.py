@@ -80,6 +80,8 @@ def card_edit(card: CharacterCardIn) -> CardEdit:
         first_mes=card.first_mes,
         mes_example=card.mes_example,
         system_prompt=card.system_prompt,
+        post_history_instructions=card.post_history_instructions,
+        depth_prompt=card.depth_prompt,
         creator_notes=card.creator_notes,
         alternate_greetings=tuple(card.alternate_greetings),
         tags=tuple(card.tags),

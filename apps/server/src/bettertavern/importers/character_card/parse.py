@@ -1,6 +1,7 @@
 """角色卡 JSON 的解析与规范化：识别 V1（平铺字段）、V2（chara_card_v2）、V3（chara_card_v3）。
 
-只取故事需要的字段；其余（扩展字段、资源列表）保留在 scenarios.raw 里，不参与生成。
+只取故事需要的字段；其余（扩展字段、资源列表）保留在 cards.raw 里，不参与生成。
+扩展字段里只读角色备注（extensions.depth_prompt.prompt，SillyTavern 的 Character's Note）。
 """
 
 from __future__ import annotations
@@ -117,6 +118,13 @@ def _book(data: Mapping[str, Any]) -> tuple[str, tuple[LoreEntry, ...]]:
     return _text(book.get("name")).strip()[:120], entries
 
 
+def depth_prompt(fields: Mapping[str, Any]) -> str:
+    """角色备注：ST 存在 extensions.depth_prompt 里（还有插入深度和角色，我们不用）。"""
+    ext = fields.get("extensions")
+    note = ext.get("depth_prompt") if isinstance(ext, Mapping) else None
+    return _text(note.get("prompt")) if isinstance(note, Mapping) else ""
+
+
 def normalize_card(data: Any) -> CharacterCard:
     if not isinstance(data, Mapping):
         raise CardError("The card data must be a JSON object")
@@ -126,8 +134,10 @@ def normalize_card(data: Any) -> CharacterCard:
         raise CardError("The card has no name")
     truncated: list[str] = []
     values: dict[str, str] = {}
-    for key in TEXT_FIELDS:
-        text = _text(fields.get(key)).strip()
+    raw_texts = {key: _text(fields.get(key)) for key in TEXT_FIELDS}
+    raw_texts["depth_prompt"] = depth_prompt(fields)
+    for key, raw_text in raw_texts.items():
+        text = raw_text.strip()
         if len(text) > MAX_FIELD_CHARS:
             text = text[:MAX_FIELD_CHARS]
             truncated.append(key)

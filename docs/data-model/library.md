@@ -167,6 +167,7 @@
   "description": "…", "personality": "…", "scenario": "…", "first_mes": "…", "mes_example": "…",
   "alternate_greetings": ["…"],
   "system_prompt": "", "post_history_instructions": "", "creator_notes": "",
+  "depth_prompt": "",      // 角色备注（SillyTavern 的 Character's Note）；迁移 0028 从 raw 里补上，之前没有这个键
   "creator": "", "character_version": "", "nickname": "",
   "tags": ["…"],
   "book_name": "",
@@ -210,12 +211,12 @@
 ```
 
 导入时的上限（`importers/character_card/parse.py`）：
-- 八个顶层文本字段（`description`、`personality`、`scenario`、`first_mes`、`mes_example`、`system_prompt`、`post_history_instructions`、`creator_notes`）各 60000 字，超出的部分截断，并把字段名记进 `truncated`。
+- 八个顶层文本字段（`description`、`personality`、`scenario`、`first_mes`、`mes_example`、`system_prompt`、`post_history_instructions`、`creator_notes`）和角色备注（`depth_prompt`，读 `extensions.depth_prompt.prompt`）各 60000 字，超出的部分截断，并把字段名记进 `truncated`。
 - 备选开场白（最多 64 条）和世界书条目的内容也截到 60000 字，但不记进 `truncated`；世界书最多 1000 条，多出的直接丢弃。名字最多 80 字，标签最多 32 个。
 - 世界书条目和导入独立世界书共用一套映射（`importers/lorebook/entries.py`）：SillyTavern 写在每条 `extensions` 里的设置读进 `secondary_keys`、`logic`、`priority`（`insertion_order`）、`rules`；按 `extensions.display_index` 排好、`order` 重新编号；没有正文的条目丢掉，没有关键词的留着（工作台里提示永远用不到）。
 - 截断之后文本总量仍然超过 300000 字的卡片，导入时直接拒绝（422 `CARD_INVALID`）。
 
-编辑（工作台的草稿，`domain/scenario/edit.py`）能改角色名、七个文本字段（不含后置指令）、备选开场白（最多 32 条）、标签和世界书；
+编辑（工作台的草稿，`domain/scenario/edit.py`）能改角色名、九个文本字段（含后置指令和角色备注；请求里不带这两项时不改）、备选开场白（最多 32 条）、标签和世界书；
 上限和导入相同，但超长时拒绝，不截断；世界书条目按列表顺序重新编号 `order`，`priority` 和 `rules` 跟着条目走；改过的字段从 `truncated` 里去掉。
 卡片里的 `{{user}}`、`{{char}}` 宏原样保存，用到时再替换。
 
@@ -231,7 +232,7 @@
 
 ### `cards.raw`
 
-导入时卡片的原始 JSON，原样保存（V1 是扁平对象，V2、V3 是 `{ "spec", "spec_version", "data" }`）。只在导出时读（保留 `extensions`）。
+导入时卡片的原始 JSON，原样保存（V1 是扁平对象，V2、V3 是 `{ "spec", "spec_version", "data" }`）。只在导出时读（保留 `extensions`，角色备注写回 `extensions.depth_prompt.prompt`）。
 
 ### `scenarios.setup`
 

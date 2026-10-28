@@ -66,6 +66,8 @@ class CharacterCardOut(Out):
     first_mes: str
     mes_example: str
     system_prompt: str
+    post_history_instructions: str
+    depth_prompt: str
     creator_notes: str
     alternate_greetings: list[str]
     tags: list[str]
@@ -73,7 +75,6 @@ class CharacterCardOut(Out):
     # 下面几项不能在 BetterTavern 里改，原样保留、导出时写回去
     creator: str
     character_version: str
-    post_history_instructions: str
     truncated: list[str]
 
 
@@ -116,6 +117,9 @@ class CharacterCardIn(BaseModel):
     first_mes: str = ""
     mes_example: str = ""
     system_prompt: str = ""
+    # 旧版客户端不带这两项：不带（null）时不改
+    post_history_instructions: str | None = None
+    depth_prompt: str | None = None
     creator_notes: str = ""
     alternate_greetings: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)

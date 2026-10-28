@@ -398,14 +398,15 @@
 | `scenario` | string | 情境 |
 | `first_mes` | string | 开场白 |
 | `mes_example` | string | 对话示例 |
-| `system_prompt` | string | 系统提示 |
-| `creator_notes` | string | 作者备注（agent 查过的资料来源也写在这里） |
+| `system_prompt` | string | 系统提示：开局时存进这一局的快照，导演每回合都看（[agent-runtime.md](../agent-runtime.md) 的“卡作者的指令”） |
+| `post_history_instructions` | string | 历史后置指令：导演每回合放在玩家行动后面看 |
+| `depth_prompt` | string | 角色备注（SillyTavern 的 Character's Note，原卡里在 `extensions.depth_prompt`）：和后置指令放在一起 |
+| `creator_notes` | string | 作者备注（agent 查过的资料来源也写在这里），不发给模型 |
 | `alternate_greetings` | array of string | 备选开场白 |
 | `tags` | array of string | 标签 |
 | `book` | array of [`LoreEntryOut`](#loreentryout) | 卡片自带的世界书条目，按顺序排好 |
 | `creator` | string | 卡片作者（不能在 BetterTavern 里改，导出时原样写回） |
 | `character_version` | string | 卡片的版本号（同上） |
-| `post_history_instructions` | string | 后置指令（同上） |
 | `truncated` | array of string | 导入时因为太长被截断、之后也没改过的字段 |
 
 ### `LoreEntryOut`

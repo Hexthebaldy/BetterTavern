@@ -2,7 +2,7 @@
 （ccv3 写 V3，chara 写 V2，SillyTavern 两种都认）。
 
 导入的卡保留原始 JSON 里 extensions 的内容（别的软件的设置），BetterTavern 自己的信息放进
-extensions.bettertavern。卡片文字原样写出，不做宏替换。
+extensions.bettertavern，角色备注写回 extensions.depth_prompt。卡片文字原样写出，不做宏替换。
 """
 
 from __future__ import annotations
@@ -85,6 +85,11 @@ def card_data(card: CharacterCard, *, raw: Any, extra: Mapping[str, Any]) -> dic
     """V2、V3 共用的 data 部分。"""
     extensions = _extensions(raw)
     extensions["bettertavern"] = dict(extra)
+    # 角色备注写回 ST 的位置；原卡里的插入深度和角色照旧，没有就用 ST 的默认值
+    note = extensions.get("depth_prompt")
+    if card.depth_prompt or isinstance(note, Mapping):
+        base = dict(note) if isinstance(note, Mapping) else {"depth": 4, "role": "system"}
+        extensions["depth_prompt"] = {**base, "prompt": card.depth_prompt}
     book = book_in_order(card.book)
     data: dict[str, Any] = {
         "name": card.name,

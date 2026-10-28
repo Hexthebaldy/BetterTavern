@@ -90,6 +90,27 @@ def test_exported_json_is_a_v3_card() -> None:
     assert imported.card.book[0].keys == ("当铺",)
 
 
+def test_the_card_authors_instructions_survive_export_and_import() -> None:
+    card = CARD.model_copy(
+        update={
+            "system_prompt": "{{char}} 说话带江南口音",
+            "post_history_instructions": "别让 {{char}} 太快信任 {{user}}",
+            "depth_prompt": "{{char}} 嘴硬心软",
+        }
+    )
+    # 原卡里角色备注的插入深度照旧；没有的用 ST 的默认值
+    raw = {"spec": "chara_card_v2", "data": {"extensions": {"depth_prompt": {"depth": 2}}}}
+    for source, depth in ((raw, 2), (None, 4)):
+        data = card_v3(card, raw=source, extra={})
+        assert data["data"]["extensions"]["depth_prompt"]["depth"] == depth
+        imported = import_card(json.dumps(data).encode()).card
+        assert imported.system_prompt == "{{char}} 说话带江南口音"
+        assert imported.post_history_instructions == "别让 {{char}} 太快信任 {{user}}"
+        assert imported.depth_prompt == "{{char}} 嘴硬心软"
+    # 没有角色备注、原卡里也没有的，不写这一项
+    assert "depth_prompt" not in card_v3(CARD, raw=None, extra={})["data"]["extensions"]
+
+
 def test_cover_is_cropped_to_two_by_three() -> None:
     image = Image.new("RGB", (1000, 1000), (0, 0, 255))
     out = io.BytesIO()
