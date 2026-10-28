@@ -1,6 +1,6 @@
 /**
- * 剧本详情（W05，同平板 T12）：封面、剧本里的角色卡（第一张是主角色，点一下看卡）、剧本设置（默认主角、偏好、开场），
- * 以及“开始新的故事”的五步表单（按剧本设置预填）。开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
+ * 剧本详情（W05，同平板 T12）：封面、剧本里的角色卡（第一张是主角色，点一下看卡）、剧本设置（默认人设、偏好、开场），
+ * 以及“开始新的故事”的四步表单（按剧本设置预填，人设按 docs/personas.md 第 3 节先选好；人设库没加载出来前不显示）。开始后服务端先根据角色卡搭建世界、再写开场，阅读页会接上这个过程的事件流。
  *
  * - ≥ 900：两栏各自滚动。左栏 420 是封面（高 236，返回按钮浮在上面）、名字、角色卡、设置、简介；
  *   右栏是五步表单，底部浮着摘要栏（已选项胶囊加“开始故事”），圆角 34，带投影。
@@ -18,12 +18,14 @@ import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
 import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
 import { lorebookSummary } from "@bettertavern/core/scenario/lorebook";
+import { choiceName, startChoice, startFields } from "@bettertavern/core/scenario/persona";
 import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
 import { needsModelSettings } from "@bettertavern/core/settings/labels";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Button, cx, IconButton, Notice, Pill } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
+import { personasKey, usePersonas } from "../../data/personas.ts";
 import { scenarioPath, useScenarioActions } from "../../data/scenarioActions.ts";
 import { storiesKey } from "../../data/stories.ts";
 import { cardPath } from "../../data/workbench.ts";
@@ -145,6 +147,8 @@ export function ScenarioPage() {
   const wide = width >= desktop.wheel;
   const query = useQuery({ queryKey: ["scenario", id], queryFn: () => api.scenarios.get(id) });
   const scenario = query.data;
+  const personas = usePersonas();
+  const personaList = personas.data ?? [];
   const [values, setValues] = useState<StartValues | null>(null);
   const [summary, setSummary] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
@@ -169,13 +173,20 @@ export function ScenarioPage() {
   }
 
   const start = async (): Promise<void> => {
-    if (!values?.name) return;
+    if (!values || !choiceName(values.choice, personaList)) return;
     setStarting(true);
     setStartError(null);
     try {
+      let who = startFields(values.choice);
+      if (values.saveToLibrary && "protagonist" in who) {
+        // 临时填的、勾了“存进人设库”：先存成人设，再用它开局
+        const saved = await api.personas.create({ name: who.protagonist.name, description: who.protagonist.summary });
+        void queries.invalidateQueries({ queryKey: personasKey });
+        who = { persona_id: saved.id };
+      }
       const created = await api.playthroughs.create({
         scenario_id: scenario.id,
-        protagonist: { name: values.name, summary: values.summary },
+        ...who,
         preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
         // 提示词按当前的界面语言（docs/i18n.md 第 4 节）
         language: currentLanguage(),
@@ -220,12 +231,13 @@ export function ScenarioPage() {
       <span className={styles.caption}>{t("start.hint")}</span>
     </div>
   );
-  const { protagonist, preferences } = scenario.setup;
-  const form = (
+  const { preferences } = scenario.setup;
+  const form = personas.isPending ? null : (
     <StartForm
       key={scenario.version}
       wide={wide}
-      initial={{ name: protagonist.name, summary: protagonist.summary, ...preferences }}
+      personas={personaList}
+      initial={{ choice: startChoice(scenario.setup, personaList), ...preferences }}
       onChange={(next, parts) => {
         setValues(next);
         setSummary(parts);
@@ -256,7 +268,7 @@ export function ScenarioPage() {
       between
       trailingIcon="arrowRight"
       busy={starting}
-      disabled={!values?.name}
+      disabled={!values || !choiceName(values.choice, personaList)}
       className={styles.startButton}
       onClick={() => void start()}
     />

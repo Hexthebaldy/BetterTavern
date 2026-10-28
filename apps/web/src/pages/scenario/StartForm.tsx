@@ -1,40 +1,47 @@
 /**
- * “开始新的故事”的五步表单（同 App 的 StartForm.tsx）：名字（建议标签 + 随机）、这个角色是谁（一个多行输入框）、
+ * “开始新的故事”的四步表单（同 App 的 StartForm.tsx）：你扮演谁（人设库里选一个，或者临时填名字和描述，见 PersonaStep.tsx）、
  * 篇幅（行数图示）、文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）。只有第 1 步必填。
- * 选择最终拼回接口原来的字段，见 @bettertavern/core 的 scenario/startForm.ts。
+ * 选择最终拼回接口的字段，见 @bettertavern/core 的 scenario/startForm.ts、scenario/persona.ts。
  * 宽屏（wide）：名字建议排在输入框右边。
- * initial：按剧本设置预填（默认主角、偏好）；不在内置标签里的文风、不想看到的内容当作自定义的项。
- * 也用在新建、编辑剧本（ScenarioFormPage.tsx）里填剧本的默认设置。
+ * initial：按剧本设置预填（先选哪个人设、偏好）；不在内置标签里的文风、不想看到的内容当作自定义的项。
+ * 也用在新建、编辑剧本（ScenarioFormPage.tsx，mode = scenario）里填剧本的默认设置：第 1 步是默认人设，可以不选。
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Preferences } from "@bettertavern/core/api/types";
+import type { Persona, Preferences } from "@bettertavern/core/api/types";
+import { choiceName, type ProtagonistChoice } from "@bettertavern/core/scenario/persona";
 import {
   boundaryItems,
   composeBoundaries,
   composeStyle,
   lengthLabel,
-  NAME_MAX,
-  randomName,
   splitJoined,
   styleTags as builtinStyles,
-  suggestNames,
-  SUMMARY_MAX,
   summaryParts,
 } from "@bettertavern/core/scenario/startForm";
 
-import { Checkbox, Chip, cx, Field, IconButton, TextArea } from "../../components/controls.tsx";
+import { Checkbox, Chip, cx } from "../../components/controls.tsx";
 import { useOverlay } from "../../overlay/OverlayProvider.tsx";
+import { PersonaStep, type PersonaTile } from "./PersonaStep.tsx";
 import styles from "./scenario.module.css";
 
 export type StartValues = {
-  name: string;
-  summary: string;
+  /** 你扮演谁：人设，或者临时填的（剧本设置里名字为空表示不选） */
+  choice: ProtagonistChoice;
+  /** 开新故事时临时填的要不要存进人设库 */
+  saveToLibrary: boolean;
   length: Preferences["length"];
   style: string;
   boundaries: string;
+};
+
+export type StartInitial = {
+  choice: ProtagonistChoice;
+  length?: Preferences["length"];
+  style?: string;
+  boundaries?: string;
 };
 
 /** 一步：灰色圆角卡片，标题前一个白色圆形序号；里面的输入框、标签是白的 */
@@ -74,27 +81,34 @@ export function StartForm({
   onChange,
   wide,
   initial,
+  personas,
+  mode = "start",
 }: {
   onChange: (values: StartValues, summary: string[]) => void;
   wide?: boolean;
-  initial?: StartValues;
+  initial: StartInitial;
+  personas: readonly Persona[];
+  mode?: "start" | "scenario";
 }) {
   const overlay = useOverlay();
   const { t, i18n } = useTranslation();
-  // 名字建议、内置的文风和边界随界面语言
-  const suggestions = useMemo(() => suggestNames(4), [i18n.language]);
+  // 内置的文风和边界随界面语言
   const builtinTags = useMemo(() => builtinStyles(), [i18n.language]);
   const avoidItems = useMemo(() => boundaryItems(), [i18n.language]);
-  const [name, setName] = useState(initial?.name ?? "");
-  const [summary, setSummary] = useState(initial?.summary ?? "");
-  const [length, setLength] = useState<Preferences["length"]>(initial?.length ?? "medium");
-  const [styleTags, setStyleTags] = useState<string[]>(() => splitJoined(initial?.style ?? ""));
-  const [customStyles, setCustomStyles] = useState<string[]>(() =>
-    splitJoined(initial?.style ?? "").filter((tag) => !builtinTags.includes(tag)),
+  const [choice, setChoice] = useState<ProtagonistChoice>(initial.choice);
+  const startsCustom = initial.choice.kind === "custom" && initial.choice.name !== "";
+  const [tile, setTile] = useState<PersonaTile>(
+    initial.choice.kind === "persona" ? "persona" : startsCustom || mode === "start" ? "custom" : "none",
   );
-  const [bounds, setBounds] = useState<string[]>(() => splitJoined(initial?.boundaries ?? ""));
+  const [saveToLibrary, setSaveToLibrary] = useState(false);
+  const [length, setLength] = useState<Preferences["length"]>(initial.length ?? "medium");
+  const [styleTags, setStyleTags] = useState<string[]>(() => splitJoined(initial.style ?? ""));
+  const [customStyles, setCustomStyles] = useState<string[]>(() =>
+    splitJoined(initial.style ?? "").filter((tag) => !builtinTags.includes(tag)),
+  );
+  const [bounds, setBounds] = useState<string[]>(() => splitJoined(initial.boundaries ?? ""));
   const [customBounds, setCustomBounds] = useState<string[]>(() =>
-    splitJoined(initial?.boundaries ?? "").filter((item) => !avoidItems.includes(item)),
+    splitJoined(initial.boundaries ?? "").filter((item) => !avoidItems.includes(item)),
   );
 
   const onChangeRef = useRef(onChange);
@@ -102,16 +116,16 @@ export function StartForm({
   useEffect(() => {
     onChangeRef.current(
       {
-        name: name.trim(),
-        summary: summary.trim(),
+        choice,
+        saveToLibrary: tile === "custom" && saveToLibrary,
         length,
         style: composeStyle(styleTags),
         boundaries: composeBoundaries(bounds),
       },
-      summaryParts({ name, length, styles: styleTags, boundaries: bounds.length }),
+      summaryParts({ name: choiceName(choice, personas), length, styles: styleTags, boundaries: bounds.length }),
     );
     // 换了界面语言，底部摘要（“还没起名”“适中”）也要换
-  }, [name, summary, length, styleTags, bounds, i18n.language]);
+  }, [choice, tile, saveToLibrary, personas, length, styleTags, bounds, i18n.language]);
 
   const toggle = (list: string[], item: string): string[] =>
     list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
@@ -138,45 +152,23 @@ export function StartForm({
   return (
     <div className={styles.steps}>
       <Step n="1" title={t("start.stepWho")}>
-        <div className={wide ? styles.nameRow : styles.nameColumn}>
-          <Field
-            label={t("start.nameLabel")}
-            className={cx(styles.nameField, styles.hiddenLabel)}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={NAME_MAX}
-            placeholder={t("start.namePlaceholder")}
-            trailing={
-              <IconButton
-                icon="dice"
-                className={styles.dice}
-                label={t("start.randomName")}
-                iconSize={20}
-                onClick={() => setName(randomName(name))}
-              />
-            }
-          />
-          <div className={styles.chips}>
-            {suggestions.map((n) => (
-              <Chip key={n} label={n} selected={name.trim() === n} onClick={() => setName(n)} />
-            ))}
-          </div>
-        </div>
-      </Step>
-
-      <Step n="2" title={t("start.stepIdentity")} optional={t("common.optional")}>
-        <TextArea
-          label={t("start.stepIdentity")}
-          hideLabel
-          counter
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-          maxLength={SUMMARY_MAX}
-          placeholder={t("start.identityPlaceholder")}
+        <PersonaStep
+          mode={mode}
+          personas={personas}
+          choice={choice}
+          tile={tile}
+          showCustom={mode === "start" || startsCustom}
+          saveToLibrary={saveToLibrary}
+          wide={wide}
+          onChoose={(next, nextTile) => {
+            setChoice(next);
+            setTile(nextTile);
+          }}
+          onSaveToLibrary={setSaveToLibrary}
         />
       </Step>
 
-      <Step n="3" title={t("start.stepLength")}>
+      <Step n="2" title={t("start.stepLength")}>
         <div className={styles.lengths} role="radiogroup" aria-label={t("start.stepLength")}>
           {(["short", "medium", "long"] as const).map((value) => {
             const on = length === value;
@@ -200,7 +192,7 @@ export function StartForm({
         </div>
       </Step>
 
-      <Step n="4" title={t("start.stepStyle")} optional={t("start.optionalMulti")}>
+      <Step n="3" title={t("start.stepStyle")} optional={t("start.optionalMulti")}>
         <div className={styles.chips}>
           {[...builtinTags, ...customStyles].map((tag) => (
             <Chip
@@ -215,7 +207,7 @@ export function StartForm({
         </div>
       </Step>
 
-      <Step n="5" title={t("start.stepAvoid")} optional={t("common.optional")}>
+      <Step n="4" title={t("start.stepAvoid")} optional={t("common.optional")}>
         <div className={styles.checks}>
           {[...avoidItems, ...customBounds].map((item) => (
             <Checkbox

@@ -501,3 +501,76 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* “你扮演谁”（PersonaStep.tsx）：人设一个一块（头像加名字），选中的描黑边加投影；后面是“临时填一个”“不选” */
+.personaTiles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.personaTile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 6px 14px 6px 6px;
+  border: var(--bw-sm) solid var(--grey2);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14.5px;
+  cursor: pointer;
+}
+.personaTile:hover {
+  border-color: var(--frame);
+}
+.personaTileText {
+  padding-left: 14px;
+  color: var(--ink2);
+}
+.personaTileOn {
+  border-color: var(--frame);
+  box-shadow: var(--x3);
+  color: var(--ink);
+}
+.personaTileName {
+  font-weight: 700;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.personaManage {
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mut);
+}
+.personaManage:hover {
+  color: var(--ink);
+}
+.personaInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.personaDescription {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--ink2);
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.personaDescription.muted {
+  color: var(--mut);
+}
+.personaEdit {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--acc);
+}

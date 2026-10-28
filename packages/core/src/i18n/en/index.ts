@@ -6,6 +6,7 @@ import { auth } from "./auth.ts";
 import { common } from "./common.ts";
 import { library } from "./library.ts";
 import { lorebook } from "./lorebook.ts";
+import { persona } from "./persona.ts";
 import { play } from "./play.ts";
 import { settings } from "./settings.ts";
 import { shell } from "./shell.ts";
@@ -20,6 +21,7 @@ export const en: Messages<typeof zh> = {
   ...play,
   ...library,
   ...lorebook,
+  ...persona,
   ...workbench,
   ...settings,
 };

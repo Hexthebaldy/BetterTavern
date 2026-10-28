@@ -102,6 +102,10 @@ export const router = createBrowserRouter([
       },
       { path: "/tools", element: <Navigate to="/settings/tools" replace /> },
       {
+        path: "/settings/personas",
+        lazy: async () => ({ Component: (await import("../pages/settings/PersonasPage.tsx")).PersonasPage }),
+      },
+      {
         path: "/settings",
         lazy: async () => ({ Component: (await import("../pages/settings/SettingsPage.tsx")).SettingsPage }),
       },

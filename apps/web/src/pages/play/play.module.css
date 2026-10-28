@@ -60,8 +60,17 @@
   text-overflow: ellipsis;
 }
 .sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 14px;
   color: var(--mut);
+  min-width: 0;
+}
+.subAvatar {
+  flex: none;
+}
+.subText {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

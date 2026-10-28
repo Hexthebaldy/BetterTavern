@@ -63,6 +63,8 @@ export type PlayState = {
   title: string;
   /** 主角名和剧本 ID（阅读页顶上的书名页用；加载后才有） */
   protagonist: string;
+  /** 开局时用的人设（页头的头像按它找）；临时填的主角为 null */
+  personaId: string | null;
   scenarioId: string | null;
   /** 这一局的语言（开局时定下，和提示词同一种）：正文按它选字体；加载前按中文 */
   language: Playthrough["language"];
@@ -84,6 +86,7 @@ export type PlayEvent =
       lastFailed: Turn | null;
       title?: string;
       protagonist?: string;
+      personaId?: string | null;
       scenarioId?: string | null;
       language?: Playthrough["language"];
       mode?: Playthrough["mode"];
@@ -103,6 +106,7 @@ export const initialPlayState: PlayState = {
   phase: "loading",
   title: "",
   protagonist: "",
+  personaId: null,
   scenarioId: null,
   language: "zh",
   mode: "standard",
@@ -156,6 +160,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
         ...state,
         title: event.title ?? state.title,
         protagonist: event.protagonist ?? state.protagonist,
+        personaId: event.personaId !== undefined ? event.personaId : state.personaId,
         scenarioId: event.scenarioId !== undefined ? event.scenarioId : state.scenarioId,
         language: event.language ?? state.language,
         mode: event.mode ?? state.mode,

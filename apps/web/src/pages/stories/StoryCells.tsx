@@ -15,12 +15,14 @@ import { Link } from "react-router";
 import type { Playthrough } from "@bettertavern/core/api/types";
 import { LANGUAGE_TAGS } from "@bettertavern/core/i18n/index";
 import { storyStatus } from "@bettertavern/core/play/storyStatus";
+import { initialOfName } from "@bettertavern/core/scenario/persona";
 import { formatRelative } from "@bettertavern/core/utils/format";
 
 import { Caption, Keycap, panelClass, Portrait } from "../../components/comic.tsx";
 import { buttonClass, cx, IconButton, Pill } from "../../components/controls.tsx";
 import { slotStyle } from "../../components/ComicGrid.tsx";
 import { Icon } from "../../components/Icon.tsx";
+import { usePersona } from "../../data/personas.ts";
 import { storyPath } from "../../data/storyActions.ts";
 import type { MenuPlace } from "../../overlay/Menu.tsx";
 import { useContextMenu } from "../../overlay/useContextMenu.ts";
@@ -37,11 +39,25 @@ function saveNumber(n: number): string {
 /** 回合数：开场是第 0 回合 */
 function TurnCount({ story }: { story: Playthrough }) {
   const { t } = useTranslation();
+  // 开局时用的人设：“我是 林川”前面放它的头像
+  const persona = usePersona(story.persona_id);
   if (story.head_seq === null) return null;
   return (
     <span className={styles.turnCount}>
       {story.head_seq === 0 ? t("stories.openingTurn") : t("stories.turnN", { n: story.head_seq })}
-      {story.protagonist_name ? ` · ${t("play.iAm", { name: story.protagonist_name })}` : null}
+      {story.protagonist_name ? " · " : null}
+      {story.protagonist_name && persona ? (
+        <Portrait
+          name={persona.name}
+          seed={persona.id}
+          glyph={initialOfName(persona.name)}
+          blobId={persona.avatar_blob_id}
+          size={20}
+          radius={10}
+          className={styles.iAmAvatar}
+        />
+      ) : null}
+      {story.protagonist_name ? t("play.iAm", { name: story.protagonist_name }) : null}
     </span>
   );
 }

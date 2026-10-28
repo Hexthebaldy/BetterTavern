@@ -13,6 +13,8 @@ import type {
   Playthrough,
   PlaythroughCreated,
   PlaythroughDetail,
+  Persona,
+  PersonaImport,
   Preferences,
   ProbeReport,
   Provider,
@@ -93,7 +95,9 @@ export type ModelListQuery = { api_key: string; base_url?: string | null };
 
 export type NewPlaythrough = {
   scenario_id: string;
-  /** 不传时用剧本设置里的默认主角 */
+  /** 用人设库里的哪个人设；和 protagonist 都不传时服务端按剧本选的人设、默认人设取 */
+  persona_id?: string;
+  /** 临时填的主角（不进人设库） */
   protagonist?: { name: string; summary?: string };
   title?: string;
   preferences?: Partial<Preferences>;
@@ -212,6 +216,28 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
       saveBook: (id: string, version: number, book: LoreEntry[]) =>
         client.put<LorebookDetail>(`/v1/lorebooks/${enc(id)}/book`, { version, book }, { timeoutMs: 60_000 }),
       remove: (id: string) => client.delete<void>(`/v1/lorebooks/${enc(id)}`),
+    },
+    personas: {
+      list: () => client.get<Persona[]>("/v1/personas"),
+      create: (body: { name: string; description?: string; is_default?: boolean }) =>
+        client.post<Persona>("/v1/personas", body),
+      /** 不传的项不改；is_default 为 true 时原来的默认人设取消 */
+      update: (id: string, body: { name?: string; description?: string; is_default?: boolean }) =>
+        client.patch<Persona>(`/v1/personas/${enc(id)}`, body),
+      remove: (id: string) => client.delete<void>(`/v1/personas/${enc(id)}`),
+      /** 换头像：服务端居中裁成正方形。file 同工作台的上传（网页是 File，App 是 expo-file-system 的 File） */
+      setAvatar: (id: string, file: Blob) => {
+        const form = new FormData();
+        form.append("file", file);
+        return client.request<Persona>("PUT", `/v1/personas/${enc(id)}/avatar`, { form, timeoutMs: 120_000 });
+      },
+      removeAvatar: (id: string) => client.delete<Persona>(`/v1/personas/${enc(id)}/avatar`),
+      /** 导入 SillyTavern 的人设备份（只有名字和描述） */
+      importBackup: (file: Blob) => {
+        const form = new FormData();
+        form.append("file", file);
+        return client.request<PersonaImport>("POST", "/v1/personas/import", { form, timeoutMs: 60_000 });
+      },
     },
     blobPath: (blobId: string) => `/v1/blobs/${enc(blobId)}`,
     workbench: {

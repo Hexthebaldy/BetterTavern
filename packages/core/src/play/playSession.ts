@@ -140,6 +140,7 @@ export class PlaySession {
         lastFailed: detail.last_failed,
         title: detail.playthrough.title,
         protagonist: detail.playthrough.protagonist_name,
+        personaId: detail.playthrough.persona_id ?? null,
         scenarioId: detail.playthrough.scenario_id,
         language: detail.playthrough.language,
         mode: detail.playthrough.mode,

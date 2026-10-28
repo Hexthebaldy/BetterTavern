@@ -6,6 +6,7 @@
  * - 阅读：正文字号（A− / A+，点中间的数字回到跟随浏览器）、正文字体，下面一段样字（阅读页里也能改，存在同一份偏好里）；
  * - 键盘快捷键：几个常用的键，单键快捷键的开关，“全部 →”打开快捷键一览；
  * - 外部服务：网页搜索、读网页、生成封面三项现在用什么，“管理 →”进 /settings/tools；
+ * - 人设（第四行，占满一行）：人设库里的人设，默认人设排第一，点一个进 /settings/personas 编辑；“管理 →”也进那里；
  * - 连接测试和诊断日志：进 /dev/probe。
  * 版本号和服务器地址写在连接测试那一格的左下角。
  */
@@ -21,6 +22,7 @@ import {
   type LanguageSetting,
 } from "@bettertavern/core/i18n/index";
 import { readingSize, stepSize, type ReadingFont } from "@bettertavern/core/play/reading";
+import { initialOfName } from "@bettertavern/core/scenario/persona";
 import { formatDate } from "@bettertavern/core/utils/format";
 import type { ThemeSetting } from "@bettertavern/design/themes";
 
@@ -31,6 +33,7 @@ import { Icon } from "../../components/Icon.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { CLIENT_VERSION } from "../../config.ts";
 import { useModelRoutes } from "../../data/models.ts";
+import { usePersonas } from "../../data/personas.ts";
 import { useScenarios } from "../../data/scenarios.ts";
 import { useStories } from "../../data/stories.ts";
 import { useToolRoutes } from "../../data/tools.ts";
@@ -57,6 +60,7 @@ export function SettingsPage() {
         <ShortcutsCell />
         <ToolsCell />
         <ProbeCell />
+        <PersonasCell />
       </ComicGrid>
     </div>
   );
@@ -345,6 +349,42 @@ function ToolsCell() {
           {row.end}
         </div>
       ))}
+    </Panel>
+  );
+}
+
+function PersonasCell() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const personas = usePersonas();
+  const list = personas.data ?? [];
+  const open = (id: string): void => void navigate(`/settings/personas?id=${encodeURIComponent(id)}`);
+  return (
+    <Panel className={styles.personas} style={{ gridColumn: "1 / span 6", gridRow: "4" }}>
+      <CellLabel link={{ to: "/settings/personas", label: t("settings.manage") }}>{t("personas.title")}</CellLabel>
+      <span className={styles.toolsNote}>
+        {list.length ? t("personas.count", { count: list.length }) : t("personas.noneHint")}
+      </span>
+      <div className={styles.personaList}>
+        {list.map((persona) => (
+          <button key={persona.id} type="button" className={styles.personaTile} onClick={() => open(persona.id)}>
+            <Portrait
+              name={persona.name}
+              seed={persona.id}
+              glyph={initialOfName(persona.name)}
+              blobId={persona.avatar_blob_id}
+              size={44}
+              radius={22}
+            />
+            <span className={styles.personaName}>{persona.name}</span>
+            {persona.is_default ? <Pill tone="acc" label={t("personas.defaultBadge")} /> : null}
+          </button>
+        ))}
+        <button type="button" className={cx(styles.personaTile, styles.personaAdd)} onClick={() => open("new")}>
+          <Icon name="plus" size={20} strokeWidth={2.2} />
+          <span className={styles.personaName}>{t("personas.add")}</span>
+        </button>
+      </div>
     </Panel>
   );
 }

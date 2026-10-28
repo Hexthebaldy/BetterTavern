@@ -16,10 +16,12 @@ import { useLocation, useNavigate, useParams, useSearchParams } from "react-rout
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { CardDetail, LorebookSummary, Scenario, ScenarioSetup } from "@bettertavern/core/api/types";
 import { LOREBOOK_LIMITS } from "@bettertavern/core/scenario/lorebook";
+import { BLANK, setupChoice, setupFields } from "@bettertavern/core/scenario/persona";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Button, cx, Dots, Field, IconButton, Notice, Pill, Toggle } from "../../components/controls.tsx";
 import { useLorebookImport, useLorebooks } from "../../data/lorebooks.ts";
+import { usePersonas } from "../../data/personas.ts";
 import { scenarioPath } from "../../data/scenarioActions.ts";
 import { scenariosKey, useCards } from "../../data/scenarios.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -58,6 +60,8 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
   );
   const [name, setName] = useState(scenario?.name ?? "");
   const [values, setValues] = useState<StartValues | null>(null);
+  const personas = usePersonas();
+  const personaList = personas.data ?? [];
   const [opening, setOpening] = useState<Opening>(scenario?.setup.opening ?? null);
   const [lightning, setLightning] = useState(scenario?.setup.lightning ?? false);
   const [books, setBooks] = useState<string[]>(() => scenario?.lorebooks.map((b) => b.lorebook_id) ?? []);
@@ -116,7 +120,7 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
     setSaving(true);
     setProblem(null);
     const setup: ScenarioSetup = {
-      protagonist: { name: values.name, summary: values.summary },
+      ...setupFields(values.choice, personaList),
       preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
       opening,
       lightning,
@@ -290,15 +294,19 @@ function Form({ scenario, presetCard }: { scenario: Scenario | null; presetCard:
 
       <h2 className={styles.formSection}>{t("newScenario.protagonist")}</h2>
       <p className={styles.formHint}>{t("newScenario.protagonistHint")}</p>
-      <StartForm
-        wide={wide}
-        initial={
-          scenario
-            ? { name: scenario.setup.protagonist.name, summary: scenario.setup.protagonist.summary, ...scenario.setup.preferences }
-            : undefined
-        }
-        onChange={(next) => setValues(next)}
-      />
+      {personas.isPending ? null : (
+        <StartForm
+          mode="scenario"
+          wide={wide}
+          personas={personaList}
+          initial={
+            scenario
+              ? { choice: setupChoice(scenario.setup, personaList), ...scenario.setup.preferences }
+              : { choice: BLANK }
+          }
+          onChange={(next) => setValues(next)}
+        />
+      )}
 
       <h2 className={styles.formSection}>{t("newScenario.opening")}</h2>
       <p className={styles.formHint}>{t("newScenario.openingHint")}</p>

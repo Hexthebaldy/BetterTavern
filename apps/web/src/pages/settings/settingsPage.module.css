@@ -506,3 +506,45 @@
     height: 72px;
   }
 }
+
+/* 人设（第四行，占满一行）：人设一个一块，横着排，放不下换行 */
+.personas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px 18px;
+}
+.personaList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+.personaTile {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 8px 14px 8px 8px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+.personaTile:hover {
+  box-shadow: var(--x3);
+}
+.personaName {
+  font-size: 14.5px;
+  font-weight: 700;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.personaAdd {
+  padding-left: 14px;
+  border-style: dashed;
+  color: var(--mut);
+}

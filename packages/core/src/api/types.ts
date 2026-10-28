@@ -265,6 +265,9 @@ export type CardRevision = {
 
 /** 剧本的设置：开新故事时预填 */
 export type ScenarioSetup = {
+  /** 默认人设（docs/personas.md）：开新故事时先替玩家选好它；更新前的服务端没有这一项 */
+  persona_id?: string | null;
+  /** 默认主角。选了默认人设时是它的副本（服务端写，给旧版 App 读） */
   protagonist: { name: string; summary: string };
   preferences: Preferences;
   /** 用哪张卡的哪条开场白开场（0 是 first_mes，1 起是备选开场白）；null 时由导演写开场 */
@@ -272,6 +275,22 @@ export type ScenarioSetup = {
   /** 闪电模式：这个剧本开的新故事花费更少、没有世界状态；只影响之后开始的故事 */
   lightning: boolean;
 };
+
+/** 人设：玩家扮演的“我”（docs/personas.md） */
+export type Persona = {
+  id: string;
+  name: string;
+  description: string;
+  /** 头像（正方形）；没有时画名字的第一个字 */
+  avatar_blob_id: string | null;
+  is_default: boolean;
+  /** 几个剧本选了它当默认人设 */
+  scenario_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PersonaImport = { personas: Persona[]; created: number; skipped: number };
 
 export type Scenario = {
   id: string;
@@ -615,6 +634,8 @@ export type Playthrough = {
   /** lightning：闪电模式，没有世界状态（不显示世界状态的入口）；开局时定下 */
   mode: "standard" | "lightning";
   protagonist_name: string;
+  /** 开局时用的人设，用来显示头像（人设删了就找不到）；临时填的为 null，更新前的服务端没有这一项 */
+  persona_id?: string | null;
   preferences: Partial<Preferences>;
   head_turn_id: string | null;
   head_seq: number | null;

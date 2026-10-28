@@ -18,11 +18,13 @@ import { useNavigate, useParams } from "react-router";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
 import { headTurn, isEnded, isLive, canAct, turnsAfter } from "@bettertavern/core/play/turnMachine";
+import { initialOfName } from "@bettertavern/core/scenario/persona";
 
-import { HintBar, Panel } from "../../components/comic.tsx";
+import { HintBar, Panel, Portrait } from "../../components/comic.tsx";
 import { Button, IconButton, Pill } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
 import { HeaderTool } from "../../components/PageHeader.tsx";
+import { usePersona } from "../../data/personas.ts";
 import { storiesKey } from "../../data/stories.ts";
 import { useStoryActions } from "../../data/storyActions.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -288,6 +290,8 @@ function PlayPage({ id }: { id: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [singleKeys, controls, jumpToLatest, toggleWorld, toggleRecap, lightning]);
 
+  // 开局时用的人设：页头“我是 林川”前面放它的头像（docs/personas.md 第 6 节：阅读页只在这里放）
+  const persona = usePersona(state.personaId);
   const sub = [scenario.data?.name, state.protagonist ? t("play.iAm", { name: state.protagonist }) : null]
     .filter(Boolean)
     .join(" · ");
@@ -304,7 +308,22 @@ function PlayPage({ id }: { id: string }) {
       ) : null}
       {head && head.seq > 0 ? <Pill tone="acc" label={t("play.turnChip", { n: head.seq })} className={styles.turnChip} /> : null}
       <h1 className={styles.title}>{shownTitle}</h1>
-      {sub ? <span className={styles.sub}>{sub}</span> : null}
+      {sub ? (
+        <span className={styles.sub}>
+          {persona ? (
+            <Portrait
+              name={persona.name}
+              seed={persona.id}
+              glyph={initialOfName(persona.name)}
+              blobId={persona.avatar_blob_id}
+              size={24}
+              radius={12}
+              className={styles.subAvatar}
+            />
+          ) : null}
+          <span className={styles.subText}>{sub}</span>
+        </span>
+      ) : null}
       <div className={styles.tools} role="toolbar" aria-label={t("play.toolbar")}>
         {lightning ? null : (
           <HeaderTool
