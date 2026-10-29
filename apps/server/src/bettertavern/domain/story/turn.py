@@ -3,20 +3,26 @@
 一个 turn = 玩家一次行动加导演一次回复，seq=0 是开场。点选项时客户端只发 option_id，
 选项文字由服务端按已落库的选项解析，客户端不能伪造选项内容。
 玩家选“写结局”时行动来源是 ending：导演写最后一段、不给选项，写完这局就结束了。
+多角色的局（domain/story/cast.py）还有两样：行动可以点名（speakers，这一回合让谁说话），
+行动来源 continue 是玩家这一回合不行动、让他们接着说。
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any, Literal
+
+from .cast import CastMember, Speaker, is_group, parse_speaker
 
 MAX_FREE_TEXT_CHARS = 2000
 OPTION_IDS = ("o1", "o2")
 
-ActionSource = Literal["option", "text", "opening", "ending"]
-ACTION_SOURCES: tuple[ActionSource, ...] = ("option", "text", "opening", "ending")
+ActionSource = Literal["option", "text", "opening", "ending", "continue"]
+ACTION_SOURCES: tuple[ActionSource, ...] = ("option", "text", "opening", "ending", "continue")
+# 可以点名的行动来源（多角色的局）
+CAST_SOURCES: tuple[ActionSource, ...] = ("option", "text", "continue")
 
 
 class TurnStatus(StrEnum):
@@ -78,11 +84,15 @@ class PlayerAction:
     source: ActionSource
     text: str
     option_id: str | None = None
+    # 点名：这一回合让谁说话，按点的顺序（角色的位置，旁白是 None）；没点名时为空
+    speakers: tuple[Speaker, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         data: dict[str, Any] = {"source": self.source, "text": self.text}
         if self.option_id is not None:
             data["option_id"] = self.option_id
+        if self.speakers:
+            data["speakers"] = list(self.speakers)
         return data
 
     @classmethod
@@ -91,10 +101,18 @@ class PlayerAction:
         if source not in ACTION_SOURCES:
             raise ActionError("VALIDATION_ERROR", f"Unknown action source: {source!r}")
         option_id = data.get("option_id")
+        raw = data.get("speakers")
+        speakers: list[Speaker] = []
+        for value in raw if isinstance(raw, list) else ():
+            try:
+                speakers.append(parse_speaker(value))
+            except ValueError:
+                continue
         return cls(
             source=source,
             text=str(data.get("text", "")),
             option_id=str(option_id) if option_id is not None else None,
+            speakers=tuple(speakers),
         )
 
 
@@ -104,8 +122,33 @@ def resolve_action(
     text: str | None,
     option_id: str | None,
     parent_options: Sequence[TurnOption],
+    speakers: Sequence[Speaker] = (),
+    cast: Sequence[CastMember] = (),
 ) -> PlayerAction:
-    """校验客户端提交的行动并解析成服务端确定的文字。"""
+    """校验客户端提交的行动并解析成服务端确定的文字。cast 是这一局的角色（不是多角色的局时为空）：
+    只有多角色的局能点名、能让他们接着说；点名只能点这一局的角色和旁白。"""
+    group = is_group(cast)
+    if (speakers or source == "continue") and not group:
+        raise ActionError("VALIDATION_ERROR", "This story has no cast to pick speakers from")
+    if speakers and source not in CAST_SOURCES:
+        raise ActionError("VALIDATION_ERROR", f"Speakers can't be picked for a {source} action")
+    positions = {m.position for m in cast}
+    if any(s is not None and s not in positions for s in speakers):
+        raise ActionError("VALIDATION_ERROR", "Unknown speaker")
+    picked = tuple(dict.fromkeys(speakers))
+    action = _resolve(source, text=text, option_id=option_id, parent_options=parent_options)
+    return replace(action, speakers=picked) if picked else action
+
+
+def _resolve(
+    source: str,
+    *,
+    text: str | None,
+    option_id: str | None,
+    parent_options: Sequence[TurnOption],
+) -> PlayerAction:
+    if source == "continue":
+        return PlayerAction(source="continue", text="")
     if source == "option":
         if not option_id:
             raise ActionError("VALIDATION_ERROR", "option_id is required when picking a choice")

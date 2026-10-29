@@ -18,12 +18,14 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.story.cast import CastMember
 from bettertavern.domain.story.turn import (
     ActionError,
     TurnStatus,
     options_from_json,
     resolve_action,
 )
+from bettertavern.infra.db.repositories import cast as cast_repo
 from bettertavern.infra.db.repositories import story as repo
 from bettertavern.infra.db.sqlutil import is_uuid
 from bettertavern.runtime.events.buffer import EventBufferRegistry, StreamEvent
@@ -51,6 +53,7 @@ class ActionInput:
     source: str
     text: str | None = None
     option_id: str | None = None
+    speakers: tuple[int | None, ...] = ()  # 多角色的局点名（角色的位置，旁白是 None）
 
 
 def header_for(pt: repo.PlaythroughRow, turn: repo.TurnRow, user_id: str) -> TurnHeader:
@@ -74,11 +77,18 @@ def ensure_not_ended(pt: repo.PlaythroughRow) -> None:
 
 
 def request_hash(playthrough_id: str, parent_turn_id: str | None, action: ActionInput) -> str:
+    fields: dict[str, Any] = {
+        "source": action.source,
+        "text": action.text,
+        "option_id": action.option_id,
+    }
+    if action.speakers:  # 没点名时和以前算出的一样
+        fields["speakers"] = list(action.speakers)
     payload = json.dumps(
         {
             "playthrough_id": playthrough_id,
             "parent_turn_id": parent_turn_id,
-            "action": {"source": action.source, "text": action.text, "option_id": action.option_id},
+            "action": fields,
         },
         sort_keys=True,
         ensure_ascii=False,
@@ -200,12 +210,15 @@ class TurnService:
                 if parent is None:
                     raise Conflict("The opening isn't finished yet", code="OPENING_PENDING")
                 seq = parent.seq + 1
+            cast = await cast_repo.list_cast(conn, pt.id)
             try:
                 resolved = resolve_action(
                     action.source,
                     text=action.text,
                     option_id=action.option_id,
                     parent_options=options_from_json(parent.options) if parent else [],
+                    speakers=action.speakers,
+                    cast=[CastMember(c.position, c.name, c.muted) for c in cast],
                 )
             except ActionError as exc:
                 raise Invalid(exc.message, code=exc.code) from exc
@@ -230,6 +243,7 @@ class TurnService:
             turn_attempt=attempt,
             source=action.source,
             text_chars=len(action.text) if action.text else None,
+            speakers=len(action.speakers),
             idempotent=idempotency_key is not None,
         )
         self._runners.start(header_for(pt, turn, user_id))
@@ -322,6 +336,7 @@ class TurnService:
                     "narrative": turn.narrative,
                     "options": turn.options,
                     "source": turn.options_source,
+                    "segments": turn.segments,
                 },
             )
             yield event(
@@ -336,6 +351,7 @@ class TurnService:
                         "options": turn.options,
                         "options_source": turn.options_source,
                         "state_seq": turn.state_seq,
+                        "segments": turn.segments,
                     },
                     "usage": None,
                 },
@@ -355,7 +371,15 @@ class TurnService:
                 "reason": None,
             }
         if turn.narrative:
-            yield event("snapshot", {"narrative": turn.narrative, "options": [], "source": None})
+            yield event(
+                "snapshot",
+                {
+                    "narrative": turn.narrative,
+                    "options": [],
+                    "source": None,
+                    "segments": turn.segments,
+                },
+            )
         yield event(
             "turn.failed",
             {

@@ -5,12 +5,14 @@ from __future__ import annotations
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Header, Query, Request, Response, status
+from fastapi import APIRouter, Header, Path, Query, Request, Response, status
 from starlette.responses import StreamingResponse
 
 from bettertavern.api.deps import LimitersDep, ServicesDep, UserId, check_rate
 from bettertavern.api.lifecycle import Shutdown
 from bettertavern.api.schemas.story import (
+    CastMemberPatchIn,
+    CastOut,
     PlaythroughCreatedOut,
     PlaythroughDetailOut,
     PlaythroughIn,
@@ -97,6 +99,18 @@ async def rename_playthrough(
     )
 
 
+@router.patch("/playthroughs/{playthrough_id}/cast/{position}")
+async def patch_cast_member(
+    playthrough_id: str,
+    position: Annotated[int, Path(ge=0, le=1000)],
+    body: CastMemberPatchIn,
+    user_id: UserId,
+    services: ServicesDep,
+) -> CastOut:
+    cast = await services.playthroughs.set_muted(user_id, playthrough_id, position, body.muted)
+    return CastOut.model_validate({"cast": cast}, from_attributes=True)
+
+
 @router.post("/playthroughs/{playthrough_id}/rollback")
 async def rollback_playthrough(
     playthrough_id: str, body: RollbackIn, user_id: UserId, services: ServicesDep
@@ -144,7 +158,10 @@ async def create_turn(
         playthrough_id,
         parent_turn_id=body.parent_turn_id,
         action=ActionInput(
-            source=body.action.source, text=body.action.text, option_id=body.action.option_id
+            source=body.action.source,
+            text=body.action.text,
+            option_id=body.action.option_id,
+            speakers=tuple(body.action.speakers or ()),
         ),
         idempotency_key=idempotency_key,
     )

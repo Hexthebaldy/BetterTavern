@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from collections.abc import AsyncGenerator, Callable, Mapping
+from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -12,6 +12,7 @@ import httpx
 
 from bettertavern.domain.memory.thresholds import effective_window
 from bettertavern.domain.routing import RouteParams, RouteTask
+from bettertavern.domain.story.cast import CastMember
 from bettertavern.domain.story.turn import PlayerAction
 from bettertavern.domain.world.card_source import CardSource
 from bettertavern.domain.world.lore import LoreSnapshot
@@ -239,6 +240,9 @@ class FakeStore:
     failed: list[TurnFailure] = field(default_factory=list)
     saved_world: list[tuple[Seed, str, AgentRunRecord | None]] = field(default_factory=list)
     renewals: int = 0
+    # 多角色的局的角色（load_context 带上）；save_world 存下的（名字，封面）
+    cast: tuple[CastMember, ...] = ()
+    saved_cast: list[tuple[str, str | None]] = field(default_factory=list)
 
     async def load_header(self, turn_id: str) -> TurnHeader | None:
         return None
@@ -256,6 +260,7 @@ class FakeStore:
             memory=self.memory,
             cards=self.cards,
             lore=self.lore,
+            cast=self.cast,
         )
 
     async def renew_lease(self, header: TurnHeader, ttl_s: float) -> bool:
@@ -283,11 +288,14 @@ class FakeStore:
         run: AgentRunRecord | None,
         cards: CardSource | None = None,
         lore: LoreSnapshot | None = None,
+        cast: Sequence[tuple[str, str | None]] = (),
     ) -> int:
         self.saved_world.append((seed, source, run))
         self.seed = seed
         self.cards = cards
         self.lore = lore
+        self.cast = tuple(CastMember(i, name) for i, (name, _) in enumerate(cast))
+        self.saved_cast = list(cast)
         return 3
 
 

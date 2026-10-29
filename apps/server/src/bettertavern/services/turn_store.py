@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
@@ -15,6 +16,7 @@ from bettertavern.domain.memory.lightning import raw_start as lightning_raw_star
 from bettertavern.domain.memory.outline import outline_from_json, slice_of
 from bettertavern.domain.scenario.card import CharacterCard, LoreEntry, greeting_narrative
 from bettertavern.domain.scenario.setup import ScenarioSetup, greetings_of
+from bettertavern.domain.story.cast import CastMember, segments_from_json
 from bettertavern.domain.story.language import unnamed_protagonist
 from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.story.turn import PlayerAction, TurnStatus
@@ -30,6 +32,7 @@ from bettertavern.domain.world.views import (
     WorldSnapshot,
 )
 from bettertavern.infra.db.repositories import cards as cards_repo
+from bettertavern.infra.db.repositories import cast as cast_repo
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import lorebooks as lorebooks_repo
 from bettertavern.infra.db.repositories import outline as outline_repo
@@ -241,6 +244,7 @@ class PgTurnStore:
             director_run_id=director_run_id,
             director_notes=outcome.director_notes,
             lore=dict(outcome.lore),
+            segments=[s.to_json() for s in outcome.segments],
         )
         if not updated:
             raise _Stale
@@ -256,7 +260,11 @@ class PgTurnStore:
             # 和提交、清理、删除一样先锁 playthroughs 行再写 turns，否则加锁顺序相反会死锁
             await story_repo.release_lease(conn, header.playthrough_id, header.turn_id)
             changed = await story_repo.fail_turn(
-                conn, header.turn_id, narrative=failure.narrative, error=failure.to_json()
+                conn,
+                header.turn_id,
+                narrative=failure.narrative,
+                error=failure.to_json(),
+                segments=[s.to_json() for s in failure.segments],
             )
             for run in failure.runs:
                 await insert_run(conn, header, run)
@@ -273,11 +281,12 @@ class PgTurnStore:
         protagonist = pt.settings.get("protagonist") or {}
         opening, opening_char = _chosen_greeting(pt.settings.get("opening"), cards)
         return WorldBuildInput(
+            covers=tuple(cover for _, _, cover in cards),
             card=cards[0][1] if cards else None,
             protagonist_name=str(protagonist.get("name") or unnamed_protagonist(pt.language)),
             protagonist_summary=str(protagonist.get("summary") or ""),
             preferences=Preferences.from_json(pt.settings.get("preferences")),
-            cards=tuple(card for _, card in cards),
+            cards=tuple(card for _, card, _ in cards),
             opening=opening,
             opening_char=opening_char,
             lorebooks=books,
@@ -291,6 +300,7 @@ class PgTurnStore:
         run: AgentRunRecord | None,
         cards: CardSource | None = None,
         lore: LoreSnapshot | None = None,
+        cast: Sequence[tuple[str, str | None]] = (),
     ) -> int:
         async with self._engine.begin() as conn:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id, lock=True)
@@ -309,6 +319,8 @@ class PgTurnStore:
                 await story_repo.insert_lore(
                     conn, header.playthrough_id, entries=entries, meta=meta
                 )
+            if cast:
+                await cast_repo.insert_cast(conn, header.playthrough_id, cast)
             if run is not None:
                 await insert_run(conn, header, run)
         return count
@@ -346,15 +358,15 @@ def cards_of(seed: Any) -> CardSource | None:
 
 async def _scenario_cards(
     conn: AsyncConnection, user_id: str, scenario_id: str | None
-) -> list[tuple[str, CharacterCard]]:
-    """剧本里的几张卡（按顺序），读此刻的正式版本（剧本实时引用角色卡）。"""
+) -> list[tuple[str, CharacterCard, str | None]]:
+    """剧本里的几张卡（按顺序）和它们的封面，读此刻的正式版本（剧本实时引用角色卡）。"""
     if scenario_id is None:
         return []
     scenario = await library_repo.get_scenario(conn, user_id, scenario_id)
     if scenario is None or not scenario.cards:
         return []
     rows = await cards_repo.get_cards(conn, user_id, [c.card_id for c in scenario.cards])
-    return [(row.id, CharacterCard.model_validate(row.card)) for row in rows]
+    return [(row.id, CharacterCard.model_validate(row.card), row.cover_blob_id) for row in rows]
 
 
 async def _scenario_lorebooks(
@@ -374,12 +386,14 @@ async def _scenario_lorebooks(
     )
 
 
-def _chosen_greeting(value: Any, cards: list[tuple[str, CharacterCard]]) -> tuple[str, str]:
+def _chosen_greeting(
+    value: Any, cards: list[tuple[str, CharacterCard, str | None]]
+) -> tuple[str, str]:
     """开局时记下的开场白选择 → (开场白原文, 角色名)；选的卡或那一条已经不在了就是空的。"""
     opening = ScenarioSetup.from_json({"opening": value}).opening if value else None
     if opening is None:
         return "", ""
-    for card_id, card in cards:
+    for card_id, card, _ in cards:
         if card_id == opening.card_id:
             greetings = greetings_of(card)
             if opening.greeting < len(greetings) and greetings[opening.greeting].strip():
@@ -411,6 +425,7 @@ async def load_turn_context(
     # 上一回合的世界书记录（粘滞、冷却）；闪电模式的压缩不需要，不给 parent
     lore_record = await story_repo.get_turn_lore(conn, parent) if lore and parent else None
     memory = await load_story_memory(conn, pt.id, pt.summarized_seq)
+    cast = await cast_repo.list_cast(conn, pt.id)
     current = await outline_repo.current_outline(conn, pt.id)
     greeting, char = "", ""
     if action.source == "opening" and pt.settings.get("opening"):
@@ -437,6 +452,7 @@ async def load_turn_context(
                 narrative=t.narrative,
                 options=tuple(str(o.get("text") or "") for o in t.options if isinstance(o, dict)),
                 director_notes=t.director_notes,
+                speakers=tuple(s.speaker for s in segments_from_json(t.segments)),
             )
             for t in history
         ),
@@ -449,4 +465,5 @@ async def load_turn_context(
         lore=lore,
         lore_record=lore_record,
         protagonist_description=str(chosen.get("summary") or ""),
+        cast=tuple(CastMember(c.position, c.name, c.muted) for c in cast),
     )

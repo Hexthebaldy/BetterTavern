@@ -61,7 +61,8 @@
 | `options_source` | text | 是 |  | 选项的来源：`model` 是模型给的（包括解析器修补过的）；`repaired` 是另调小模型补的；`missing` 表示补了两次也没补齐，`options` 不足两个（导演给出的有效选项会保留），玩家自己写下一步；`fallback` 只出现在迁移 `0013` 之前的回合，当时缺的选项用固定的兜底文案补上。生成完成前为空 |
 | `director_run_id` | uuid | 是 |  | 无外键，指向 `agent_runs.id` |
 | `state_seq` | integer | 否 | `-1` | 写这一回合时，状态块截至第几回合（当时的 `playthroughs.state_seq`）。下一回合不等世界状态整理，所以它可能比 `seq - 1` 小 |
-| `director_notes` | text | 是 |  | 导演写在选项之后的隐藏备注（`<director-notes>`，最多 600 字）：埋下的伏笔、答应过的事、玩家还不知道的真相。玩家看不到，接口不返回；世界状态 agent 整理这一回合时读它，之后的回合里它跟着这一回合的叙述回到导演的上下文。没写时为空（迁移 `0014`） |
+| `director_notes` | text | 是 |  | 导演写在选项之后的隐藏备注（`<director-notes>`，最多 600 字）：埋下的伏笔、答应过的事、玩家还不知道的真相。玩家看不到，接口不返回；世界状态 agent 整理这一回合时读它，之后的回合里它跟着这一回合的叙述回到导演的上下文。没写时为空（迁移 `0014`）。多角色的局几个人各自写的备注拼在一起，每条前面带名字（“阿苓: ……”），每个人最多 600 字 |
+| `segments` | jsonb | 否 | `'[]'` | 多角色的局每一段是谁写的，结构见下文“JSON 列”；`narrative` 是这几段拼起来、每段前面一行名字的全文。导演一个人写的回合（开场、结局、不是多角色的局）是 `[]`；失败的回合里是草稿的几段（迁移 `0030`） |
 | `usage` | jsonb | 是 |  | 导演调用的 token 用量，结构见下文“JSON 列”；服务商没给用量时为空 |
 | `error` | jsonb | 是 |  | 失败原因，结构见下文“JSON 列”；成功的回合为空 |
 | `rollback_id` | uuid | 是 |  | 回退批次号：被同一次回退归档的回合（包括失败的尝试）共用一个 |
@@ -90,6 +91,22 @@
 约束与索引：主键 `(user_id, key)`（`idempotency_keys_pkey`）；`idempotency_keys_created_idx (created_at)`。
 
 维护任务大约每 10 分钟删除一次 24 小时之前的键。
+
+### `playthrough_cast`
+
+多角色的局的角色（[cast.md](../cast.md) 第 1 节）：剧本里有两张以上的卡时，开局搭世界的那个事务里写入，一张卡一行；位置就是卡在剧本里的顺序，和开局时卡的原文快照（`playthroughs.seed` 的 `cards`）一一对应。之后改卡、改剧本都不影响这一局。一张卡的剧本、这个迁移之前开的局没有行，照旧由导演一个人写。迁移 `0030` 加的。
+
+| 列 | 类型 | 可空 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `playthrough_id` | uuid | 否 |  | → `playthroughs.id`，级联删除 |
+| `position` | integer | 否 |  | 卡在剧本里的位置，从 0 开始；CHECK 不小于 0。点名（`turns.user_action.speakers`）、`turns.segments` 的 `speaker` 用它 |
+| `name` | text | 否 |  | 角色名：开局时卡的名字（宏换好、合并空白，最多 40 字） |
+| `cover_blob_id` | uuid | 是 |  | → `blobs.id`，被删除时置空：开局时那张卡的封面，阅读页当头像用。清理没人用的图片时也看这一列 |
+| `muted` | boolean | 否 | `false` | 玩家让他先不出场（`PATCH /v1/playthroughs/{playthrough_id}/cast/{position}`）。是玩家的设置，不是故事里发生的事：回退不改它 |
+
+约束与索引：
+- 主键 `(playthrough_id, position)`（`playthrough_cast_pkey`）。
+- `playthrough_cast_cover_idx (cover_blob_id) WHERE cover_blob_id IS NOT NULL`：清理图片时查有没有人在用。
 
 ### `playthrough_lore`
 
@@ -204,6 +221,21 @@
 { "source": "text", "text": "我先检查窗框上的划痕" }  // 去掉首尾空白，最多 2000 字
 { "source": "opening", "text": "" }
 { "source": "ending", "text": "和阿苓一起离开小镇" }  // 写结局；text 是结局方向，可以是空串，最多 2000 字
+{ "source": "continue", "text": "" }  // 多角色的局：这一回合不行动，让他们接着说
+{ "source": "text", "text": "地图在哪", "speakers": [0, null] }  // 多角色的局点名：角色的位置，旁白是 null
+```
+
+`speakers` 只在点了名时有：去掉重复以后按点的顺序原样记下（包括点了但先不出场的），这一回合实际是谁写的看 `segments`。
+
+### `turns.segments`
+
+多角色的局一回合里的几段，按顺序（[cast.md](../cast.md) 第 3 节）。`text` 不带名字；拼成 `narrative` 时每段前面一行名字，格式随这一局的语言（中文、日文“【阿苓】”，英文“[阿苓]”；旁白是“旁白”“Narrator”“ナレーション”）。
+
+```jsonc
+[
+  { "speaker": 0, "text": "外乡人？她瞟了老周一眼。" },   // playthrough_cast.position
+  { "speaker": null, "text": "门外的雨更大了。" }        // 旁白
+]
 ```
 
 ### `turns.options`

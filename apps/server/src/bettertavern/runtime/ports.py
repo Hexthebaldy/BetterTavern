@@ -13,6 +13,7 @@ from bettertavern.domain.billing import TokenPrices
 from bettertavern.domain.memory.outline import Beat, Outline, OutlineSlice
 from bettertavern.domain.routing import RouteTask
 from bettertavern.domain.scenario.card import CharacterCard, LoreEntry
+from bettertavern.domain.story.cast import CastMember, Segment, Speaker
 from bettertavern.domain.story.turn import PlayerAction, TurnOption
 from bettertavern.domain.world.card_source import CardSource
 from bettertavern.domain.world.lore import LoreSnapshot
@@ -67,6 +68,8 @@ class HistoryTurn:
     narrative: str
     options: tuple[str, ...] = ()  # 当时给玩家的选项；结局回合、没补齐时可能少于 2 个
     director_notes: str = ""  # 导演当时写的隐藏备注
+    # 多角色的局这一回合按顺序是谁写的（角色的位置，旁白是 None）；导演一个人写的回合为空
+    speakers: tuple[Speaker, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +118,8 @@ class TurnContext:
     # 玩家给主角写的描述原文（人设的描述或临时填的，开局时存进 playthroughs.settings），
     # 导演的系统提示里放 <persona>（docs/personas.md 第 4 节）
     protagonist_description: str = ""
+    # 多角色的局的角色（docs/cast.md），按卡的顺序；不是多角色的局（一张卡、以前开的局）为空
+    cast: tuple[CastMember, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +153,8 @@ class TurnOutcome:
     director_notes: str = ""  # 导演写在选项之后、玩家看不到的备注
     # 这一回合的世界书记录（写进 turns.lore）：挑中了哪几条、之后还在粘滞或冷却的条目
     lore: Mapping[str, Any] = field(default_factory=dict)
+    # 多角色的局每一段是谁写的；叙述是这几段拼起来的全文
+    segments: tuple[Segment, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -160,6 +167,8 @@ class TurnFailure:
     runs: list[AgentRunRecord] = field(default_factory=list)
     # 服务商错误的类别（auth、billing、rate_limit……），客户端按它翻译；不是服务商错误时为 None
     reason: str | None = None
+    # 多角色的局里已经写好的几段（草稿），和 narrative 一起存下
+    segments: tuple[Segment, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -184,6 +193,8 @@ class WorldBuildInput:
     opening_char: str = ""
     # 剧本挂的世界书（书名，条目），按挂的顺序
     lorebooks: tuple[tuple[str, tuple[LoreEntry, ...]], ...] = ()
+    # 每张卡的封面（和 cards 一一对应，没有封面是 None）：多角色的局拿它当角色的头像
+    covers: tuple[str | None, ...] = ()
 
 
 class TurnStore(Protocol):
@@ -211,9 +222,10 @@ class TurnStore(Protocol):
         run: AgentRunRecord | None,
         cards: CardSource | None = None,
         lore: LoreSnapshot | None = None,
+        cast: Sequence[tuple[str, str | None]] = (),
     ) -> int:
         """写入开局世界（实体、关系、事实）、卡的原文快照和世界书快照，playthrough 置为 active。
-        返回实体数量。"""
+        cast 是多角色的局的角色（名字，封面），按卡的顺序；不是多角色的局为空。返回实体数量。"""
         ...
 
 

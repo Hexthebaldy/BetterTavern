@@ -45,6 +45,27 @@ class OptionOut(BaseModel):
     text: str
 
 
+class SegmentOut(BaseModel):
+    # 说话的是这一局第几个角色（从 0 开始）；旁白是 null
+    speaker: int | None
+    text: str
+
+
+class CastMemberOut(Out):
+    position: int
+    name: str
+    cover_blob_id: str | None
+    muted: bool
+
+
+class CastMemberPatchIn(BaseModel):
+    muted: bool
+
+
+class CastOut(BaseModel):
+    cast: list[CastMemberOut]
+
+
 class TurnOut(Out):
     id: str
     playthrough_id: str
@@ -56,6 +77,8 @@ class TurnOut(Out):
     options: list[OptionOut]
     options_source: str | None
     state_seq: int
+    # 多角色的局每一段是谁写的；导演一个人写的回合是空数组
+    segments: list[SegmentOut]
     error: dict[str, Any] | None
     created_at: datetime
     replied_at: datetime | None
@@ -88,6 +111,8 @@ class PlaythroughDetailOut(Out):
     head: TurnOut | None
     active_turn: TurnOut | None
     last_failed: TurnOut | None
+    # 多角色的局的角色（docs/cast.md）；不是多角色的局为空数组
+    cast: list[CastMemberOut]
 
 
 class PlaythroughCreatedOut(BaseModel):
@@ -97,9 +122,11 @@ class PlaythroughCreatedOut(BaseModel):
 
 
 class ActionIn(BaseModel):
-    source: Literal["option", "text", "opening", "ending"]
+    source: Literal["option", "text", "opening", "ending", "continue"]
     text: str | None = Field(default=None, max_length=4000)
     option_id: str | None = Field(default=None, max_length=8)
+    # 多角色的局点名：这一回合让谁说话，按点的顺序（角色的位置，旁白是 null）
+    speakers: list[int | None] | None = Field(default=None, max_length=16)
 
 
 class RollbackIn(BaseModel):

@@ -346,6 +346,8 @@ class TurnRow:
     options_source: str | None
     state_seq: int  # 写这一回合时，状态块截至第几回合
     director_notes: str  # 导演的隐藏备注（玩家看不到）；没写时为空
+    # 多角色的局每一段是谁写的（[{"speaker", "text"}]）；导演一个人写的回合是空的
+    segments: list[dict[str, Any]]
     usage: dict[str, Any] | None
     error: dict[str, Any] | None
     created_at: datetime
@@ -368,6 +370,7 @@ class TurnRow:
             options_source=row["options_source"],
             state_seq=int(row["state_seq"]),
             director_notes=row["director_notes"] or "",
+            segments=as_json(row["segments"], []),
             usage=as_json(row["usage"]),
             error=as_json(row["error"]),
             created_at=row["created_at"],
@@ -377,8 +380,8 @@ class TurnRow:
 
 
 _TURN_COLS = """id, playthrough_id, seq, parent_turn_id, attempt, status, timeline_epoch,
-    user_action, narrative, options, options_source, state_seq, director_notes, usage, error,
-    created_at, replied_at, committed_at"""
+    user_action, narrative, options, options_source, state_seq, director_notes, segments, usage,
+    error, created_at, replied_at, committed_at"""
 
 
 def _prefixed(cols: str, prefix: str) -> str:
@@ -495,6 +498,7 @@ async def complete_turn(
     director_run_id: str | None,
     director_notes: str | None = None,
     lore: dict[str, Any] | None = None,
+    segments: list[dict[str, Any]] | None = None,
 ) -> bool:
     count = await execute(
         conn,
@@ -503,7 +507,7 @@ async def complete_turn(
         SET status = :status, narrative = :narrative, options = CAST(:options AS jsonb),
             options_source = :source, usage = CAST(:usage AS jsonb), state_seq = :state_seq,
             director_run_id = :run, director_notes = :notes, error = NULL, replied_at = now(),
-            lore = CAST(:lore AS jsonb),
+            lore = CAST(:lore AS jsonb), segments = CAST(:segments AS jsonb),
             committed_at = CASE WHEN :status = 'committed' THEN now() ELSE NULL END
         WHERE id = :id AND status = 'generating'
         """,
@@ -518,6 +522,7 @@ async def complete_turn(
             "run": director_run_id,
             "notes": director_notes or None,
             "lore": dumps(lore or {}),
+            "segments": dumps(segments or []),
         },
     )
     return count == 1
@@ -533,15 +538,26 @@ async def get_turn_lore(conn: AsyncConnection, turn_id: str | None) -> dict[str,
 
 
 async def fail_turn(
-    conn: AsyncConnection, turn_id: str, *, narrative: str, error: dict[str, Any]
+    conn: AsyncConnection,
+    turn_id: str,
+    *,
+    narrative: str,
+    error: dict[str, Any],
+    segments: list[dict[str, Any]] | None = None,
 ) -> bool:
     count = await execute(
         conn,
         """
-        UPDATE turns SET status = 'failed', narrative = :narrative, error = CAST(:error AS jsonb)
+        UPDATE turns SET status = 'failed', narrative = :narrative, error = CAST(:error AS jsonb),
+            segments = CAST(:segments AS jsonb)
         WHERE id = :id AND status = 'generating'
         """,
-        {"id": turn_id, "narrative": narrative, "error": dumps(error)},
+        {
+            "id": turn_id,
+            "narrative": narrative,
+            "error": dumps(error),
+            "segments": dumps(segments or []),
+        },
     )
     return count == 1
 

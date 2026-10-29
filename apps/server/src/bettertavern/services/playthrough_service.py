@@ -19,6 +19,7 @@ from bettertavern.domain.scenario.persona import (
 from bettertavern.domain.scenario.setup import ScenarioSetup
 from bettertavern.domain.story.language import DEFAULT_LANGUAGE, parse_language
 from bettertavern.domain.world.names import clean_display_name
+from bettertavern.infra.db.repositories import cast as cast_repo
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.repositories import memory as memory_repo
 from bettertavern.infra.db.repositories import outline as outline_repo
@@ -38,7 +39,7 @@ from .route_service import RouteService
 from .state_jobs import enqueue_state
 from .turn_service import header_for
 from .turn_store import load_world
-from .views import PlaythroughDetail, PlaythroughView, TurnView
+from .views import CastView, PlaythroughDetail, PlaythroughView, TurnView
 
 log = structlog.get_logger(__name__)
 
@@ -260,6 +261,7 @@ class PlaythroughService:
             failed = await repo.latest_failed_after(
                 conn, pt.id, head.seq if head is not None else -1
             )
+            cast = await cast_repo.list_cast(conn, pt.id)
         return PlaythroughDetail(
             playthrough=self._view(
                 pt,
@@ -269,7 +271,20 @@ class PlaythroughService:
             head=TurnView.of(head) if head else None,
             active_turn=TurnView.of(active) if active else None,
             last_failed=TurnView.of(failed) if failed and active is None else None,
+            cast=[CastView.of(c) for c in cast],
         )
+
+    async def set_muted(
+        self, user_id: str, playthrough_id: str, position: int, muted: bool
+    ) -> list[CastView]:
+        """多角色的局里让一个角色先不出场，或者回来（docs/cast.md）。整局记着，回退也不改。"""
+        pt = await self._row(user_id, playthrough_id)
+        async with self._engine.begin() as conn:
+            if not await cast_repo.set_muted(conn, pt.id, position, muted):
+                raise NotFound("Cast member not found")
+            cast = await cast_repo.list_cast(conn, pt.id)
+        log.info("playthrough.cast_muted", playthrough_id=pt.id, position=position, muted=muted)
+        return [CastView.of(c) for c in cast]
 
     async def rename(self, user_id: str, playthrough_id: str, title: str) -> PlaythroughView:
         title = title.strip()[:80]

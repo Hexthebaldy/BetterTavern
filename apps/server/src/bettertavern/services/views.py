@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from bettertavern.infra.db.repositories.cast import CastRow
 from bettertavern.infra.db.repositories.story import PlaythroughRow, TurnRow
 
 
@@ -21,6 +22,7 @@ class TurnView:
     options: list[dict[str, Any]]
     options_source: str | None
     state_seq: int
+    segments: list[dict[str, Any]]
     error: dict[str, Any] | None
     created_at: datetime
     replied_at: datetime | None
@@ -38,6 +40,7 @@ class TurnView:
             options=row.options,
             options_source=row.options_source,
             state_seq=row.state_seq,
+            segments=row.segments,
             error=row.error,
             created_at=row.created_at,
             replied_at=row.replied_at,
@@ -98,8 +101,23 @@ class PlaythroughView:
 
 
 @dataclass(frozen=True, slots=True)
+class CastView:
+    position: int
+    name: str
+    cover_blob_id: str | None
+    muted: bool
+
+    @classmethod
+    def of(cls, row: CastRow) -> CastView:
+        return cls(
+            position=row.position, name=row.name, cover_blob_id=row.cover_blob_id, muted=row.muted
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class PlaythroughDetail:
     playthrough: PlaythroughView
     head: TurnView | None
     active_turn: TurnView | None
     last_failed: TurnView | None
+    cast: list[CastView]

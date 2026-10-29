@@ -5,6 +5,7 @@
 > 接口：[说明与约定](README.md) · [认证与账户](auth.md) · [模型路由](models.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [人设库](personas.md) · [工作台](workbench.md) · [游玩与回合](play.md) · [回合事件流](events.md) · [运维与开发](ops.md)
 
 开局、游玩列表与详情、世界状态的只读视图、历史回合、提交行动（包括写结局）、停止生成，以及订阅回合的事件流。
+多角色的局（剧本里有两张以上的卡，[cast.md](../cast.md)）还能点名、让他们接着说、让某个角色先不出场。
 事件流的格式见 [events.md](events.md)；相关的表见 [数据模型：游玩与回合](../data-model/story.md)、[世界状态](../data-model/world.md)。
 
 ## 接口
@@ -105,6 +106,25 @@
 | --- | --- | --- | --- |
 | `title` | string | 是 | 新标题，1 到 80 个字符 |
 
+### `PATCH /v1/playthroughs/{playthrough_id}/cast/{position}`
+
+多角色的局里让一个角色先不出场，或者让他回来（[cast.md](../cast.md) 第 2 节）。先不出场的角色不会被挑中说话，点他的名也不算；整局记着，回退也不改。正在生成的回合不受影响，下一回合才按新的来。
+
+- 鉴权：需要
+- 请求体：[`CastMemberPatchIn`](#castmemberpatchin)
+- 成功：`200`，返回 [`CastOut`](#castout)：这一局全部角色的最新状态。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 游玩不存在；或者这一局没有这个位置的角色（不是多角色的局时一律是这个） |
+| 422 | `VALIDATION_ERROR` | `position` 不是 0 到 1000 的整数 |
+
+#### `CastMemberPatchIn`
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `muted` | boolean | 是 | 真：先不出场；假：回来 |
+
 ### `POST /v1/playthroughs/{playthrough_id}/rollback`
 
 回退到当前故事线上更早的一回合（[agent-runtime.md](../agent-runtime.md) 第 8 节）。在一个事务里：撤销之后各回合对世界状态的修改、删掉它们的回合标签、
@@ -182,6 +202,8 @@
 - `source` 为 `option` 时，`option_id` 必须是父回合的选项（`o1` 或 `o2`）。客户端只发 `option_id`，选项文字由服务端从父回合里取，客户端不能伪造。
 - `source` 为 `text` 时，`text` 去掉首尾空白后为 1 到 2000 个字符。
 - `source` 为 `opening` 时，重新生成开场。只有开场还没有完成（没有头部回合、`parent_turn_id` 为 null）时可以使用，用于开场失败后的重试。
+- `source` 为 `continue` 时，玩家这一回合不行动，让其他人接着说（`text` 不用填，填了也不看）。只有多角色的局可以用。
+- `speakers` 是点名：这一回合让谁说话，按点的顺序，每一项是角色的位置（[`CastMemberOut`](#castmemberout) 的 `position`），旁白写 `null`。只有多角色的局、`source` 为 `option`、`text`、`continue` 时可以带；重复的只算一次；先不出场的角色点了也不算。没点名时由服务端按规则挑（[cast.md](../cast.md) 第 2 节）。
 - `source` 为 `ending` 时，让导演写整个故事的最后一段。`text` 是玩家希望的结局方向，可以不填；填了的话去掉首尾空白后最多 2000 个字符。
   - 开场完成后才能写结局。
   - 结局这一轮写完时，叙述照常保存，选项是空的（模型写了选项也会丢掉，也不另调模型补），游玩的 `status` 在同一个事务里变成 `ended`。
@@ -209,7 +231,7 @@
 | 422 | `OPENING_EXISTS` | `parent_turn_id` 是当前头部（已经有开场）时提交了 `opening` |
 | 422 | `OPTION_NOT_FOUND` | `option_id` 不在父回合的选项里 |
 | 422 | `IDEMPOTENCY_KEY_REUSED` | 同一个 `Idempotency-Key` 对应了不同的请求内容 |
-| 422 | `VALIDATION_ERROR` | `parent_turn_id` 不是 UUID（`field: "parent_turn_id"`）；`Idempotency-Key` 长度不对（`field: "Idempotency-Key"`）；字段超过 `TurnIn` 的限制（带 `errors`）；`option` 行动缺 `option_id`、自由输入为空或超过 2000 字、结局方向超过 2000 字（不带 `field`，原因在 `title` 里） |
+| 422 | `VALIDATION_ERROR` | `parent_turn_id` 不是 UUID（`field: "parent_turn_id"`）；`Idempotency-Key` 长度不对（`field: "Idempotency-Key"`）；字段超过 `TurnIn` 的限制（带 `errors`）；`option` 行动缺 `option_id`、自由输入为空或超过 2000 字、结局方向超过 2000 字；不是多角色的局却点了名或用了 `continue`、点了这一局没有的位置、给 `opening` 或 `ending` 点名（不带 `field`，原因在 `title` 里） |
 | 429 | `RATE_LIMITED` | 每分钟超过 30 次（和开局合计） |
 | 503 | `UNAVAILABLE` | 服务正在重启，带 `Retry-After: 5` |
 
@@ -224,9 +246,10 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `source` | string | 是 | `option`（点选项）/ `text`（自由输入）/ `opening`（重新生成开场）/ `ending`（写结局） |
+| `source` | string | 是 | `option`（点选项）/ `text`（自由输入）/ `opening`（重新生成开场）/ `ending`（写结局）/ `continue`（这一回合不行动，让他们接着说；只有多角色的局） |
 | `text` | string / null | 否 | `source` 为 `text` 时必填；为 `ending` 时是结局方向，可以不填。请求里最长 4000 个字符，去掉首尾空白后不能超过 2000 个字符 |
 | `option_id` | string / null | 否 | `source` 为 `option` 时必填：`o1` 或 `o2` |
+| `speakers` | array of (integer / null) / null | 否 | 多角色的局点名：角色的位置，旁白是 `null`，按点的顺序，最多 16 项。规则见上文“行动的规则” |
 
 ### `GET /v1/turns/{turn_id}`
 
@@ -298,6 +321,7 @@
 | `head` | [`TurnOut`](#turnout) / null | 头部回合 |
 | `active_turn` | [`TurnOut`](#turnout) / null | 正在生成的回合；客户端用它的 id 订阅事件流 |
 | `last_failed` | [`TurnOut`](#turnout) / null | 头部之后最近一次失败的尝试（`seq` 等于头部的 `seq` 加 1；没有头部时是开场）。只在没有正在生成的回合时返回，客户端据此显示“重试” |
+| `cast` | array of [`CastMemberOut`](#castmemberout) | 多角色的局的角色，按位置排；不是多角色的局（一张卡的剧本、这个功能上线前开的局）是空数组。世界建好之前也是空的 |
 
 ### `PlaythroughCreatedOut`
 
@@ -316,11 +340,12 @@
 | `seq` | integer | 回合序号，0 是开场 |
 | `attempt` | integer | 同一个 `seq` 的第几次尝试，从 0 开始 |
 | `status` | string | `generating` / `replied`（叙述和选项已保存，世界状态还没整理）/ `committed`（世界状态已整理，或者整理失败两次后跳过了；结局那一轮保存时直接是它）/ `failed` / `archived`。客户端把 `replied` 和 `committed` 都当成已完成 |
-| `action` | object | 服务端解析后的玩家行动 `{"source", "text", "option_id"}`：`text` 由服务端确定（点选项时是选项的文字），`option_id` 只在点选项时有；开场是 `{"source": "opening", "text": ""}`；写结局是 `{"source": "ending", "text": "结局方向，没填时是空串"}` |
+| `action` | object | 服务端解析后的玩家行动 `{"source", "text", "option_id", "speakers"}`：`text` 由服务端确定（点选项时是选项的文字），`option_id` 只在点选项时有，`speakers` 只在点了名时有（去掉重复以后，原样记下点的名，包括先不出场的）；开场是 `{"source": "opening", "text": ""}`；写结局是 `{"source": "ending", "text": "结局方向，没填时是空串"}`；让他们接着说是 `{"source": "continue", "text": ""}` |
 | `narrative` | string | 叙述。生成中是空串，增量要从事件流里拿；失败时可能是半截草稿（此时 `error.partial` 为真） |
 | `options` | array of [`OptionOut`](#optionout) | 两个选项；生成中、失败时和结局那一轮为空数组 |
 | `options_source` | string / null | 选项的来源：`model`（模型给的）/ `repaired`（另调小模型补的）/ `missing`（补了两次也没补齐：`options` 不足两个，可能是空数组，客户端提示玩家自己写）/ `fallback`（只出现在早先的回合：当时用过固定的兜底选项）；完成前和结局那一轮为 null |
 | `state_seq` | integer | 写这一回合时，状态块截至第几回合（-1 表示开局时的样子）。下一回合不等世界状态整理完，所以它可能比 `seq - 1` 小 |
+| `segments` | array of [`SegmentOut`](#segmentout) | 多角色的局每一段是谁写的，按顺序；`narrative` 是这几段拼起来的全文，每段前面一行名字（例如“【阿苓】”），客户端按 `segments` 一段一段显示。导演一个人写的回合（开场、结局、不是多角色的局）是空数组。失败的回合里是已经写好的几段（草稿） |
 | `error` | object / null | 失败原因 `{"code", "message", "retryable", "partial"}`，`code` 见 [README.md 的“回合失败码”](README.md#回合失败码) |
 | `created_at` | string（时间） | 提交时间 |
 | `replied_at` | string（时间）/ null | 叙述和选项保存的时间 |
@@ -331,6 +356,30 @@
 | --- | --- | --- |
 | `id` | string | `o1` 或 `o2`，提交行动时作为 `option_id` |
 | `text` | string | 选项的文字 |
+
+### `SegmentOut`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `speaker` | integer / null | 这一段是谁写的：角色的位置（[`CastMemberOut`](#castmemberout) 的 `position`）；旁白是 null |
+| `text` | string | 这一段的正文，不带名字 |
+
+### `CastMemberOut`
+
+多角色的局的一个角色：开局时剧本里的一张卡（[cast.md](../cast.md) 第 1 节）。之后改卡、改剧本都不影响这一局。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `position` | integer | 卡在剧本里的位置，从 0 开始；点名、`SegmentOut.speaker` 用它 |
+| `name` | string | 角色名（开局时卡的名字） |
+| `cover_blob_id` | string / null | 头像：开局时那张卡的封面（图片接口取图）；卡没有封面、封面被删了时为 null，客户端按名字画默认头像 |
+| `muted` | boolean | 先不出场 |
+
+### `CastOut`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `cast` | array of [`CastMemberOut`](#castmemberout) | 这一局全部角色，按位置排 |
 
 ### `TurnCreatedOut`
 
