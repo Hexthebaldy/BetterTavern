@@ -23,7 +23,14 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-nativ
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { actionPanelFrame } from "@bettertavern/design/layout";
-import { canAct, isEnded, isLive, needsOpening, type PlayState } from "@bettertavern/core/play/turnMachine";
+import {
+  canAct,
+  isEnded,
+  isLive,
+  needsOpening,
+  speakerOf,
+  type PlayState,
+} from "@bettertavern/core/play/turnMachine";
 
 import { Icon, IconButton, type IconName } from "../../components/ui.tsx";
 import { useKeyboardLift } from "../../hooks/useKeyboardLift.ts";
@@ -232,6 +239,9 @@ function LiveStatus({ state, stop }: { state: PlayState; stop: ReactNode }) {
   const warn = state.phase === "reconnecting" || state.phase === "polling";
   const source = state.pending?.action?.source;
   const pending = state.pending;
+  // 多角色的局：正在写的那一段是谁
+  const segment = pending?.segments.at(-1);
+  const speaker = segment ? (speakerOf(state.cast, segment)?.name ?? t("play.narrator")) : null;
   const label =
     state.phase === "reconnecting"
       ? t("play.reconnecting")
@@ -239,15 +249,17 @@ function LiveStatus({ state, stop }: { state: PlayState; stop: ReactNode }) {
         ? t("play.polling")
         : state.phase === "submitting"
           ? t("play.sending")
-          : pending?.narrative === ""
-            ? pending.recalling
-              ? t("play.recalling")
-              : t("play.thinking")
-            : source === "opening"
-              ? t("play.writingOpening")
-              : source === "ending"
-                ? t("play.writingEnding")
-                : t("play.writingNext");
+          : pending?.recalling
+            ? t("play.recalling")
+            : speaker !== null
+              ? t("play.speaking", { name: speaker })
+              : pending?.narrative === ""
+                ? t("play.thinking")
+                : source === "opening"
+                  ? t("play.writingOpening")
+                  : source === "ending"
+                    ? t("play.writingEnding")
+                    : t("play.writingNext");
   return (
     <View
       style={[styles.live, { borderColor: c.ink, backgroundColor: c.grey }]}

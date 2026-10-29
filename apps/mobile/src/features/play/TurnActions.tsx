@@ -4,6 +4,8 @@
  * - 开场没写：一行说明和“开始故事”；失败：白底墨框的提示（红字配图标）加重试 / 换个行动（没有模型时去设置）。
  * 生成中、同步中这里什么都没有：状态、“停止”、“自己写…”和世界、更多两个按钮都在底部的操作栏（BottomBar.tsx）。
  * 选了选项之后，那一句会立刻作为“我的行动”出现在故事流里。
+ * 多角色的局（docs/cast.md）：选项上方是“在场的人”一排（点名、先不出场，CastParts.tsx），选项下面多一个“让他们接着说”；
+ * 点了名时，选选项、自己写、让他们接着说都带上点的名。
  *
  * 和正文同样离边 24。平板宽屏（theme/layout.ts）选项排成两列，每格最小高 76，奇数个时最后一项占满一行。
  */
@@ -13,10 +15,12 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { describeTurnError } from "@bettertavern/core/api/client";
+import type { CastMember } from "@bettertavern/core/api/types";
 import { optionColumns } from "@bettertavern/design/layout";
 import {
   canAct,
   canRetry,
+  hasCast,
   headTurn,
   isEnded,
   needsOpening,
@@ -28,6 +32,7 @@ import { Button, Icon } from "../../components/ui.tsx";
 import { useLayout } from "../../hooks/useLayout.ts";
 import { comicDepth, comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 import { OptionRow } from "./ActionParts.tsx";
+import { CastPicker } from "./CastParts.tsx";
 import { READ_SIDE } from "./FeedParts.tsx";
 import { columnWidth } from "./StoryFeed.tsx";
 import type { PlayControls } from "./usePlaySession.ts";
@@ -43,12 +48,27 @@ type Props = {
   onPicked: () => void;
   /** 阅读区的宽度（世界状态停靠时比窗口窄）：宽屏两列选项按它算 */
   available: number;
+  /** 多角色的局点了名的人（按点的顺序，旁白是 null） */
+  speakers: (number | null)[];
+  onToggleSpeaker: (speaker: number | null) => void;
+  onClearSpeakers: () => void;
+  onMute: (member: CastMember) => void;
 };
 
 /** 两列选项之间、选项与选项之间 */
 const OPTION_GAP = 12;
 
-export function TurnActions({ state, controls, onOpenSettings, onPicked, available }: Props) {
+export function TurnActions({
+  state,
+  controls,
+  onOpenSettings,
+  onPicked,
+  available,
+  speakers,
+  onToggleSpeaker,
+  onClearSpeakers,
+  onMute,
+}: Props) {
   const c = useComic();
   const { size: layoutSize } = useLayout();
   const { t } = useTranslation();
@@ -102,6 +122,8 @@ export function TurnActions({ state, controls, onOpenSettings, onPicked, availab
   } else if (state.phase === "idle") {
     const enabled = canAct(state);
     const options = headTurn(state)?.options ?? [];
+    const cast = hasCast(state) && !isEnded(state);
+    const picked = speakers.length > 0 ? { speakers } : {};
     // 宽屏两列：选项区的宽度减去中间 12，平分；奇数个时最后一项占满一行
     const inner = columnWidth(available) - READ_SIDE * 2;
     const twoColumns = optionColumns(layoutSize) === 2;
@@ -113,11 +135,12 @@ export function TurnActions({ state, controls, onOpenSettings, onPicked, availab
           }
         : null;
     // 没有选项：结局之后什么都不显示；否则是这一段的选项没补齐，提示玩家在下面自己写
+    let choices: ReactNode;
     if (options.length === 0) {
       if (isEnded(state)) return null;
-      content = <Text style={[styles.noOptions, { color: c.mut }]}>{t("play.noOptions")}</Text>;
+      choices = <Text style={[styles.noOptions, { color: c.mut }]}>{t("play.noOptions")}</Text>;
     } else {
-      content = (
+      choices = (
         <View style={twoColumns ? [styles.options, styles.grid] : styles.options}>
           {options.map((option, i) => (
             <OptionRow
@@ -129,7 +152,7 @@ export function TurnActions({ state, controls, onOpenSettings, onPicked, availab
               dimmed={false}
               onPress={() => {
                 onPicked();
-                controls.submit({ source: "option", option_id: option.id });
+                controls.submit({ source: "option", option_id: option.id, ...picked });
               }}
               style={optionStyle(i)}
             />
@@ -137,6 +160,32 @@ export function TurnActions({ state, controls, onOpenSettings, onPicked, availab
         </View>
       );
     }
+    content = cast ? (
+      <View style={styles.column}>
+        <CastPicker
+          cast={state.cast}
+          picked={speakers}
+          disabled={!enabled}
+          onToggle={onToggleSpeaker}
+          onMute={onMute}
+          onClear={onClearSpeakers}
+        />
+        {choices}
+        <Button
+          label={t("play.continue")}
+          icon="play"
+          variant="secondary"
+          disabled={!enabled}
+          accessibilityHint={t("play.continueHint")}
+          onPress={() => {
+            onPicked();
+            controls.submit({ source: "continue", ...picked });
+          }}
+        />
+      </View>
+    ) : (
+      choices
+    );
   } else {
     return null;
   }

@@ -2,6 +2,7 @@
  * 故事流：书名页、已完成的回合（memo 固定，不随流式文字重渲染）、正在生成的那一段，最后是行动区
  * （选项、“自己写…”、生成中的状态，见 TurnActions.tsx），行动区跟着正文一起滚动。
  * 书名页、叙述、你的行动、开场的两步、结束标记这几块在 FeedParts.tsx（漫画风）。
+ * 多角色的局（docs/cast.md）按 segments 一段一段排：角色那一段前面是头像和名字，旁白那一段和普通叙述一样（CastParts.tsx）。
  *
  * 底部固定着操作栏（BottomBar.tsx）：内容底部按 bottomInset 留白。正在发送、正在构思、重连这些状态也在操作栏里，正文这里不重复。
  * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 时经 onAwayChange 告诉页面，
@@ -27,6 +28,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { FlatList, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 
+import type { CastMember } from "@bettertavern/core/api/types";
 import { readableColumn } from "@bettertavern/design/layout";
 import type { ReadingPrefs } from "@bettertavern/core/play/reading";
 import {
@@ -39,6 +41,7 @@ import {
 } from "@bettertavern/core/play/turnMachine";
 
 import { space, useComic } from "../../theme/index.ts";
+import { CastSegments } from "./CastParts.tsx";
 import {
   ActionNote,
   EndMark,
@@ -53,19 +56,45 @@ type Item = { key: string; turn: StoryTurn } | { key: "pending"; pending: Pendin
 
 const FOLLOW_THRESHOLD = 80;
 
-const TurnBlock = memo(function TurnBlock({ turn, narr }: { turn: StoryTurn; narr: Narr }) {
+const TurnBlock = memo(function TurnBlock({
+  turn,
+  cast,
+  narr,
+}: {
+  turn: StoryTurn;
+  cast: readonly CastMember[];
+  narr: Narr;
+}) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
   useTranslation();
   const note = actionNote(turn.action);
   return (
     <View style={styles.turn}>
       {note ? <ActionNote text={note} narr={narr} /> : null}
-      <Narrative text={turn.narrative} narr={narr} />
+      {turn.segments.length > 0 ? (
+        <CastSegments
+          segments={turn.segments}
+          cast={cast}
+          render={(segment) => <Narrative text={segment.text} narr={narr} />}
+        />
+      ) : (
+        <Narrative text={turn.narrative} narr={narr} />
+      )}
     </View>
   );
 });
 
-function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: Phase; narr: Narr }) {
+function PendingBlock({
+  pending,
+  phase,
+  cast,
+  narr,
+}: {
+  pending: PendingTurn;
+  phase: Phase;
+  cast: readonly CastMember[];
+  narr: Narr;
+}) {
   const c = useComic();
   const failed = phase === "failed";
   const opening = pending.action?.source === "opening";
@@ -82,13 +111,29 @@ function PendingBlock({ pending, phase, narr }: { pending: PendingTurn; phase: P
   return (
     <View style={styles.turn}>
       {note ? <ActionNote text={note} narr={narr} /> : null}
-      <Narrative
-        text={pending.narrative}
-        narr={narr}
-        dim={failed}
-        caret={caret}
-        interrupted={failed && pending.narrative.length > 0}
-      />
+      {pending.segments.length > 0 ? (
+        <CastSegments
+          segments={pending.segments}
+          cast={cast}
+          render={(segment, last) => (
+            <Narrative
+              text={segment.text}
+              narr={narr}
+              dim={failed}
+              caret={last ? caret : undefined}
+              interrupted={last && failed && segment.text.length > 0}
+            />
+          )}
+        />
+      ) : (
+        <Narrative
+          text={pending.narrative}
+          narr={narr}
+          dim={failed}
+          caret={caret}
+          interrupted={failed && pending.narrative.length > 0}
+        />
+      )}
     </View>
   );
 }
@@ -190,11 +235,11 @@ export function StoryFeed({
   const renderItem = useCallback(
     ({ item }: { item: Item }) =>
       "turn" in item ? (
-        <TurnBlock turn={item.turn} narr={narr} />
+        <TurnBlock turn={item.turn} cast={state.cast} narr={narr} />
       ) : (
-        <PendingBlock pending={item.pending} phase={state.phase} narr={narr} />
+        <PendingBlock pending={item.pending} phase={state.phase} cast={state.cast} narr={narr} />
       ),
-    [state.phase, narr],
+    [state.phase, state.cast, narr],
   );
 
   const missingOpening = state.turns.length === 0 && state.phase === "idle";

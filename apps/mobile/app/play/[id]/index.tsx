@@ -18,7 +18,7 @@ import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
-import type { Scenario } from "@bettertavern/core/api/types";
+import type { CastMember, Scenario } from "@bettertavern/core/api/types";
 import { canAct, headTurn, isEnded, rollbackStatus, turnsAfter } from "@bettertavern/core/play/turnMachine";
 import { personaOf } from "@bettertavern/core/scenario/persona";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
@@ -116,6 +116,15 @@ export default function PlayScreen() {
   const feed = useRef<StoryFeedHandle>(null);
   // 自己写：输入框展开着没有、草稿
   const [writing, setWriting] = useState(false);
+  // 多角色的局点了名的人（按点的顺序，旁白是 null）：交了行动就清掉
+  const [speakers, setSpeakers] = useState<(number | null)[]>([]);
+  const toggleSpeaker = (speaker: number | null): void =>
+    setSpeakers((now) => (now.includes(speaker) ? now.filter((s) => s !== speaker) : [...now, speaker]));
+  const mute = async (member: CastMember): Promise<void> => {
+    if (!member.muted) setSpeakers((now) => now.filter((s) => s !== member.position));
+    const failure = await controls.setMuted(member.position, !member.muted);
+    if (failure) overlay.toast(t("play.castMuteFailed", { error: describeTurnError(failure) }), { icon: "alert" });
+  };
   const [draft, setDraft] = useState("");
   // 往上翻离开了最新位置：操作栏中间换成“回到最新”
   const [away, setAway] = useState(false);
@@ -279,7 +288,8 @@ export default function PlayScreen() {
   const send = (text: string): void => {
     setWriting(false);
     setDraft("");
-    controls.submit({ source: "text", text });
+    setSpeakers([]);
+    controls.submit({ source: "text", text, ...(speakers.length > 0 ? { speakers } : {}) });
   };
   return (
     // 左边是阅读区（导航栏、故事流、操作栏），停靠时右边是世界状态；手机上只有阅读区
@@ -301,8 +311,15 @@ export default function PlayScreen() {
                 state={state}
                 controls={controls}
                 onOpenSettings={() => router.push("/settings/models")}
-                onPicked={() => setWriting(false)}
+                onPicked={() => {
+                  setWriting(false);
+                  setSpeakers([]);
+                }}
                 available={available}
+                speakers={speakers}
+                onToggleSpeaker={toggleSpeaker}
+                onClearSpeakers={() => setSpeakers([])}
+                onMute={(member) => void mute(member)}
               />
             }
             header={
