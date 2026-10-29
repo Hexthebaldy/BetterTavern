@@ -58,6 +58,7 @@ describe("回合事件流（SseClient + PlaySession）", () => {
           throw new Error("不应轮询");
         },
         cancel: async () => generating,
+        setMuted: async () => [],
       },
       connect: sseTurnConnector({
         url: (id) => `http://server/v1/turns/${id}/events`,

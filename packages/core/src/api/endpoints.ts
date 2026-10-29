@@ -5,6 +5,7 @@
 import type { ApiClient } from "./client.ts";
 import type {
   AuthResponse,
+  CastMember,
   CodePurpose,
   Credits,
   ModelInfo,
@@ -317,6 +318,13 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
         client.post<PlaythroughDetail>(`/v1/playthroughs/${enc(id)}/rollback`, { turn_id: turnId }),
       world: (id: string, reveal = false) =>
         client.get<WorldView>(`/v1/playthroughs/${enc(id)}/world${reveal ? "?reveal=true" : ""}`),
+      /** 多角色的局：让一个角色先不出场，或者回来；返回这一局全部角色的最新状态 */
+      setMuted: async (id: string, position: number, muted: boolean) =>
+        (
+          await client.patch<{ cast: CastMember[] }>(`/v1/playthroughs/${enc(id)}/cast/${position}`, {
+            muted,
+          })
+        ).cast,
     },
     turns: {
       history: async (playthroughId: string, afterSeq: number, limit: number) =>

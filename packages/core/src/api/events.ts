@@ -10,6 +10,7 @@ const KNOWN = new Set<string>([
   "world.building",
   "world.ready",
   "director.recalling",
+  "speaker.started",
   "narrative.delta",
   "narrative.done",
   "options.ready",
@@ -32,6 +33,8 @@ export function parseTurnEvent(message: SseMessage): TurnEvent | null {
   switch (event.event) {
     case "narrative.delta":
       return typeof event.data.text === "string" ? event : null;
+    case "speaker.started":
+      return typeof event.data.name === "string" ? event : null;
     case "options.ready":
       return Array.isArray(event.data.options) ? event : null;
     case "turn.completed":

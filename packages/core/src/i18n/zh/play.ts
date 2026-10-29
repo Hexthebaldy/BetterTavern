@@ -2,6 +2,22 @@
 
 export const play = {
   play: {
+    actionContinue: "（让他们接着说）",
+    continue: "让他们接着说",
+    continueHint: "这一回合我不行动，看他们接着说",
+    narrator: "旁白",
+    castLabel: "在场的人",
+    castHint: "点头像让他下一段说话，点眼睛让他先不出场",
+    castPick: "让{{name}}下一段说话",
+    castMuteName: "让{{name}}先不出场",
+    castUnmuteName: "让{{name}}回来",
+    castMute: "先不出场",
+    castUnmute: "回来",
+    castMuted: "先不出场",
+    castMuteFailed: "没改成：{{error}}",
+    castPicked: "点名：{{names}}",
+    castClear: "清除点名",
+    speaking: "{{name}}正在说…",
     actionEnding: "写结局",
     actionEndingWith: "写结局：{{wish}}",
     opening: "正在打开故事",

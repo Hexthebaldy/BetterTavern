@@ -9,7 +9,7 @@
 
 import { ApiError, describeError } from "../api/client.ts";
 import type { StreamOutcome, TurnConnector, TurnStream, TurnStreamHandlers } from "../api/turnStream.ts";
-import type { NewAction, PlaythroughDetail, Turn, TurnCreated, TurnError } from "../api/types.ts";
+import type { CastMember, NewAction, PlaythroughDetail, Turn, TurnCreated, TurnError } from "../api/types.ts";
 import {
   canRollbackTo,
   canSubmit,
@@ -36,6 +36,8 @@ export type PlayApi = {
   turn(turnId: string): Promise<Turn>;
   cancel(turnId: string): Promise<Turn>;
   rollback(playthroughId: string, turnId: string): Promise<PlaythroughDetail>;
+  /** 多角色的局：让一个角色先不出场或者回来，返回全部角色的最新状态 */
+  setMuted(playthroughId: string, position: number, muted: boolean): Promise<CastMember[]>;
 };
 
 export type PlaySessionDeps = {
@@ -145,6 +147,7 @@ export class PlaySession {
         language: detail.playthrough.language,
         mode: detail.playthrough.mode,
         rollbacksLeft: detail.playthrough.rollbacks_left,
+        cast: detail.cast ?? [],
       });
       const pending = this.state.pending;
       if (this.state.phase === "streaming" && pending?.turnId) this.attach(pending.turnId);
@@ -209,6 +212,20 @@ export class PlaySession {
 
   dismissError(): void {
     this.dispatch({ type: "dismiss_error" });
+  }
+
+  /**
+   * 多角色的局：让一个角色先不出场（muted 为真）或者回来。整局记着，回退也不改；下一回合才生效。
+   * 失败返回原因（界面用提示条显示）。
+   */
+  async setMuted(position: number, muted: boolean): Promise<TurnError | null> {
+    try {
+      const cast = await this.deps.api.setMuted(this.playthroughId, position, muted);
+      this.dispatch({ type: "cast", cast });
+      return null;
+    } catch (error) {
+      return toTurnError(error);
+    }
   }
 
   /** 停止生成：服务端结束后事件流会送来 turn.failed（CANCELLED） */

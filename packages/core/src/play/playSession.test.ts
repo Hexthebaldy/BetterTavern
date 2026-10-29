@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { ApiError } from "../api/client.ts";
-import type { NewAction, PlaythroughDetail, Turn, TurnEvent } from "../api/types.ts";
+import type { CastMember, NewAction, PlaythroughDetail, Turn, TurnEvent } from "../api/types.ts";
 import type { StreamOutcome, TurnStream, TurnStreamHandlers } from "../api/turnStream.ts";
 import { PlaySession, type PlayApi } from "./playSession.ts";
 import { makeTurn, opts } from "./testing.ts";
@@ -61,6 +61,8 @@ class FakeApi implements PlayApi {
   rolledBack: string[] = [];
   rollbackError: Error | null = null;
   detailCalls = 0;
+  cast: CastMember[] = [];
+  muteError: Error | null = null;
 
   async detail(): Promise<PlaythroughDetail> {
     this.detailCalls += 1;
@@ -98,6 +100,12 @@ class FakeApi implements PlayApi {
     this.rolledBack.push(turnId);
     if (this.rollbackError) throw this.rollbackError;
     return this.detail();
+  }
+
+  async setMuted(_id: string, position: number, muted: boolean): Promise<CastMember[]> {
+    if (this.muteError) throw this.muteError;
+    this.cast = this.cast.map((m) => (m.position === position ? { ...m, muted } : m));
+    return this.cast;
   }
 }
 
@@ -174,6 +182,31 @@ function completed(turn: Turn, narrative = turn.narrative): TurnEvent {
 const network = (): ApiError => new ApiError("连不上服务器", { status: 0, code: "NETWORK", retryable: true });
 
 describe("PlaySession", () => {
+  it("多角色的局：加载时带上角色，先不出场以后换成服务端给的，失败时返回原因", async () => {
+    const { api, session } = setup();
+    const head = makeTurn(0);
+    api.cast = [
+      { position: 0, name: "阿苓", cover_blob_id: null, muted: false },
+      { position: 1, name: "老周", cover_blob_id: null, muted: false },
+    ];
+    api.detailQueue = [detail(head, { cast: api.cast })];
+    api.historyQueue = [[head]];
+    await session.load();
+    assert.deepEqual(
+      session.getState().cast.map((m) => m.name),
+      ["阿苓", "老周"],
+    );
+    assert.equal(await session.setMuted(1, true), null);
+    assert.deepEqual(
+      session.getState().cast.map((m) => m.muted),
+      [false, true],
+    );
+    api.muteError = new Error("网络断了");
+    const failure = await session.setMuted(1, false);
+    assert.ok(failure);
+    assert.equal(session.getState().cast[1]?.muted, true);
+  });
+
   it("加载时接上进行中的开场，生成完成后可以行动", async () => {
     const { api, streams, session } = setup();
     const opening = makeTurn(0, { status: "generating", narrative: "", options: [] });

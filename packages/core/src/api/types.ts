@@ -584,12 +584,22 @@ export type ToolRoutePatch = Partial<Omit<NewToolRoute, "kind" | "provider">>;
 
 export type TurnOption = { id: string; text: string };
 
-/** 写结局时 source 是 ending，text 是玩家写的结局方向（没写时是空串） */
+/**
+ * 写结局时 source 是 ending，text 是玩家写的结局方向（没写时是空串）。
+ * 多角色的局（docs/cast.md）：continue 是这一回合不行动、让他们接着说；speakers 是点的名（角色的位置，旁白是 null）
+ */
 export type TurnAction = {
-  source: "option" | "text" | "opening" | "ending";
+  source: "option" | "text" | "opening" | "ending" | "continue";
   text: string;
   option_id?: string;
+  speakers?: (number | null)[];
 };
+
+/** 多角色的局里一个人写的一段：speaker 是角色的位置（CastMember.position），旁白是 null */
+export type Segment = { speaker: number | null; text: string };
+
+/** 多角色的局的一个角色：开局时剧本里的一张卡；cover_blob_id 是卡的封面，当头像用 */
+export type CastMember = { position: number; name: string; cover_blob_id: string | null; muted: boolean };
 
 export type TurnError = {
   code: string;
@@ -616,6 +626,8 @@ export type Turn = {
   options_source: "model" | "repaired" | "fallback" | "missing" | null;
   /** 写这一回合时，世界状态截至第几回合（-1 是开局时的样子） */
   state_seq: number;
+  /** 多角色的局每一段是谁写的；导演一个人写的回合是空数组，更新前的服务端没有这一项 */
+  segments?: Segment[];
   error: TurnError | null;
   created_at: string;
   replied_at: string | null;
@@ -655,6 +667,8 @@ export type PlaythroughDetail = {
   head: Turn | null;
   active_turn: Turn | null;
   last_failed: Turn | null;
+  /** 多角色的局的角色，按位置排；不是多角色的局是空数组，更新前的服务端没有这一项 */
+  cast?: CastMember[];
 };
 
 export type PlaythroughCreated = { playthrough: Playthrough; turn: Turn; events_url: string };
@@ -691,9 +705,11 @@ export type WorldView = {
   state_issue: WorldStateIssue | null;
 };
 
+/** speakers：多角色的局点名（角色的位置，旁白是 null），按点的顺序；没点名时不带 */
 export type NewAction =
-  | { source: "option"; option_id: string }
-  | { source: "text"; text: string }
+  | { source: "option"; option_id: string; speakers?: (number | null)[] }
+  | { source: "text"; text: string; speakers?: (number | null)[] }
+  | { source: "continue"; speakers?: (number | null)[] }
   | { source: "opening" }
   | { source: "ending"; text?: string };
 
@@ -704,6 +720,8 @@ export type TurnEvent =
   | { event: "world.ready"; data: { source: string; entities: number } }
   /** 导演在写之前先查更早的回合；round 是第几轮（最多两轮） */
   | { event: "director.recalling"; data: { round: number } }
+  /** 多角色的局：下一个人开始写，之后的叙述增量都是他这一段的；speaker 是角色的位置，旁白是 null */
+  | { event: "speaker.started"; data: { index: number; speaker: number | null; name: string } }
   | { event: "narrative.delta"; data: { text: string } }
   | { event: "narrative.done"; data: { chars: number; rewritten?: boolean } }
   /** 结局那一轮 options 是空的、source 是 null */
@@ -720,9 +738,13 @@ export type TurnEvent =
           options: TurnOption[];
           options_source: string | null;
           state_seq: number;
+          segments?: Segment[];
         };
         usage: Record<string, number> | null;
       };
     }
   | { event: "turn.failed"; data: TurnError }
-  | { event: "snapshot"; data: { narrative: string; options: TurnOption[]; source: string | null } };
+  | {
+      event: "snapshot";
+      data: { narrative: string; options: TurnOption[]; source: string | null; segments?: Segment[] };
+    };

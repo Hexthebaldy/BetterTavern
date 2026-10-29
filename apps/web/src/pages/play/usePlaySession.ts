@@ -24,6 +24,8 @@ export type PlayControls = {
   reload: () => void;
   /** 回到更早的一回合；失败时返回原因 */
   rollback: (turnId: string) => Promise<TurnError | null>;
+  /** 多角色的局：让一个角色先不出场或者回来；失败时返回原因 */
+  setMuted: (position: number, muted: boolean) => Promise<TurnError | null>;
 };
 
 export function usePlaySession(playthroughId: string): PlayControls {
@@ -41,6 +43,7 @@ export function usePlaySession(playthroughId: string): PlayControls {
         turn: (turnId) => api.turns.get(turnId),
         cancel: (turnId) => api.turns.cancel(turnId),
         rollback: (id, turnId) => api.playthroughs.rollback(id, turnId),
+        setMuted: (id, position, muted) => api.playthroughs.setMuted(id, position, muted),
       },
       connect: connectTurn,
       newKey: newIdempotencyKey,
@@ -100,5 +103,11 @@ export function usePlaySession(playthroughId: string): PlayControls {
     [],
   );
 
-  return { state, submit, retry, cancel, dismissError, reload, rollback };
+  const setMuted = useCallback(
+    (position: number, muted: boolean) =>
+      sessionRef.current?.setMuted(position, muted) ?? Promise.resolve(null),
+    [],
+  );
+
+  return { state, submit, retry, cancel, dismissError, reload, rollback, setMuted };
 }

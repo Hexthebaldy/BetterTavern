@@ -6,20 +6,24 @@
  * - 生成中：状态（正在发送 / 正在构思 / 正在回想前情 / 正在写下一段 / 正在写结局；重连、等结果时是琥珀色）和“停止”；
  * - 同步中：锁和“同步完成前暂时不能行动”；写完结局：旗子和“故事已完结”；
  * - 开场没写：“开始故事”；失败：错误格加重试 / 换个行动（没有模型时去模型页）。
+ * 多角色的局（docs/cast.md）：选项上方是“在场的人”一排（点名、先不出场），“自己写”下面多一个“让他们接着说”；
+ * 生成中写“阿苓正在说…”。点了名时，选选项、自己写、让他们接着说都带上点的名。
  */
 
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { describeTurnError } from "@bettertavern/core/api/client";
-import type { TurnOption } from "@bettertavern/core/api/types";
+import type { CastMember, TurnOption } from "@bettertavern/core/api/types";
 import {
   canAct,
   canRetry,
+  hasCast,
   headTurn,
   isEnded,
   isLive,
   needsOpening,
+  speakerOf,
   type PlayState,
 } from "@bettertavern/core/play/turnMachine";
 import { needsModelSettings } from "@bettertavern/core/settings/labels";
@@ -27,6 +31,8 @@ import { needsModelSettings } from "@bettertavern/core/settings/labels";
 import { Keycap, Panel } from "../../components/comic.tsx";
 import { Button, buttonClass, cx } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
+import castStyles from "./cast.module.css";
+import { CastPicker } from "./CastPicker.tsx";
 import styles from "./play.module.css";
 import { isSendKey, optionColumns } from "./reading.ts";
 import type { PlayControls } from "./usePlaySession.ts";
@@ -73,6 +79,8 @@ function LiveStatus({ state, onStop }: { state: PlayState; onStop: (() => void) 
   const warn = state.phase === "reconnecting" || state.phase === "polling";
   const source = state.pending?.action?.source;
   const pending = state.pending;
+  const segment = pending?.segments.at(-1);
+  const speaker = segment ? (speakerOf(state.cast, segment)?.name ?? t("play.narrator")) : null;
   const label =
     state.phase === "reconnecting"
       ? t("play.reconnecting")
@@ -80,15 +88,17 @@ function LiveStatus({ state, onStop }: { state: PlayState; onStop: (() => void) 
         ? t("play.polling")
         : state.phase === "submitting"
           ? t("play.sending")
-          : pending?.narrative === ""
-            ? pending.recalling
-              ? t("play.recalling")
-              : t("play.thinking")
-            : source === "opening"
-              ? t("play.writingOpening")
-              : source === "ending"
-                ? t("play.writingEnding")
-                : t("play.writingNext");
+          : pending?.recalling
+            ? t("play.recalling")
+            : speaker !== null
+              ? t("play.speaking", { name: speaker })
+              : pending?.narrative === ""
+                ? t("play.thinking")
+                : source === "opening"
+                  ? t("play.writingOpening")
+                  : source === "ending"
+                    ? t("play.writingEnding")
+                    : t("play.writingNext");
   return (
     <div className={cx(styles.statusRow, warn && styles.statusWarn)}>
       <span className={styles.status} aria-live="polite">
@@ -200,6 +210,10 @@ export function TurnActions({
   onWrite,
   onCloseWrite,
   onSend,
+  speakers,
+  onToggleSpeaker,
+  onClearSpeakers,
+  onMute,
 }: {
   state: PlayState;
   controls: PlayControls;
@@ -212,6 +226,11 @@ export function TurnActions({
   onWrite: () => void;
   onCloseWrite: () => void;
   onSend: (text: string) => void;
+  /** 多角色的局点了名的人（按点的顺序，旁白是 null） */
+  speakers: (number | null)[];
+  onToggleSpeaker: (speaker: number | null) => void;
+  onClearSpeakers: () => void;
+  onMute: (member: CastMember) => void;
 }) {
   const { t } = useTranslation();
   if (state.phase === "loading" || state.phase === "load_failed") return null;
@@ -292,8 +311,20 @@ export function TurnActions({
   if (state.phase !== "idle" || state.turns.length === 0) return null;
   const options = headTurn(state)?.options ?? [];
   const enabled = canAct(state);
+  const cast = hasCast(state);
+  const picked = speakers.length > 0 ? { speakers } : {};
   return (
     <div className={styles.area}>
+      {cast ? (
+        <CastPicker
+          cast={state.cast}
+          picked={speakers}
+          disabled={!enabled}
+          onToggle={onToggleSpeaker}
+          onMute={onMute}
+          onClear={onClearSpeakers}
+        />
+      ) : null}
       {options.length > 0 ? (
         <>
           <p className={styles.nextLine}>
@@ -309,7 +340,7 @@ export function TurnActions({
                 disabled={!enabled}
                 onPick={() => {
                   onPicked();
-                  controls.submit({ source: "option", option_id: option.id });
+                  controls.submit({ source: "option", option_id: option.id, ...picked });
                 }}
               />
             ))}
@@ -327,6 +358,20 @@ export function TurnActions({
         onClose={onCloseWrite}
         onSend={onSend}
       />
+      {cast ? (
+        <Button
+          label={t("play.continue")}
+          icon="play"
+          variant="secondary"
+          disabled={!enabled}
+          title={t("play.continueHint")}
+          className={castStyles.continue}
+          onClick={() => {
+            onPicked();
+            controls.submit({ source: "continue", ...picked });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

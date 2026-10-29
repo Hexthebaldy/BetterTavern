@@ -1,0 +1,165 @@
+/* 多角色的局（docs/cast.md）：每一段前面的说话人、选项上方“在场的人”一排（CastPicker.tsx） */
+
+/* 角色写的一段：左边头像，右边名字一行、下面是正文 */
+.segment {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.segmentAvatar {
+  flex: none;
+  margin-top: 2px;
+}
+.segmentBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.segmentName {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 18px;
+  color: var(--mut);
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pickerHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.pickerHead b {
+  font-size: 15px;
+  font-weight: 800;
+}
+.pickerHead span {
+  font-size: 13px;
+  color: var(--mut);
+}
+.members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.member {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+/* 点名：一块头像加名字，点上以后墨底配蓝投影，和选项卡一样 */
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 5px 34px 5px 6px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.member:last-child .pick {
+  padding-right: 14px;
+}
+.pick:disabled {
+  cursor: default;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pick:not(:disabled):hover {
+    box-shadow: var(--x2);
+  }
+}
+.pickOn {
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: var(--b2);
+}
+.memberName {
+  white-space: nowrap;
+}
+.narratorMark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: var(--bw-sm) dashed var(--frame);
+  border-radius: 20px;
+  color: var(--mut);
+}
+.pickOn .narratorMark {
+  border-color: var(--on-ink);
+  color: var(--on-ink);
+}
+/* 先不出场：变灰，点不了名 */
+.muted .pick {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.mutedTag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mut);
+}
+.mute {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 13px;
+  color: var(--mut);
+  background: transparent;
+}
+.pickOn + .mute {
+  color: var(--on-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mute:not(:disabled):hover {
+    background: var(--fill);
+    color: var(--ink);
+  }
+}
+.mute:focus-visible {
+  outline: 2px solid var(--acc);
+}
+.pickedLine {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--mut);
+}
+.clear {
+  padding: 0;
+  background: none;
+  color: var(--acc);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* “让他们接着说”：接在“自己写”下面，靠左 */
+.continue {
+  align-self: flex-start;
+}

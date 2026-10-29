@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { TurnEvent } from "../api/types.ts";
+import type { NewAction, TurnEvent } from "../api/types.ts";
 import { makeTurn, opts } from "./testing.ts";
 import {
   actionNote,
@@ -9,6 +9,7 @@ import {
   canRetry,
   canSubmit,
   displayAction,
+  hasCast,
   headTurn,
   initialPlayState,
   isBusy,
@@ -17,6 +18,7 @@ import {
   rollbackStatus,
   playReducer,
   retryAction,
+  speakerOf,
   unsentSubmission,
   type PlayEvent,
   type PlayState,
@@ -445,5 +447,123 @@ describe("回到更早的一段", () => {
     assert.equal(rollbackStatus({ ...loaded, turns: loaded.turns.slice(0, 1) }), "none");
     // 加载时没给次数（旧的事件）就沿用之前的
     assert.equal(idleWithTwoTurns().rollbacksLeft, 0);
+  });
+});
+
+describe("多角色的局（docs/cast.md）", () => {
+  const cast = [
+    { position: 0, name: "阿苓", cover_blob_id: null, muted: false },
+    { position: 1, name: "老周", cover_blob_id: "b1", muted: false },
+  ];
+  const loaded = (): PlayState =>
+    run([{ type: "loaded", turns: [makeTurn(0), makeTurn(1)], active: null, lastFailed: null, cast }]);
+
+  it("一段一段拼：speaker.started 开新的一段，之后的增量都是它的", () => {
+    const action: NewAction = { source: "text", text: "我问老周", speakers: [1, null] };
+    const submitted = run(
+      [
+        {
+          type: "submit",
+          submission: { key: "k", parentTurnId: "x", action },
+          display: displayAction(action, []),
+        },
+        {
+          type: "submitted",
+          turn: chosen({ action: { source: "text", text: "我问老周", speakers: [1, null] } }),
+        },
+        stream({ event: "speaker.started", data: { index: 0, speaker: 1, name: "老周" } }),
+        stream({ event: "narrative.delta", data: { text: "老周推开" } }),
+        stream({ event: "narrative.delta", data: { text: "算盘。" } }),
+        stream({ event: "speaker.started", data: { index: 1, speaker: null, name: "旁白" } }),
+        stream({ event: "narrative.delta", data: { text: "雨停了。" } }),
+      ],
+      loaded(),
+    );
+    assert.deepEqual(submitted.pending?.segments, [
+      { speaker: 1, text: "老周推开算盘。" },
+      { speaker: null, text: "雨停了。" },
+    ]);
+    // 断线重放：同一段的 speaker.started 再来一次不重复加
+    const replayed = run(
+      [stream({ event: "speaker.started", data: { index: 1, speaker: null, name: "旁白" } })],
+      submitted,
+    );
+    assert.equal(replayed.pending?.segments.length, 2);
+    const done = run(
+      [
+        stream({
+          event: "turn.completed",
+          data: {
+            turn: {
+              id: "t2",
+              seq: 2,
+              attempt: 0,
+              status: "replied",
+              narrative: "【老周】\n老周推开算盘。\n\n【旁白】\n雨停了。",
+              options: opts(2),
+              options_source: "repaired",
+              state_seq: 1,
+              segments: [
+                { speaker: 1, text: "老周推开算盘。" },
+                { speaker: null, text: "雨停了。" },
+              ],
+            },
+            usage: null,
+          },
+        }),
+      ],
+      submitted,
+    );
+    assert.deepEqual(
+      headTurn(done)?.segments.map((s) => s.speaker),
+      [1, null],
+    );
+    assert.deepEqual(headTurn(done)?.action.speakers, [1, null]);
+  });
+
+  it("让他们接着说：行动那一行写一句，重试时照原样再交", () => {
+    const action: NewAction = { source: "continue" };
+    assert.deepEqual(displayAction(action, []), { source: "continue", text: "" });
+    assert.ok(actionNote({ source: "continue", text: "" }));
+    const failed = run(
+      [
+        {
+          type: "submit",
+          submission: { key: "k", parentTurnId: "x", action },
+          display: displayAction(action, []),
+        },
+        { type: "submitted", turn: chosen({ action: { source: "continue", text: "" } }) },
+        stream({ event: "turn.failed", data: { code: "PROVIDER_ERROR", message: "x", retryable: true } }),
+      ],
+      loaded(),
+    );
+    assert.deepEqual(retryAction(failed), { source: "continue" });
+    const picked: NewAction = { source: "option", option_id: "o1", speakers: [0] };
+    const again = run(
+      [
+        {
+          type: "submit",
+          submission: { key: "k", parentTurnId: "x", action: picked },
+          display: displayAction(picked, opts(1)),
+        },
+        stream({ event: "turn.failed", data: { code: "PROVIDER_ERROR", message: "x", retryable: true } }),
+      ],
+      loaded(),
+    );
+    assert.deepEqual(retryAction(again), picked);
+  });
+
+  it("有两个以上角色才显示头像一排；先不出场以后换成服务端给的", () => {
+    const state = loaded();
+    assert.equal(hasCast(state), true);
+    assert.equal(
+      hasCast(run([{ type: "loaded", turns: [makeTurn(0)], active: null, lastFailed: null }])),
+      false,
+    );
+    const muted = run([{ type: "cast", cast: [cast[0]!, { ...cast[1]!, muted: true }] }], state);
+    assert.equal(muted.cast[1]?.muted, true);
+    assert.equal(speakerOf(muted.cast, { speaker: 1, text: "" })?.name, "老周");
+    assert.equal(speakerOf(muted.cast, { speaker: null, text: "" }), null);
+    assert.equal(speakerOf(muted.cast, { speaker: 7, text: "" }), null);
   });
 });

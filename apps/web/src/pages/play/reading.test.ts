@@ -121,3 +121,10 @@ describe("选项卡的列数", () => {
     assert.equal(optionColumns(4), 2);
   });
 });
+
+describe("回想列表里多角色的回合", () => {
+  it("取第一段的正文，不取名字那一行", () => {
+    const turns = [{ id: "a", seq: 1, narrative: "【阿苓】\n外乡人？", segments: [{ text: "外乡人？" }] }];
+    assert.deepEqual(recapItems(turns, false), [{ id: "a", seq: 1, text: "外乡人？" }]);
+  });
+});

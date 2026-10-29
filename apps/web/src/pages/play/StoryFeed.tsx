@@ -8,11 +8,13 @@
  * 已完成的回合 memo 固定（不随流式文字重渲染），用 content-visibility: auto，很长的故事也只排版看得见的部分。
  * 鼠标移到更早的一格上，右上角出现“回到这里”（回退，docs/agent-runtime.md 第 8 节）；回退次数用完时写明已用完。
  * 没有鼠标的设备上它一直显示。设计稿里带说话人的台词气泡和拟声词小格要导演在输出里标出来，这一版不做。
+ * 多角色的局（docs/cast.md）按 segments 一段一段排：角色那一段前面是头像和名字，旁白那一段和普通叙述一样（CastPicker.tsx）。
  */
 
 import { memo, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { CastMember } from "@bettertavern/core/api/types";
 import { LANGUAGE_TAGS } from "@bettertavern/core/i18n/index";
 import {
   actionNote,
@@ -29,6 +31,7 @@ import { lineHeightFor, readingSize, type ReadingPrefs } from "@bettertavern/cor
 import { Panel } from "../../components/comic.tsx";
 import { cx } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
+import { CastSegments } from "./CastPicker.tsx";
 import styles from "./play.module.css";
 
 function paragraphs(text: string): string[] {
@@ -125,10 +128,16 @@ function rollbackState(state: PlayState, turn: StoryTurn): RollbackState {
 
 const TurnBlock = memo(function TurnBlock({
   turn,
+  cast,
   lang,
   rollback,
   onRollback,
-}: { turn: StoryTurn; rollback: RollbackState; onRollback?: (turnId: string) => void } & StoryLang) {
+}: {
+  turn: StoryTurn;
+  cast: readonly CastMember[];
+  rollback: RollbackState;
+  onRollback?: (turnId: string) => void;
+} & StoryLang) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
   const { t } = useTranslation();
   const note = actionNote(turn.action);
@@ -138,7 +147,15 @@ const TurnBlock = memo(function TurnBlock({
       {note || narrative ? (
         <div className={styles.frame}>
           {note ? <ActionLine text={note} lang={lang} /> : null}
-          {narrative ? <Narrative text={turn.narrative} lang={lang} /> : null}
+          {turn.segments.length > 0 ? (
+            <CastSegments
+              segments={turn.segments}
+              cast={cast}
+              render={(segment) => <Narrative text={segment.text} lang={lang} />}
+            />
+          ) : narrative ? (
+            <Narrative text={turn.narrative} lang={lang} />
+          ) : null}
           {rollback && onRollback ? (
             <div className={styles.turnTools}>
               {rollback === "available" ? (
@@ -180,7 +197,12 @@ function OpeningSteps({ building }: { building: boolean }) {
   );
 }
 
-function PendingBlock({ pending, phase, lang }: { pending: PendingTurn; phase: Phase } & StoryLang) {
+function PendingBlock({
+  pending,
+  phase,
+  cast,
+  lang,
+}: { pending: PendingTurn; phase: Phase; cast: readonly CastMember[] } & StoryLang) {
   const failed = phase === "failed";
   const opening = pending.action?.source === "opening";
   const note = actionNote(pending.action);
@@ -196,7 +218,21 @@ function PendingBlock({ pending, phase, lang }: { pending: PendingTurn; phase: P
       {note || pending.narrative || caret ? (
         <div className={styles.frame}>
           {note ? <ActionLine text={note} lang={lang} /> : null}
-          {pending.narrative || caret ? (
+          {pending.segments.length > 0 ? (
+            <CastSegments
+              segments={pending.segments}
+              cast={cast}
+              render={(segment, last) => (
+                <Narrative
+                  text={segment.text}
+                  lang={lang}
+                  dim={failed}
+                  caret={last ? caret : undefined}
+                  interrupted={last && failed && segment.text.length > 0}
+                />
+              )}
+            />
+          ) : pending.narrative || caret ? (
             <Narrative
               text={pending.narrative}
               lang={lang}
@@ -242,12 +278,15 @@ export function StoryFeed({
         <TurnBlock
           key={turn.id}
           turn={turn}
+          cast={state.cast}
           lang={lang}
           rollback={rollbackState(state, turn)}
           onRollback={onRollback}
         />
       ))}
-      {state.pending ? <PendingBlock pending={state.pending} phase={state.phase} lang={lang} /> : null}
+      {state.pending ? (
+        <PendingBlock pending={state.pending} phase={state.phase} cast={state.cast} lang={lang} />
+      ) : null}
       {missingOpening ? <OpeningMissing /> : null}
       {isEnded(state) ? (
         <p className={styles.end} aria-label={t("play.theEnd")}>

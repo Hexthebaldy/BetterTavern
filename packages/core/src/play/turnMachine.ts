@@ -4,12 +4,16 @@
  * 状态：loading → idle ⇄ submitting → streaming（→ reconnecting / polling）→ idle 或 failed；
  * 故事被别的设备推进时进入 syncing，由调用方重新拉取后回到 idle；加载失败是 load_failed。
  * 最新一段是结局（行动来源 ending）时故事已经结束：仍是 idle，但不能再提交任何行动（isEnded）。
+ * 多角色的局（docs/cast.md）：每个回合按 segments 分段，生成中按 speaker.started 一段一段拼；
+ * cast 是这一局的角色（点名、先不出场用）。
  * 见 docs/client.md 第 1 节。
  */
 
 import type {
+  CastMember,
   NewAction,
   Playthrough,
+  Segment,
   Turn,
   TurnAction,
   TurnError,
@@ -36,6 +40,8 @@ export type StoryTurn = {
   action: TurnAction;
   narrative: string;
   options: TurnOption[];
+  /** 多角色的局每一段是谁写的；导演一个人写的回合是空的 */
+  segments: Segment[];
 };
 
 /** 正在生成（或刚失败）的回合 */
@@ -45,6 +51,8 @@ export type PendingTurn = {
   action: TurnAction | null;
   narrative: string;
   options: TurnOption[];
+  /** 多角色的局已经开写的几段（最后一段可能还在写） */
+  segments: Segment[];
   buildingWorld: boolean;
   /** 导演在写之前先查更早的回合（director.recalling）；第一段叙述到了就不再是 */
   recalling: boolean;
@@ -72,6 +80,8 @@ export type PlayState = {
   mode: Playthrough["mode"];
   /** 这个存档还能回退几次（加载后才有） */
   rollbacksLeft: number;
+  /** 多角色的局的角色（按位置排）；不是多角色的局是空的 */
+  cast: CastMember[];
   turns: StoryTurn[];
   pending: PendingTurn | null;
   error: TurnError | null;
@@ -91,8 +101,11 @@ export type PlayEvent =
       language?: Playthrough["language"];
       mode?: Playthrough["mode"];
       rollbacksLeft?: number;
+      cast?: CastMember[];
     }
   | { type: "load_failed"; error: TurnError }
+  /** 先不出场、回来以后服务端返回的角色 */
+  | { type: "cast"; cast: CastMember[] }
   | { type: "submit"; submission: Submission; display: TurnAction | null }
   | { type: "submitted"; turn: Turn }
   | { type: "submit_failed"; error: TurnError }
@@ -111,6 +124,7 @@ export const initialPlayState: PlayState = {
   language: "zh",
   mode: "standard",
   rollbacksLeft: 0,
+  cast: [],
   turns: [],
   pending: null,
   error: null,
@@ -124,17 +138,20 @@ function storyTurn(turn: Turn): StoryTurn {
     action: turn.action,
     narrative: turn.narrative,
     options: turn.options,
+    segments: turn.segments ?? [],
   };
 }
 
 function pendingFrom(turn: Turn): PendingTurn {
+  const generating = turn.status === "generating";
   return {
     turnId: turn.id,
     seq: turn.seq,
     action: turn.action,
     // 正在生成的回合会从事件流的开头重放，叙述从空开始拼，避免重复
-    narrative: turn.status === "generating" ? "" : turn.narrative,
+    narrative: generating ? "" : turn.narrative,
     options: [],
+    segments: generating ? [] : (turn.segments ?? []),
     buildingWorld: false,
     recalling: false,
   };
@@ -165,6 +182,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
         language: event.language ?? state.language,
         mode: event.mode ?? state.mode,
         rollbacksLeft: event.rollbacksLeft ?? state.rollbacksLeft,
+        cast: event.cast ?? state.cast,
         turns,
         error: null,
         submission: null,
@@ -184,6 +202,8 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
     }
     case "load_failed":
       return { ...state, phase: "load_failed", error: event.error, pending: null, submission: null };
+    case "cast":
+      return { ...state, cast: event.cast };
     case "submit":
       return {
         ...state,
@@ -196,6 +216,7 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
           action: event.display,
           narrative: "",
           options: [],
+          segments: [],
           buildingWorld: false,
           recalling: false,
         },
@@ -227,7 +248,10 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
       if (turn.status === "committed" || turn.status === "replied") return complete(state, storyTurn(turn));
       if (turn.status === "failed" || turn.status === "archived") {
         return fail(
-          { ...state, pending: { ...state.pending, narrative: turn.narrative } },
+          {
+            ...state,
+            pending: { ...state.pending, narrative: turn.narrative, segments: turn.segments ?? [] },
+          },
           turn.error ?? { code: "UNKNOWN", message: "Generation failed", retryable: true },
         );
       }
@@ -258,11 +282,22 @@ function onStream(state: PlayState, event: TurnEvent): PlayState {
       return { ...state, pending: { ...pending, buildingWorld: false } };
     case "director.recalling":
       return { ...state, pending: { ...pending, recalling: true } };
-    case "narrative.delta":
+    case "speaker.started": {
+      // 断线重放时同一段会再来一次：按 index 对齐，不重复加
+      if (event.data.index < pending.segments.length) return state;
+      const segments = [...pending.segments, { speaker: event.data.speaker, text: "" }];
+      return { ...state, pending: { ...pending, segments, recalling: false } };
+    }
+    case "narrative.delta": {
+      const text = event.data.text;
+      const segments = pending.segments.slice();
+      const last = segments[segments.length - 1];
+      if (last) segments[segments.length - 1] = { ...last, text: last.text + text };
       return {
         ...state,
-        pending: { ...pending, narrative: pending.narrative + event.data.text, recalling: false },
+        pending: { ...pending, narrative: pending.narrative + text, segments, recalling: false },
       };
+    }
     case "narrative.done":
       return state;
     case "options.ready":
@@ -270,7 +305,12 @@ function onStream(state: PlayState, event: TurnEvent): PlayState {
     case "snapshot":
       return {
         ...state,
-        pending: { ...pending, narrative: event.data.narrative, options: event.data.options },
+        pending: {
+          ...pending,
+          narrative: event.data.narrative,
+          options: event.data.options,
+          segments: event.data.segments ?? [],
+        },
       };
     case "turn.completed": {
       const t = event.data.turn;
@@ -280,6 +320,7 @@ function onStream(state: PlayState, event: TurnEvent): PlayState {
         action: pending.action ?? { source: "opening", text: "" },
         narrative: t.narrative,
         options: t.options,
+        segments: t.segments ?? [],
       });
     }
     case "turn.failed":
@@ -359,30 +400,46 @@ export function isBusy(state: PlayState): boolean {
   return LIVE.has(state.phase) || state.phase === "loading" || state.phase === "syncing";
 }
 
-/** 失败后“重试”要提交的行动：与失败的那一轮相同 */
+/** 失败后“重试”要提交的行动：与失败的那一轮相同（点的名也一样） */
 export function retryAction(state: PlayState): NewAction | null {
   if (state.phase !== "failed" || !state.pending?.action) return null;
   const action = state.pending.action;
+  const picked = action.speakers?.length ? { speakers: action.speakers } : {};
   if (action.source === "opening") return { source: "opening" };
   if (action.source === "ending") return { source: "ending", text: action.text };
+  if (action.source === "continue") return { source: "continue", ...picked };
   if (action.source === "option" && action.option_id)
-    return { source: "option", option_id: action.option_id };
-  return { source: "text", text: action.text };
+    return { source: "option", option_id: action.option_id, ...picked };
+  return { source: "text", text: action.text, ...picked };
 }
 
 /** 提交前在界面上先显示玩家的行动（选项按 id 找文字） */
 export function displayAction(action: NewAction, options: TurnOption[]): TurnAction | null {
   if (action.source === "opening") return { source: "opening", text: "" };
   if (action.source === "ending") return { source: "ending", text: action.text?.trim() ?? "" };
-  if (action.source === "text") return { source: "text", text: action.text };
+  const picked = action.speakers?.length ? { speakers: action.speakers } : {};
+  if (action.source === "continue") return { source: "continue", text: "", ...picked };
+  if (action.source === "text") return { source: "text", text: action.text, ...picked };
   const option = options.find((o) => o.id === action.option_id);
-  return { source: "option", text: option?.text ?? "", option_id: action.option_id };
+  return { source: "option", text: option?.text ?? "", option_id: action.option_id, ...picked };
 }
 
-/** 故事流里“我的行动”那一行的文字：开场没有；写结局是“写结局”，写了方向时带上方向 */
+/** 故事流里“我的行动”那一行的文字：开场没有；写结局是“写结局”，写了方向时带上方向；让他们接着说也写一句 */
 export function actionNote(action: TurnAction | null): string | null {
   if (!action || action.source === "opening") return null;
   if (action.source === "ending")
     return action.text ? i18n.t("play.actionEndingWith", { wish: action.text }) : i18n.t("play.actionEnding");
+  if (action.source === "continue") return i18n.t("play.actionContinue");
   return action.text.length > 0 ? action.text : null;
+}
+
+/** 多角色的局（两个以上角色）：阅读页显示头像一排、点名、让他们接着说 */
+export function hasCast(state: PlayState): boolean {
+  return state.cast.length >= 2;
+}
+
+/** 一段的说话人：角色（按位置找）或者旁白（null）；找不到的位置当作旁白 */
+export function speakerOf(cast: readonly CastMember[], segment: Segment): CastMember | null {
+  if (segment.speaker === null) return null;
+  return cast.find((m) => m.position === segment.speaker) ?? null;
 }

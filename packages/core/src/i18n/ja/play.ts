@@ -3,6 +3,22 @@ import type { play as source } from "../zh/play.ts";
 
 export const play: MessagesOtherOnly<typeof source> = {
   play: {
+    actionContinue: "（みんなに続けてもらう）",
+    continue: "みんなに続けてもらう",
+    continueHint: "このターンは何もせず、ほかの人たちに続けてもらう",
+    narrator: "ナレーション",
+    castLabel: "その場にいる人",
+    castHint: "タップで次に話してもらう、目のアイコンでしばらく退場",
+    castPick: "{{name}}に次に話してもらう",
+    castMuteName: "{{name}}をしばらく退場させる",
+    castUnmuteName: "{{name}}を戻す",
+    castMute: "しばらく退場",
+    castUnmute: "戻す",
+    castMuted: "退場中",
+    castMuteFailed: "変更できませんでした：{{error}}",
+    castPicked: "次に話す人：{{names}}",
+    castClear: "クリア",
+    speaking: "{{name}}が話しています…",
     actionEnding: "結末を書く",
     actionEndingWith: "結末を書く：{{wish}}",
     opening: "物語を開いています",

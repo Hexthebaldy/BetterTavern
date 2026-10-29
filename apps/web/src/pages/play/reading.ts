@@ -54,14 +54,17 @@ export function firstLine(narrative: string, max = 48): string {
   return chars.length > max ? `${chars.slice(0, max).join("")}…` : line;
 }
 
-/** 回想列表：默认最近 count 段；all 时是全部。从旧到新排，最后一项是最新的一段 */
+/**
+ * 回想列表：默认最近 count 段；all 时是全部。从旧到新排，最后一项是最新的一段。
+ * 多角色的局的回合取第一段的正文（叙述全文每段前面带名字，头一行是名字）
+ */
 export function recapItems(
-  turns: readonly { id: string; seq: number; narrative: string }[],
+  turns: readonly { id: string; seq: number; narrative: string; segments?: readonly { text: string }[] }[],
   all: boolean,
   count = 5,
 ): RecapItem[] {
   const shown = all ? turns : turns.slice(-count);
-  return shown.map((t) => ({ id: t.id, seq: t.seq, text: firstLine(t.narrative) }));
+  return shown.map((t) => ({ id: t.id, seq: t.seq, text: firstLine(t.segments?.[0]?.text ?? t.narrative) }));
 }
 
 type Entity = { id: string; kind: string; name: string; summary: string; is_protagonist: boolean };

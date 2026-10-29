@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
+import type { CastMember } from "@bettertavern/core/api/types";
 import { headTurn, isEnded, isLive, canAct, turnsAfter } from "@bettertavern/core/play/turnMachine";
 import { initialOfName } from "@bettertavern/core/scenario/persona";
 
@@ -142,6 +143,17 @@ function PlayPage({ id }: { id: string }) {
   const moreButton = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [writing, setWriting] = useState(false);
+  // 多角色的局点了名的人（按点的顺序，旁白是 null）：交了行动就清掉
+  const [speakers, setSpeakers] = useState<(number | null)[]>([]);
+  const toggleSpeaker = (speaker: number | null): void =>
+    setSpeakers((now) => (now.includes(speaker) ? now.filter((s) => s !== speaker) : [...now, speaker]));
+  const { setMuted } = controls;
+  const mute = async (member: CastMember): Promise<void> => {
+    if (!member.muted) setSpeakers((now) => now.filter((s) => s !== member.position));
+    const failure = await setMuted(member.position, !member.muted);
+    if (failure)
+      overlay.toast(t("play.castMuteFailed", { error: describeTurnError(failure) }), { icon: "alert" });
+  };
   const [draft, setDraftState] = useState(() => parseDraft(localStore.read(draftKey(id))));
   const setDraft = useCallback(
     (text: string) => {
@@ -203,7 +215,8 @@ function PlayPage({ id }: { id: string }) {
   const send = (text: string): void => {
     setWriting(false);
     setDraft("");
-    controls.submit({ source: "text", text });
+    setSpeakers([]);
+    controls.submit({ source: "text", text, ...(speakers.length > 0 ? { speakers } : {}) });
   };
 
   const onMore = async (action: MoreAction): Promise<void> => {
@@ -306,7 +319,9 @@ function PlayPage({ id }: { id: string }) {
           onClick={() => navigate("/playthroughs")}
         />
       ) : null}
-      {head && head.seq > 0 ? <Pill tone="acc" label={t("play.turnChip", { n: head.seq })} className={styles.turnChip} /> : null}
+      {head && head.seq > 0 ? (
+        <Pill tone="acc" label={t("play.turnChip", { n: head.seq })} className={styles.turnChip} />
+      ) : null}
       <h1 className={styles.title}>{shownTitle}</h1>
       {sub ? (
         <span className={styles.sub}>
@@ -400,13 +415,20 @@ function PlayPage({ id }: { id: string }) {
                   state={state}
                   controls={controls}
                   onOpenSettings={() => navigate("/models")}
-                  onPicked={() => setWriting(false)}
+                  onPicked={() => {
+                    setWriting(false);
+                    setSpeakers([]);
+                  }}
                   writing={writing}
                   draft={draft}
                   onDraft={setDraft}
                   onWrite={() => setWriting(true)}
                   onCloseWrite={() => setWriting(false)}
                   onSend={send}
+                  speakers={speakers}
+                  onToggleSpeaker={toggleSpeaker}
+                  onClearSpeakers={() => setSpeakers([])}
+                  onMute={(member) => void mute(member)}
                 />
               }
             />

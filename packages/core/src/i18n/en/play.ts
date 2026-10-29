@@ -3,6 +3,22 @@ import type { play as source } from "../zh/play.ts";
 
 export const play: Messages<typeof source> = {
   play: {
+    actionContinue: "(Let them carry on)",
+    continue: "Let them carry on",
+    continueHint: "I don't act this turn and let the others carry on",
+    narrator: "Narrator",
+    castLabel: "Who's here",
+    castHint: "Tap someone to have them speak next; tap the eye to keep them offstage",
+    castPick: "Have {{name}} speak next",
+    castMuteName: "Keep {{name}} offstage",
+    castUnmuteName: "Bring {{name}} back",
+    castMute: "Keep offstage",
+    castUnmute: "Bring back",
+    castMuted: "Offstage",
+    castMuteFailed: "Couldn't change it: {{error}}",
+    castPicked: "Speaking next: {{names}}",
+    castClear: "Clear",
+    speaking: "{{name}} is speaking…",
     actionEnding: "Write the ending",
     actionEndingWith: "Write the ending: {{wish}}",
     opening: "Opening the story",
