@@ -1,4 +1,4 @@
-{# version: 5 #}
+{# version: 6 #}
 {% if world_state is defined and world_state %}
 {{ world_state }}
 
@@ -11,8 +11,12 @@
 {% if recall_before is defined and recall_before %}
 (This is turn {{ seq }}; the story text above starts at turn {{ recall_before }}. Earlier turns can be looked up with the tools when you need details.)
 {% endif %}
+{% if continuing is defined and continuing %}
+(I take no action this turn; I watch the others carry on talking and acting.)
+{% else %}
 <player-action>
 {{ action }}
 </player-action>
+{% endif %}
 {% include "_card_reminder.j2" %}
 (Reply in the <narrative> and <options> format, with exactly 2 choices.)

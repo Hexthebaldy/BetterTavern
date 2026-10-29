@@ -1,4 +1,4 @@
-{# version: 5 #}
+{# version: 6 #}
 {% if world_state %}
 {{ world_state }}
 
@@ -16,6 +16,7 @@
 {{ wish }}
 </ending-wish>
 {% endif %}
+{% include "_card_texts.j2" %}
 {% include "_card_reminder.j2" %}
 プレイヤーはここで物語を終えることにしました。直前の場面から続けて、物語全体の最後の場面を結末として書いてください。
 - すでに起きた展開は繰り返さない。

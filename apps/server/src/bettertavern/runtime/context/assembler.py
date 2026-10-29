@@ -24,6 +24,11 @@ constant_items，只看快照和窗口）；这一回合按关键词挑中的条
 闪电模式（ctx.header.mode，docs/agent-runtime.md 的“闪电模式”）：system 里多一节卡的原文
 （开局时的快照），回顾里只有一版梗概，最后一条消息里没有状态块和大纲。下一回合的请求
 以这一回合的请求开头（最后一条行动里的召回提示除外），整段命中前缀缓存。
+
+多角色的局（ctx.cast，docs/cast.md）：system 里只有角色的名单，没有任何一张卡的原文、指令和示例；
+每个人写一段时（role）最后一条消息是 cast.turn：状态块（写角色时只给他看他知道的）、大纲、世界书、
+玩家行动、这一回合前面已经写好的几段，再加上这一次写谁和他的卡（cast.py）。几个人的请求只有最后一条
+消息不同，前面整段都能命中前缀缓存。开场和结局照旧由导演写，每张卡的指令放进最后一条消息。
 """
 
 from __future__ import annotations
@@ -36,6 +41,7 @@ from typing import Any
 from bettertavern.domain.memory.outline import Beat
 from bettertavern.domain.memory.thresholds import EMERGENCY_LINE, emergency_budget
 from bettertavern.domain.scenario.card import apply_macros
+from bettertavern.domain.story.cast import is_group, join_segments
 from bettertavern.domain.story.mode import is_lightning
 from bettertavern.domain.story.turn import clip_middle
 from bettertavern.domain.world.card_source import EXAMPLES_CHARS, example_blocks, fit_examples
@@ -43,6 +49,7 @@ from bettertavern.providers import Message
 from bettertavern.runtime.ports import TurnContext
 from bettertavern.runtime.prompts import PromptLibrary, RenderedPrompt
 
+from .cast import CastRole, card_texts, cast_entities
 from .fences import sanitize_for_fence
 from .lore import LoreSelection, constant_items
 from .state_block import render_state_block
@@ -132,6 +139,30 @@ class ContextAssembler:
         persona = self.persona(ctx)
         if persona and ctx.protagonist_description.strip().startswith(protagonist_desc.strip()):
             protagonist_desc = ""  # 开局时没调到模型，主角简介就是描述的开头，不重复写
+        if is_group(ctx.cast):
+            # 多角色的局：每张卡只给写它的那个人看，放在最后一条消息里
+            return self._prompts.render(
+                "director.system",
+                protagonist={
+                    "name": sanitize_for_fence(ctx.protagonist_name),
+                    "description": sanitize_for_fence(protagonist_desc),
+                },
+                persona=persona,
+                title=sanitize_for_fence(title),
+                world=sanitize_for_fence(world_text),
+                rules=rules,
+                characters=characters,
+                style=sanitize_for_fence(style),
+                boundaries=sanitize_for_fence(prefs.boundaries),
+                length=prefs.length,
+                lightning=is_lightning(ctx.header.mode),
+                cast=[sanitize_for_fence(m.name) for m in ctx.cast],
+                has_lore=ctx.lore is not None and bool(ctx.lore.items),
+                lore_constant=[
+                    sanitize_for_fence(item.entry.content)
+                    for item in constant_items(ctx.lore, window)
+                ],
+            )
         return self._prompts.render(
             "director.system",
             protagonist={
@@ -261,7 +292,9 @@ class ContextAssembler:
                 ).text
             else:
                 user = self._prompts.render(
-                    "director.turn", action=sanitize_for_fence(turn.action.text)
+                    "director.turn",
+                    action=sanitize_for_fence(turn.action.text),
+                    continuing=turn.action.source == "continue",
                 ).text
             assistant = director_reply(turn.narrative, turn.options, turn.director_notes)
             pairs.append(
@@ -298,16 +331,39 @@ class ContextAssembler:
         *,
         recall_before: int = 0,
         lore: LoreSelection | None = None,
+        role: CastRole | None = None,
     ) -> RenderedPrompt:
         """recall_before 大于 0 时（提供了召回工具）提示导演：
-        现在是第几回合，原文从第几回合开始。lore 是这一回合挑中的世界书条目。"""
+        现在是第几回合，原文从第几回合开始。lore 是这一回合挑中的世界书条目。
+        role 不为空时是多角色的局里一个角色或旁白写一段（cast.turn）。"""
         lightning = is_lightning(ctx.header.mode)
+        group = is_group(ctx.cast)
         reminder = self.card_reminder(ctx)
+        cards = ctx.cards.cards if ctx.cards is not None else ()
+        # 多角色的局：开场和结局由导演写，每张卡的指令和示例放进最后一条消息
+        texts = card_texts(cards, window, source=lightning, examples=True) if group else []
+        viewer = ""
+        if role is not None and role.speaker is not None:
+            mine = list(cards[role.speaker : role.speaker + 1])
+            reminder = [
+                {"name": sanitize_for_fence(c.name), "text": sanitize_for_fence(c.reminder())}
+                for c in mine
+                if c.reminder()
+            ]
+            texts = card_texts(mine, window, source=True, examples=True)
+            viewer = next((m.name for m in ctx.cast if m.position == role.speaker), "")
+        elif role is not None:
+            texts = card_texts(cards, window, source=lightning, examples=False)
         triggered = [
             sanitize_for_fence(item.entry.content) for item in (lore.triggered if lore else ())
         ]
         state_budget = min(math.floor(window * STATE_BLOCK_RATIO), STATE_BLOCK_CAP)
         last_narrative = ctx.history[-1].narrative if ctx.history else ""
+        viewer_entity = (
+            cast_entities(ctx.world, ctx.cast).get(role.speaker)
+            if role is not None and role.speaker is not None
+            else None
+        )
         world_state = (
             ""
             if lightning
@@ -318,6 +374,8 @@ class ContextAssembler:
                 state_seq=ctx.state_seq,
                 mention_texts=(ctx.action.text, last_narrative),
                 turn_seq=ctx.header.seq,
+                viewer_id=viewer_entity.id if viewer_entity is not None else "",
+                viewer_name=viewer,
             )
         )
         if ctx.action.source == "opening":
@@ -331,6 +389,7 @@ class ContextAssembler:
                 hook=sanitize_for_fence(opening.hook) if opening else "",
                 reference_opening="",
                 lore=triggered,
+                card_texts=texts,
                 card_reminder=reminder,
             )
         action_chars = max(math.floor(window * ACTION_RATIO), 200)
@@ -345,9 +404,30 @@ class ContextAssembler:
         }
         if ctx.action.source == "ending":
             return self._prompts.render(
-                "director.ending", wish=action, world_state=world_state, **hint
+                "director.ending", wish=action, world_state=world_state, card_texts=texts, **hint
             )
-        return self._prompts.render("director.turn", action=action, world_state=world_state, **hint)
+        if role is not None:
+            labels = self._prompts.data("cast")
+            earlier = join_segments(
+                role.earlier, ctx.cast, header=labels["header"], narrator=labels["narrator"]
+            )
+            return self._prompts.render(
+                "cast.turn",
+                action=action,
+                world_state=world_state,
+                continuing=ctx.action.source == "continue",
+                earlier=sanitize_for_fence(earlier),
+                speaker=sanitize_for_fence(viewer),
+                card_texts=texts,
+                **hint,
+            )
+        return self._prompts.render(
+            "director.turn",
+            action=action,
+            world_state=world_state,
+            continuing=ctx.action.source == "continue",
+            **hint,
+        )
 
     def assemble(
         self,
@@ -357,9 +437,11 @@ class ContextAssembler:
         budget: int | None = None,
         recall: bool = False,
         lore: LoreSelection | None = None,
+        role: CastRole | None = None,
     ) -> AssembledContext:
         """budget 不为空时（厂商报超窗后的重试）直接截断到不超过 budget。
-        recall 为真表示这一回合会给导演召回工具。lore 是这一回合挑中的世界书条目（调用方挑好）。"""
+        recall 为真表示这一回合会给导演召回工具。lore 是这一回合挑中的世界书条目（调用方挑好）。
+        role 是多角色的局里这一次写谁。"""
         system = self.system_prompt(ctx, window)
         recap = self.recap(ctx)
         seqs = [t.seq for t in ctx.history]
@@ -377,7 +459,9 @@ class ContextAssembler:
         def final(kept: int) -> RenderedPrompt:
             before = first_seq(kept)
             if before not in finals:
-                finals[before] = self.final_message(ctx, window, recall_before=before, lore=lore)
+                finals[before] = self.final_message(
+                    ctx, window, recall_before=before, lore=lore, role=role
+                )
             return finals[before]
 
         def build(keep: list[tuple[Message, Message]]) -> list[Message]:

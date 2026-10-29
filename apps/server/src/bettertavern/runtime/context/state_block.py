@@ -12,6 +12,9 @@
   只涉及主角或不涉及任何实体的排在后面；最多 8 条。
 预算不够时按顺序删减：名册 → 相关的 → 提到的压成一行 → 事实和线索 → 在场人物的详情。
 所有实体文字都先过 sanitize_for_fence()；输出是确定性的（同样的输入逐字节相同）。
+
+多角色的局里写某个角色的那一段时（viewer_name 不为空，docs/cast.md）只给他看他知道的：
+公开的事实加上他知道的秘密，没有“仅导演可见”一节，线索不带答案。
 """
 
 from __future__ import annotations
@@ -59,7 +62,9 @@ def _fact_line(fact: FactView) -> str:
     return f"- {_clean(fact.text, 200)}"
 
 
-def _thread_line(labels: Mapping[str, Any], thread: ThreadView, turn_seq: int) -> str:
+def _thread_line(
+    labels: Mapping[str, Any], thread: ThreadView, turn_seq: int, *, answer: bool = True
+) -> str:
     kind = labels["thread_kinds"].get(thread.kind, thread.kind)
     line = labels["thread"].format(
         kind=kind,
@@ -67,7 +72,7 @@ def _thread_line(labels: Mapping[str, Any], thread: ThreadView, turn_seq: int) -
         age=max(turn_seq - thread.opened_seq, 0),
         text=_clean(thread.text, 160),
     )
-    if thread.answer:
+    if thread.answer and answer:
         line += labels["thread_answer"].format(answer=_clean(thread.answer, 200))
     return line
 
@@ -89,20 +94,25 @@ def render_state_block(
     state_seq: int = -1,
     mention_texts: Sequence[str] = (),
     turn_seq: int | None = None,
+    viewer_id: str = "",
+    viewer_name: str = "",
 ) -> str:
     """标签和标点取自这一局语言的 state_block.json；结构和降级规则与语言无关。
 
     state_seq：世界状态已整理到第几回合（-1 表示还是开局时的样子）；
     mention_texts：用来找“提到的”实体的文字（玩家这次的行动、上一段叙述）；
-    turn_seq：正在写的回合，算线索挂了多少回合；不给时按 state_seq + 1。
+    turn_seq：正在写的回合，算线索挂了多少回合；不给时按 state_seq + 1；
+    viewer_name：多角色的局里正在写的角色，viewer_id 是他在世界状态里的实体（没对上时为空）。
     """
     labels: Mapping[str, Any] = prompts.data("state_block")
     hero = world.protagonist
     location, present = world.scene()
     world_entity = world.world
+    viewer = bool(viewer_name)
 
     def section(key: str, lines: Sequence[str]) -> list[str]:
-        return [labels["section"].format(title=labels["sections"][key]), *lines] if lines else []
+        title = labels["sections"][key].format(name=_clean(viewer_name, 40))
+        return [labels["section"].format(title=title), *lines] if lines else []
 
     scene_lines: list[str] = []
     if location is not None:
@@ -181,10 +191,13 @@ def render_state_block(
             f.id,
         ),
     )
-    known = [f for f in relevant if f.visibility != "secret" or hero_id in f.known_by][:MAX_FACTS]
+    knower = (viewer_id or None) if viewer else hero_id
+    known = [f for f in relevant if f.visibility != "secret" or knower in f.known_by][:MAX_FACTS]
     secret = [f for f in relevant if f.visibility == "secret" and hero_id not in f.known_by][
         :MAX_FACTS
     ]
+    if viewer:
+        secret = []
 
     # 线索：挂在此刻在场的人和物、或者这回合提到的实体身上的，越老越靠前（越该回收）；
     # 主角几乎在每条线索里，不算；只涉及主角或不涉及任何实体的排在后面
@@ -200,7 +213,7 @@ def render_state_block(
     oldest = sorted(world.threads, key=lambda t: (t.opened_seq, t.id))
     picked = [t for t in oldest if others(t) & focus] + [t for t in oldest if not others(t)]
     now = turn_seq if turn_seq is not None else state_seq + 1
-    thread_lines = [_thread_line(labels, t, now) for t in picked[:MAX_THREADS]]
+    thread_lines = [_thread_line(labels, t, now, answer=not viewer) for t in picked[:MAX_THREADS]]
 
     preamble = (
         labels["preamble"].format(seq=state_seq) if state_seq >= 0 else labels["preamble_opening"]
@@ -219,9 +232,11 @@ def render_state_block(
         lines += section("mentioned", mentioned_lines(full_mentions))
         lines += section("nearby", nearby_lines[:nearby_n])
         lines += section("roster", roster_lines[:roster_n])
-        lines += section("known", [_fact_line(f) for f in known[:facts_n]])
+        lines += section(
+            "known_viewer" if viewer else "known", [_fact_line(f) for f in known[:facts_n]]
+        )
         lines += section("secret", [_fact_line(f) for f in secret[:facts_n]])
-        lines += section("threads", thread_lines[:facts_n])
+        lines += section("threads_viewer" if viewer else "threads", thread_lines[:facts_n])
         return "<world-state>\n" + "\n".join(lines) + "\n</world-state>"
 
     # 降级顺序：名册 → 相关的 → 提到的压成一行 → 事实条数 → 在场人物详情

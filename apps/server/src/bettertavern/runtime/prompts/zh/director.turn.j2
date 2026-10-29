@@ -1,4 +1,4 @@
-{# version: 6 #}
+{# version: 7 #}
 {% if world_state is defined and world_state %}
 {{ world_state }}
 
@@ -11,8 +11,12 @@
 {% if recall_before is defined and recall_before %}
 （现在是第 {{ seq }} 回合；上面的原文从第 {{ recall_before }} 回合开始，更早的回合需要细节时可以用工具查。）
 {% endif %}
+{% if continuing is defined and continuing %}
+（这一回合我没有行动，看其他人接着往下说、往下做。）
+{% else %}
 <player-action>
 {{ action }}
 </player-action>
+{% endif %}
 {% include "_card_reminder.j2" %}
 （按 <narrative> 与 <options> 的格式回复，恰好给出 2 个选项。）

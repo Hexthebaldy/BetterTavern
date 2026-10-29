@@ -1,0 +1,41 @@
+{# version: 1 #}
+{# 多角色的局里一个角色或旁白写一段时的最后一条消息（docs/cast.md） #}
+{% if world_state %}
+{{ world_state }}
+
+{% endif %}
+{% if outline %}
+{{ outline }}
+
+{% endif %}
+{% include "_lore.j2" %}
+{% if recall_before %}
+（现在是第 {{ seq }} 回合；上面的原文从第 {{ recall_before }} 回合开始，更早的回合需要细节时可以用工具查。）
+{% endif %}
+{% if continuing %}
+（这一回合我没有行动，看其他人接着往下说、往下做。）
+{% else %}
+<player-action>
+{{ action }}
+</player-action>
+{% endif %}
+{% if earlier %}
+
+这一回合前面已经写好的几段（接着往下写，不要重复）：
+<narrative>
+{{ earlier }}
+</narrative>
+{% endif %}
+
+{% if speaker %}
+## 这一段写{{ speaker }}
+{% else %}
+## 这一段是旁白
+{% endif %}
+{% include "_card_texts.j2" %}
+{% include "_card_reminder.j2" %}
+{% if speaker %}
+（只写{{ speaker }}此刻说的话、做的事，接着上面往下写；不替“我”说话、做决定，也不替其他角色说话、做事。按 <narrative> 的格式回复，不写选项，开头不要写名字。）
+{% else %}
+（写环境、时间的推移、路人，或者“我”独自行动的结果；不替角色说话。按 <narrative> 的格式回复，不写选项，开头不要写名字。）
+{% endif %}

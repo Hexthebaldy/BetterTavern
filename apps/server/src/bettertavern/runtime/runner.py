@@ -18,6 +18,9 @@ director_loop.py）→ 修复阶梯 → 一个事务提交 → options.ready、t
 
 闪电模式（header.mode，docs/agent-runtime.md 的“闪电模式”）：开局、导演都和普通模式一样，
 只是提交后回合直接是 committed，不整理世界状态。开局时存下卡的原文，导演的系统提示里放它。
+
+多角色的局（docs/cast.md）：开局时记下这一局的角色；普通回合由几个人一个接一个写（cast_turn.py），
+开场和结局照旧由导演写。
 """
 
 from __future__ import annotations
@@ -34,27 +37,25 @@ import structlog
 
 from bettertavern.domain.memory.thresholds import overflow_retry_budget
 from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.story.cast import is_group, join_notes
 from bettertavern.domain.story.mode import is_lightning
-from bettertavern.domain.world.card_source import CardSource, snapshot_cards
-from bettertavern.domain.world.lore import LoreSnapshot, build_snapshot
-from bettertavern.domain.world.seed import ProtagonistSeed, Seed, minimal_seed
+from bettertavern.domain.story.turn import CAST_SOURCES
 from bettertavern.providers import (
     CancelToken,
     ProviderError,
     ProviderHub,
 )
 from bettertavern.providers.errors import ErrorClass
-from bettertavern.providers.limiter import LimiterTimeout
 
 from .agent import StepLog
 from .agents.director_tools import RecallContext
-from .agents.world_builder import build_seed, failure_run
+from .cast_turn import speakers_for, write_segments
 from .context.assembler import AssembledContext, ContextAssembler, ContextTooLarge
+from .context.cast import CastRole
 from .context.lore import LoreSelection, scan_of, select_lore
 from .director_loop import run_director
 from .events.buffer import EventStream, StreamClosed
 from .ports import (
-    AgentRunRecord,
     RecallStore,
     RouteResolver,
     TurnContext,
@@ -62,15 +63,14 @@ from .ports import (
     TurnHeader,
     TurnOutcome,
     TurnStore,
-    WorldBuildInput,
 )
 from .prompts import PromptBook, PromptLibrary
-from .protocol.structured import StructuredOutputError
 from .routing import ResolvedRoute, with_model_window
 from .runner_pool import TurnRunnerPool
 from .turn_finalize import (
     TurnFailed,
     failed_director_run,
+    finalize_cast,
     finalize_ending,
     finalize_greeting,
     finalize_turn,
@@ -79,10 +79,12 @@ from .turn_stream import (
     DirectorStreamer,
     Generation,
     GenerationLimitHit,
+    Publish,
     StreamFailed,
     failure_from_provider,
     usage_json,
 )
+from .world_setup import build_world
 
 __all__ = ["LEASE_LOST", "RunnerConfig", "TurnFailed", "TurnRunner", "TurnRunnerPool"]
 
@@ -206,6 +208,7 @@ class TurnRunner:
                         "options": [o.to_json() for o in outcome.options],
                         "options_source": outcome.options_source,
                         "state_seq": outcome.state_seq,
+                        "segments": [s.to_json() for s in outcome.segments],
                     },
                     "usage": usage_json(outcome.usage),
                 },
@@ -295,7 +298,18 @@ class TurnRunner:
         self, header: TurnHeader, stream: EventStream, cancel: CancelToken
     ) -> TurnOutcome:
         if not header.world_ready:
-            await self._build_world(header, stream, cancel)
+            await build_world(
+                header,
+                lambda event, data: self._publish(stream, event, data),
+                cancel,
+                store=self._store,
+                routes=self._routes,
+                hub=self._hub,
+                prompts=self._prompts_for(header),
+                timeout_s=self.config.world_builder_timeout_s,
+                limiter_timeout_s=self.config.limiter_timeout_s,
+                clock=self._clock,
+            )
         cancel.raise_if_cancelled()
         ctx = await self._store.load_context(header)
         route = await self._routes.resolve(
@@ -327,6 +341,8 @@ class TurnRunner:
                 clock=self._clock,
                 repair_timeout_s=self.config.options_repair_timeout_s,
             )
+        if is_group(ctx.cast) and ctx.action.source in CAST_SOURCES:
+            return await self._run_cast(header, ctx, route, stream, cancel)
         generation = await self._generate(header, ctx, route, stream, cancel)
         if ctx.action.source == "ending":
             return finalize_ending(generation, ctx.state_seq)
@@ -341,115 +357,53 @@ class TurnRunner:
             repair_timeout_s=self.config.options_repair_timeout_s,
         )
 
-    async def _build_world(
-        self, header: TurnHeader, stream: EventStream, cancel: CancelToken
-    ) -> None:
-        log.info("world.build.started")
-        await self._publish(stream, "world.building", {})
-        inp = await self._store.world_build_input(header)
-        route = await self._routes.resolve(
-            header.user_id, RouteTask.WORLD_BUILDER, header.playthrough_id
+    async def _run_cast(
+        self,
+        header: TurnHeader,
+        ctx: TurnContext,
+        route: ResolvedRoute,
+        stream: EventStream,
+        cancel: CancelToken,
+    ) -> TurnOutcome:
+        """多角色的局的普通回合：几个人一个接一个写，再补两个选项（cast_turn.py）。"""
+        prompts = self._prompts_for(header)
+        labels = prompts.data("cast")
+        speakers = speakers_for(ctx)
+        log.info("cast.speakers", speakers=speakers, picked=len(ctx.action.speakers))
+
+        async def generate(role: CastRole, publish: Publish) -> Generation:
+            return await self._generate(
+                header, ctx, route, stream, cancel, role=role, publish=publish
+            )
+
+        result = await write_segments(
+            ctx,
+            speakers,
+            generate,
+            lambda event, data: self._publish(stream, event, data),
+            header=labels["header"],
+            narrator=labels["narrator"],
         )
-        seed: Seed | None = None
-        source = "minimal"
-        run: AgentRunRecord | None = None
-        steps = StepLog()
-        started = self._clock()
-        if route is not None and inp.card is not None:
-            try:
-                async with asyncio.timeout(self.config.world_builder_timeout_s):
-                    async with self._hub.limiter.slot(
-                        route.credential.credential_id,
-                        interactive=True,
-                        timeout=self.config.limiter_timeout_s,
-                    ):
-                        result = await build_seed(
-                            route,
-                            self._hub.adapter(route.provider),
-                            inp.card,
-                            inp,
-                            prompts=self._prompts_for(header),
-                            negative_cache=self._hub.negative_cache,
-                            cancel=cancel,
-                            steps=steps,
-                        )
-                seed, source, run = result.seed, "world_builder", result.run
-            except TimeoutError:
-                run = failure_run(
-                    route, "timeout", "WorldBuilder timed out", self._elapsed_ms(started), steps
-                )
-            except ProviderError as exc:
-                if exc.error_class is ErrorClass.CANCELLED:
-                    raise
-                run = failure_run(
-                    route, exc.error_class.value, exc.message, self._elapsed_ms(started), steps
-                )
-            except (StructuredOutputError, LimiterTimeout) as exc:
-                run = failure_run(
-                    route, type(exc).__name__, str(exc), self._elapsed_ms(started), steps
-                )
-        cancel.raise_if_cancelled()
-        if seed is None:
-            if inp.card is not None:
-                seed = minimal_seed(
-                    inp.card,
-                    protagonist_name=inp.protagonist_name,
-                    protagonist_summary=inp.protagonist_summary,
-                    others=inp.cards[1:],
-                )
-            else:
-                seed = Seed(
-                    protagonist=ProtagonistSeed(
-                        name=inp.protagonist_name, summary=inp.protagonist_summary
-                    )
-                )
-        cards = self._card_source(inp)
-        lore = self._lore(inp)
-        count = await self._store.save_world(header, seed, source, run, cards, lore)
-        # source=minimal 表示 WorldBuilder 没成功（或没配模型），退回只用角色卡文字搭的最小世界
-        log.info(
-            "world.build.done",
-            duration_ms=self._elapsed_ms(started),
-            source=source,
-            entities=count,
-            provider=route.provider if route is not None else None,
-            model=route.model if route is not None else None,
-            error_class=run.error_class if run is not None else None,
+        first = result.generations[0]
+        return await finalize_cast(
+            header,
+            route=first.route,
+            narrative=result.narrative,
+            segments=result.segments,
+            notes=join_notes(result.segments, ctx.cast, narrator=labels["narrator"]),
+            usage=result.usage,
+            runs=result.runs,
+            lore=first.context.lore_record or {},
+            state_seq=ctx.state_seq,
+            routes=self._routes,
+            hub=self._hub,
+            prompts=prompts,
+            clock=self._clock,
+            repair_timeout_s=self.config.options_repair_timeout_s,
         )
-        await self._publish(stream, "world.ready", {"source": source, "entities": count})
 
     def _elapsed_ms(self, started: float) -> int:
         return int((self._clock() - started) * 1000)
-
-    def _card_source(self, inp: WorldBuildInput) -> CardSource | None:
-        """卡的原文快照：闪电模式放进导演的系统提示（docs/agent-runtime.md 的“闪电模式”）。
-        卡里的世界书不放进来，和挂的世界书一起走世界书快照（_lore）。"""
-        if not inp.cards:
-            return None
-        cards = snapshot_cards(inp.cards, protagonist_name=inp.protagonist_name, lore=False)
-        if cards.truncated:
-            log.warning("world.cards_truncated", cards=len(cards.cards), chars=cards.chars())
-        return cards
-
-    def _lore(self, inp: WorldBuildInput) -> LoreSnapshot:
-        """这一局的世界书快照（docs/lorebook.md 第 3.2 节）：几张卡自带的和剧本挂的合成一份。
-        没有世界书也存一份空的，表示这一局是世界书功能上线以后开的。"""
-        lore = build_snapshot(
-            inp.cards,
-            inp.lorebooks,
-            protagonist_name=inp.protagonist_name,
-            protagonist_summary=inp.protagonist_summary,
-        )
-        log.info(
-            "world.lore_built",
-            books=len(lore.books),
-            entries=len(lore.items),
-            constant=sum(1 for i in lore.items if i.entry.constant),
-            dropped=lore.dropped,
-        )
-        if lore.dropped:
-            log.warning("world.lore_truncated", dropped=lore.dropped, chars=lore.chars())
-        return lore
 
     async def _learn_window(self, header: TurnHeader, route: ResolvedRoute, window: int) -> None:
         """记下学到的窗口；记不下来（数据库出错）也不影响这一轮用它重试。"""
@@ -465,9 +419,15 @@ class TurnRunner:
         route: ResolvedRoute,
         stream: EventStream,
         cancel: CancelToken,
+        *,
+        role: CastRole | None = None,
+        publish: Publish | None = None,
     ) -> Generation:
+        """role 是多角色的局里这一次写谁；publish 不给时直接推给这一回合的事件流。"""
         try:
-            context = await self._assemble(header, ctx, route, route.window.effective_window)
+            context = await self._assemble(
+                header, ctx, route, route.window.effective_window, role=role
+            )
         except ContextTooLarge as exc:
             raise TurnFailed(
                 TurnFailure(code="CONTEXT_TOO_LARGE", message=str(exc), retryable=False)
@@ -480,7 +440,7 @@ class TurnRunner:
         while True:
             try:
                 generation = await self._call_director(
-                    header, ctx, attempt_route, context, stream, cancel, steps
+                    header, ctx, attempt_route, context, stream, cancel, steps, publish
                 )
                 generation.steps = steps.steps
                 return generation
@@ -516,6 +476,7 @@ class TurnRunner:
                             attempt_route,
                             window,
                             budget=None if learned else overflow_retry_budget(window),
+                            role=role,
                         )
                     except ContextTooLarge as exc:
                         failure = failure_from_provider(error)
@@ -536,6 +497,7 @@ class TurnRunner:
         window: int,
         *,
         budget: int | None = None,
+        role: CastRole | None = None,
     ) -> AssembledContext:
         lore: LoreSelection | None = None
         if ctx.lore is not None and ctx.lore.items:
@@ -555,6 +517,7 @@ class TurnRunner:
             budget=budget,
             recall=self._offers_recall(route),
             lore=lore,
+            role=role,
         )
 
     async def _call_director(
@@ -566,6 +529,7 @@ class TurnRunner:
         stream: EventStream,
         cancel: CancelToken,
         steps: StepLog,
+        publish: Publish | None = None,
     ) -> Generation:
         """导演走执行循环：有不在上下文里的旧回合时提供召回工具（director_loop.py）。"""
         prompts = self._prompts_for(header)
@@ -582,7 +546,7 @@ class TurnRunner:
             self._streamer,
             route,
             context,
-            lambda event, data: self._publish(stream, event, data),
+            publish or (lambda event, data: self._publish(stream, event, data)),
             cancel,
             steps=steps,
             prompts=prompts,

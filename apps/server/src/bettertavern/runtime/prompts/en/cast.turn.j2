@@ -1,0 +1,41 @@
+{# version: 1 #}
+{# 多角色的局里一个角色或旁白写一段时的最后一条消息（docs/cast.md） #}
+{% if world_state %}
+{{ world_state }}
+
+{% endif %}
+{% if outline %}
+{{ outline }}
+
+{% endif %}
+{% include "_lore.j2" %}
+{% if recall_before %}
+(This is turn {{ seq }}; the story text above starts at turn {{ recall_before }}. Earlier turns can be looked up with the tools when you need details.)
+{% endif %}
+{% if continuing %}
+(I take no action this turn; I watch the others carry on talking and acting.)
+{% else %}
+<player-action>
+{{ action }}
+</player-action>
+{% endif %}
+{% if earlier %}
+
+The parts already written this turn (carry on from them, don't repeat them):
+<narrative>
+{{ earlier }}
+</narrative>
+{% endif %}
+
+{% if speaker %}
+## This part: {{ speaker }}
+{% else %}
+## This part: the narrator
+{% endif %}
+{% include "_card_texts.j2" %}
+{% include "_card_reminder.j2" %}
+{% if speaker %}
+(Write only what {{ speaker }} says and does right now, carrying on from the above; don't speak or decide for "me", and don't speak or act for the other characters. Reply in the <narrative> format, with no choices and no name at the start.)
+{% else %}
+(Write the surroundings, the passing of time, passers-by, or what comes of things "I" do alone; don't speak for the characters. Reply in the <narrative> format, with no choices and no name at the start.)
+{% endif %}

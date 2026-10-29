@@ -1,4 +1,4 @@
-{# version: 5 #}
+{# version: 6 #}
 {% if world_state is defined and world_state %}
 {{ world_state }}
 
@@ -11,8 +11,12 @@
 {% if recall_before is defined and recall_before %}
 （いまは第 {{ seq }} ターン。上の本文は第 {{ recall_before }} ターンから始まる。それより前のターンは、詳細が必要ならツールで調べられる。）
 {% endif %}
+{% if continuing is defined and continuing %}
+（このターン、私は何もせず、ほかの人たちが話したり動いたりするのを見ている。）
+{% else %}
 <player-action>
 {{ action }}
 </player-action>
+{% endif %}
 {% include "_card_reminder.j2" %}
 （<narrative> と <options> の形式で返答し、選択肢はちょうど2つにすること。）

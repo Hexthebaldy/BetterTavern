@@ -1,4 +1,4 @@
-{# version: 3 #}
+{# version: 4 #}
 {% if world_state %}
 {{ world_state }}
 
@@ -22,6 +22,7 @@ The original greeting (use only its situation and tone; don't copy it or speak f
 {{ reference_opening }}
 {% endif %}
 </opening-brief>
+{% include "_card_texts.j2" %}
 {% include "_card_reminder.j2" %}
 This is the opening of the story; nothing has happened yet. Following the opening brief above, write the first part of the story in the first person: say where the protagonist is and what they see, and take the story to the first point where the player needs to choose.
 (Reply in the <narrative> and <options> format, with exactly 2 choices.)

@@ -1,0 +1,41 @@
+{# version: 1 #}
+{# 多角色的局里一个角色或旁白写一段时的最后一条消息（docs/cast.md） #}
+{% if world_state %}
+{{ world_state }}
+
+{% endif %}
+{% if outline %}
+{{ outline }}
+
+{% endif %}
+{% include "_lore.j2" %}
+{% if recall_before %}
+（いまは第 {{ seq }} ターン。上の本文は第 {{ recall_before }} ターンから始まる。それより前のターンは、詳細が必要ならツールで調べられる。）
+{% endif %}
+{% if continuing %}
+（このターン、私は何もせず、ほかの人たちが話したり動いたりするのを見ている。）
+{% else %}
+<player-action>
+{{ action }}
+</player-action>
+{% endif %}
+{% if earlier %}
+
+このターンですでに書かれた段（続きから書き、繰り返さない）：
+<narrative>
+{{ earlier }}
+</narrative>
+{% endif %}
+
+{% if speaker %}
+## この段は{{ speaker }}
+{% else %}
+## この段はナレーション
+{% endif %}
+{% include "_card_texts.j2" %}
+{% include "_card_reminder.j2" %}
+{% if speaker %}
+（{{ speaker }}がいま言うこと、することだけを、上の続きとして書く。主人公の代わりに話したり決めたりせず、ほかの登場人物の代わりに話したり動いたりもしない。<narrative> の形式で返答し、選択肢は書かず、冒頭に名前を書かない。）
+{% else %}
+（周りの様子、時間の経過、通りすがりの人、または主人公が一人でした行動の結果を書く。登場人物の代わりに話さない。<narrative> の形式で返答し、選択肢は書かず、冒頭に名前を書かない。）
+{% endif %}

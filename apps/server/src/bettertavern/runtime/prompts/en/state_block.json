@@ -11,7 +11,9 @@
     "roster": "Other people and places (roster)",
     "known": "Facts the player knows",
     "secret": "Director only (private to characters; never state directly)",
-    "threads": "Unresolved threads (what the story still owes the player; only you know the answers: don't spell them out; the longer one has hung on someone present, the more it is due — when you answer it, stay consistent with the answer)"
+    "threads": "Unresolved threads (what the story still owes the player; only you know the answers: don't spell them out; the longer one has hung on someone present, the more it is due — when you answer it, stay consistent with the answer)",
+    "known_viewer": "Facts {name} knows",
+    "threads_viewer": "Unresolved threads (what the story hasn't explained yet; don't give anything away for others — {name} only speaks from what they know)"
   },
   "scene": {
     "location": "Location: {value}",

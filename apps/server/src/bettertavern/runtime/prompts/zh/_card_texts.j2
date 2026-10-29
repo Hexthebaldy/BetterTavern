@@ -1,0 +1,39 @@
+{# 多角色的局放在最后一条消息里的角色卡内容（开局时的快照）：角色那一段只有他自己的卡，
+   旁白、开场、结局是每张卡的指令（闪电模式还有卡的原文）；怎么对待写在 director.system 里 #}
+{% if card_texts is defined and card_texts %}
+{% for card in card_texts %}
+### {{ card.name }}
+{% if card.description or card.personality or card.scenario %}
+<card-source>
+{% if card.description %}
+描述：
+{{ card.description }}
+{% endif %}
+{% if card.personality %}
+性格：
+{{ card.personality }}
+{% endif %}
+{% if card.scenario %}
+场景：
+{{ card.scenario }}
+{% endif %}
+</card-source>
+{% endif %}
+{% if card.instructions %}
+<card-instructions>
+{{ card.instructions }}
+</card-instructions>
+{% endif %}
+{% if card.examples %}
+<card-examples>
+{% for block in card.examples %}
+{{ block }}
+{% if not loop.last %}
+---
+{% endif %}
+{% endfor %}
+</card-examples>
+{% endif %}
+
+{% endfor %}
+{% endif %}

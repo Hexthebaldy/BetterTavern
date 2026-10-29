@@ -34,7 +34,7 @@ class _Round:
     offset_s: float  # 这一轮从第一次请求开始后多久开流
 
 
-def _sum_usage(usages: Sequence[Usage | None]) -> Usage | None:
+def sum_usage(usages: Sequence[Usage | None]) -> Usage | None:
     present = [u for u in usages if u is not None]
     if not present:
         return None
@@ -110,7 +110,7 @@ async def run_director(
         ttft_ms += int(last.offset_s * 1000)
     return replace(
         final,
-        usage=_sum_usage([r.generation.usage for r in rounds]),
+        usage=sum_usage([r.generation.usage for r in rounds]),
         ttft_ms=ttft_ms,
         latency_ms=int((clock() - started) * 1000),
         tool_rounds=sum(1 for r in rounds if r.generation.tool_calls),

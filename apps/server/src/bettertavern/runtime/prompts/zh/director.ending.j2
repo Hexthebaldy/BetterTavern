@@ -1,4 +1,4 @@
-{# version: 5 #}
+{# version: 6 #}
 {% if world_state %}
 {{ world_state }}
 
@@ -16,6 +16,7 @@
 {{ wish }}
 </ending-wish>
 {% endif %}
+{% include "_card_texts.j2" %}
 {% include "_card_reminder.j2" %}
 玩家决定在这里结束故事。请接着上一段，写出整个故事的最后一段，作为结局：
 - 不要复述已经发生过的剧情；

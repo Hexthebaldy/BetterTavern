@@ -1,4 +1,4 @@
-{# version: 3 #}
+{# version: 4 #}
 {% if world_state %}
 {{ world_state }}
 
@@ -22,6 +22,7 @@
 {{ reference_opening }}
 {% endif %}
 </opening-brief>
+{% include "_card_texts.j2" %}
 {% include "_card_reminder.j2" %}
 これは物語の冒頭で、まだ何も起きていません。上の導入メモに沿って、物語の最初の場面を一人称で書いてください。主人公がいまどこにいて何が見えているかを示し、プレイヤーが最初の選択をする場面まで物語を進めること。
 （<narrative> と <options> の形式で返答し、選択肢はちょうど2つにすること。）

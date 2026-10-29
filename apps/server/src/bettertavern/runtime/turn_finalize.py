@@ -1,17 +1,19 @@
 """一回合的收尾（TurnRunner 用）：普通回合按修复阶梯补选项、结局只要叙述，
-并且把导演这次运行记成 agent_runs 的一行（成功、失败都记，带上每一步）。"""
+并且把导演这次运行记成 agent_runs 的一行（成功、失败都记，带上每一步）。
+多角色的局几个人写完以后，也在这里补两个选项（finalize_cast）。"""
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Any, Literal
 
 import structlog
 
 from bettertavern.domain.routing import RouteTask
+from bettertavern.domain.story.cast import Segment
 from bettertavern.domain.story.turn import OptionsSource, make_options
-from bettertavern.providers import ProviderHub
+from bettertavern.providers import ProviderHub, Usage
 from bettertavern.providers.errors import ErrorClass
 
 from .agent import StepLog
@@ -231,6 +233,46 @@ async def finalize_greeting(
         usage=None,
         state_seq=state_seq,
         runs=repair_runs,
+    )
+
+
+async def finalize_cast(
+    header: TurnHeader,
+    *,
+    route: ResolvedRoute,
+    narrative: str,
+    segments: Sequence[Segment],
+    notes: str,
+    usage: Usage | None,
+    runs: Sequence[AgentRunRecord],
+    lore: Mapping[str, Any],
+    state_seq: int,
+    routes: RouteResolver,
+    hub: ProviderHub,
+    prompts: PromptLibrary,
+    clock: Callable[[], float],
+    repair_timeout_s: float,
+) -> TurnOutcome:
+    """多角色的局几个人都写完了：照几段拼起来的全文补两个选项（补不齐时玩家自己写）。"""
+    repair_runs: list[AgentRunRecord] = []
+    repair = _repairer(
+        header, route, routes=routes, hub=hub, prompts=prompts, clock=clock, repair_runs=repair_runs
+    )
+    parse = DirectorParse(
+        narrative=narrative, options=(), stage=ParseStage.OK, repairs=(), notes=("cast",)
+    )
+    outcome = await finalize_director_output(parse, repair=repair, timeout=repair_timeout_s)
+    log.info("director.parse", stage="cast", options=len(outcome.options))
+    return TurnOutcome(
+        narrative=narrative,
+        options=make_options(outcome.options),
+        options_source=_STAGE_TO_SOURCE[outcome.stage].value,
+        usage=usage,
+        state_seq=state_seq,
+        runs=[*runs, *repair_runs],
+        director_notes=notes,
+        lore=lore,
+        segments=tuple(segments),
     )
 
 
