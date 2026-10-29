@@ -13,6 +13,8 @@ recall 打开时（--recall），导演收到召回工具会先查一次“火�
 提示词里有 <chapter-turns> 的是章节整理，回一段固定的章节摘要和玩家画像（要并梗概时也回梗概）；
 有 <outline-source> 的是大纲修订：还没有大纲时回一版三拍的大纲，之后都回“不改”；
 最后一条消息要 <synopsis> 的是闪电模式的压缩，回一段固定的梗概。
+多角色的局（docs/cast.md）里写某个角色或旁白的请求（最后一条消息里有“这一段写某某”“这一段是旁白”），
+回一两句他说的话或旁白，开头照抄一行名字（服务端会去掉），不给选项。
 自定义端点默认被当成不能调用工具：要让后台整理跑起来，先在设置里测试一下这个模型。
 """
 
@@ -20,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -125,6 +128,32 @@ def outline_payload(prompt: str) -> dict[str, Any]:
     return {"premise": "我要弄清对岸那盏灯是谁点的。", "beats": beats, "constraints": []}
 
 
+# 多角色的局里一个人写一段：最后一条消息里写着这一次写谁（三种语言）
+_SPEAKER = re.compile(r"^## (?:这一段写|This part: |この段は)(.+)$", re.MULTILINE)
+_NARRATOR = ("## 这一段是旁白", "## This part: the narrator", "## この段はナレーション")
+LINES = [
+    "{name}放下手里的东西，抬眼看我：“这事你别问我。”说完又低下头去。",
+    "{name}往窗外看了一眼，压低声音：“子时之前，最好别出这个门。”",
+    "{name}笑了一下，没接话，只是把灯芯挑亮了些。",
+]
+NARRATION = [
+    "雨下得更紧了，渡口那盏灯晃了两晃，又稳住。",
+    "远处传来一声船桨拍水的闷响，茶馆里谁也没说话。",
+]
+
+
+def cast_text(last: str, n: int) -> str | None:
+    """多角色的局里写某个人或旁白的请求：回一段，开头照抄名字；不是这种请求时为 None"""
+    if any(label in last for label in _NARRATOR):
+        return f"<narrative>\n【旁白】\n{NARRATION[(n - 1) % len(NARRATION)]}\n</narrative>"
+    found = _SPEAKER.search(last)
+    if found is None:
+        return None
+    name = found.group(1).strip()
+    line = LINES[(n - 1) % len(LINES)].format(name=name)
+    return f"<narrative>\n【{name}】\n{line}\n</narrative>"
+
+
 def director_text(n: int) -> str:
     paragraph = PARAGRAPHS[(n - 1) % len(PARAGRAPHS)]
     first, second = OPTIONS[(n - 1) % len(OPTIONS)]
@@ -174,7 +203,8 @@ class StoryScript:
             )
         if body.get("stream"):
             self.director_calls += 1
-            text = director_text(self.director_calls)
+            last = str(messages[-1].get("content", ""))
+            text = cast_text(last, self.director_calls) or director_text(self.director_calls)
             items: list[bytes | float] = []
             for i in range(0, len(text), 6):
                 items.append(sse(chunk(text[i : i + 6])))
