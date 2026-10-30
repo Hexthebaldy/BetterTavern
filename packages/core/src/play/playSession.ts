@@ -5,11 +5,22 @@
  * 提交：每次提交生成一个 Idempotency-Key；网络错误和服务端的临时错误用同一个键退避重试。
  * 409 TURN_IN_PROGRESS 直接订阅进行中的那一轮；STALE_PARENT 等说明故事已被推进，重新加载。
  * 退出页面只关闭连接，不取消服务端的生成。
+ * 配图（docs/illustrations.md）：点“画这一幕”以后，每隔几秒查一次还在画的图，直到画好或失败。
  */
 
 import { ApiError, describeError } from "../api/client.ts";
 import type { StreamOutcome, TurnConnector, TurnStream, TurnStreamHandlers } from "../api/turnStream.ts";
-import type { CastMember, NewAction, PlaythroughDetail, Turn, TurnCreated, TurnError } from "../api/types.ts";
+import type {
+  CastMember,
+  DrawImage,
+  NewAction,
+  PlaythroughDetail,
+  Turn,
+  TurnCreated,
+  TurnError,
+  TurnImage,
+} from "../api/types.ts";
+import { drawingImages } from "./illustrations.ts";
 import {
   canRollbackTo,
   canSubmit,
@@ -38,6 +49,10 @@ export type PlayApi = {
   rollback(playthroughId: string, turnId: string): Promise<PlaythroughDetail>;
   /** 多角色的局：让一个角色先不出场或者回来，返回全部角色的最新状态 */
   setMuted(playthroughId: string, position: number, muted: boolean): Promise<CastMember[]>;
+  /** 画这一幕：返回刚插的那一张（pending） */
+  drawImage(turnId: string, body: DrawImage): Promise<TurnImage>;
+  getImage(imageId: string): Promise<TurnImage>;
+  removeImage(imageId: string): Promise<void>;
 };
 
 export type PlaySessionDeps = {
@@ -47,6 +62,8 @@ export type PlaySessionDeps = {
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
   /** 轮询降级时查询回合状态的间隔 */
   pollIntervalMs?: number;
+  /** 还在画的图隔多久查一次 */
+  imagePollMs?: number;
   /** 提交遇到网络错误时的退避；用完还失败就交给玩家点“重试” */
   submitBackoffMs?: readonly number[];
   historyPageSize?: number;
@@ -87,6 +104,7 @@ export class PlaySession {
   private stream: TurnStream | null = null;
   private streamTurnId: string | null = null;
   private loads = 0;
+  private watchingImages = false;
 
   constructor(playthroughId: string, deps: PlaySessionDeps) {
     this.playthroughId = playthroughId;
@@ -148,9 +166,11 @@ export class PlaySession {
         mode: detail.playthrough.mode,
         rollbacksLeft: detail.playthrough.rollbacks_left,
         cast: detail.cast ?? [],
+        imageStyle: detail.playthrough.image_style ?? "",
       });
       const pending = this.state.pending;
       if (this.state.phase === "streaming" && pending?.turnId) this.attach(pending.turnId);
+      void this.watchImages();
     } catch (error) {
       if (this.disposed || ticket !== this.loads) return;
       this.dispatch({ type: "load_failed", error: toTurnError(error) });
@@ -225,6 +245,59 @@ export class PlaySession {
       return null;
     } catch (error) {
       return toTurnError(error);
+    }
+  }
+
+  /**
+   * 画这一幕：服务端马上返回一张“正在画”的图，之后隔几秒查一次。带了画风就记成这一局的画风。
+   * 失败（没配出图服务、这一回合已经在画等）返回原因，界面用提示条显示。
+   */
+  async drawImage(turnId: string, body: DrawImage): Promise<TurnError | null> {
+    let image: TurnImage;
+    try {
+      image = await this.deps.api.drawImage(turnId, body);
+    } catch (error) {
+      return toTurnError(error);
+    }
+    this.dispatch({ type: "image", image });
+    if (body.style !== undefined) this.dispatch({ type: "image_style", style: body.style });
+    void this.watchImages();
+    return null;
+  }
+
+  /** 删掉一张图（或一条没画出来的记录）；服务端说已经没有了也当作删掉了 */
+  async removeImage(turnId: string, imageId: string): Promise<TurnError | null> {
+    try {
+      await this.deps.api.removeImage(imageId);
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 404)) return toTurnError(error);
+    }
+    this.dispatch({ type: "image_removed", turnId, imageId });
+    return null;
+  }
+
+  /** 还有在画的图就隔几秒查一次，直到都画好或失败；同时只有一个在查 */
+  private async watchImages(): Promise<void> {
+    if (this.watchingImages) return;
+    this.watchingImages = true;
+    try {
+      const interval = this.deps.imagePollMs ?? 3000;
+      while (!this.disposed && drawingImages(this.state.images).length > 0) {
+        await this.sleep(interval);
+        for (const image of drawingImages(this.state.images)) {
+          if (this.disposed) return;
+          try {
+            this.dispatch({ type: "image", image: await this.deps.api.getImage(image.id) });
+          } catch (error) {
+            // 被删了（或者被同一回合新画好的那张换掉了）；网络错误就下一轮再查
+            if (error instanceof ApiError && error.status === 404) {
+              this.dispatch({ type: "image_removed", turnId: image.turn_id, imageId: image.id });
+            }
+          }
+        }
+      }
+    } finally {
+      this.watchingImages = false;
     }
   }
 

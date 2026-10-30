@@ -2,10 +2,19 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { ApiError } from "../api/client.ts";
-import type { CastMember, NewAction, PlaythroughDetail, Turn, TurnEvent } from "../api/types.ts";
+import type {
+  CastMember,
+  DrawImage,
+  NewAction,
+  PlaythroughDetail,
+  Turn,
+  TurnEvent,
+  TurnImage,
+} from "../api/types.ts";
 import type { StreamOutcome, TurnStream, TurnStreamHandlers } from "../api/turnStream.ts";
 import { PlaySession, type PlayApi } from "./playSession.ts";
 import { makeTurn, opts } from "./testing.ts";
+import { pictureOf } from "./illustrations.ts";
 import { canRollbackTo, headTurn, turnsAfter } from "./turnMachine.ts";
 
 /** 可以手动推进的假事件流 */
@@ -63,6 +72,12 @@ class FakeApi implements PlayApi {
   detailCalls = 0;
   cast: CastMember[] = [];
   muteError: Error | null = null;
+  drawn: { turnId: string; body: DrawImage }[] = [];
+  drawResults: (TurnImage | Error)[] = [];
+  /** 查图的结果，按顺序用；最后一个要是画好或失败，否则会一直查下去 */
+  imageResults: (TurnImage | Error)[] = [];
+  removed: string[] = [];
+  removeError: Error | null = null;
 
   async detail(): Promise<PlaythroughDetail> {
     this.detailCalls += 1;
@@ -107,6 +122,53 @@ class FakeApi implements PlayApi {
     this.cast = this.cast.map((m) => (m.position === position ? { ...m, muted } : m));
     return this.cast;
   }
+
+  async drawImage(turnId: string, body: DrawImage): Promise<TurnImage> {
+    this.drawn.push({ turnId, body });
+    const next = this.drawResults.shift();
+    if (!next) throw new Error("没有准备画图的结果");
+    if (next instanceof Error) throw next;
+    return next;
+  }
+
+  async getImage(): Promise<TurnImage> {
+    const next = this.imageResults.shift();
+    if (!next) throw new Error("没有准备查图的结果");
+    if (next instanceof Error) throw next;
+    return next;
+  }
+
+  async removeImage(imageId: string): Promise<void> {
+    this.removed.push(imageId);
+    if (this.removeError) throw this.removeError;
+  }
+}
+
+function image(
+  turnId: string,
+  id: string,
+  status: TurnImage["status"],
+  extra: Partial<TurnImage> = {},
+): TurnImage {
+  return {
+    id,
+    turn_id: turnId,
+    status,
+    blob_id: status === "ready" ? `blob-${id}` : null,
+    width: status === "ready" ? 1536 : null,
+    height: status === "ready" ? 1024 : null,
+    error: status === "failed" ? "blocked" : null,
+    request: "",
+    style: "",
+    prompt: null,
+    created_at: `2026-10-30T00:00:0${id.slice(-1)}Z`,
+    ...extra,
+  };
+}
+
+/** 让后台查图的循环跑完 */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 30; i += 1) await tick();
 }
 
 function detail(head: Turn | null, extra: Partial<PlaythroughDetail> = {}): PlaythroughDetail {
@@ -182,6 +244,108 @@ function completed(turn: Turn, narrative = turn.narrative): TurnEvent {
 const network = (): ApiError => new ApiError("连不上服务器", { status: 0, code: "NETWORK", retryable: true });
 
 describe("PlaySession", () => {
+  it("画这一幕：先显示正在画，查到画好以后换掉旧图；带了画风就记成这一局的", async () => {
+    const { api, session, sleeps } = setup();
+    const head = makeTurn(0, { images: [image("h", "i1", "ready")], id: "h" });
+    api.detailQueue = [detail(head)];
+    api.historyQueue = [[head]];
+    await session.load();
+    assert.equal(pictureOf(session.getState().images.h).shown?.id, "i1");
+
+    api.drawResults = [image("h", "i2", "pending", { style: "anime" })];
+    api.imageResults = [image("h", "i2", "pending"), image("h", "i2", "ready")];
+    assert.equal(await session.drawImage("h", { request: "她回头", style: "anime" }), null);
+    assert.deepEqual(api.drawn, [{ turnId: "h", body: { request: "她回头", style: "anime" } }]);
+    let picture = pictureOf(session.getState().images.h);
+    assert.equal(picture.shown?.id, "i1"); // 重画时旧图还在
+    assert.equal(picture.drawing?.id, "i2");
+    assert.equal(session.getState().imageStyle, "anime");
+
+    await settle();
+    picture = pictureOf(session.getState().images.h);
+    assert.equal(picture.shown?.id, "i2");
+    assert.equal(picture.drawing, null);
+    assert.deepEqual(
+      session.getState().images.h?.map((i) => i.id),
+      ["i2"],
+    );
+    assert.deepEqual(
+      sleeps.filter((ms) => ms === 3000),
+      [3000, 3000],
+    );
+  });
+
+  it("没画出来：旧图照样显示，下面写原因；关掉这条记录", async () => {
+    const { api, session } = setup();
+    const head = makeTurn(0, { images: [image("h", "i1", "ready")], id: "h" });
+    api.detailQueue = [detail(head)];
+    api.historyQueue = [[head]];
+    await session.load();
+    api.drawResults = [image("h", "i2", "pending")];
+    api.imageResults = [image("h", "i2", "failed")];
+    await session.drawImage("h", {});
+    await settle();
+    let picture = pictureOf(session.getState().images.h);
+    assert.equal(picture.shown?.id, "i1");
+    assert.equal(picture.failed?.error, "blocked");
+    assert.equal(session.getState().imageStyle, ""); // 没带画风：不改
+
+    assert.equal(await session.removeImage("h", "i2"), null);
+    assert.deepEqual(api.removed, ["i2"]);
+    picture = pictureOf(session.getState().images.h);
+    assert.equal(picture.failed, null);
+    assert.equal(picture.shown?.id, "i1");
+  });
+
+  it("画不了时返回原因，界面不变", async () => {
+    const { api, session } = setup();
+    const head = makeTurn(0, { id: "h" });
+    api.detailQueue = [detail(head)];
+    api.historyQueue = [[head]];
+    await session.load();
+    api.drawResults = [
+      new ApiError("No text-to-image service is set up", {
+        status: 409,
+        code: "TOOL_ROUTE_MISSING",
+        retryable: false,
+      }),
+    ];
+    const before = session.getState();
+    const error = await session.drawImage("h", {});
+    assert.equal(error?.code, "TOOL_ROUTE_MISSING");
+    assert.equal(session.getState(), before);
+  });
+
+  it("加载时有还在画的图就接着查；服务端说没有了就当删掉了；删的时候 404 也算删掉", async () => {
+    const { api, session } = setup();
+    const head = makeTurn(0, { images: [image("h", "i3", "pending")], id: "h" });
+    api.detailQueue = [detail(head, { playthrough: { ...detail(head).playthrough, image_style: "ink" } })];
+    api.historyQueue = [[head]];
+    api.imageResults = [
+      new ApiError("Image not found", { status: 404, code: "NOT_FOUND", retryable: false }),
+    ];
+    await session.load();
+    assert.equal(session.getState().imageStyle, "ink");
+    assert.equal(pictureOf(session.getState().images.h).drawing?.id, "i3");
+    await settle();
+    assert.equal(session.getState().images.h, undefined);
+
+    api.drawResults = [image("h", "i4", "pending")];
+    api.imageResults = [image("h", "i4", "ready")];
+    await session.drawImage("h", {});
+    await settle();
+    api.removeError = new ApiError("Image not found", { status: 404, code: "NOT_FOUND", retryable: false });
+    assert.equal(await session.removeImage("h", "i4"), null);
+    assert.equal(session.getState().images.h, undefined);
+    api.removeError = network();
+    api.drawResults = [image("h", "i5", "pending")];
+    api.imageResults = [image("h", "i5", "ready")];
+    await session.drawImage("h", {});
+    await settle();
+    assert.equal((await session.removeImage("h", "i5"))?.code, "NETWORK");
+    assert.equal(pictureOf(session.getState().images.h).shown?.id, "i5");
+  });
+
   it("多角色的局：加载时带上角色，先不出场以后换成服务端给的，失败时返回原因", async () => {
     const { api, session } = setup();
     const head = makeTurn(0);

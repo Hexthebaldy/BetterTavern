@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 
-import type { NewAction, TurnError } from "@bettertavern/core/api/types";
+import type { DrawImage, NewAction, TurnError } from "@bettertavern/core/api/types";
 import { diagnostics } from "@bettertavern/core/observability/log";
 import { newIdempotencyKey } from "@bettertavern/core/utils/ids";
 import { PlaySession } from "@bettertavern/core/play/playSession";
@@ -27,6 +27,10 @@ export type PlayControls = {
   rollback: (turnId: string) => Promise<TurnError | null>;
   /** 多角色的局：让一个角色先不出场或者回来；失败时返回原因 */
   setMuted: (position: number, muted: boolean) => Promise<TurnError | null>;
+  /** 画这一幕（docs/illustrations.md）：服务端开始画了返回 null，否则返回原因 */
+  drawImage: (turnId: string, body: DrawImage) => Promise<TurnError | null>;
+  /** 删掉一张图或一条没画出来的记录；失败时返回原因 */
+  removeImage: (turnId: string, imageId: string) => Promise<TurnError | null>;
 };
 
 export function usePlaySession(playthroughId: string): PlayControls {
@@ -45,6 +49,9 @@ export function usePlaySession(playthroughId: string): PlayControls {
         cancel: (turnId) => api.turns.cancel(turnId),
         rollback: (id, turnId) => api.playthroughs.rollback(id, turnId),
         setMuted: (id, position, muted) => api.playthroughs.setMuted(id, position, muted),
+        drawImage: (turnId, body) => api.turns.drawImage(turnId, body),
+        getImage: (imageId) => api.turnImages.get(imageId),
+        removeImage: (imageId) => api.turnImages.remove(imageId),
       },
       connect: connectTurn,
       newKey: newIdempotencyKey,
@@ -107,5 +114,15 @@ export function usePlaySession(playthroughId: string): PlayControls {
     [],
   );
 
-  return { state, submit, retry, cancel, dismissError, reload, rollback, setMuted };
+  const drawImage = useCallback(
+    (turnId: string, body: DrawImage) => sessionRef.current?.drawImage(turnId, body) ?? Promise.resolve(null),
+    [],
+  );
+  const removeImage = useCallback(
+    (turnId: string, imageId: string) =>
+      sessionRef.current?.removeImage(turnId, imageId) ?? Promise.resolve(null),
+    [],
+  );
+
+  return { state, submit, retry, cancel, dismissError, reload, rollback, setMuted, drawImage, removeImage };
 }

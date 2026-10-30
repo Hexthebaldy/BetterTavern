@@ -40,7 +40,7 @@ export const settings: MessagesOtherOnly<typeof source> = {
     openProbe: "開く",
     probeSub: "ストリーミング出力、切断後の再開、遅延を確認",
     tools: "外部サービス",
-    toolsSub: "検索、ページの読み込み、表紙の生成",
+    toolsSub: "検索、ページの読み込み、画像の生成",
     sub: "アカウント、外観、言語、外部サービス",
     previewWord: "雨夜",
     reading: "読書",
@@ -50,7 +50,7 @@ export const settings: MessagesOtherOnly<typeof source> = {
     keyClose: "閉じる / 戻る",
     allLink: "すべて",
     manage: "管理",
-    toolsNote: "ワークベンチのエージェントが調べもの、ページの読み込み、表紙の生成に使います",
+    toolsNote: "ワークベンチのエージェントが調べもの、ページの読み込み、表紙の生成に使い、物語の挿絵にも使います",
     toolSearchFree: "公式の無料枠",
     toolFetchServer: "サーバーが読み込む",
     toolNone: "未設定",
@@ -92,17 +92,17 @@ export const settings: MessagesOtherOnly<typeof source> = {
   tools: {
     title: "外部サービス",
     intro:
-      "ワークベンチの agent が資料を調べたり、ウェブページを読んだり、表紙を作ったりするときに使います。ページの読み込みはサーバーが自分で行うので設定不要です。検索も設定なしで使えますが範囲は限られます（公式サービスの無料回数を使い切るとウィキペディアだけを検索します）。設定すれば自分のサービスを使います。表紙の生成はサービスの設定が必要です。",
+      "ワークベンチの agent が資料を調べたり、ウェブページを読んだり、表紙を作ったりするときに使います。読書ページの「この場面を描く」も画像生成を使います。ページの読み込みはサーバーが自分で行うので設定不要です。検索も設定なしで使えますが範囲は限られます（公式サービスの無料回数を使い切るとウィキペディアだけを検索します）。設定すれば自分のサービスを使います。画像の生成はサービスの設定が必要です。",
     loadFailed: "外部サービスを読み込めませんでした",
     kinds: {
       search: "ウェブ検索",
       fetch: "ページの読み込み",
-      image: "表紙の生成",
+      image: "画像の生成",
     },
     kindNotes: {
       search: "Tavily、Brave、Bocha はキーが必要です。SearXNG は自前で動かすもので、アドレスを入れるだけです",
       fetch: "任意：サーバーが自分で読めないページ（JavaScript が必要なもの）をこれで読み直します",
-      image: "API の形式でつなぐので、互換のサービスなら何でも使えます。アドレス、モデル名、キーを入れてください",
+      image: "表紙と物語の挿絵に使います。API の形式でつなぐので、互換のサービスなら何でも使えます。アドレス、モデル名、キーを入れてください",
     },
     providers: {
       tavily: "Tavily",

@@ -613,6 +613,30 @@ export type TurnError = {
 
 export type TurnStatus = "generating" | "replied" | "committed" | "failed" | "archived";
 
+/** 故事配图的画风（docs/illustrations.md）；空串是不指定 */
+export type ImageStyle = "" | "anime" | "realistic" | "ink" | "oil" | "film" | "flat";
+
+/**
+ * 一回合的一张配图：pending 正在画；ready 画好了（blob_id 是图片）；failed 没画出来（error 是原因，
+ * 例如 timeout、blocked、auth，界面按它翻译）。prompt 是发给出图服务的英文画面描述。
+ */
+export type TurnImage = {
+  id: string;
+  turn_id: string;
+  status: "pending" | "ready" | "failed";
+  blob_id: string | null;
+  width: number | null;
+  height: number | null;
+  error: string | null;
+  request: string;
+  style: ImageStyle;
+  prompt: string | null;
+  created_at: string;
+};
+
+/** 画这一幕：想看什么（可以不填）、画风（不传时用这一局记下的） */
+export type DrawImage = { request?: string; style?: ImageStyle };
+
 export type Turn = {
   id: string;
   playthrough_id: string;
@@ -631,6 +655,8 @@ export type Turn = {
   error: TurnError | null;
   created_at: string;
   replied_at: string | null;
+  /** 这一回合的配图，按点“画这一幕”的先后；只有回合列表、单个回合、详情的 head 带，更新前的服务端没有这一项 */
+  images?: TurnImage[];
 };
 
 export type Preferences = { length: "short" | "medium" | "long"; style: string; boundaries: string };
@@ -649,6 +675,8 @@ export type Playthrough = {
   /** 开局时用的人设，用来显示头像（人设删了就找不到）；临时填的为 null，更新前的服务端没有这一项 */
   persona_id?: string | null;
   preferences: Partial<Preferences>;
+  /** 这一局配图的画风；更新前的服务端没有这一项 */
+  image_style?: ImageStyle;
   head_turn_id: string | null;
   head_seq: number | null;
   head_excerpt: string;

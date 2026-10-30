@@ -40,7 +40,7 @@ export const settings: Messages<typeof source> = {
     openProbe: "Open",
     probeSub: "Check streaming, resuming after disconnects, and latency",
     tools: "External services",
-    toolsSub: "Search, reading pages, cover images",
+    toolsSub: "Search, reading pages, images",
     sub: "Account, appearance, language, external services",
     previewWord: "Rain",
     reading: "Reading",
@@ -50,7 +50,7 @@ export const settings: Messages<typeof source> = {
     keyClose: "Close / back",
     allLink: "All",
     manage: "Manage",
-    toolsNote: "Used by the Workbench agent to search, read pages and make covers",
+    toolsNote: "Used by the Workbench agent to search, read pages and make covers, and to illustrate your stories",
     toolSearchFree: "Free official quota",
     toolFetchServer: "Read by the server",
     toolNone: "Not set up",
@@ -93,17 +93,17 @@ export const settings: Messages<typeof source> = {
   tools: {
     title: "External services",
     intro:
-      "The Workbench agent uses these to research, read web pages and make cover images. Reading pages works without setup (the server reads them itself). Search also works without setup, but with limited reach (once the official service's free searches run out, it only searches Wikipedia); set up your own to use it instead. Cover images need a service.",
+      "The Workbench agent uses these to research, read web pages and make cover images, and by Draw this scene on the reading page. Reading pages works without setup (the server reads them itself). Search also works without setup, but with limited reach (once the official service's free searches run out, it only searches Wikipedia); set up your own to use it instead. Images need a service.",
     loadFailed: "External services didn't load",
     kinds: {
       search: "Web search",
       fetch: "Reading pages",
-      image: "Cover images",
+      image: "Images",
     },
     kindNotes: {
       search: "Tavily, Brave and Bocha need a key; SearXNG is self-hosted, just enter its address",
       fetch: "Optional: pages the server can't read itself (ones that need JavaScript) are read through this",
-      image: "Connected by API protocol, so any compatible service works: enter the address, model name and key",
+      image: "Used for covers and story pictures. Connected by API protocol, so any compatible service works: enter the address, model name and key",
     },
     providers: {
       tavily: "Tavily",

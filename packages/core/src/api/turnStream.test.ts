@@ -59,6 +59,13 @@ describe("回合事件流（SseClient + PlaySession）", () => {
         },
         cancel: async () => generating,
         setMuted: async () => [],
+        drawImage: async () => {
+          throw new Error("不应画图");
+        },
+        getImage: async () => {
+          throw new Error("不应查图");
+        },
+        removeImage: async () => undefined,
       },
       connect: sseTurnConnector({
         url: (id) => `http://server/v1/turns/${id}/events`,

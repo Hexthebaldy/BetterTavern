@@ -45,8 +45,10 @@ import type {
   ToolRoutePatch,
   Transcript,
   WorkbenchMessage,
+  DrawImage,
   Turn,
   TurnCreated,
+  TurnImage,
   User,
   WorldView,
 } from "./types.ts";
@@ -343,7 +345,14 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
         }),
       get: (turnId: string) => client.get<Turn>(`/v1/turns/${enc(turnId)}`),
       cancel: (turnId: string) => client.post<Turn>(`/v1/turns/${enc(turnId)}/cancel`),
+      /** 画这一幕（docs/illustrations.md）：马上返回一张 pending 的图，之后用 turnImages.get 查 */
+      drawImage: (turnId: string, body: DrawImage) =>
+        client.post<TurnImage>(`/v1/turns/${enc(turnId)}/images`, body),
       eventsPath: (turnId: string) => `/v1/turns/${enc(turnId)}/events`,
+    },
+    turnImages: {
+      get: (imageId: string) => client.get<TurnImage>(`/v1/turn-images/${enc(imageId)}`),
+      remove: (imageId: string) => client.delete<void>(`/v1/turn-images/${enc(imageId)}`),
     },
   };
 }

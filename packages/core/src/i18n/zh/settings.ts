@@ -39,7 +39,7 @@ export const settings = {
     openProbe: "打开",
     probeSub: "检查流式输出、断线续传和延迟",
     tools: "外部服务",
-    toolsSub: "搜索、读网页、生成封面",
+    toolsSub: "搜索、读网页、生成图片",
     sub: "账户、外观、语言、外部服务",
     previewWord: "雨夜",
     reading: "阅读",
@@ -49,7 +49,7 @@ export const settings = {
     keyClose: "收起 / 返回",
     allLink: "全部",
     manage: "管理",
-    toolsNote: "工作台的 agent 查资料、读网页、生成封面时用",
+    toolsNote: "工作台的 agent 查资料、读网页、生成封面，以及给故事配图时用",
     toolSearchFree: "官方的免费额度",
     toolFetchServer: "服务器自己读",
     toolNone: "没有配置",
@@ -91,17 +91,17 @@ export const settings = {
   tools: {
     title: "外部服务",
     intro:
-      "工作台的 agent 查资料、读网页、生成封面时用这些服务。读网页由服务器自己读，不用配；搜索不配也能用，但范围有限（官方服务的免费次数用完后只查维基百科），配了就用你自己的；生成封面要配了才能用。",
+      "工作台的 agent 查资料、读网页、生成封面时用这些服务，阅读页的“画这一幕”也用这里的文生图。读网页由服务器自己读，不用配；搜索不配也能用，但范围有限（官方服务的免费次数用完后只查维基百科），配了就用你自己的；生成图片要配了才能用。",
     loadFailed: "外部服务没加载出来",
     kinds: {
       search: "网页搜索",
       fetch: "读网页",
-      image: "生成封面",
+      image: "生成图片",
     },
     kindNotes: {
       search: "Tavily、Brave、博查要 Key；SearXNG 是自己架的，填地址就行",
       fetch: "可选：服务器自己读不出来的网页（要 JavaScript 才显示的）换它再读",
-      image: "按接口协议接，兼容的服务都能用：填地址、模型名和 Key",
+      image: "封面和故事配图都用它。按接口协议接，兼容的服务都能用：填地址、模型名和 Key",
     },
     providers: {
       tavily: "Tavily",

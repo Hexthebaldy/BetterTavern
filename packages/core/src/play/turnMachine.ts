@@ -6,11 +6,13 @@
  * 最新一段是结局（行动来源 ending）时故事已经结束：仍是 idle，但不能再提交任何行动（isEnded）。
  * 多角色的局（docs/cast.md）：每个回合按 segments 分段，生成中按 speaker.started 一段一段拼；
  * cast 是这一局的角色（点名、先不出场用）。
+ * 配图（docs/illustrations.md）：images 按回合记着每回合的图，规则在 illustrations.ts。
  * 见 docs/client.md 第 1 节。
  */
 
 import type {
   CastMember,
+  ImageStyle,
   NewAction,
   Playthrough,
   Segment,
@@ -18,9 +20,11 @@ import type {
   TurnAction,
   TurnError,
   TurnEvent,
+  TurnImage,
   TurnOption,
 } from "../api/types.ts";
 import { i18n } from "../i18n/index.ts";
+import { imagesByTurn, withImage, withoutImage } from "./illustrations.ts";
 
 export type Phase =
   | "loading"
@@ -82,6 +86,10 @@ export type PlayState = {
   rollbacksLeft: number;
   /** 多角色的局的角色（按位置排）；不是多角色的局是空的 */
   cast: CastMember[];
+  /** 每回合的配图（按回合 id）；没画过的回合不在里面 */
+  images: Record<string, TurnImage[]>;
+  /** 这一局配图的画风（上次选的），空串是不指定 */
+  imageStyle: ImageStyle;
   turns: StoryTurn[];
   pending: PendingTurn | null;
   error: TurnError | null;
@@ -102,8 +110,13 @@ export type PlayEvent =
       mode?: Playthrough["mode"];
       rollbacksLeft?: number;
       cast?: CastMember[];
+      imageStyle?: ImageStyle;
     }
   | { type: "load_failed"; error: TurnError }
+  /** 画这一幕：刚点下去的、查到的最新状态 */
+  | { type: "image"; image: TurnImage }
+  | { type: "image_removed"; turnId: string; imageId: string }
+  | { type: "image_style"; style: ImageStyle }
   /** 先不出场、回来以后服务端返回的角色 */
   | { type: "cast"; cast: CastMember[] }
   | { type: "submit"; submission: Submission; display: TurnAction | null }
@@ -125,6 +138,8 @@ export const initialPlayState: PlayState = {
   mode: "standard",
   rollbacksLeft: 0,
   cast: [],
+  images: {},
+  imageStyle: "",
   turns: [],
   pending: null,
   error: null,
@@ -183,6 +198,8 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
         mode: event.mode ?? state.mode,
         rollbacksLeft: event.rollbacksLeft ?? state.rollbacksLeft,
         cast: event.cast ?? state.cast,
+        images: imagesByTurn(event.turns),
+        imageStyle: event.imageStyle ?? state.imageStyle,
         turns,
         error: null,
         submission: null,
@@ -204,6 +221,22 @@ export function playReducer(state: PlayState, event: PlayEvent): PlayState {
       return { ...state, phase: "load_failed", error: event.error, pending: null, submission: null };
     case "cast":
       return { ...state, cast: event.cast };
+    case "image": {
+      const turnId = event.image.turn_id;
+      return {
+        ...state,
+        images: { ...state.images, [turnId]: withImage(state.images[turnId], event.image) },
+      };
+    }
+    case "image_removed": {
+      const left = withoutImage(state.images[event.turnId], event.imageId);
+      const images = { ...state.images };
+      if (left.length > 0) images[event.turnId] = left;
+      else delete images[event.turnId];
+      return { ...state, images };
+    }
+    case "image_style":
+      return state.imageStyle === event.style ? state : { ...state, imageStyle: event.style };
     case "submit":
       return {
         ...state,
@@ -431,6 +464,11 @@ export function actionNote(action: TurnAction | null): string | null {
     return action.text ? i18n.t("play.actionEndingWith", { wish: action.text }) : i18n.t("play.actionEnding");
   if (action.source === "continue") return i18n.t("play.actionContinue");
   return action.text.length > 0 ? action.text : null;
+}
+
+/** 这一回合可以画：已经写完、在故事里（生成中的那一轮还在 pending 里，不在 turns 里） */
+export function canDraw(state: PlayState, turnId: string): boolean {
+  return state.turns.some((t) => t.id === turnId);
 }
 
 /** 多角色的局（两个以上角色）：阅读页显示头像一排、点名、让他们接着说 */

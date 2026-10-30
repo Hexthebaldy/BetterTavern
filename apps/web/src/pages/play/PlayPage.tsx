@@ -9,15 +9,25 @@
  *   草稿存在浏览器里，每个故事一份。
  * - 键盘：A–D 选选项，/ 自己写，W 世界状态（从右侧滑出），L 回想看全部，End 回到最新（单键快捷键可以在快捷键对话框里关掉）。
  * - 标签页标题：“书名 · BetterTavern”，生成中在前面加“● ”。
+ * - 配图（docs/illustrations.md）：每一回合的“画这一幕”打开小框（TurnPicture.tsx），画好的图点开看大图；
+ *   删掉画好的图先确认，关掉没画出来的记录不确认。
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
-import type { CastMember } from "@bettertavern/core/api/types";
+import type { CastMember, TurnImage } from "@bettertavern/core/api/types";
 import { headTurn, isEnded, isLive, canAct, turnsAfter } from "@bettertavern/core/play/turnMachine";
 import { initialOfName } from "@bettertavern/core/scenario/persona";
 
@@ -41,6 +51,7 @@ import { CastColumn, RecapColumn } from "./PlaySides.tsx";
 import { draftKey, nextFollow, parseDraft, type Follow } from "./reading.ts";
 import { narrativeVars, StoryFeed } from "./StoryFeed.tsx";
 import { TurnActions } from "./TurnActions.tsx";
+import { DrawDialog, ImageViewer, type PictureActions } from "./TurnPicture.tsx";
 import { usePlaySession } from "./usePlaySession.ts";
 import { useWorld } from "./useWorld.ts";
 import { WorldPanel } from "./WorldPanel.tsx";
@@ -124,6 +135,43 @@ function PlayPage({ id }: { id: string }) {
       void queries.invalidateQueries({ queryKey: storiesKey });
     },
     [overlay, t, rollback, queries],
+  );
+
+  // ---- 配图：画这一幕的小框、看大图；故事流里每一段是 memo 的，操作要稳定 ----
+  const [drawFor, setDrawFor] = useState<{ turnId: string; request: string } | null>(null);
+  const [viewing, setViewing] = useState<TurnImage | null>(null);
+  const { drawImage, removeImage } = controls;
+  const pictures = useMemo<PictureActions>(
+    () => ({
+      draw: (turnId, request = "") => setDrawFor({ turnId, request }),
+      retry: (image) => {
+        void drawImage(image.turn_id, { request: image.request, style: image.style }).then((failure) => {
+          if (failure)
+            overlay.toast(t("play.drawFailed", { error: describeTurnError(failure) }), { icon: "alert" });
+        });
+      },
+      remove: (image) => {
+        void (async () => {
+          if (image.status === "ready") {
+            const ok = await overlay.confirm({
+              title: t("play.imageDeleteTitle"),
+              message: t("play.imageDeleteMessage"),
+              confirmLabel: t("play.imageDelete"),
+              tone: "danger",
+              icon: "trash",
+            });
+            if (!ok) return;
+          }
+          const failure = await removeImage(image.turn_id, image.id);
+          if (failure)
+            overlay.toast(t("play.imageDeleteFailed", { error: describeTurnError(failure) }), {
+              icon: "alert",
+            });
+        })();
+      },
+      open: setViewing,
+    }),
+    [drawImage, removeImage, overlay, t],
   );
 
   // ---- 世界状态：从右侧滑出（手机宽度是底部面板），只在这一页里开关；右栏的人物和刚记下的也取它。
@@ -410,6 +458,7 @@ function PlayPage({ id }: { id: string }) {
             <StoryFeed
               state={state}
               onRollback={rollbackTo}
+              pictures={pictures}
               footer={
                 <TurnActions
                   state={state}
@@ -459,6 +508,16 @@ function PlayPage({ id }: { id: string }) {
           onClose={closeWorld}
         />
       ) : null}
+      {drawFor ? (
+        <DrawDialog
+          initialRequest={drawFor.request}
+          initialStyle={state.imageStyle}
+          onDraw={(body) => drawImage(drawFor.turnId, body)}
+          onOpenSettings={() => navigate("/settings/tools")}
+          onClose={() => setDrawFor(null)}
+        />
+      ) : null}
+      {viewing ? <ImageViewer image={viewing} onClose={() => setViewing(null)} /> : null}
       {moreOpen && moreButton.current ? (
         <MorePopover
           anchor={moreButton.current}

@@ -370,11 +370,13 @@
 .caretWaiting {
   background: var(--mut);
 }
-/* 回到这里：鼠标移上来时出现在这一回合的右上角；触屏上一直在，放在这一回合末尾 */
+/* 画这一幕、回到这里：鼠标移上来时出现在这一回合的右上角；触屏上一直在，放在这一回合末尾 */
 .turnTools {
   position: absolute;
   top: 0;
   right: 0;
+  display: flex;
+  gap: 6px;
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease);
 }
@@ -404,6 +406,25 @@
   box-shadow: var(--b2);
 }
 .rollback:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+/* 画这一幕（docs/illustrations.md）：和“回到这里”一样大，白底描边，不抢“回到这里”的墨底 */
+.drawTool {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 9px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-chip);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: var(--b2);
+}
+.drawTool:active {
   transform: translate(1px, 1px);
   box-shadow: none;
 }

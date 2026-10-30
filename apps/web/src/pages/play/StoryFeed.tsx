@@ -9,12 +9,14 @@
  * 鼠标移到更早的一格上，右上角出现“回到这里”（回退，docs/agent-runtime.md 第 8 节）；回退次数用完时写明已用完。
  * 没有鼠标的设备上它一直显示。设计稿里带说话人的台词气泡和拟声词小格要导演在输出里标出来，这一版不做。
  * 多角色的局（docs/cast.md）按 segments 一段一段排：角色那一段前面是头像和名字，旁白那一段和普通叙述一样（CastPicker.tsx）。
+ * 配图（docs/illustrations.md）：正文下面是这一回合的图（TurnPicture.tsx）；“回到这里”旁边多一个“画这一幕”，
+ * 最新一段也有（它没有“回到这里”）。
  */
 
 import { memo, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { CastMember } from "@bettertavern/core/api/types";
+import type { CastMember, TurnImage } from "@bettertavern/core/api/types";
 import { LANGUAGE_TAGS } from "@bettertavern/core/i18n/index";
 import {
   actionNote,
@@ -33,6 +35,7 @@ import { cx } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
 import { CastSegments } from "./CastPicker.tsx";
 import styles from "./play.module.css";
+import { TurnPicture, type PictureActions } from "./TurnPicture.tsx";
 
 function paragraphs(text: string): string[] {
   return text
@@ -132,11 +135,15 @@ const TurnBlock = memo(function TurnBlock({
   lang,
   rollback,
   onRollback,
+  images,
+  pictures,
 }: {
   turn: StoryTurn;
   cast: readonly CastMember[];
   rollback: RollbackState;
   onRollback?: (turnId: string) => void;
+  images: TurnImage[] | undefined;
+  pictures?: PictureActions;
 } & StoryLang) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
   const { t } = useTranslation();
@@ -156,16 +163,25 @@ const TurnBlock = memo(function TurnBlock({
           ) : narrative ? (
             <Narrative text={turn.narrative} lang={lang} />
           ) : null}
-          {rollback && onRollback ? (
+          {pictures ? <TurnPicture turnId={turn.id} images={images} actions={pictures} /> : null}
+          {(rollback && onRollback) || pictures ? (
             <div className={styles.turnTools}>
-              {rollback === "available" ? (
-                <button type="button" className={styles.rollback} onClick={() => onRollback(turn.id)}>
-                  <Icon name="back" size={14} strokeWidth={2.2} />
-                  {t("play.rollbackHere")}
+              {pictures ? (
+                <button type="button" className={styles.drawTool} onClick={() => pictures.draw(turn.id)}>
+                  <Icon name="image" size={14} strokeWidth={2.2} />
+                  {t("play.drawScene")}
                 </button>
-              ) : (
-                <span className={styles.rollbackUsedUp}>{t("play.rollbackUsedUp")}</span>
-              )}
+              ) : null}
+              {rollback && onRollback ? (
+                rollback === "available" ? (
+                  <button type="button" className={styles.rollback} onClick={() => onRollback(turn.id)}>
+                    <Icon name="back" size={14} strokeWidth={2.2} />
+                    {t("play.rollbackHere")}
+                  </button>
+                ) : (
+                  <span className={styles.rollbackUsedUp}>{t("play.rollbackUsedUp")}</span>
+                )
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -262,12 +278,15 @@ export function StoryFeed({
   state,
   footer,
   onRollback,
+  pictures,
 }: {
   state: PlayState;
   /** 接在最后一段后面的行动区 */
   footer?: ReactNode;
   /** 点了某一段的“回到这里”（要稳定的函数，否则每段都会重画） */
   onRollback?: (turnId: string) => void;
+  /** 配图的几个操作（同样要稳定）；不给时不显示“画这一幕” */
+  pictures?: PictureActions;
 }) {
   const { t } = useTranslation();
   const missingOpening = state.turns.length === 0 && state.phase === "idle";
@@ -282,6 +301,8 @@ export function StoryFeed({
           lang={lang}
           rollback={rollbackState(state, turn)}
           onRollback={onRollback}
+          images={state.images[turn.id]}
+          pictures={pictures}
         />
       ))}
       {state.pending ? (
