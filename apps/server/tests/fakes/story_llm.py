@@ -15,18 +15,24 @@ recall 打开时（--recall），导演收到召回工具会先查一次“火�
 最后一条消息要 <synopsis> 的是闪电模式的压缩，回一段固定的梗概。
 多角色的局（docs/cast.md）里写某个角色或旁白的请求（最后一条消息里有“这一段写某某”“这一段是旁白”），
 回一两句他说的话或旁白，开头照抄一行名字（服务端会去掉），不给选项。
+故事配图（docs/illustrations.md）：要“文生图模型”看的画面描述回一段固定的英文；它也当出图服务用
+（设置 › 外部服务 › 文生图，协议选 OpenAI Images，地址同上），等几秒回一张画好的夜渡口
+（每次颜色不同，看得出换了一张）。
 自定义端点默认被当成不能调用工具：要让后台整理跑起来，先在设置里测试一下这个模型。
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
+import io
 import json
 import re
 from dataclasses import dataclass
 from typing import Any
 
 import uvicorn
+from PIL import Image, ImageDraw
 
 from tests.fakes.llm_server import (
     DONE,
@@ -160,6 +166,32 @@ def director_text(n: int) -> str:
     return f"<narrative>\n{paragraph}\n</narrative>\n<options>\n1. {first}\n2. {second}\n</options>"
 
 
+def scene_png(n: int) -> bytes:
+    """一张 1536×1024 的夜渡口：渐变的天、月亮、河、小船和一盏灯；n 不同颜色就不同。"""
+    width, height = 1536, 1024
+    hue = (n * 47) % 120
+    image = Image.new("RGB", (width, height))
+    draw = ImageDraw.Draw(image)
+    for y in range(height):
+        t = y / height
+        sky = (int(20 + hue * 0.3 + 40 * t), int(30 + 50 * t), int(70 + hue * 0.5 + 60 * t))
+        draw.line([(0, y), (width, y)], fill=sky)
+    draw.ellipse([1150, 120, 1290, 260], fill=(240, 232, 200))
+    draw.rectangle([0, 640, width, height], fill=(18, 36 + hue // 4, 60))
+    for y in range(660, height, 28):
+        draw.line([(80, y), (width - 80, y + 6)], fill=(60, 90, 120), width=2)
+    draw.polygon([(520, 700), (1000, 700), (930, 780), (590, 780)], fill=(70, 45, 30))
+    draw.line([(760, 700), (760, 520)], fill=(90, 60, 40), width=8)
+    draw.ellipse([735, 480, 785, 530], fill=(255, 210, 120))
+    return _png_bytes(image)
+
+
+def _png_bytes(image: Image.Image) -> bytes:
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return out.getvalue()
+
+
 @dataclass
 class StoryScript:
     """按请求的种类回复；piece_delay 是每一小段之间的停顿（秒），让流式输出看得见"""
@@ -172,8 +204,14 @@ class StoryScript:
     chapter_calls: int = 0
     outline_calls: int = 0
     compress_calls: int = 0
+    image_calls: int = 0
+    image_delay: float = 4.0  # 出一张图等几秒，看得到“正在画”
 
     def reply(self, request: RecordedRequest) -> Reply:
+        if request.path.endswith(("/images/generations", "/images/edits")):
+            self.image_calls += 1
+            data = base64.b64encode(scene_png(self.image_calls)).decode()
+            return JsonReply({"data": [{"b64_json": data}]}, headers_delay=self.image_delay)
         body = request.body if isinstance(request.body, dict) else {}
         messages = body.get("messages") or [{}]
         if (
@@ -255,6 +293,13 @@ class StoryScript:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
         if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:
             return JsonReply(completion('{"options": ["看看四周", "继续等待"]}'))
+        if "文生图模型" in prompt or "text-to-image model" in prompt or "画像生成モデル" in prompt:
+            scene = {
+                "prompt": "A small wooden ferry on a misty river at night, a lantern glowing "
+                "at the bow, the moon low over the far bank.",
+                "people": [],
+            }
+            return JsonReply(completion(json.dumps(scene)))
         error = {"error": {"message": "fake story server: unexpected request"}}
         return JsonReply(error, status=400)
 
