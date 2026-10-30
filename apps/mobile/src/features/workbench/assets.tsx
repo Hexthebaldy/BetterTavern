@@ -6,7 +6,7 @@
 
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ImageStyle } from "react-native";
 
@@ -14,33 +14,16 @@ import { describeError } from "@bettertavern/core/api/client";
 import type { Asset } from "@bettertavern/core/api/types";
 
 import { Icon, useOverlay } from "../../components/ui.tsx";
+import { useBlobUri } from "../../hooks/useBlobUri.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { comicDepth, comicRadius, comicStroke, hardShadow, useComic } from "../../theme/index.ts";
 import type { DraftSession } from "./useDraftSession.ts";
 
-/** 带登录凭据取的图片；取不到时什么都不画 */
+/** 带登录凭据取的图片（先下载到本机，见 hooks/useBlobUri.ts）；取不到时什么都不画 */
 export function BlobImage({ blobId, style }: { blobId: string; style: StyleProp<ImageStyle> }) {
-  const { api, authHeaders, serverUrl } = useApp();
-  const [headers, setHeaders] = useState<Record<string, string> | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void authHeaders().then(
-      (h) => alive && setHeaders(h),
-      () => undefined,
-    );
-    return () => {
-      alive = false;
-    };
-  }, [authHeaders]);
-  if (!headers) return null;
-  return (
-    <Image
-      accessibilityIgnoresInvertColors
-      source={{ uri: `${serverUrl}${api.blobPath(blobId)}`, headers }}
-      style={style}
-      resizeMode="cover"
-    />
-  );
+  const { uri } = useBlobUri(blobId);
+  if (!uri) return null;
+  return <Image accessibilityIgnoresInvertColors source={{ uri }} style={style} resizeMode="cover" />;
 }
 
 /** 一张图的缩略图；selected 时右上角打勾 */

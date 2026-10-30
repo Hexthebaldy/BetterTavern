@@ -138,6 +138,7 @@ apps/mobile/
 | `openapi-fetch` 加生成的类型 | `packages/core/src/api/client.ts` 的 `ApiClient`（带令牌、401 时刷新一次再重试、problem+json 转 `ApiError`、超时）加手写的 `types.ts` 与 `endpoints.ts`。字段与 [api/](api/README.md) 里各领域的请求和响应模型一一对应，改接口时一起改 | 契约工具链接入时 |
 | FlashList | `FlatList`：已完成的回合用 `memo` 固定，只有生成中的那一段重渲染 | 故事很长、出现卡顿时 |
 | expo-sqlite 本地缓存 | 不缓存，打开故事时整条拉取（分页，每页 200 回合） | 故事长到打开变慢时 |
+| 要登录才能取的图（卡封面、人设头像、故事配图）直接交给 `<Image>` 带请求头取 | `src/hooks/useBlobUri.ts`：先带着登录凭据下载到系统缓存目录（按服务器加图片 ID 命名，下过一次就不再下），再显示本地文件。安卓上 `<Image source={{ headers }}>` 的请求头会被丢掉、服务端回 401（2026-10-30 实测），两边统一走下载 | 换成能带请求头的图片组件（例如 expo-image）时 |
 | Jest、RNTL、Maestro | 纯逻辑用 `node --test`（见下）；界面还没有自动化测试，靠真机验收 | M4 之前 |
 | 触觉反馈 | 没有（需要 expo-haptics） | 之后 |
 

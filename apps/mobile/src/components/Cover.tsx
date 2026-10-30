@@ -1,18 +1,18 @@
 /**
- * 封面：角色卡有图片就显示图片（要带访问令牌才能取），没有图片时画一张几何封面。
+ * 封面：角色卡有图片就显示图片（要带访问令牌才能取，先下载到本机，见 hooks/useBlobUri.ts），没有图片时画一张几何封面。
  *
  * 几何封面的图形（5 种线条母题，按剧本 ID 确定性地选）在 @bettertavern/design 的 cover.ts，和网页端共用；
  * 这里按漫画颜色上色：灰底、墨线、蓝点。圆角默认 9；framed 时外面一圈 2 的墨线（列表、网格里的方形封面）。
  * 放在灰底上时用白底（surface="card"）。
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Image, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { coverArt } from "@bettertavern/design/cover";
 
-import { useApp } from "../state/AppProvider.tsx";
+import { useBlobUri } from "../hooks/useBlobUri.ts";
 import { comicRadius, comicStroke, useComic, type ComicColors } from "../theme/index.ts";
 import { Icon } from "./icons.tsx";
 
@@ -107,25 +107,11 @@ export function Cover({
   framed?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { api, authHeaders, serverUrl } = useApp();
   const c = useComic();
-  const [headers, setHeaders] = useState<Record<string, string> | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    if (!blobId) return;
-    let alive = true;
-    authHeaders()
-      .then((h) => {
-        if (alive) setHeaders(h);
-      })
-      .catch(() => {
-        if (alive) setFailed(true);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [blobId, authHeaders]);
+  const blob = useBlobUri(blobId);
+  // 下载下来了却解不开（坏图）：同一张图退回几何封面
+  const [broken, setBroken] = useState<string | null>(null);
+  const failed = blob.failed || (blob.uri !== null && broken === blob.uri);
 
   const r = rounded ?? comicRadius.cover;
   const frame = framed ? { borderWidth: comicStroke.control, borderColor: c.ink } : null;
@@ -142,7 +128,7 @@ export function Cover({
       />
     );
   }
-  if (!headers) {
+  if (!blob.uri) {
     return (
       <View
         style={[
@@ -168,8 +154,8 @@ export function Cover({
     >
       <Image
         accessibilityIgnoresInvertColors
-        source={{ uri: `${serverUrl}${api.blobPath(blobId)}`, headers }}
-        onError={() => setFailed(true)}
+        source={{ uri: blob.uri }}
+        onError={() => setBroken(blob.uri)}
         style={{ width, height }}
         resizeMode="cover"
       />

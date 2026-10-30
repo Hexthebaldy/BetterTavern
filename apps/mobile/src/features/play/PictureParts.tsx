@@ -17,6 +17,7 @@ import type { DrawImage, ImageStyle, ToolRoute, TurnError, TurnImage } from "@be
 import { IMAGE_STYLES, imageErrorKey, imageStyleKey, pictureOf } from "@bettertavern/core/play/illustrations";
 
 import { Halftone } from "../../components/Halftone.tsx";
+import { useBlobUri } from "../../hooks/useBlobUri.ts";
 import { Button, Chip, Dots, Field, Icon, Notice, Sheet } from "../../components/ui.tsx";
 import { useApp } from "../../state/AppProvider.tsx";
 import { comicDepth, comicRadius, comicStroke, hardShadow, space, useComic } from "../../theme/index.ts";
@@ -33,29 +34,18 @@ export type PictureActions = {
   open: (image: TurnImage) => void;
 };
 
-/** 带登录凭据取的图；宽高比按图的宽高，不知道时 3:2 */
+/** 带登录凭据取的图（先下载到本机，见 hooks/useBlobUri.ts）；宽高比按图的宽高，不知道时 3:2 */
 function SceneImage({ image, rounded }: { image: TurnImage; rounded: number }) {
   const c = useComic();
-  const { api, authHeaders, serverUrl } = useApp();
-  const [headers, setHeaders] = useState<Record<string, string> | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void authHeaders().then(
-      (h) => alive && setHeaders(h),
-      () => undefined,
-    );
-    return () => {
-      alive = false;
-    };
-  }, [authHeaders]);
+  const { uri } = useBlobUri(image.blob_id);
   const ratio = image.width && image.height ? image.width / image.height : 3 / 2;
-  if (!headers || !image.blob_id) {
+  if (!uri) {
     return <Halftone tone="ink" style={{ width: "100%", aspectRatio: ratio, borderRadius: rounded }} />;
   }
   return (
     <Image
       accessibilityIgnoresInvertColors
-      source={{ uri: `${serverUrl}${api.blobPath(image.blob_id)}`, headers }}
+      source={{ uri }}
       style={{ width: "100%", aspectRatio: ratio, borderRadius: rounded, backgroundColor: c.grey2 }}
       resizeMode="contain"
     />
