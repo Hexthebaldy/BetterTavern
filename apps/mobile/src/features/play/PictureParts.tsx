@@ -12,13 +12,12 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { describeTurnError } from "@bettertavern/core/api/client";
-import type { DrawImage, ImageStyle, TurnError, TurnImage } from "@bettertavern/core/api/types";
+import { describeError, describeTurnError } from "@bettertavern/core/api/client";
+import type { DrawImage, ImageStyle, ToolRoute, TurnError, TurnImage } from "@bettertavern/core/api/types";
 import { IMAGE_STYLES, imageErrorKey, imageStyleKey, pictureOf } from "@bettertavern/core/play/illustrations";
 
 import { Halftone } from "../../components/Halftone.tsx";
 import { Button, Chip, Dots, Field, Icon, Notice, Sheet } from "../../components/ui.tsx";
-import { useAsync } from "../../hooks/useAsync.ts";
 import { useApp } from "../../state/AppProvider.tsx";
 import { comicDepth, comicRadius, comicStroke, hardShadow, space, useComic } from "../../theme/index.ts";
 import { READ_SIDE } from "./FeedParts.tsx";
@@ -205,8 +204,23 @@ export function DrawSheet({
   const c = useComic();
   const { t } = useTranslation();
   const { api } = useApp();
-  const routes = useAsync(() => (visible ? api.tools.list() : Promise.resolve(null)), [api, visible]);
-  const images = (routes.data ?? []).filter((r) => r.kind === "image");
+  // 每次打开都重新读一次出图服务（可能刚去设置里加了一个）；读回来之前显示加载中，不先说“还没配”
+  const [routes, setRoutes] = useState<ToolRoute[] | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  useEffect(() => {
+    if (!visible) return;
+    let alive = true;
+    setRoutes(null);
+    setLoadError(null);
+    api.tools.list().then(
+      (found) => alive && setRoutes(found),
+      (e: unknown) => alive && setLoadError(e),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [api, visible]);
+  const images = (routes ?? []).filter((r) => r.kind === "image");
   const service = images.find((r) => r.is_default) ?? images[0];
   const [request, setRequest] = useState(initialRequest);
   const [style, setStyle] = useState<ImageStyle>(initialStyle);
@@ -232,7 +246,9 @@ export function DrawSheet({
   return (
     <Sheet visible={visible} onClose={onClose} title={t("play.drawTitle")}>
       <ScrollView contentContainerStyle={styles.sheet} keyboardShouldPersistTaps="handled">
-        {routes.loading && !routes.data ? (
+        {loadError ? (
+          <Notice message={describeError(loadError)} />
+        ) : routes === null ? (
           <Dots />
         ) : service ? (
           <>
