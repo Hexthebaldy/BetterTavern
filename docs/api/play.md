@@ -6,6 +6,7 @@
 
 开局、游玩列表与详情、世界状态的只读视图、历史回合、提交行动（包括写结局）、停止生成，以及订阅回合的事件流。
 多角色的局（剧本里有两张以上的卡，[cast.md](../cast.md)）还能点名、让他们接着说、让某个角色先不出场。
+写完的回合可以配图（“画这一幕”，[illustrations.md](../illustrations.md)）。
 事件流的格式见 [events.md](events.md)；相关的表见 [数据模型：游玩与回合](../data-model/story.md)、[世界状态](../data-model/world.md)。
 
 ## 接口
@@ -288,6 +289,60 @@
 | --- | --- | --- |
 | 404 | `NOT_FOUND` | 回合不存在 |
 
+### `POST /v1/turns/{turn_id}/images`
+
+画这一幕（[illustrations.md](../illustrations.md) 第 1、2 节）：检查完就插一行“正在画”并交给后台，马上返回；后台先用导演的模型把这一回合写成英文画面描述，再用默认的出图服务画一张横图。
+客户端每隔几秒用 `GET /v1/turn-images/{image_id}` 查，直到 `status` 不是 `pending`。画好以后，这一回合旧的图（和没画出来的记录）一起删掉，一回合只留一张。
+
+- 鉴权：需要
+- 请求体：[`TurnImageIn`](#turnimagein)
+- 成功：`202`，返回 [`TurnImageOut`](#turnimageout)，`status` 是 `pending`。
+- 带了 `style` 时记成这一局的画风（`PlaythroughOut.image_style`），下次不传就用它。
+- 写画面描述用官方模型时照样扣点数；出图用的是玩家自己的服务，不扣点数。
+- 和开局、提交行动不共用限流计数：同样每分钟 30 次（`RATE_LIMIT_TURNS_PER_MIN`），单独计。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 回合不存在 |
+| 409 | `TURN_NOT_SETTLED` | 回合还没写完（生成中、失败、被回退掉的回合不能画） |
+| 409 | `TOOL_ROUTE_MISSING` | 还没配出图服务 |
+| 409 | `ROUTE_MISSING` | 还没有导演模型（写画面描述要用） |
+| 402 | `CREDITS_EXHAUSTED` | 导演是官方模型，点数用完了 |
+| 503 | `PLATFORM_BUSY` | 导演是官方模型，全站今天的预算用完了 |
+| 409 | `IMAGE_PENDING` | 这一回合已经在画了 |
+| 429 | `TOO_MANY_IMAGES` | 同时在画的已经有 3 张 |
+| 409 | `STORAGE_FULL` | 存的图已经到上限 |
+| 422 | `VALIDATION_ERROR` | `request` 超过 300 个字符，或者 `style` 不认识 |
+
+#### `TurnImageIn`
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `request` | string | 否 | 想看什么，例如“沈知微的特写”；最多 300 个字符，可以不填 |
+| `style` | string / null | 否 | 画风：`""`（不指定）/ `anime`（动漫）/ `realistic`（写实）/ `ink`（水墨）/ `oil`（油画）/ `film`（胶片）/ `flat`（平涂）；不传时用这一局记下的 |
+
+### `GET /v1/turn-images/{image_id}`
+
+一张配图现在怎么样了。从点下去算起超过 3 分钟还没画好的，按 `failed`（`error` 是 `timeout`）返回。
+
+- 鉴权：需要
+- 成功：`200`，返回 [`TurnImageOut`](#turnimageout)。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 这张图不存在（删了，或者被同一回合新画好的那张换掉了） |
+
+### `DELETE /v1/turn-images/{image_id}`
+
+删掉一张配图，或者一条没画出来的记录。还在画的也能删：画好时发现这一行没了，就把图丢掉。图片没有别处在用时一起删掉，腾出图片空间。
+
+- 鉴权：需要
+- 成功：`204`，没有响应体。
+
+| HTTP | code | 情形 |
+| --- | --- | --- |
+| 404 | `NOT_FOUND` | 这张图不存在 |
+
 ## 响应对象
 
 ### `PlaythroughOut`
@@ -303,6 +358,7 @@
 | `protagonist_name` | string | 主角的名字 |
 | `persona_id` | string / null | 开局时用的人设，客户端用它显示头像（人设删了就找不到，不显示）；临时填的主角、人设功能上线前开的局为 null |
 | `preferences` | object | 叙述偏好 `{"length", "style", "boundaries"}`，含义同 [`PreferencesIn`](#preferencesin) |
+| `image_style` | string | 这一局配图的画风，取值同 [`TurnImageIn`](#turnimagein) 的 `style`；空串是不指定（没选过也是空串） |
 | `head_turn_id` | string / null | 头部回合，也就是最新一个完成的回合；开场完成前为 null |
 | `head_seq` | integer / null | 头部回合的 `seq`。只有游玩列表和游玩详情会填，其他接口的响应里是 null |
 | `head_excerpt` | string | 头部回合叙述的前 120 个字符，供列表显示。只有游玩列表和游玩详情会填，其他接口的响应里是空串 |
@@ -349,6 +405,7 @@
 | `error` | object / null | 失败原因 `{"code", "message", "retryable", "partial"}`，`code` 见 [README.md 的“回合失败码”](README.md#回合失败码) |
 | `created_at` | string（时间） | 提交时间 |
 | `replied_at` | string（时间）/ null | 叙述和选项保存的时间 |
+| `images` | array of [`TurnImageOut`](#turnimageout) | 这一回合的配图，按点“画这一幕”的先后：最多一张画好的，加上一张正在画或没画出来的（重画时）。只有回合列表、单个回合、游玩详情的 `head` 会填，其他地方（开局、提交行动、停止、`active_turn`、`last_failed`、事件流）是空数组 |
 
 ### `OptionOut`
 
@@ -380,6 +437,24 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `cast` | array of [`CastMemberOut`](#castmemberout) | 这一局全部角色，按位置排 |
+
+### `TurnImageOut`
+
+一回合的一张配图（[illustrations.md](../illustrations.md)）。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 配图 ID |
+| `turn_id` | string | 画的是哪一回合 |
+| `status` | string | `pending`（正在画）/ `ready`（画好了）/ `failed`（没画出来） |
+| `blob_id` | string / null | 画好的图（WebP，长边不超过 1536），用图片接口取；不是 `ready` 时为 null |
+| `width` | integer / null | 图的宽，不是 `ready` 时为 null |
+| `height` | integer / null | 图的高，不是 `ready` 时为 null |
+| `error` | string / null | 没画出来的原因，客户端按它翻译：`route_missing`（没有模型写画面描述）/ `model_failed`（写画面描述出错）/ `tool_missing`（出图服务被删了）/ `storage_full` / `timeout`（3 分钟没画完）/ `auth`（出图服务的 Key 不对）/ `quota`（额度用完或限流）/ `blocked`（服务拒绝了这张图）/ `http` / `network` / `bad_response` / `unsupported`；不是 `failed` 时为 null |
+| `request` | string | 玩家写的“想看什么” |
+| `style` | string | 画风，取值同 [`TurnImageIn`](#turnimagein) 的 `style` |
+| `prompt` | string / null | 发给出图服务的英文画面描述（拼好了画风）；还没写出来时为 null |
+| `created_at` | string（时间） | 点“画这一幕”的时间 |
 
 ### `TurnCreatedOut`
 

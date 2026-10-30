@@ -34,6 +34,7 @@ from bettertavern.runtime.runner import TurnRunnerPool
 
 from .credits import CreditService
 from .errors import AppError, Conflict, Invalid, NotFound
+from .illustration_service import turn_images
 from .route_service import RouteService
 from .views import TurnView
 
@@ -268,9 +269,10 @@ class TurnService:
             raise NotFound("Turn not found")
         async with self._engine.connect() as conn:
             turn = await repo.get_user_turn(conn, user_id, turn_id)
+            images = await turn_images(conn, [turn_id]) if turn is not None else {}
         if turn is None:
             raise NotFound("Turn not found")
-        return TurnView.of(turn)
+        return TurnView.of(turn, images.get(turn.id))
 
     async def history(
         self, user_id: str, playthrough_id: str, *, after_seq: int, limit: int
@@ -282,7 +284,8 @@ class TurnService:
             if pt is None:
                 raise NotFound("Playthrough not found")
             rows = await repo.list_chain(conn, pt.id, after_seq=after_seq, limit=limit)
-        return [TurnView.of(r) for r in rows]
+            images = await turn_images(conn, [r.id for r in rows])
+        return [TurnView.of(r, images.get(r.id)) for r in rows]
 
     async def cancel(self, user_id: str, turn_id: str) -> TurnView:
         turn = await self.get(user_id, turn_id)

@@ -15,6 +15,7 @@ from bettertavern.infra.mail import MailSender
 from bettertavern.providers import EndpointPolicy, ProviderHub
 from bettertavern.providers.transport import build_http_client
 from bettertavern.runtime.events.buffer import EventBufferRegistry
+from bettertavern.runtime.illustration_runner import IllustrationRunner
 from bettertavern.runtime.lightning_runner import LightningRunner, LightningRunnerConfig
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
 from bettertavern.runtime.outline_runner import OutlineRunner, OutlineRunnerConfig
@@ -29,6 +30,8 @@ from .card_service import CardService
 from .cover_service import CoverService
 from .credits import CreditPolicy, CreditService, grant_key
 from .draft_service import DraftService
+from .illustration_service import IllustrationService
+from .illustration_store import PgIllustrationStore
 from .lightning_store import PgLightningStore
 from .lorebook_service import LorebookService
 from .maintenance import Maintenance
@@ -66,6 +69,7 @@ class Services:
     workbench: WorkbenchService
     tool_routes: ToolRouteService
     covers: CoverService
+    illustrations: IllustrationService
     http: httpx.AsyncClient  # 联网和出图的出站请求（走防内网访问的网络层）
     playthroughs: PlaythroughService
     turns: TurnService
@@ -151,6 +155,7 @@ def build_services(
         workbench=WorkbenchService(engine, quotas=quotas, credits=credits),
         tool_routes=tool_routes,
         covers=CoverService(engine, tool_routes, http, quotas),
+        illustrations=IllustrationService(engine, routes, tool_routes, quotas, credits),
         http=http,
         playthroughs=PlaythroughService(
             engine,
@@ -290,4 +295,27 @@ def build_workbench_runner(
         web_store=web_store,
         http=client,
         policy=policy,
+    )
+
+
+def build_illustration_runner(
+    *,
+    engine: AsyncEngine,
+    secrets: AppSecrets,
+    hub: ProviderHub,
+    policy: EndpointPolicy,
+    http: httpx.AsyncClient,
+    prompts: PromptBook | None = None,
+    quotas: Quotas | None = None,
+    platform: PlatformModel | None = None,
+) -> IllustrationRunner:
+    """worker 进程用：故事配图（出图走 http，由调用方负责关闭）。"""
+    routes = RouteService(engine, secrets.keyring, hub, policy, platform)
+    return IllustrationRunner(
+        store=PgIllustrationStore(engine, quotas),
+        routes=routes,
+        hub=hub,
+        prompts=prompts or PromptBook(),
+        tools=ToolRouteService(engine, secrets.keyring, policy, client=http),
+        http=http,
     )

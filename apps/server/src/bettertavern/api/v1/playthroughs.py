@@ -20,6 +20,8 @@ from bettertavern.api.schemas.story import (
     PlaythroughPatchIn,
     RollbackIn,
     TurnCreatedOut,
+    TurnImageIn,
+    TurnImageOut,
     TurnIn,
     TurnListOut,
     TurnOut,
@@ -27,6 +29,7 @@ from bettertavern.api.schemas.story import (
 )
 from bettertavern.api.sse import event_stream_body, parse_last_event_id, sse_response
 from bettertavern.services.errors import Unavailable
+from bettertavern.services.illustration_service import DrawRequest
 from bettertavern.services.playthrough_service import NewPlaythrough
 from bettertavern.services.turn_service import ActionInput
 
@@ -190,6 +193,32 @@ async def get_turn(turn_id: str, user_id: UserId, services: ServicesDep) -> Turn
 @router.post("/turns/{turn_id}/cancel")
 async def cancel_turn(turn_id: str, user_id: UserId, services: ServicesDep) -> TurnOut:
     return TurnOut.model_validate(await services.turns.cancel(user_id, turn_id))
+
+
+@router.post("/turns/{turn_id}/images", status_code=status.HTTP_202_ACCEPTED)
+async def draw_turn_image(
+    turn_id: str,
+    body: TurnImageIn,
+    user_id: UserId,
+    services: ServicesDep,
+    limiters: LimitersDep,
+) -> TurnImageOut:
+    check_rate(limiters.turns, f"images:{user_id}")
+    image = await services.illustrations.draw(
+        user_id, turn_id, DrawRequest(request=body.request, style=body.style)
+    )
+    return TurnImageOut.model_validate(image)
+
+
+@router.get("/turn-images/{image_id}")
+async def get_turn_image(image_id: str, user_id: UserId, services: ServicesDep) -> TurnImageOut:
+    return TurnImageOut.model_validate(await services.illustrations.get(user_id, image_id))
+
+
+@router.delete("/turn-images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_turn_image(image_id: str, user_id: UserId, services: ServicesDep) -> Response:
+    await services.illustrations.delete(user_id, image_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/turns/{turn_id}/events", response_class=StreamingResponse)

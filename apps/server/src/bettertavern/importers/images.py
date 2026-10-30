@@ -125,3 +125,24 @@ def avatar_image(data: bytes, *, side: int = 512) -> CleanImage:
         height=side,
         sha256=hashlib.sha256(encoded).hexdigest(),
     )
+
+
+def scene_image(data: bytes, *, max_side: int = 1536, quality: int = 85) -> CleanImage:
+    """故事里的配图（docs/illustrations.md）：先按 clean_image 清洗，再缩到长边不超过 max_side，
+    一律存成 WebP（出图服务多半给 PNG，一张两三 MB；WebP 只要两三百 KB，省用户的图片空间）。"""
+    clean = clean_image(data)
+    with Image.open(io.BytesIO(clean.data)) as source:
+        source.load()
+        image = source.convert("RGBA" if source.mode in ("RGBA", "LA", "P") else "RGB")
+    if max(image.size) > max_side:
+        image.thumbnail((max_side, max_side))
+    out = io.BytesIO()
+    image.save(out, format="WEBP", quality=quality, method=4)
+    encoded = out.getvalue()
+    return CleanImage(
+        data=encoded,
+        mime="image/webp",
+        width=image.size[0],
+        height=image.size[1],
+        sha256=hashlib.sha256(encoded).hexdigest(),
+    )

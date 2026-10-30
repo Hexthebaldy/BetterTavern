@@ -22,6 +22,7 @@ class RouteTask(StrEnum):
     WORLD_BUILDER = "world_builder"
     REPAIR = "repair"
     WORKBENCH = "workbench"
+    ILLUSTRATOR = "illustrator"  # 故事配图前写画面描述（docs/illustrations.md），用导演的模型
 
 
 # 在后台跑、不挡玩家的 task：用“用于后台”的模型（docs/agent-runtime.md 第 4 节）
@@ -38,6 +39,7 @@ DEFAULT_MAX_TOKENS: dict[RouteTask, int] = {
     RouteTask.REPAIR: 256,
     # 工作台的 agent 用工具参数写整段的开场白、世界书，给足
     RouteTask.WORKBENCH: 8192,
+    RouteTask.ILLUSTRATOR: 1024,
 }
 
 DEFAULT_TEMPERATURE: dict[RouteTask, float] = {
@@ -46,6 +48,7 @@ DEFAULT_TEMPERATURE: dict[RouteTask, float] = {
     RouteTask.WORLD_BUILDER: 0.7,
     RouteTask.REPAIR: 0.7,
     RouteTask.WORKBENCH: 0.8,
+    RouteTask.ILLUSTRATOR: 0.7,
 }
 
 

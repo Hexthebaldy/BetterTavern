@@ -27,6 +27,7 @@ from bettertavern.infra.db.repositories import personas as personas_repo
 from bettertavern.infra.db.repositories import rollback as rollback_repo
 from bettertavern.infra.db.repositories import state as state_repo
 from bettertavern.infra.db.repositories import story as repo
+from bettertavern.infra.db.repositories import turn_images as images_repo
 from bettertavern.infra.db.sqlutil import as_str, is_uuid
 from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.runtime.ports import Preferences
@@ -34,6 +35,7 @@ from bettertavern.runtime.runner import TurnRunnerPool
 
 from .credits import CreditService
 from .errors import AppError, Conflict, Invalid, NotFound
+from .illustration_service import turn_images
 from .outline_jobs import enqueue_outline
 from .route_service import RouteService
 from .state_jobs import enqueue_state
@@ -262,13 +264,14 @@ class PlaythroughService:
                 conn, pt.id, head.seq if head is not None else -1
             )
             cast = await cast_repo.list_cast(conn, pt.id)
+            images = await turn_images(conn, [head.id] if head is not None else [])
         return PlaythroughDetail(
             playthrough=self._view(
                 pt,
                 head_seq=head.seq if head else None,
                 head_excerpt=head.narrative[:120] if head else "",
             ),
-            head=TurnView.of(head) if head else None,
+            head=TurnView.of(head, images.get(head.id)) if head else None,
             active_turn=TurnView.of(active) if active else None,
             last_failed=TurnView.of(failed) if failed and active is None else None,
             cast=[CastView.of(c) for c in cast],
@@ -367,8 +370,11 @@ class PlaythroughService:
         if pt.active_turn_id:
             self._runners.cancel(pt.active_turn_id, "deleted")
         async with self._engine.begin() as conn:
+            # 这一局的配图：行跟着级联删除，图片没有别处在用时一起删掉
+            blobs = await images_repo.playthrough_blobs(conn, pt.id)
             if not await repo.delete_playthrough(conn, user_id, playthrough_id):
                 raise NotFound("Playthrough not found")
+            await library_repo.delete_orphan_blobs(conn, user_id, blobs)
 
     async def world(self, user_id: str, playthrough_id: str, *, reveal: bool) -> WorldView:
         pt = await self._row(user_id, playthrough_id)

@@ -53,7 +53,7 @@
 - `model_routes_background_uq (user_id) WHERE is_background`：每个用户最多一个后台模型，换的做法和导演一样。
 - `model_routes_workbench_uq (user_id) WHERE is_workbench`：每个用户最多一个工作台模型，换的做法同上。
 
-谁用哪一行（`services/route_service.py`）：导演、开局搭建世界（`world_builder`）、补选项（`repair`）都用 `is_director` 为真的那一行；
+谁用哪一行（`services/route_service.py`）：导演、开局搭建世界（`world_builder`）、补选项（`repair`）、配图前写画面描述（`illustrator`）都用 `is_director` 为真的那一行；
 世界状态 agent（`state_keeper`）用 `is_background` 为真的那一行，没有时也用导演那一行。能力表说这个模型不能调用工具（`tools` 为假）时，世界状态整理直接失败，原因记为 `tools_unsupported`。
 工作台的 agent（`card_maker`）用 `is_workbench` 为真的那一行，没有时用导演那一行；同样必须能调用工具，否则这一轮直接失败（对话里记一条 `TOOLS_UNSUPPORTED`）。
 没有导演时，开局和提交行动返回 409 `ROUTE_MISSING`。
@@ -99,9 +99,9 @@
 
 | 键 | 范围 | 不设置时 |
 | --- | --- | --- |
-| `temperature` | 0 到 2 | `director` 0.9，`world_builder`、`repair` 0.7 |
+| `temperature` | 0 到 2 | `director` 0.9，`world_builder`、`repair`、`illustrator` 0.7 |
 | `top_p` | 大于 0，不超过 1 | 服务商的默认值 |
-| `max_tokens` | 64 到 65536 | 按 task：`director` 4096，`world_builder` 8192，`repair` 256 |
+| `max_tokens` | 64 到 65536 | 按 task：`director` 4096，`world_builder` 8192，`repair` 256，`illustrator` 1024 |
 | `thinking` | true / false | false（默认关闭思考，首 token 更快） |
 | `working_window` | 4096 到 10,000,000 | 128000 |
 

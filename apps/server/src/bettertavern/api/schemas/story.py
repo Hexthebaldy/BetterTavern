@@ -66,6 +66,31 @@ class CastOut(BaseModel):
     cast: list[CastMemberOut]
 
 
+class TurnImageOut(Out):
+    """一回合的配图（docs/illustrations.md）。"""
+
+    id: str
+    turn_id: str
+    # pending：正在画；ready：画好了（blob_id 是图片）；failed：没画出来（error 是原因）
+    status: Literal["pending", "ready", "failed"]
+    blob_id: str | None
+    width: int | None
+    height: int | None
+    error: str | None
+    request: str
+    style: str
+    # 发给出图服务的英文画面描述；还没写出来时是 null
+    prompt: str | None
+    created_at: datetime
+
+
+class TurnImageIn(BaseModel):
+    # 想看什么，可以不填
+    request: str = Field(default="", max_length=300)
+    # 画风，空串是不指定；不传时用这一局上次选的
+    style: Literal["", "anime", "realistic", "ink", "oil", "film", "flat"] | None = None
+
+
 class TurnOut(Out):
     id: str
     playthrough_id: str
@@ -82,6 +107,8 @@ class TurnOut(Out):
     error: dict[str, Any] | None
     created_at: datetime
     replied_at: datetime | None
+    # 这一回合的配图，按点“画这一幕”的先后；没画过是空数组
+    images: list[TurnImageOut] = Field(default_factory=list)
 
 
 class PlaythroughOut(Out):
@@ -95,6 +122,8 @@ class PlaythroughOut(Out):
     # 开局时用的人设（只用来显示头像）；临时填的、人设功能上线前开的为 null
     persona_id: str | None
     preferences: dict[str, Any]
+    # 这一局配图的画风，空串是不指定
+    image_style: str
     head_turn_id: str | None
     head_seq: int | None
     head_excerpt: str

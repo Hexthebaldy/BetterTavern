@@ -165,6 +165,18 @@ async def rename_playthrough(
     return None if row is None else PlaythroughRow.from_row(row)
 
 
+async def set_image_style(conn: AsyncConnection, playthrough_id: str, style: str) -> None:
+    """这一局配图的画风（settings.image_style，docs/illustrations.md）：不改 updated_at，
+    存档列表的顺序不跟着变。"""
+    await execute(
+        conn,
+        """UPDATE playthroughs
+              SET settings = jsonb_set(settings, '{image_style}', to_jsonb(CAST(:s AS text)))
+            WHERE id = :id""",
+        {"id": playthrough_id, "s": style},
+    )
+
+
 async def delete_playthrough(conn: AsyncConnection, user_id: str, playthrough_id: str) -> bool:
     count = await execute(
         conn,

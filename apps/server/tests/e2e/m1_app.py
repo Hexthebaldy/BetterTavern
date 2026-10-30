@@ -5,14 +5,17 @@ test_m1_flow.py、test_workbench_manual.py 等共用；各自在自己的 fixtur
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import httpx
+from PIL import Image
 from pydantic import SecretStr
 
 from bettertavern.entrypoints.api import build_app_services, create_app
@@ -99,8 +102,12 @@ class Story:
     director_calls: int = 0
     world_calls: int = 0
     piece_delay: float = 0.02
+    image_calls: list[str] = field(default_factory=list)
 
     def reply(self, request: RecordedRequest) -> Reply:
+        image = self.image(request)
+        if image is not None:
+            return image
         body = request.body
         if body.get("stream"):
             self.director_calls += 1
@@ -121,7 +128,19 @@ class Story:
             return JsonReply(completion(json.dumps(SEED, ensure_ascii=False)))
         if "接下来可以采取的行动" in prompt or "actions the player could take next" in prompt:
             return JsonReply(completion('{"options": ["修复的选项一", "修复的选项二"]}'))
+        if "文生图模型" in prompt:  # 配图前写画面描述（docs/illustrations.md）
+            scene = {"prompt": "A girl wiping cups in a dim tavern.", "people": ["阿苓"]}
+            return JsonReply(completion(json.dumps(scene, ensure_ascii=False)))
         return JsonReply({"error": {"message": "unexpected request"}}, status=400)
+
+    def image(self, request: RecordedRequest) -> Reply | None:
+        """假的出图服务（OpenAI 兼容的 images 接口）：回一张纯色的 PNG。"""
+        if not request.path.endswith(("/images/generations", "/images/edits")):
+            return None
+        self.image_calls.append(request.path)
+        out = io.BytesIO()
+        Image.new("RGB", (1536, 1024), (60, 90, 140)).save(out, format="PNG")
+        return JsonReply({"data": [{"b64_json": base64.b64encode(out.getvalue()).decode()}]})
 
 
 @dataclass
@@ -129,6 +148,9 @@ class Running:
     base_url: str
     story: Story
     fake: RunningFakeLLM
+    # 测试里要在 api 之外跑后台任务（例如配图）时用：同一份配置、同一个临时 schema
+    settings: Settings | None = None
+    schema: str = ""
 
 
 @asynccontextmanager
@@ -161,7 +183,13 @@ async def serve(fake_llm: RunningFakeLLM, tmp_path: Path, **extra: Any) -> Async
         app = create_app(settings, services=services)
         server = AsgiServer(app, lifespan="on").start()
         try:
-            yield Running(base_url=server.base_url, story=story, fake=fake_llm)
+            yield Running(
+                base_url=server.base_url,
+                story=story,
+                fake=fake_llm,
+                settings=settings,
+                schema=schema,
+            )
         finally:
             server.stop()
 

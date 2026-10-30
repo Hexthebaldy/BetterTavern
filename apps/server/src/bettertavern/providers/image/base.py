@@ -23,9 +23,11 @@ DEFAULT_SIZES: Mapping[str, str] = {
     "landscape": "1536x1024",
 }
 ASPECT_RATIOS: Mapping[str, str] = {"portrait": "2:3", "square": "1:1", "landscape": "3:2"}
-# 封面面板的几种风格（客户端传 ink、oil、film、flat；agent 可能写中文或日文的名字）：
-# 拼进提示词时换成英文说法（多数出图模型对英文更敏感）
+# 封面面板的几种风格（客户端传 ink、oil、film、flat；agent 可能写中文或日文的名字），
+# 故事配图多两种（anime、realistic）：拼进提示词时换成英文说法（多数出图模型对英文更敏感）
 STYLE_HINTS: Mapping[str, str] = {
+    "anime": "anime illustration",
+    "realistic": "photorealistic",
     "ink": "Chinese ink wash painting",
     "oil": "oil painting",
     "film": "film photography",
@@ -34,9 +36,13 @@ STYLE_HINTS: Mapping[str, str] = {
     "油画": "oil painting",
     "胶片": "film photography",
     "平涂": "flat illustration",
+    "动漫": "anime illustration",
+    "写实": "photorealistic",
     "油絵": "oil painting",
     "フィルム": "film photography",
     "フラット": "flat illustration",
+    "アニメ": "anime illustration",
+    "リアル": "photorealistic",
 }
 MAX_EXTRA_BODY_BYTES = 8 * 1024
 

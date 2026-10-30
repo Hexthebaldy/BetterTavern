@@ -65,11 +65,13 @@ erDiagram
     users ||--o{ playthroughs : "user_id"
     users ||--o{ agent_runs : "user_id"
     users ||--o{ idempotency_keys : "user_id"
+    users ||--o{ turn_images : "user_id"
     blobs |o--o{ cards : "cover_blob_id"
     blobs |o--o{ card_revisions : "cover_blob_id"
     blobs ||--o{ workbench_assets : "blob_id"
     blobs |o--o{ personas : "avatar_blob_id"
     blobs |o--o{ playthrough_cast : "cover_blob_id"
+    blobs |o--o{ turn_images : "blob_id"
     cards ||--o{ card_revisions : "card_id"
     cards ||--o{ scenario_cards : "card_id (RESTRICT)"
     scenarios ||--o{ scenario_cards : "scenario_id"
@@ -87,6 +89,7 @@ erDiagram
     playthroughs ||--o{ turns : "playthrough_id"
     playthroughs ||--o| playthrough_lore : "playthrough_id"
     playthroughs ||--o{ playthrough_cast : "playthrough_id"
+    playthroughs ||--o{ turn_images : "playthrough_id"
     playthroughs ||--o{ entities : "playthrough_id"
     playthroughs ||--o{ entity_links : "playthrough_id"
     playthroughs ||--o{ facts : "playthrough_id"
@@ -98,6 +101,7 @@ erDiagram
     playthroughs ||--o{ state_patches : "playthrough_id"
     playthroughs ||--o{ turn_notes : "playthrough_id"
     turns ||--o{ state_patches : "turn_id"
+    turns ||--o{ turn_images : "turn_id"
     turns ||--o| turn_notes : "turn_id"
     agent_runs ||--o{ agent_steps : "run_id"
     agent_runs |o--o| credit_ledger : "run_id (SET NULL)"
@@ -138,8 +142,8 @@ erDiagram
 
 | 操作 | 连带删除或修改 |
 | --- | --- |
-| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`email_codes`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`、`scenario_lorebooks`）、`lorebooks`、`personas`、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`agent_runs`（连同 `agent_steps`）、`idempotency_keys`、`credit_ledger`、`platform_usage`。`credit_grants` 不删（同一个邮箱重新注册不再送体验额度） |
-| 删除游玩 | 级联删除 `playthrough_lore`、`playthrough_cast`、`turns`、`entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes`、`story_summaries`、`player_profiles`、`outline_revisions` 和 `agent_runs`（连同 `agent_steps`；`credit_ledger` 里这些运行的扣点记录留着，`run_id` 置空）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
+| 删除账户（`DELETE /v1/me`） | 所有带 `user_id` 外键的表级联删除：`refresh_tokens`、`email_codes`、`model_routes`、`blobs`、`cards`（连同 `card_revisions`）、`scenarios`（连同 `scenario_cards`、`scenario_lorebooks`）、`lorebooks`、`personas`、`workbench_drafts`、`workbench_assets`、`tool_routes`、`web_pages`、`playthroughs`（以及下面那一行列出的内容）、`turn_images`、`agent_runs`（连同 `agent_steps`）、`idempotency_keys`、`credit_ledger`、`platform_usage`。`credit_grants` 不删（同一个邮箱重新注册不再送体验额度） |
+| 删除游玩 | 级联删除 `playthrough_lore`、`playthrough_cast`、`turn_images`（配图用的图片没有别处在用时一起删掉）、`turns`、`entities`、`entity_links`、`facts`、`threads`、`state_patches`、`turn_notes`、`story_summaries`、`player_profiles`、`outline_revisions` 和 `agent_runs`（连同 `agent_steps`；`credit_ledger` 里这些运行的扣点记录留着，`run_id` 置空）。正在生成的回合如果在当前进程里，先通知它停止（不等它结束）。指向这局回合的幂等键不会级联删除，等 24 小时后被清理 |
 | 删除剧本 | 级联删除 `scenario_cards`、`scenario_lorebooks`，卡和世界书不动；`playthroughs.scenario_id` 置空 |
 | 删除人设 | 选了它的剧本去掉 `setup.persona_id`、清空 `setup.protagonist`；已经开始的故事不受影响（只是不再显示头像）；头像没有别处在用时一起删掉 |
 | 删除世界书 | 级联删除 `scenario_lorebooks`（从挂着它的剧本上摘掉，剧本的版本号不变）；已经开始的故事不受影响 |
@@ -147,6 +151,7 @@ erDiagram
 | 删除草稿 | 正在跑的 agent 先置停止；级联删除 `workbench_assets`、`workbench_messages`、`workbench_events`、`workbench_notes` 和记在它上面的 `agent_runs`（连同 `agent_steps`）；`card_revisions.draft_id` 置空。草稿里的图没有别处在用（不是哪张卡或哪个版本的封面）时一起删掉 |
 | 版本超过 30 份 | 删掉最早的 `card_revisions`，它们用过的封面没有别处在用时一起删掉 |
 | 删除模型路由 | 删掉的是导演时就没有导演了，开局和提交行动返回 409 `ROUTE_MISSING`；删掉的是后台模型时，后台整理改用导演的模型。删掉的是官方模型时余额不动，可以重新加回来 |
+| 删除配图（`DELETE /v1/turn-images/{image_id}`） | 删掉这一行；图片没有别处在用时一起删掉。同一回合新的一张画好时，旧的那张也这样删 |
 | 删除实体（M2） | 级联删除相关的 `entity_links`；`facts.entity_ids` 里的 ID 不会自动清理 |
 
 定期清理（`services/maintenance.py`，在 api 进程里运行）：

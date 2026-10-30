@@ -693,3 +693,69 @@ class WebStore(Protocol):
     async def image_bytes(self, user_id: str, blob_id: str) -> tuple[bytes, str] | None:
         """一张图的内容和类型（给出图当参考图用）。"""
         ...
+
+
+# ---- 故事配图（docs/illustrations.md） ----------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SceneFigure:
+    """画里可能出现的一个人：名字、跟长相有关的描述、能当参考图的封面或头像。"""
+
+    name: str
+    description: str = ""
+    blob_id: str | None = None
+    protagonist: bool = False
+
+
+@dataclass(frozen=True)
+class IllustrationWork:
+    """画一张图要的全部材料（点“画这一幕”时插的那一行，加上这一回合和这一局的内容）。"""
+
+    image_id: str
+    user_id: str
+    playthrough_id: str
+    turn_id: str
+    language: str
+    age_s: float  # 从点下去到现在过了几秒（排队也算），超过时限就不画了
+    request: str  # 玩家写的“想看什么”，可以是空的
+    style: str  # 画风（domain/story/illustration.py 的 STYLES），空是不指定
+    world: str  # 这一局的世界：标题、设定、基调（让画面的时代、风格对得上）
+    location: str  # 此刻的地点和它的描述；闪电模式、还没整理出来时是空的
+    action: str  # 这一回合玩家做了什么；开场、接着说时是空的
+    narrative: str  # 这一回合的正文（多角色的局每段前面带名字）
+    previous: str  # 上一回合正文的结尾，让场景接得上；开场时是空的
+    figures: tuple[SceneFigure, ...] = ()
+
+
+@dataclass(frozen=True)
+class IllustrationDone:
+    image: NewImage
+    prompt: str  # 发给出图服务的英文画面描述（已拼上画风）
+    meta: Mapping[str, Any]  # 用的出图服务、模型、参考了谁
+    run: AgentRunRecord | None  # 写画面描述的那次调用
+
+
+class IllustrationStore(Protocol):
+    async def load(self, image_id: str) -> IllustrationWork | None:
+        """还在画的那一行和它要的材料；已经画好、失败、被删了时返回 None。"""
+        ...
+
+    async def image_bytes(self, user_id: str, blob_id: str) -> tuple[bytes, str] | None:
+        """一张图的内容和类型（封面、头像当参考图用）。"""
+        ...
+
+    async def commit(self, work: IllustrationWork, done: IllustrationDone) -> bool:
+        """存图、改成 ready、删掉这一回合旧的图；这一行已经不在画了（删了、超时）返回 False。
+        图片空间满了抛 StorageFull。"""
+        ...
+
+    async def fail(
+        self,
+        work: IllustrationWork,
+        error: str,
+        *,
+        prompt: str | None = None,
+        meta: Mapping[str, Any] | None = None,
+        run: AgentRunRecord | None = None,
+    ) -> None: ...

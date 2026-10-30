@@ -11,7 +11,7 @@ from PIL import Image
 from bettertavern.domain.scenario.card import CharacterCard, LoreEntry, LoreRules
 from bettertavern.importers.character_card import import_card
 from bettertavern.importers.character_card.export import card_v2, card_v3, embed_card
-from bettertavern.importers.images import ImageError, clean_image, cover_png
+from bettertavern.importers.images import ImageError, clean_image, cover_png, scene_image
 
 CARD = CharacterCard(
     spec="card_v3",
@@ -148,3 +148,17 @@ def test_lore_settings_survive_export_and_import() -> None:
     card = CARD.model_copy(update={"book": (entry,)})
     imported = import_card(json.dumps(card_v3(card, raw=None, extra={})).encode())
     assert imported.card.book == (entry,)
+
+
+def test_scene_images_are_shrunk_to_webp() -> None:
+    """故事配图：出图服务给的大 PNG 存成 WebP，长边不超过 1536，透明通道留着。"""
+    out = io.BytesIO()
+    Image.new("RGBA", (2048, 1365), (10, 20, 30, 128)).save(out, format="PNG")
+    image = scene_image(out.getvalue())
+    assert image.mime == "image/webp" and (image.width, image.height) == (1536, 1024)
+    assert len(image.data) < len(out.getvalue())
+    with Image.open(io.BytesIO(image.data)) as decoded:
+        assert decoded.format == "WEBP" and decoded.mode == "RGBA"
+    small = io.BytesIO()
+    Image.new("RGB", (640, 480), (200, 10, 10)).save(small, format="JPEG")
+    assert (scene_image(small.getvalue()).width, scene_image(small.getvalue()).height) == (640, 480)

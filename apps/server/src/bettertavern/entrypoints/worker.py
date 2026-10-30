@@ -1,9 +1,10 @@
 """worker 进程：领取后台任务，按 kind 分派。
 
-现在有五种任务：state.turn（世界状态 agent 整理一局还没整理的回合，services/state_jobs.py）、
+现在有这几种任务：state.turn（世界状态 agent 整理一局还没整理的回合，services/state_jobs.py）、
 memory.chapter（章节整理，services/memory_jobs.py）、memory.outline（大纲修订，
-services/outline_jobs.py）、workbench.run（工作台 agent 跑一轮，services/workbench_jobs.py）
-和 noop（冒烟用）。只领取自己有处理器的 kind，
+services/outline_jobs.py）、memory.lightning（闪电模式的压缩，services/lightning_jobs.py）、
+workbench.run（工作台 agent 跑一轮，services/workbench_jobs.py）、
+story.image（故事配图，services/illustration_jobs.py）和 noop（冒烟用）。只领取自己有处理器的 kind，
 新旧版本的 worker 可以同时运行。
 """
 
@@ -24,18 +25,21 @@ from bettertavern.infra.queue.notify import PgNotifyListener
 from bettertavern.infra.queue.pg_queue import PgJobQueue
 from bettertavern.infra.queue.worker import Handler, JobWorker
 from bettertavern.providers.transport import build_http_client
+from bettertavern.runtime.illustration_runner import IllustrationRunner
 from bettertavern.runtime.lightning_runner import LightningRunner
 from bettertavern.runtime.memory_runner import MemoryRunner, MemoryRunnerConfig
 from bettertavern.runtime.outline_runner import OutlineRunner
 from bettertavern.runtime.state_runner import StateRunner, StateRunnerConfig
 from bettertavern.runtime.workbench_runner import WorkbenchRunner
 from bettertavern.services.container import (
+    build_illustration_runner,
     build_lightning_runner,
     build_memory_runner,
     build_outline_runner,
     build_state_runner,
     build_workbench_runner,
 )
+from bettertavern.services.illustration_jobs import IMAGE_JOB, image_handler
 from bettertavern.services.lightning_jobs import LIGHTNING_JOB, lightning_handler
 from bettertavern.services.memory_jobs import MEMORY_JOB, memory_handler
 from bettertavern.services.outline_jobs import OUTLINE_JOB, outline_handler
@@ -68,6 +72,7 @@ def handlers(
     outline: OutlineRunner,
     workbench: WorkbenchRunner | None = None,
     lightning: LightningRunner | None = None,
+    illustration: IllustrationRunner | None = None,
 ) -> dict[str, Handler]:
     registered: dict[str, Handler] = {
         "noop": noop,
@@ -79,6 +84,8 @@ def handlers(
         registered[WORKBENCH_JOB] = workbench_handler(workbench)
     if lightning is not None:
         registered[LIGHTNING_JOB] = lightning_handler(lightning)
+    if illustration is not None:
+        registered[IMAGE_JOB] = image_handler(illustration)
     return registered
 
 
@@ -132,11 +139,22 @@ async def run_worker(settings: Settings) -> None:
         platform=platform,
         platform_search=platform_search(settings),
     )
+    # 故事配图：用导演的模型写画面描述（官方模型照样扣点数），出图用玩家自己配的服务
+    illustration = build_illustration_runner(
+        engine=engine,
+        secrets=secrets,
+        hub=hub,
+        policy=policy,
+        http=web_client,
+        prompts=prompts,
+        quotas=quotas(settings),
+        platform=platform,
+    )
     queue = PgJobQueue(engine, lock_timeout=settings.job_lock_timeout_s)
     listener = PgNotifyListener(engine, queue.channel)
     await listener.start()
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
-    registered = handlers(state, memory, outline, workbench, lightning)
+    registered = handlers(state, memory, outline, workbench, lightning, illustration)
     worker = JobWorker(
         queue,
         registered,

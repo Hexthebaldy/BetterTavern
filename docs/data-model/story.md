@@ -108,6 +108,35 @@
 - 主键 `(playthrough_id, position)`（`playthrough_cast_pkey`）。
 - `playthrough_cast_cover_idx (cover_blob_id) WHERE cover_blob_id IS NOT NULL`：清理图片时查有没有人在用。
 
+### `turn_images`
+
+一回合的配图（[illustrations.md](../illustrations.md)）：玩家点“画这一幕”时插入一行（`pending`），同一个事务里放一个 `story.image` 任务；后台写好画面描述、出图、存好图以后改成 `ready`，出错时改成 `failed`。
+新的一张画好时，同一回合别的几行（旧图、没画出来的记录）在同一个事务里删掉，所以一回合最多一张 `ready`。图不进模型的上下文；回退以后跟着被归档的回合一起看不见（行留着，回合列表不返回那些回合）。迁移 `0031` 加的。
+
+| 列 | 类型 | 可空 | 默认 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | uuid | 否 | `gen_random_uuid()` | 主键 |
+| `user_id` | uuid | 否 |  | → `users.id`，级联删除 |
+| `playthrough_id` | uuid | 否 |  | → `playthroughs.id`，级联删除 |
+| `turn_id` | uuid | 否 |  | → `turns.id`，级联删除 |
+| `status` | text | 否 | `'pending'` | `pending`（正在画）/ `ready`（画好了）/ `failed`（没画出来），见下文“状态” |
+| `request` | text | 否 | `''` | 玩家写的“想看什么”，最多 300 字 |
+| `style` | text | 否 | `''` | 画风：空（不指定）/ `anime` / `realistic` / `ink` / `oil` / `film` / `flat` |
+| `prompt` | text | 是 |  | 发给出图服务的英文画面描述（拼好了画风）；还没写出来时为空 |
+| `blob_id` | uuid | 是 |  | → `blobs.id`，被删除时置空：画好的图（WebP，长边不超过 1536）。清理没人用的图片时也看这一列 |
+| `error` | text | 是 |  | 没画出来的原因：`route_missing` / `model_failed` / `tool_missing` / `storage_full` / `timeout` / `auth` / `quota` / `blocked` / `http` / `network` / `bad_response` / `unsupported`（`domain/story/illustration.py`） |
+| `meta` | jsonb | 否 | `'{}'` | 画的时候的情况：`{ "tool_route_id", "protocol", "model", "aspect", "people": [画里的人], "references": [带了谁的参考图] }`；没走到出图那一步时是空的 |
+| `created_at` | timestamptz | 否 | `now()` | 点下去的时间：超过 3 分钟还是 `pending` 的按失败算 |
+| `updated_at` | timestamptz | 否 | `now()` |  |
+
+约束与索引：
+- `turn_images_status_ck`：`status` 的 CHECK。
+- `turn_images_turn_idx (turn_id, created_at)`：读回合时带上它们的图。
+- `turn_images_playthrough_idx (playthrough_id)`：删一局时找它的图。
+- `turn_images_user_pending_idx (user_id) WHERE status = 'pending'`：数一个人同时在画几张。
+- `turn_images_pending_uq (turn_id) WHERE status = 'pending'`：同一回合同时只画一张。
+- `turn_images_blob_idx (blob_id) WHERE blob_id IS NOT NULL`：清理图片时查有没有人在用。
+
 ### `playthrough_lore`
 
 这一局的世界书快照（[lorebook.md](../lorebook.md) 第 3.2 节，`domain/world/lore.py`）：开局搭世界时把剧本里几张卡自带的世界书和剧本挂的世界书合成一份，和世界状态在同一个事务里写入。之后改卡、改书、换书都不影响这一局；每回合按关键词从这里挑条目（`runtime/context/lore.py`）。迁移 `0026` 加的。
@@ -155,7 +184,8 @@
   "protagonist": { "name": "林川", "summary": "一名信使", "persona_id": "…" },  // name：NFKC、合并空白，最多 40 字；summary 最多 2000 字（2026-10-29 以前最多 400 字），导演每回合都看原文；
                                                 // persona_id：用人设开局时才有，只用来显示头像（docs/personas.md）
   "preferences": { "length": "medium", "style": "", "boundaries": "" },  // length：short / medium / long；style 最多 200 字；boundaries 最多 300 字
-  "opening": { "card_id": "…", "greeting": 0 }  // 剧本设置里选了开场白时才有：用哪张卡的哪条开场白开场
+  "opening": { "card_id": "…", "greeting": 0 },  // 剧本设置里选了开场白时才有：用哪张卡的哪条开场白开场
+  "image_style": "anime"  // 配图的画风（docs/illustrations.md）：画这一幕时带了画风才写进来，之后不带就用它；没有时是不指定
 }
 ```
 
@@ -283,6 +313,21 @@ stateDiagram-v2
 - 回合存为 `replied` 的同一个事务里，往任务队列放一个 `state.turn` 任务（排序键 `{playthrough_id}:state`；这个键上已经有一个还没开始的同类任务时不再放）。worker 领到后按顺序整理这一局所有 `replied` 的回合（[agent-runtime.md](../agent-runtime.md) 第 3、4 节）。
 - 闪电模式的回合不整理世界状态，存好就是 `committed`；同一个事务里放一个 `memory.lightning` 任务（结局那一回合不放），看原文够不够压成梗概（[agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)）。
 - 下一回合不等世界状态整理：`replied` 的回合也算在活跃链上，状态块开头写明截至第几回合。结局之后不再整理世界状态，所以结局那一轮直接是 `committed`。
+
+`turn_images.status`：
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: 画这一幕
+    pending --> ready: 画好、存好（还没超过 3 分钟）
+    pending --> failed: 出错、超过 3 分钟
+    ready --> [*]: 玩家删掉，或者同一回合新的一张画好
+    failed --> [*]: 玩家删掉，或者同一回合再画一次
+```
+
+- 改成 `ready` 是带条件的 UPDATE（还是 `pending`、点下去不到 3 分钟），成功以后才写图片、删同一回合的旧图；条件不满足（玩家删了、超时了）时整个结果作废，图不存。
+- 超过 3 分钟还是 `pending` 的行，读的时候按 `failed`（`timeout`）返回；再点“画这一幕”时先把它们改成 `failed`。
+- 写画面描述的那次调用记进 `agent_runs`（`agent` 是 `illustrator`，记在这一回合上），用官方模型时照样扣点数，画没画成都一样。
 
 `playthroughs.status`：`building` → `active` → `ended`；`ended` 的故事回退后回到 `active`。
 

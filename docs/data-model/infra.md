@@ -32,7 +32,7 @@
 | `playthrough_id` | uuid | 是 |  | → `playthroughs.id`，级联删除 |
 | `draft_id` | uuid | 是 |  | → `workbench_drafts.id`，级联删除。工作台的 agent 运行记在哪份草稿上；这时 `id` 就是这一轮的编号（对话记录的 `run_id`） |
 | `turn_id` | uuid | 是 |  | 无外键，指向 `turns.id` |
-| `agent` | text | 否 |  | `director`、`world_builder`、`options_repair`、`state_keeper`、`chapter_writer`、`outline_writer`、`card_maker` |
+| `agent` | text | 否 |  | `director`、`world_builder`、`options_repair`、`state_keeper`、`chapter_writer`、`outline_writer`、`card_maker`、`illustrator` |
 | `task` | text | 否 |  | 使用的路由槽位，取值同 `model_routes.task` |
 | `provider` | text | 是 |  | 服务商 |
 | `model` | text | 是 |  | 模型名 |
@@ -114,6 +114,7 @@
 | `memory.outline` | `{ "playthrough_id" }` | 世界状态整理完（或跳过）一回合时，还没有大纲或者有还没处理的“大纲要改”的原因就放进来；回退删了大纲修订时也放。排序键和 `max_attempts` 同上 |
 | `memory.lightning` | `{ "playthrough_id" }` | 闪电模式的回合存好（结局除外）时在同一个事务里放进来，排序键和 `max_attempts` 同上：看梗概之后的原文够不够压，够就用导演的模型压成一版新梗概，不够就什么都不做（[agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)） |
 | `workbench.run` | `{ "draft_id", "run_id", "trigger" }` | 工作台开一轮 agent 时和用户的消息、草稿改成 `running` 在同一个事务里放进来，排序键 `{draft_id}:workbench`，`max_attempts` 是 1（跑到一半进程挂了，重跑会重复搜索、重复出图；草稿的心跳过期以后用户可以再开一轮）。`trigger` 是 `text` / `answers` / `plan_reply` / `continue` |
+| `story.image` | `{ "image_id" }` | 玩家点“画这一幕”时和插入 `turn_images` 的那一行在同一个事务里放进来，排序键 `{image_id}:image`（几张图可以同时画），`max_attempts` 是 1：重画要再花一次出图的钱，交给玩家点“再试一次”（[illustrations.md](../illustrations.md) 第 2 节） |
 | `noop` | 任意 | 冒烟测试用 |
 
 ## JSON 列
@@ -138,6 +139,7 @@
 | 章节整理，`failed` | `{ "first_seq", "last_seq" }` |
 | 大纲修订，`ok` 或 `stale` | `{ "based_on_seq", "first", "changed", "reasons", "active", "mode", "attempts" }`：依据到第几回合、是不是第一版、改没改、处理了几条原因、改完以后进行中的那一拍的编号 |
 | 大纲修订，`failed` | `{ "based_on_seq", "first" }` |
+| 写画面描述（`illustrator`） | 成功时 `{ "people" }`：画里有几个人在名单上；失败时是空的，原因在 `error_class` |
 | 工作台 agent | `{ "mode", "ended", "stopped", "model_calls", "tool_calls", "searches", "pages", "images", "written" }`：这一轮的做法（`planning` / `build` / `revise`）、用哪个工具结束的（`questions` / `plan` / `changes` / null）、是不是被停下、调了几次模型和工具、搜了几次、读了几页、出了几张图、写了几处。不记卡的内容 |
 
 `refs` 是这次运行的工具参数和结果里出现过的编号对应什么：实体 `e3` 对应名字，事实 `f8` 对应开头 40 个字。编号只在一次运行里有效，记下来给日志查看工具在显示故事内容时把编号换成名字；不显示故事内容时接口不返回它。

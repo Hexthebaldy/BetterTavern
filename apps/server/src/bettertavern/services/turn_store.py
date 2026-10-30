@@ -276,7 +276,7 @@ class PgTurnStore:
         async with self._engine.connect() as conn:
             pt = await story_repo.get_playthrough_by_id(conn, header.playthrough_id)
             assert pt is not None
-            cards = await _scenario_cards(conn, pt.user_id, pt.scenario_id)
+            cards = await scenario_cards(conn, pt.user_id, pt.scenario_id)
             books = await _scenario_lorebooks(conn, pt.user_id, pt.scenario_id)
         protagonist = pt.settings.get("protagonist") or {}
         opening, opening_char = _chosen_greeting(pt.settings.get("opening"), cards)
@@ -356,7 +356,7 @@ def cards_of(seed: Any) -> CardSource | None:
     return CardSource.model_validate(seed["cards"])
 
 
-async def _scenario_cards(
+async def scenario_cards(
     conn: AsyncConnection, user_id: str, scenario_id: str | None
 ) -> list[tuple[str, CharacterCard, str | None]]:
     """剧本里的几张卡（按顺序）和它们的封面，读此刻的正式版本（剧本实时引用角色卡）。"""
@@ -429,7 +429,7 @@ async def load_turn_context(
     current = await outline_repo.current_outline(conn, pt.id)
     greeting, char = "", ""
     if action.source == "opening" and pt.settings.get("opening"):
-        cards = await _scenario_cards(conn, pt.user_id, pt.scenario_id)
+        cards = await scenario_cards(conn, pt.user_id, pt.scenario_id)
         greeting, char = _chosen_greeting(pt.settings.get("opening"), cards)
     outline = outline_from_json(current.content) if current else None
     seed = Seed.model_validate(pt.seed) if pt.seed else None
