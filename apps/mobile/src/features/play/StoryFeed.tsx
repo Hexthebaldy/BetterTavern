@@ -3,6 +3,7 @@
  * （选项、“自己写…”、生成中的状态，见 TurnActions.tsx），行动区跟着正文一起滚动。
  * 书名页、叙述、你的行动、开场的两步、结束标记这几块在 FeedParts.tsx（漫画风）。
  * 多角色的局（docs/cast.md）按 segments 一段一段排：角色那一段前面是头像和名字，旁白那一段和普通叙述一样（CastParts.tsx）。
+ * 配图（docs/illustrations.md）：每回合正文下面是这一回合的图和靠右的“画这一幕”（PictureParts.tsx）。
  *
  * 底部固定着操作栏（BottomBar.tsx）：内容底部按 bottomInset 留白。正在发送、正在构思、重连这些状态也在操作栏里，正文这里不重复。
  * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 时经 onAwayChange 告诉页面，
@@ -28,7 +29,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { FlatList, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 
-import type { CastMember } from "@bettertavern/core/api/types";
+import type { CastMember, TurnImage } from "@bettertavern/core/api/types";
 import { readableColumn } from "@bettertavern/design/layout";
 import type { ReadingPrefs } from "@bettertavern/core/play/reading";
 import {
@@ -51,6 +52,7 @@ import {
   useNarrativeStyle,
   type Narr,
 } from "./FeedParts.tsx";
+import { TurnPicture, type PictureActions } from "./PictureParts.tsx";
 
 type Item = { key: string; turn: StoryTurn } | { key: "pending"; pending: PendingTurn };
 
@@ -60,10 +62,14 @@ const TurnBlock = memo(function TurnBlock({
   turn,
   cast,
   narr,
+  images,
+  pictures,
 }: {
   turn: StoryTurn;
   cast: readonly CastMember[];
   narr: Narr;
+  images: TurnImage[] | undefined;
+  pictures?: PictureActions;
 }) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
   useTranslation();
@@ -80,6 +86,7 @@ const TurnBlock = memo(function TurnBlock({
       ) : (
         <Narrative text={turn.narrative} narr={narr} />
       )}
+      {pictures ? <TurnPicture turnId={turn.id} images={images} actions={pictures} /> : null}
     </View>
   );
 });
@@ -151,6 +158,7 @@ export function StoryFeed({
   bottomInset,
   available,
   onAwayChange,
+  pictures,
 }: {
   ref?: Ref<StoryFeedHandle>;
   state: PlayState;
@@ -166,6 +174,8 @@ export function StoryFeed({
   available: number;
   /** 离开 / 回到最新位置（离底超过 80pt） */
   onAwayChange?: (away: boolean) => void;
+  /** 配图的几个操作（要稳定，否则每段都会重画）；不给时不显示“画这一幕” */
+  pictures?: PictureActions;
 }) {
   const narr = useNarrativeStyle(reading, state.language);
   const list = useRef<FlatList<Item>>(null);
@@ -235,11 +245,17 @@ export function StoryFeed({
   const renderItem = useCallback(
     ({ item }: { item: Item }) =>
       "turn" in item ? (
-        <TurnBlock turn={item.turn} cast={state.cast} narr={narr} />
+        <TurnBlock
+          turn={item.turn}
+          cast={state.cast}
+          narr={narr}
+          images={state.images[item.turn.id]}
+          pictures={pictures}
+        />
       ) : (
         <PendingBlock pending={item.pending} phase={state.phase} cast={state.cast} narr={narr} />
       ),
-    [state.phase, state.cast, narr],
+    [state.phase, state.cast, state.images, narr, pictures],
   );
 
   const missingOpening = state.turns.length === 0 && state.phase === "idle";

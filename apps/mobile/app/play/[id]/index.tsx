@@ -9,16 +9,18 @@
  * 世界状态在阅读页宽 ≥ 1100 时停靠在右侧，阅读栏和操作栏在剩下的宽度里居中，世界按钮显示为选中，
  * 再点一次收起；停靠的开关存在界面偏好里，打开任意故事都保持。更窄时从右侧滑出，手机上是底部面板。
  * 旋转、分屏改变宽度时只换布局：故事流、操作栏都不卸载，滚动位置和草稿都还在；停靠着的面板变窄后换成滑出的。
+ * 配图（docs/illustrations.md）：每回合的“画这一幕”打开面板（PictureParts.tsx），画好的图点开看大图；
+ * 删掉画好的图先确认，关掉没画出来的记录不确认。
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { describeError, describeTurnError } from "@bettertavern/core/api/client";
-import type { CastMember, Scenario } from "@bettertavern/core/api/types";
+import type { CastMember, Scenario, TurnImage } from "@bettertavern/core/api/types";
 import { canAct, headTurn, isEnded, rollbackStatus, turnsAfter } from "@bettertavern/core/play/turnMachine";
 import { personaOf } from "@bettertavern/core/scenario/persona";
 import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layout";
@@ -26,6 +28,7 @@ import { pane, readingWidth, worldPresentation } from "@bettertavern/design/layo
 import { Dots, ErrorState, Icon, NavBar, SkeletonLine, useOverlay } from "../../../src/components/ui.tsx";
 import { BottomBar } from "../../../src/features/play/BottomBar.tsx";
 import { MoreSheet } from "../../../src/features/play/MoreSheet.tsx";
+import { DrawSheet, ImageSheet, type PictureActions } from "../../../src/features/play/PictureParts.tsx";
 import { RollbackSheet } from "../../../src/features/play/RollbackSheet.tsx";
 import { BookHeader } from "../../../src/features/play/FeedParts.tsx";
 import { columnWidth, StoryFeed, type StoryFeedHandle } from "../../../src/features/play/StoryFeed.tsx";
@@ -126,6 +129,41 @@ export default function PlayScreen() {
     if (failure) overlay.toast(t("play.castMuteFailed", { error: describeTurnError(failure) }), { icon: "alert" });
   };
   const [draft, setDraft] = useState("");
+  // 配图：画这一幕的面板、看大图；故事流里每一段是 memo 的，操作要稳定
+  const [drawFor, setDrawFor] = useState<{ turnId: string; request: string } | null>(null);
+  const [viewing, setViewing] = useState<TurnImage | null>(null);
+  const { drawImage, removeImage } = controls;
+  const pictures = useMemo<PictureActions>(
+    () => ({
+      draw: (turnId, request = "") => setDrawFor({ turnId, request }),
+      retry: (image) => {
+        void drawImage(image.turn_id, { request: image.request, style: image.style }).then((failure) => {
+          if (failure)
+            overlay.toast(t("play.drawFailed", { error: describeTurnError(failure) }), { icon: "alert" });
+        });
+      },
+      remove: (image) => {
+        void (async () => {
+          if (image.status === "ready") {
+            const ok = await overlay.confirm({
+              title: t("play.imageDeleteTitle"),
+              message: t("play.imageDeleteMessage"),
+              confirmLabel: t("play.imageDelete"),
+              tone: "danger",
+            });
+            if (!ok) return;
+          }
+          const failure = await removeImage(image.turn_id, image.id);
+          if (failure)
+            overlay.toast(t("play.imageDeleteFailed", { error: describeTurnError(failure) }), {
+              icon: "alert",
+            });
+        })();
+      },
+      open: setViewing,
+    }),
+    [drawImage, removeImage, overlay, t],
+  );
   // 往上翻离开了最新位置：操作栏中间换成“回到最新”
   const [away, setAway] = useState(false);
   // 操作栏盖住的高度（展开时连同键盘）：故事流在它上方结束
@@ -306,6 +344,7 @@ export default function PlayScreen() {
             bottomInset={bar}
             available={available}
             onAwayChange={setAway}
+            pictures={pictures}
             footer={
               <TurnActions
                 state={state}
@@ -381,6 +420,18 @@ export default function PlayScreen() {
         playthroughId={id}
         headSeq={head?.seq ?? null}
       />
+      <DrawSheet
+        visible={drawFor !== null}
+        initialRequest={drawFor?.request ?? ""}
+        initialStyle={state.imageStyle}
+        onDraw={(body) => (drawFor ? drawImage(drawFor.turnId, body) : Promise.resolve(null))}
+        onOpenSettings={() => {
+          setDrawFor(null);
+          router.push("/settings/tools");
+        }}
+        onClose={() => setDrawFor(null)}
+      />
+      <ImageSheet image={viewing} onClose={() => setViewing(null)} />
       <RollbackSheet
         visible={rollbackOpen}
         onClose={() => setRollbackOpen(false)}
