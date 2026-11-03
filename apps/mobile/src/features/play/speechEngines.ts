@@ -3,6 +3,8 @@
  * 语音服务的声音下载到缓存目录再放（expo-audio）。规则和播放顺序在 @bettertavern/core/play/speechPlayer。
  *
  * 安卓的系统朗读不能暂停：暂停时停掉这一小段，继续时从这一小段的开头重新读。
+ * 系统朗读的“停”是异步的：停了马上读下一小段，iOS 会把下一小段一起取消（2026-11-03 实测），
+ * 所以要等它回话说停了（最多等 STOP_SETTLE_MS）再开始。
  */
 
 import { createAudioPlayer, type AudioPlayer, type AudioStatus } from "expo-audio";
@@ -19,6 +21,8 @@ export type AppSpeechEngine = SpeechEngine & { dispose(): void };
 
 /** 开始以后这么久还没出声，算读不出来（有的系统没有这种语言的声音时什么也不回） */
 const START_TIMEOUT_MS = 15_000;
+/** 停掉系统朗读以后，最多等它这么久回话 */
+const STOP_SETTLE_MS = 500;
 
 type Speaking = {
   line: SpeechLine;
@@ -27,21 +31,38 @@ type Speaking = {
   resolve: () => void;
   reject: (error: unknown) => void;
   timer: ReturnType<typeof setTimeout> | null;
+  /** 系统回话说这一小段停了 */
+  stopped: (() => void) | null;
 };
 
 export class DeviceVoice implements AppSpeechEngine {
   private current: Speaking | null = null;
   /** 安卓暂停时的 stop：不算读完 */
   private holding = false;
+  /** 上一次停止已经落定 */
+  private settled: Promise<void> = Promise.resolve();
 
   prepare(): void {}
   setRate(): void {} // 系统的朗读开始以后改不了语速：下一小段生效
 
   speak(line: SpeechLine, rate: number, onStart: () => void): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      this.current = { line, rate, onStart, resolve, reject, timer: null };
+      this.current = { line, rate, onStart, resolve, reject, timer: null, stopped: null };
       this.start();
     });
+  }
+
+  /** 让系统停下这一小段，记下要等它落定 */
+  private halt(speaking: Speaking | null): void {
+    if (speaking) {
+      if (speaking.timer) clearTimeout(speaking.timer);
+      speaking.timer = null;
+      this.settled = new Promise<void>((resolve) => {
+        speaking.stopped = resolve;
+        setTimeout(resolve, STOP_SETTLE_MS);
+      });
+    }
+    void Speech.stop();
   }
 
   private start(): void {
@@ -65,19 +86,24 @@ export class DeviceVoice implements AppSpeechEngine {
     };
     clear();
     speaking.timer = setTimeout(failed, START_TIMEOUT_MS);
-    Speech.speak(line.text, {
-      language: LANGUAGE_TAGS[line.language],
-      rate,
-      ...(line.voice ? { voice: line.voice } : {}),
-      onStart: () => {
-        clear();
-        speaking.onStart();
-      },
-      onDone: done,
-      onStopped: () => {
-        if (!this.holding) done();
-      },
-      onError: failed,
+    void this.settled.then(() => {
+      if (this.current !== speaking || this.holding) return; // 等的时候被停了或者暂停了
+      Speech.speak(line.text, {
+        language: LANGUAGE_TAGS[line.language],
+        rate,
+        ...(line.voice ? { voice: line.voice } : {}),
+        onStart: () => {
+          clear();
+          speaking.onStart();
+        },
+        onDone: done,
+        onStopped: () => {
+          speaking.stopped?.();
+          speaking.stopped = null;
+          if (!this.holding) done();
+        },
+        onError: failed,
+      });
     });
   }
 
@@ -87,8 +113,7 @@ export class DeviceVoice implements AppSpeechEngine {
       return;
     }
     this.holding = true;
-    if (this.current?.timer) clearTimeout(this.current.timer);
-    void Speech.stop();
+    this.halt(this.current);
   }
 
   resume(): void {
@@ -102,10 +127,9 @@ export class DeviceVoice implements AppSpeechEngine {
 
   stop(): void {
     this.holding = false;
-    void Speech.stop();
     const speaking = this.current;
     this.current = null;
-    if (speaking?.timer) clearTimeout(speaking.timer);
+    this.halt(speaking);
     speaking?.resolve();
   }
 

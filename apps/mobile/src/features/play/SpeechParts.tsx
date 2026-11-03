@@ -8,7 +8,7 @@
 import * as Speech from "expo-speech";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { CastMember } from "@bettertavern/core/api/types";
@@ -268,10 +268,12 @@ export function SpeechSheet({
   }, [api, visible, onDevice, source]);
   const voices = onDevice ? deviceVoices : serviceVoices;
   const choice = choiceOf(prefs, source);
+  // 展开声音列表以后内容可能比屏幕还高：面板不能顶出屏幕，里面滚动
+  const { height } = useWindowDimensions();
 
   return (
     <Sheet visible={visible} onClose={onClose} title={t("play.speech.settings")}>
-      <ScrollView contentContainerStyle={styles.sheet}>
+      <ScrollView style={{ maxHeight: height * 0.75 }} contentContainerStyle={styles.sheet}>
         <Text style={[styles.rowName, { color: c.ink }]}>{t("play.speech.source")}</Text>
         <View style={styles.chips}>
           <Chip
