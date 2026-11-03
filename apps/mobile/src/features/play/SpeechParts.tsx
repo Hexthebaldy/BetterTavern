@@ -67,33 +67,34 @@ export function SpeechBar({
       : t("play.speech.progress", { seq, ...place });
   };
   return (
-    <View
-      accessibilityRole="summary"
-      style={[
-        styles.bar,
-        {
-          bottom: bottom + space.s,
-          borderColor: c.ink,
-          backgroundColor: c.paper,
-          boxShadow: hardShadow(c.ink, comicDepth.focus),
-        },
-      ]}
-    >
-      {failed ? (
-        <Chip small label={t("common.retry")} onPress={speech.retry} />
-      ) : state.status === "paused" ? (
-        <IconButton icon="play" label={t("play.speech.resume")} onPress={speech.resume} />
-      ) : (
-        <IconButton
-          icon="pause"
-          label={t("play.speech.pause")}
-          disabled={slow || state.status === "waiting"}
-          onPress={speech.pause}
-        />
-      )}
-      <Text style={[styles.barText, { color: failed ? c.err : c.ink }]}>{label()}</Text>
-      {failed ? null : <IconButton icon="skipNext" label={t("play.speech.next")} onPress={speech.next} />}
-      <IconButton icon="close" label={t("play.speech.stop")} onPress={speech.stop} />
+    <View pointerEvents="box-none" style={[styles.barWrap, { bottom: bottom + space.s }]}>
+      <View
+        accessibilityRole="summary"
+        style={[
+          styles.bar,
+          {
+            borderColor: c.ink,
+            backgroundColor: c.paper,
+            boxShadow: hardShadow(c.ink, comicDepth.focus),
+          },
+        ]}
+      >
+        {failed ? (
+          <Chip small label={t("common.retry")} onPress={speech.retry} />
+        ) : state.status === "paused" ? (
+          <IconButton icon="play" label={t("play.speech.resume")} onPress={speech.resume} />
+        ) : (
+          <IconButton
+            icon="pause"
+            label={t("play.speech.pause")}
+            disabled={slow || state.status === "waiting"}
+            onPress={speech.pause}
+          />
+        )}
+        <Text style={[styles.barText, { color: failed ? c.err : c.ink }]}>{label()}</Text>
+        {failed ? null : <IconButton icon="skipNext" label={t("play.speech.next")} onPress={speech.next} />}
+        <IconButton icon="close" label={t("play.speech.stop")} onPress={speech.stop} />
+      </View>
     </View>
   );
 }
@@ -366,11 +367,10 @@ export function SpeechSheet({
 }
 
 const styles = StyleSheet.create({
+  /** 平板上和阅读栏一样在阅读区里居中 */
+  barWrap: { position: "absolute", left: space.m, right: space.m, alignItems: "center" },
   bar: {
-    position: "absolute",
-    left: space.m,
-    right: space.m,
-    alignSelf: "center",
+    width: "100%",
     maxWidth: 560,
     flexDirection: "row",
     alignItems: "center",

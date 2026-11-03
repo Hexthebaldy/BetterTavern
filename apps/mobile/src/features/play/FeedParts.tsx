@@ -170,7 +170,9 @@ export function Narrative({
         const last = i === parts.length - 1;
         return (
           <View key={i}>
-            {spot === readingSpot(segment, i) ? <View style={[styles.spoken, { backgroundColor: c.ink }]} /> : null}
+            {spot === readingSpot(segment, i) ? (
+              <View style={[styles.spoken, { backgroundColor: c.ink, bottom: last ? 5 : PARAGRAPH_GAP + 5 }]} />
+            ) : null}
             <Text
               selectable
               allowFontScaling={narr.scale}
@@ -283,7 +285,7 @@ const styles = StyleSheet.create({
   },
   paragraph: { marginBottom: PARAGRAPH_GAP, paddingHorizontal: READ_SIDE },
   /** 朗读读到的那一段：画在正文左边的留白里，文字不挪动 */
-  spoken: { position: "absolute", left: READ_SIDE - 10, top: 5, bottom: PARAGRAPH_GAP + 5, width: 4 },
+  spoken: { position: "absolute", left: READ_SIDE - 10, top: 5, width: 4 },
   caretOnly: { paddingHorizontal: READ_SIDE - 3, justifyContent: "center" },
   cutBox: {
     marginLeft: space.s,
