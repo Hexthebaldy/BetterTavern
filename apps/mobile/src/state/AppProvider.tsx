@@ -44,6 +44,8 @@ function createServices(): Services {
   const client = new ApiClient({
     baseUrl: () => serverUrl.current,
     fetch: (url, init) => fetch(url, init),
+    // 取声音（朗读）要读二进制内容：React Native 自带的 fetch 读不了 arrayBuffer
+    fetchBytes: (url, init) => expoFetch(url, init),
     clientVersion: CLIENT_VERSION,
     // 失败的和慢的请求记进诊断日志，正常的只在开发时打到终端
     onRequest: (record) =>

@@ -30,8 +30,8 @@ export function CastSegments({
 }: {
   segments: readonly Segment[];
   cast: readonly CastMember[];
-  /** 一段的正文（叙述的样子由调用方决定：光标、变暗、“中断”） */
-  render: (segment: Segment, last: boolean) => ReactNode;
+  /** 一段的正文（叙述的样子由调用方决定：光标、变暗、“中断”）；index 是第几段 */
+  render: (segment: Segment, last: boolean, index: number) => ReactNode;
 }) {
   const c = useComic();
   return (
@@ -39,7 +39,7 @@ export function CastSegments({
       {segments.map((segment, i) => {
         const last = i === segments.length - 1;
         const member = speakerOf(cast, segment);
-        if (!member) return <View key={i}>{render(segment, last)}</View>;
+        if (!member) return <View key={i}>{render(segment, last, i)}</View>;
         return (
           <View key={i} style={styles.segment}>
             <Portrait
@@ -52,7 +52,7 @@ export function CastSegments({
             />
             <View style={styles.segmentBody}>
               <Text style={[styles.segmentName, { color: c.mut }]}>{member.name}</Text>
-              {render(segment, last)}
+              {render(segment, last, i)}
             </View>
           </View>
         );

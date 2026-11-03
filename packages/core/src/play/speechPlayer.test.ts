@@ -133,6 +133,40 @@ test("暂停、继续、停止；语速传给出声的部分", async () => {
   assert.deepEqual(engine.spoken, ["一"]); // 停了以后不会接着读下一小段
 });
 
+test("暂停时这一小段正好读完：下一小段等继续，停止和跳段也不会卡住", async () => {
+  const engine = new FakeEngine();
+  const player = new SpeechPlayer(engine);
+  player.read("t1", [line("一"), line("二"), line("三"), line("四"), line("五")]);
+  await flush();
+  engine.start();
+  player.pause();
+  await engine.finish();
+  assert.deepEqual(engine.spoken, ["一"]); // 第二小段不开始
+  assert.equal(player.getState().status, "paused");
+  assert.equal(player.getState().spot, "二");
+  player.resume();
+  await flush();
+  assert.deepEqual(engine.spoken, ["一", "二"]);
+  assert.equal(player.getState().status, "loading");
+  assert.ok(!engine.calls.includes("resume"));
+
+  engine.start();
+  player.pause();
+  await engine.finish();
+  assert.equal(player.getState().spot, "三");
+  player.next(); // 等着继续的时候跳到下一段（三 还没读，跳过）
+  await flush();
+  assert.deepEqual(engine.spoken, ["一", "二", "四"]);
+  assert.equal(player.getState().paragraph, 4);
+
+  engine.start();
+  player.pause();
+  await engine.finish();
+  player.stop();
+  await flush();
+  assert.deepEqual(player.getState(), IDLE_SPEECH);
+});
+
 test("读别的回合：当前的停下，从头读新的", async () => {
   const engine = new FakeEngine();
   const player = new SpeechPlayer(engine);

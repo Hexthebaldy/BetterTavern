@@ -114,6 +114,8 @@ export class SpeechPlayer {
   private open = false;
   /** 每开始一轮新的播放就加一：旧的那一轮回来时发现对不上就不再往下走 */
   private run = 0;
+  /** 暂停时这一小段正好读完：下一小段等继续 */
+  private held: (() => void) | null = null;
   private state: SpeechState = IDLE_SPEECH;
   private readonly listeners = new Set<() => void>();
 
@@ -180,6 +182,13 @@ export class SpeechPlayer {
 
   resume(): void {
     if (this.state.status !== "paused") return;
+    if (this.held) {
+      const go = this.held;
+      this.held = null;
+      this.set({ status: "loading" });
+      go();
+      return;
+    }
     this.engine.resume();
     this.set({ status: "playing" });
   }
@@ -213,6 +222,8 @@ export class SpeechPlayer {
   private halt(): void {
     this.run += 1;
     this.engine.stop();
+    this.held?.();
+    this.held = null;
   }
 
   private finish(): void {
@@ -237,7 +248,13 @@ export class SpeechPlayer {
       this.publishPosition();
       const next = this.lines[this.index + 1];
       if (next) engine.prepare(next);
-      if (this.state.status !== "paused") this.set({ status: "loading" });
+      if (this.state.status === "paused") {
+        await new Promise<void>((resolve) => {
+          this.held = resolve;
+        });
+        if (run !== this.run) return;
+      }
+      this.set({ status: "loading" });
       try {
         await engine.speak(line, this.rate, () => {
           if (run === this.run && this.state.status === "loading") this.set({ status: "playing" });

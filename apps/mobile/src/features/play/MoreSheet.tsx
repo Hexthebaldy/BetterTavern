@@ -1,5 +1,5 @@
 /**
- * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号、跟随系统字体大小），重命名存档、世界状态、回到更早的一段、写结局、删除存档。
+ * 阅读页的“更多”：阅读设置（宋体 / 黑体、字号、跟随系统字体大小），自动朗读和朗读设置，重命名存档、世界状态、回到更早的一段、写结局、删除存档。
  * “回到更早的一段”生成中不能点，右边写着还能回退几次；这个存档的回退次数用完时写明已用完、不能点。
  * “写结局”只在能行动时可点（开场写完、没在生成、没有失败等着重试），故事写完结局后不再显示。
  * 阅读设置存在设备上，所有故事共用。
@@ -17,6 +17,7 @@ import { readingSize, stepSize, type ReadingFont } from "@bettertavern/core/play
 
 import { MenuGroup, MenuItem, Sheet, Toggle } from "../../components/ui.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
+import { useSpeechPrefs } from "./speechPrefs.ts";
 import {
   comicDepth,
   comicRadius,
@@ -130,10 +131,28 @@ function FollowSystem() {
   );
 }
 
+/** 自动朗读新回合的开关（docs/speech.md） */
+function AutoSpeech() {
+  const c = useComic();
+  const { t } = useTranslation();
+  const [prefs, setPrefs] = useSpeechPrefs();
+  return (
+    <View style={styles.row}>
+      <Text style={{ flex: 1, fontSize: 15, color: c.ink }}>{t("play.speech.auto")}</Text>
+      <Toggle
+        value={prefs.auto}
+        label={t("play.speech.auto")}
+        onChange={(auto) => setPrefs((current) => ({ ...current, auto }))}
+      />
+    </View>
+  );
+}
+
 export function MoreSheet({
   visible,
   onClose,
   onRename,
+  onSpeech,
   onWorld,
   onEnd,
   ending,
@@ -147,6 +166,8 @@ export function MoreSheet({
   visible: boolean;
   onClose: () => void;
   onRename: () => void;
+  /** 打开朗读设置 */
+  onSpeech: () => void;
   /** 不传时不显示“世界”（闪电模式没有世界状态） */
   onWorld?: () => void;
   onEnd: () => void;
@@ -171,7 +192,9 @@ export function MoreSheet({
         <FontChoice />
         <SizeControl />
         <FollowSystem />
+        <AutoSpeech />
         <MenuGroup style={{ marginTop: space.xs }}>
+          <MenuItem icon="speaker" label={t("play.speech.settings")} onPress={onSpeech} />
           <MenuItem icon="write" label={t("reading.renameSave")} onPress={onRename} />
           {onWorld ? <MenuItem icon="world" label={t("play.world")} onPress={onWorld} /> : null}
           {rollback !== "none" ? (

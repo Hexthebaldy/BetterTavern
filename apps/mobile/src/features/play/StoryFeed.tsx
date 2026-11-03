@@ -4,6 +4,7 @@
  * 书名页、叙述、你的行动、开场的两步、结束标记这几块在 FeedParts.tsx（漫画风）。
  * 多角色的局（docs/cast.md）按 segments 一段一段排：角色那一段前面是头像和名字，旁白那一段和普通叙述一样（CastParts.tsx）。
  * 配图（docs/illustrations.md）：每回合正文下面是这一回合的图和靠右的“画这一幕”（PictureParts.tsx）。
+ * 朗读（docs/speech.md）：“画这一幕”那一行最前面是“朗读”，读到的那一段左边一条墨线（FeedParts.tsx）。
  *
  * 底部固定着操作栏（BottomBar.tsx）：内容底部按 bottomInset 留白。正在发送、正在构思、重连这些状态也在操作栏里，正文这里不重复。
  * 停在底部时自动跟随新文字；玩家往上翻时暂停跟随，离开底部超过 80pt 时经 onAwayChange 告诉页面，
@@ -52,7 +53,8 @@ import {
   useNarrativeStyle,
   type Narr,
 } from "./FeedParts.tsx";
-import { TurnPicture, type PictureActions } from "./PictureParts.tsx";
+import { TextButton, TurnPicture, type PictureActions } from "./PictureParts.tsx";
+import type { SpeechControls } from "./useSpeech.ts";
 
 type Item = { key: string; turn: StoryTurn } | { key: "pending"; pending: PendingTurn };
 
@@ -64,16 +66,35 @@ const TurnBlock = memo(function TurnBlock({
   narr,
   images,
   pictures,
+  speaking,
+  spot,
+  onRead,
+  onStopReading,
 }: {
   turn: StoryTurn;
   cast: readonly CastMember[];
   narr: Narr;
   images: TurnImage[] | undefined;
   pictures?: PictureActions;
+  /** 朗读正在读这一回合 */
+  speaking: boolean;
+  spot: string | null;
+  onRead?: (turn: StoryTurn) => void;
+  onStopReading?: () => void;
 }) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
-  useTranslation();
+  const { t } = useTranslation();
+  const c = useComic();
   const note = actionNote(turn.action);
+  const read =
+    onRead && turn.narrative.trim() ? (
+      <TextButton
+        label={speaking ? t("play.speech.reading") : t("play.speech.read")}
+        icon="speaker"
+        color={speaking ? c.acc : c.mut}
+        onPress={() => (speaking ? onStopReading?.() : onRead(turn))}
+      />
+    ) : null;
   return (
     <View style={styles.turn}>
       {note ? <ActionNote text={note} narr={narr} /> : null}
@@ -81,12 +102,14 @@ const TurnBlock = memo(function TurnBlock({
         <CastSegments
           segments={turn.segments}
           cast={cast}
-          render={(segment) => <Narrative text={segment.text} narr={narr} />}
+          render={(segment, _last, index) => (
+            <Narrative text={segment.text} narr={narr} segment={index} spot={spot} />
+          )}
         />
       ) : (
-        <Narrative text={turn.narrative} narr={narr} />
+        <Narrative text={turn.narrative} narr={narr} spot={spot} />
       )}
-      {pictures ? <TurnPicture turnId={turn.id} images={images} actions={pictures} /> : null}
+      {pictures ? <TurnPicture turnId={turn.id} images={images} actions={pictures} lead={read} /> : null}
     </View>
   );
 });
@@ -96,11 +119,13 @@ function PendingBlock({
   phase,
   cast,
   narr,
+  spot,
 }: {
   pending: PendingTurn;
   phase: Phase;
   cast: readonly CastMember[];
   narr: Narr;
+  spot: string | null;
 }) {
   const c = useComic();
   const failed = phase === "failed";
@@ -122,10 +147,12 @@ function PendingBlock({
         <CastSegments
           segments={pending.segments}
           cast={cast}
-          render={(segment, last) => (
+          render={(segment, last, index) => (
             <Narrative
               text={segment.text}
               narr={narr}
+              segment={index}
+              spot={spot}
               dim={failed}
               caret={last ? caret : undefined}
               interrupted={last && failed && segment.text.length > 0}
@@ -159,6 +186,7 @@ export function StoryFeed({
   available,
   onAwayChange,
   pictures,
+  speech,
 }: {
   ref?: Ref<StoryFeedHandle>;
   state: PlayState;
@@ -176,7 +204,13 @@ export function StoryFeed({
   onAwayChange?: (away: boolean) => void;
   /** 配图的几个操作（要稳定，否则每段都会重画）；不给时不显示“画这一幕” */
   pictures?: PictureActions;
+  /** 朗读（docs/speech.md）；不给时不显示“朗读” */
+  speech?: SpeechControls;
 }) {
+  const spokenTurn = speech?.state.turnId ?? null;
+  const spokenSpot = speech?.state.spot ?? null;
+  const onRead = speech?.read;
+  const onStopReading = speech?.stop;
   const narr = useNarrativeStyle(reading, state.language);
   const list = useRef<FlatList<Item>>(null);
   // 最后一项离操作栏 16
@@ -251,11 +285,21 @@ export function StoryFeed({
           narr={narr}
           images={state.images[item.turn.id]}
           pictures={pictures}
+          speaking={spokenTurn === item.turn.id}
+          spot={spokenTurn === item.turn.id ? spokenSpot : null}
+          onRead={onRead}
+          onStopReading={onStopReading}
         />
       ) : (
-        <PendingBlock pending={item.pending} phase={state.phase} cast={state.cast} narr={narr} />
+        <PendingBlock
+          pending={item.pending}
+          phase={state.phase}
+          cast={state.cast}
+          narr={narr}
+          spot={spokenTurn === item.pending.turnId ? spokenSpot : null}
+        />
       ),
-    [state.phase, state.cast, state.images, narr, pictures],
+    [state.phase, state.cast, state.images, narr, pictures, spokenTurn, spokenSpot, onRead, onStopReading],
   );
 
   const missingOpening = state.turns.length === 0 && state.phase === "idle";

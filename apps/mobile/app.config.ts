@@ -46,6 +46,8 @@ const config: ExpoConfig = {
     // 自己部署的服务器多半是局域网里的 http:// 地址；Android 9 起正式包默认只许连 https，这里放开。
     // Expo Go 和开发版本来就允许，所以只有打出来的安装包需要它
     ["expo-build-properties", { android: { usesCleartextTraffic: true } }],
+    // 朗读（docs/speech.md）只放声音，不录音：不要麦克风权限；第一版也不做后台播放
+    ["expo-audio", { microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: false }],
   ],
   experiments: {
     typedRoutes: true,

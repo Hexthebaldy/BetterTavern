@@ -8,7 +8,7 @@
  * - ImageSheet：大图，下面是发给出图服务的画面描述。
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -52,7 +52,7 @@ function SceneImage({ image, rounded }: { image: TurnImage; rounded: number }) {
   );
 }
 
-function TextButton({
+export function TextButton({
   label,
   icon,
   color,
@@ -60,7 +60,7 @@ function TextButton({
   onPress,
 }: {
   label: string;
-  icon?: "retry" | "trash" | "image";
+  icon?: "retry" | "trash" | "image" | "speaker";
   color: string;
   disabled?: boolean;
   onPress: () => void;
@@ -85,10 +85,13 @@ export function TurnPicture({
   turnId,
   images,
   actions,
+  lead,
 }: {
   turnId: string;
   images: TurnImage[] | undefined;
   actions: PictureActions;
+  /** 放在工具那一行最前面的按钮（朗读） */
+  lead?: ReactNode;
 }) {
   const c = useComic();
   const { t } = useTranslation();
@@ -122,6 +125,7 @@ export function TurnPicture({
             ) : null}
           </Pressable>
           <View style={styles.tools}>
+            {lead}
             <TextButton
               label={t("play.imageRedraw")}
               icon="retry"
@@ -161,8 +165,10 @@ export function TurnPicture({
         </View>
       ) : null}
       {/* 还没有图时才有“画这一幕”：有图时用图下面的“重画”，没画出来时用“再试一次” */}
+      {!shown && (drawing || failed) && lead ? <View style={styles.tools}>{lead}</View> : null}
       {!shown && !drawing && !failed ? (
         <View style={styles.tools}>
+          {lead}
           <TextButton
             label={t("play.drawScene")}
             icon="image"

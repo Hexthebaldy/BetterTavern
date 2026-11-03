@@ -11,6 +11,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 
 import { describeError } from "@bettertavern/core/api/client";
 import type { ToolKind, ToolProvider, ToolRoute } from "@bettertavern/core/api/types";
+import { currentLanguage } from "@bettertavern/core/i18n/index";
 import { i18n } from "@bettertavern/core/i18n/index";
 
 import { KeyField } from "../../../components/KeyParts.tsx";
@@ -29,11 +30,12 @@ import {
   useOverlay,
 } from "../../../components/ui.tsx";
 import { useAsync } from "../../../hooks/useAsync.ts";
+import { ServiceVoice } from "../../play/speechEngines.ts";
 import { useApp } from "../../../state/AppProvider.tsx";
 import { comicRadius, comicStroke, font, space, useComic } from "../../../theme/index.ts";
 import { SettingsBack } from "../nav.tsx";
 
-const KINDS: ToolKind[] = ["search", "fetch", "image"];
+const KINDS: ToolKind[] = ["search", "fetch", "image", "speech"];
 
 function providerLabel(id: string): string {
   return i18n.t(`tools.providers.${id as "tavily"}`, { defaultValue: id });
@@ -57,6 +59,7 @@ function AddSheet({
   const [key, setKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
+  const [voice, setVoice] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +75,7 @@ function AddSheet({
     setKey("");
     setBaseUrl("");
     setModel("");
+    setVoice("");
     setLabel("");
     setError(null);
     setBusy(false);
@@ -90,6 +94,7 @@ function AddSheet({
         api_key: key.trim() || null,
         base_url: baseUrl.trim() || null,
         model: model.trim() || null,
+        ...(kind === "speech" && voice.trim() ? { params: { voice: voice.trim() } } : {}),
       });
       onAdded(created);
       close();
@@ -142,6 +147,18 @@ function AddSheet({
                 onChangeText={setModel}
               />
             ) : null}
+            {kind === "speech" ? (
+              <Field
+                label={t("tools.voice")}
+                optional
+                hint={t("tools.voiceHint")}
+                value={voice}
+                maxLength={200}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={setVoice}
+              />
+            ) : null}
             <Field label={t("tools.label")} optional value={label} maxLength={60} onChangeText={setLabel} />
           </>
         ) : null}
@@ -172,7 +189,14 @@ function RouteCard({ route, onChanged }: { route: ToolRoute; onChanged: () => vo
 
   const test = async (): Promise<void> => {
     setTesting(true);
-    await run(() => api.tools.test(route.id));
+    await run(async () => {
+      const next = await api.tools.test(route.id);
+      if (route.kind !== "speech" || next.status !== "ok") return;
+      // 朗读服务测试成功：把试听的那句话放出来
+      const line = { text: t("play.speech.sample"), voice: null, language: currentLanguage(), spot: "0:0" };
+      const engine = new ServiceVoice(api, route.id);
+      await engine.speak(line, 1, () => undefined).finally(() => engine.dispose());
+    });
     setTesting(false);
   };
 

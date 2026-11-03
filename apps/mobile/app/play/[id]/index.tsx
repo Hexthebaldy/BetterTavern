@@ -31,15 +31,20 @@ import { MoreSheet } from "../../../src/features/play/MoreSheet.tsx";
 import { DrawSheet, ImageSheet, type PictureActions } from "../../../src/features/play/PictureParts.tsx";
 import { RollbackSheet } from "../../../src/features/play/RollbackSheet.tsx";
 import { BookHeader } from "../../../src/features/play/FeedParts.tsx";
+import { SpeechBar, SpeechSheet } from "../../../src/features/play/SpeechParts.tsx";
 import { columnWidth, StoryFeed, type StoryFeedHandle } from "../../../src/features/play/StoryFeed.tsx";
 import { TurnActions } from "../../../src/features/play/TurnActions.tsx";
 import { usePlaySession } from "../../../src/features/play/usePlaySession.ts";
+import { useSpeech } from "../../../src/features/play/useSpeech.ts";
 import { usePersonas } from "../../../src/features/personas/usePersonas.ts";
 import { WorldDock, WorldSheet } from "../../../src/features/play/WorldSheet.tsx";
 import { useLayout } from "../../../src/hooks/useLayout.ts";
 import { useApp } from "../../../src/state/AppProvider.tsx";
 import { usePrefs } from "../../../src/state/PrefsProvider.tsx";
 import { comicDepth, comicRadius, comicStroke, hardShadow, space, useComic } from "../../../src/theme/index.ts";
+
+/** 播放条占的高度（48 高，上下各留一点） */
+const SPEECH_BAR_ROOM = 60;
 
 function OpeningSkeleton() {
   const c = useComic();
@@ -164,6 +169,15 @@ export default function PlayScreen() {
     }),
     [drawImage, removeImage, overlay, t],
   );
+  // 朗读：读的时候操作栏上面多一条播放条，故事流多留出它的高度
+  const speech = useSpeech(state, id);
+  const [speechOpen, setSpeechOpen] = useState(false);
+  const spokenTurn = speech.state.turnId;
+  const spokenSeq =
+    state.turns.find((turn) => turn.id === spokenTurn)?.seq ??
+    (state.pending?.turnId === spokenTurn
+      ? (state.pending.seq ?? (state.pending.action?.source === "opening" ? 0 : state.turns.length))
+      : null);
   // 往上翻离开了最新位置：操作栏中间换成“回到最新”
   const [away, setAway] = useState(false);
   // 操作栏盖住的高度（展开时连同键盘）：故事流在它上方结束
@@ -341,10 +355,11 @@ export default function PlayScreen() {
             state={state}
             reading={reading}
             dimmed={syncing}
-            bottomInset={bar}
+            bottomInset={bar + (speech.state.status === "idle" ? 0 : SPEECH_BAR_ROOM)}
             available={available}
             onAwayChange={setAway}
             pictures={pictures}
+            speech={speech}
             footer={
               <TurnActions
                 state={state}
@@ -392,6 +407,7 @@ export default function PlayScreen() {
               </Text>
             </View>
           ) : null}
+          <SpeechBar speech={speech} seq={spokenSeq} bottom={bar} />
           <BottomBar
             state={state}
             controls={controls}
@@ -432,6 +448,17 @@ export default function PlayScreen() {
         onClose={() => setDrawFor(null)}
       />
       <ImageSheet image={viewing} onClose={() => setViewing(null)} />
+      <SpeechSheet
+        visible={speechOpen}
+        onClose={() => setSpeechOpen(false)}
+        onOpenTools={() => {
+          setSpeechOpen(false);
+          router.push("/settings/tools");
+        }}
+        language={state.language}
+        playthroughId={id}
+        cast={state.cast}
+      />
       <RollbackSheet
         visible={rollbackOpen}
         onClose={() => setRollbackOpen(false)}
@@ -443,6 +470,10 @@ export default function PlayScreen() {
         onClose={() => setMoreOpen(false)}
         anchor={moreButton}
         onRename={() => void rename()}
+        onSpeech={() => {
+          setMoreOpen(false);
+          setSpeechOpen(true);
+        }}
         onWorld={lightning ? undefined : () => {
           setMoreOpen(false);
           // 停靠时世界状态是页面的一部分，直接展开；否则打开世界状态面板，

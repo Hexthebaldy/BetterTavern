@@ -39,6 +39,7 @@ import {
   useTabBarSpace,
 } from "../../src/components/ui.tsx";
 import { CLIENT_VERSION } from "../../src/config.ts";
+import { SpeechSheet } from "../../src/features/play/SpeechParts.tsx";
 import { AppearanceSheet } from "../../src/features/settings/AppearanceSheet.tsx";
 import { LanguageSheet } from "../../src/features/settings/LanguageSheet.tsx";
 import { useSettingsNav, type SettingsTarget } from "../../src/features/settings/nav.tsx";
@@ -174,6 +175,7 @@ export default function SettingsScreen() {
   // 宽屏：侧栏的“模型”一块带 section=models，左栏换成模型列表
   const modelsColumn = expanded && params.section === "models";
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [speechOpen, setSpeechOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   // 宽屏两栏：右栏打开着哪一项（没点过就用默认的）；侧栏换了一块就重新按默认
   const [picked, setPicked] = useState<SettingsTarget | null>(null);
@@ -347,6 +349,12 @@ export default function SettingsScreen() {
               onPress={() => setAppearanceOpen(true)}
             />
             <ListRow
+              title={t("play.speech.settings")}
+              subtitle={t("settings.speechSub")}
+              leading={<RowIcon name="speaker" />}
+              onPress={() => setSpeechOpen(true)}
+            />
+            <ListRow
               title={t("language.title")}
               leading={<RowIcon name="language" />}
               trailing={
@@ -370,6 +378,14 @@ export default function SettingsScreen() {
         </>
       )}
       <AppearanceSheet visible={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
+      <SpeechSheet
+        visible={speechOpen}
+        onClose={() => setSpeechOpen(false)}
+        onOpenTools={() => {
+          setSpeechOpen(false);
+          open({ screen: "tools" });
+        }}
+      />
       <LanguageSheet visible={languageOpen} onClose={() => setLanguageOpen(false)} />
     </Page>
   );

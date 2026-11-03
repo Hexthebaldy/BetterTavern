@@ -65,7 +65,7 @@ export const play: Messages<typeof source> = {
         credential: "This speech service's key can't be read. Enter it again",
         rate_limited: "Too many requests. Try again in a moment",
         offline: "Can't reach the server",
-        device: "This device couldn't read it",
+        device: "This device couldn't read it. It may not have a voice for this language: download one in system settings, or set up a speech service",
         autoplay: "Your browser won't let the page start playing by itself. Tap Retry",
       },
     },

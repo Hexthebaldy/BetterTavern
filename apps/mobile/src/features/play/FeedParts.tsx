@@ -13,6 +13,7 @@ import { StyleSheet, Text, View, type TextStyle } from "react-native";
 
 import type { Persona } from "@bettertavern/core/api/types";
 import { BASE_SIZE, lineHeightFor, MAX_SIZE, readingSize, type ReadingPrefs } from "@bettertavern/core/play/reading";
+import { readingSpot } from "@bettertavern/core/play/speech";
 
 import { Cover } from "../../components/Cover.tsx";
 import { Portrait } from "../../components/Portrait.tsx";
@@ -138,9 +139,15 @@ export function Narrative({
   dim,
   caret,
   interrupted,
+  segment = 0,
+  spot,
 }: {
   text: string;
   narr: Narr;
+  /** 多角色的局里这是第几个人写的那一段 */
+  segment?: number;
+  /** 朗读读到哪一段（readingSpot）：那一段左边标一条墨线 */
+  spot?: string | null;
   dim?: boolean;
   /** 光标颜色；不传就不画光标 */
   caret?: string;
@@ -162,26 +169,28 @@ export function Narrative({
       {parts.map((p, i) => {
         const last = i === parts.length - 1;
         return (
-          <Text
-            key={i}
-            selectable
-            allowFontScaling={narr.scale}
-            maxFontSizeMultiplier={narr.maxScale}
-            style={[
-              narr.style,
-              styles.paragraph,
-              last ? { marginBottom: 0 } : null,
-              dim ? { color: c.ink2 } : null,
-            ]}
-          >
-            {p}
-            {last && caret ? <Caret color={caret} height={caretHeight} /> : null}
-            {last && interrupted ? (
-              <View style={[styles.cutBox, { borderColor: c.ink }]}>
-                <Text style={[styles.cut, { color: c.ink }]}>{t("play.interrupted")}</Text>
-              </View>
-            ) : null}
-          </Text>
+          <View key={i}>
+            {spot === readingSpot(segment, i) ? <View style={[styles.spoken, { backgroundColor: c.ink }]} /> : null}
+            <Text
+              selectable
+              allowFontScaling={narr.scale}
+              maxFontSizeMultiplier={narr.maxScale}
+              style={[
+                narr.style,
+                styles.paragraph,
+                last ? { marginBottom: 0 } : null,
+                dim ? { color: c.ink2 } : null,
+              ]}
+            >
+              {p}
+              {last && caret ? <Caret color={caret} height={caretHeight} /> : null}
+              {last && interrupted ? (
+                <View style={[styles.cutBox, { borderColor: c.ink }]}>
+                  <Text style={[styles.cut, { color: c.ink }]}>{t("play.interrupted")}</Text>
+                </View>
+              ) : null}
+            </Text>
+          </View>
         );
       })}
     </View>
@@ -273,6 +282,8 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
   },
   paragraph: { marginBottom: PARAGRAPH_GAP, paddingHorizontal: READ_SIDE },
+  /** 朗读读到的那一段：画在正文左边的留白里，文字不挪动 */
+  spoken: { position: "absolute", left: READ_SIDE - 10, top: 5, bottom: PARAGRAPH_GAP + 5, width: 4 },
   caretOnly: { paddingHorizontal: READ_SIDE - 3, justifyContent: "center" },
   cutBox: {
     marginLeft: space.s,

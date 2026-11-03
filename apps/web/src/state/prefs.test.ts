@@ -16,6 +16,7 @@ describe("parsePrefs", () => {
   it("读出存过的设置", () => {
     const prefs = parsePrefs({
       reading: { font: "sans", size: 20.5 },
+      speech: { source: "route-1", rate: 1.25, auto: true, voices: {} },
       theme: "night",
       language: "en",
       wheel: { dock: "right", x: 0, y: 0.25 },
@@ -26,6 +27,7 @@ describe("parsePrefs", () => {
     });
     assert.deepEqual(prefs, {
       reading: { font: "sans", size: 20.5 },
+      speech: { source: "route-1", rate: 1.25, auto: true, voices: {} },
       theme: "night",
       language: "en",
       wheel: { dock: "right", x: 0, y: 0.25 },
