@@ -1,0 +1,133 @@
+/* 朗读（docs/speech.md）：读的时候的播放条、朗读设置（SpeechParts.tsx） */
+
+/* 播放条：浮在页面底部，宽屏在提示条上面，让开右边“回到最新”的按钮 */
+.bar {
+  position: fixed;
+  z-index: 14;
+  left: 50%;
+  bottom: 60px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 160px));
+  min-height: 48px;
+  padding: 4px 8px;
+  border: var(--bw) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--b3);
+  font-size: 14px;
+  font-weight: 600;
+}
+.barText {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+.barFailed {
+  color: var(--err);
+}
+@media (max-width: 899px) {
+  .bar {
+    left: 16px;
+    right: 76px;
+    bottom: 16px;
+    transform: none;
+    width: auto;
+  }
+}
+
+.title {
+  margin: 0 0 14px;
+  font-size: 19px;
+  font-weight: 800;
+}
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 560px;
+}
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.note {
+  margin: 0;
+  color: var(--mut);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.link {
+  color: var(--acc);
+  font-weight: 700;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rowName {
+  font-size: 14px;
+  font-weight: 700;
+}
+.selectBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: none;
+  max-width: 60%;
+}
+.selectBox svg {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+}
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 100%;
+  height: 40px;
+  padding: 0 32px 0 12px;
+  border: var(--bw-sm) solid var(--frame);
+  border-radius: var(--r-frame);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.select:focus {
+  box-shadow: var(--b3);
+}
+.tryRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  font-size: 13px;
+}
+.dialogButtons {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}

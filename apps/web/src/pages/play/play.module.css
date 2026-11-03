@@ -306,6 +306,9 @@
 .settled {
   content-visibility: auto;
   contain-intrinsic-size: auto 320px;
+  /* content-visibility 会裁掉格子外面的东西：往左多留一点，朗读的墨线画得下，文字不挪动 */
+  margin-left: -16px;
+  padding-left: 16px;
 }
 /* 一回合：先是“我的行动”，再是叙述；没有边框，直接写在页面上。
    行动和叙述之间、回合和回合之间都和段与段之间一样空 0.7 个字高（分镜一列本来有 14 的间距，减掉） */
@@ -337,6 +340,23 @@
 }
 .narrative {
   text-align: justify;
+}
+/* 读的时候底部多一条播放条：页面往下多留一点，别挡住最后的按钮 */
+.page[data-speaking] .strip {
+  padding-bottom: 64px;
+}
+/* 朗读读到的那一段：左边一条墨线，画在段落外面，文字不挪动 */
+.spoken {
+  position: relative;
+}
+.spoken::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 0.25em;
+  bottom: 0.25em;
+  width: 4px;
+  background: var(--ink);
 }
 /* “我的行动”：和叙述一样的字，左边一道蓝色竖线 */
 .action {
@@ -427,6 +447,10 @@
 .drawTool:active {
   transform: translate(1px, 1px);
   box-shadow: none;
+}
+.readingTool {
+  background: var(--ink);
+  color: var(--on-ink);
 }
 .rollbackUsedUp {
   display: inline-flex;
@@ -954,6 +978,16 @@
   color: var(--acc);
   font-size: 13px;
   font-weight: 700;
+}
+.autoSpeech {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 4px 12px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
 }
 .menuGroup {
   display: flex;

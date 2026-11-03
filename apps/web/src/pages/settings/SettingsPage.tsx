@@ -20,6 +20,7 @@ import {
   LANGUAGE_TAGS,
   LANGUAGES,
   type LanguageSetting,
+  currentLanguage,
 } from "@bettertavern/core/i18n/index";
 import { readingSize, stepSize, type ReadingFont } from "@bettertavern/core/play/reading";
 import { initialOfName } from "@bettertavern/core/scenario/persona";
@@ -35,6 +36,7 @@ import { CLIENT_VERSION } from "../../config.ts";
 import { useModelRoutes } from "../../data/models.ts";
 import { usePersonas } from "../../data/personas.ts";
 import { useScenarios } from "../../data/scenarios.ts";
+import { SpeechSettings } from "../play/SpeechParts.tsx";
 import { useStories } from "../../data/stories.ts";
 import { useToolRoutes } from "../../data/tools.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -61,6 +63,7 @@ export function SettingsPage() {
         <ToolsCell />
         <ProbeCell />
         <PersonasCell />
+      <SpeechCell />
       </ComicGrid>
     </div>
   );
@@ -306,11 +309,11 @@ function ShortcutsCell() {
 function ToolsCell() {
   const { t } = useTranslation();
   const routes = useToolRoutes();
-  const pick = (kind: "search" | "fetch" | "image") =>
+  const pick = (kind: "search" | "fetch" | "image" | "speech") =>
     (routes.data ?? []).find((r) => r.kind === kind && r.is_default) ?? (routes.data ?? []).find((r) => r.kind === kind);
   const name = (route: ReturnType<typeof pick>): string =>
     route ? route.label || t(`tools.providers.${route.provider as "tavily"}`, { defaultValue: route.provider }) : "";
-  const rows = (["search", "fetch", "image"] as const).map((kind) => {
+  const rows = (["search", "fetch", "image", "speech"] as const).map((kind) => {
     const route = pick(kind);
     const ok = route?.status === "ok";
     const value = route
@@ -319,7 +322,9 @@ function ToolsCell() {
         ? t("settings.toolSearchFree")
         : kind === "fetch"
           ? t("settings.toolFetchServer")
-          : t("settings.toolNone");
+          : kind === "speech"
+            ? t("settings.toolSpeechDevice")
+            : t("settings.toolNone");
     const end = route ? (
       ok ? (
         <span className={styles.okChip}>
@@ -329,7 +334,7 @@ function ToolsCell() {
       ) : (
         <span className={styles.toolMuted}>{t("tools.untested")}</span>
       )
-    ) : kind === "image" ? (
+    ) : kind === "image" || kind === "speech" ? (
       <Link to="/settings/tools" className={styles.toolAdd}>
         {t("common.add")}
       </Link>
@@ -349,6 +354,17 @@ function ToolsCell() {
           {row.end}
         </div>
       ))}
+    </Panel>
+  );
+}
+
+function SpeechCell() {
+  const { t } = useTranslation();
+  return (
+    <Panel className={styles.personas} style={{ gridColumn: "1 / span 6", gridRow: "5" }}>
+      <CellLabel>{t("play.speech.settings")}</CellLabel>
+      <span className={styles.toolsNote}>{t("settings.speechSub")}</span>
+      <SpeechSettings language={currentLanguage()} />
     </Panel>
   );
 }

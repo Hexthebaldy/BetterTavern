@@ -65,7 +65,7 @@ export const play = {
         rate_limited: "要得太快了，等一会儿再试",
         offline: "连不上服务器",
         device: "这台设备读不出来",
-        autoplay: "浏览器不让页面自己出声，点一下“再试一次”",
+        autoplay: "浏览器不让页面自己出声，点一下“重试”",
       },
     },
     drawScene: "画这一幕",

@@ -1,11 +1,12 @@
 /**
- * 存在浏览器里的界面偏好（localStorage 的 bt.prefs，键名和 App 相同）：阅读设置、外观、界面语言，
+ * 存在浏览器里的界面偏好（localStorage 的 bt.prefs，键名和 App 相同）：阅读设置、朗读设置、外观、界面语言，
  * 以及网页端才有的导航轮盘的位置、单键快捷键开关。
  * 读到的内容不对就用默认值。
  */
 
 import { parseLanguageSetting, type LanguageSetting } from "@bettertavern/core/i18n/index";
 import { DEFAULT_READING, parseReadingPrefs, type ReadingPrefs } from "@bettertavern/core/play/reading";
+import { DEFAULT_SPEECH, parseSpeechPrefs, type SpeechPrefs } from "@bettertavern/core/play/speech";
 import { parseThemeSetting, THEMES, type Scheme, type ThemeSetting } from "@bettertavern/design/themes";
 
 import { DEFAULT_SPOT, parseWheelSpot, type WheelSpot } from "../theme/wheel.ts";
@@ -16,6 +17,8 @@ export const SCHEME_KEY = "bt.scheme";
 
 export type WebPrefs = {
   reading: ReadingPrefs;
+  /** 朗读（docs/speech.md）：声音从哪来、选的声音、语速、自动朗读 */
+  speech: SpeechPrefs;
   theme: ThemeSetting;
   /** 界面语言：跟随系统（浏览器）、中文、English、日本語 */
   language: LanguageSetting;
@@ -27,6 +30,7 @@ export type WebPrefs = {
 
 export const DEFAULT_PREFS: WebPrefs = {
   reading: DEFAULT_READING,
+  speech: DEFAULT_SPEECH,
   theme: "system",
   language: "system",
   wheel: DEFAULT_SPOT,
@@ -38,6 +42,7 @@ export function parsePrefs(raw: unknown): WebPrefs {
   const r = raw as Record<string, unknown>;
   return {
     reading: parseReadingPrefs(r.reading),
+    speech: parseSpeechPrefs(r.speech),
     theme: parseThemeSetting(r.theme),
     language: parseLanguageSetting(r.language),
     wheel: parseWheelSpot(r.wheel),

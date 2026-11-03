@@ -121,6 +121,12 @@ export const ICONS = {
   truncated: [{ d: "M4 6h16M4 12h16M4 18h9M17 16l3 3-3 3" }],
   offline: [{ d: "M2 9a14 14 0 0120 0M5.5 12.5a9 9 0 0113 0M9 16a4 4 0 016 0M3 3l18 18" }],
   play: [{ d: "M7 5l12 7-12 7z", solid: true }],
+  pause: [{ d: "M8 5v14M16 5v14" }],
+  skipNext: [{ d: "M5 5l10 7-10 7z", solid: true }, { d: "M19 5v14" }],
+  speaker: [
+    { d: "M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" },
+    { d: "M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" },
+  ],
   disconnect: [{ d: "M3 12h6M15 12h6M9 8v8M15 8v8" }],
   traveler: [{ circle: [12, 5, 2] }, { d: "M12 8v6l-3 6M12 14l3 6M8 11l4-2 4 2" }],
   pair: [{ rect: [3, 5, 7, 14, 2] }, { rect: [14, 5, 7, 14, 2] }, { d: "M10 9h4" }],

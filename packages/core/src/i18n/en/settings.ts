@@ -101,7 +101,7 @@ export const settings: Messages<typeof source> = {
       search: "Web search",
       fetch: "Reading pages",
       image: "Images",
-      speech: "Read aloud",
+      speech: "Speech service",
     },
     kindNotes: {
       search: "Tavily, Brave and Bocha need a key; SearXNG is self-hosted, just enter its address",
@@ -122,7 +122,7 @@ export const settings: Messages<typeof source> = {
       elevenlabs: "ElevenLabs",
     },
     voice: "Default voice",
-    voiceHint: "Optional. Enter any voice that isn't in the list here, like one you cloned",
+    voiceHint: "Enter any voice that isn't in the list here, like one you cloned",
     none: "Not set up",
     add: "Add",
     addTitle: "Add {{kind}}",

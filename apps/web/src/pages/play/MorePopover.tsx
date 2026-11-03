@@ -1,6 +1,6 @@
 /**
  * 阅读页的“更多”（W09，同平板）：贴着操作栏的“更多”按钮弹出，宽 340，右边缘和按钮对齐，底边在按钮上方 8，不加遮罩。
- * 内容：阅读设置（宋体 / 黑体、字号），重命名存档、世界状态、写结局、键盘快捷键（网页才有）、删除存档。
+ * 内容：阅读设置（宋体 / 黑体、字号），自动朗读和朗读设置，重命名存档、世界状态、写结局、键盘快捷键（网页才有）、删除存档。
  * “写结局”只在能行动时可点（开场写完、没在生成、没有失败等着重试），故事写完结局后不再显示。
  * 点外面、按 Esc 关闭，焦点回到“更多”按钮。阅读设置存在浏览器里，所有故事共用。
  */
@@ -19,7 +19,7 @@ import {
 } from "@bettertavern/core/play/reading";
 import { popoverFrame } from "@bettertavern/design/layout";
 
-import { cx } from "../../components/controls.tsx";
+import { cx, Toggle } from "../../components/controls.tsx";
 import { Icon, type IconName } from "../../components/Icon.tsx";
 import { usePrefs } from "../../state/PrefsProvider.tsx";
 import styles from "./play.module.css";
@@ -104,7 +104,24 @@ function SizeControl() {
   );
 }
 
-export type MoreAction = "rename" | "world" | "end" | "shortcuts" | "delete";
+/** 自动朗读新回合的开关，和字体、字号一样存在浏览器里 */
+function AutoSpeech() {
+  const { t } = useTranslation();
+  const { speech, setSpeech } = usePrefs();
+  return (
+    <label className={styles.autoSpeech}>
+      <Icon name="speaker" size={20} />
+      <span className={styles.flex}>{t("play.speech.auto")}</span>
+      <Toggle
+        checked={speech.auto}
+        onChange={(auto) => setSpeech((current) => ({ ...current, auto }))}
+        aria-label={t("play.speech.auto")}
+      />
+    </label>
+  );
+}
+
+export type MoreAction = "rename" | "speech" | "world" | "end" | "shortcuts" | "delete";
 
 export function MorePopover({
   anchor,
@@ -196,7 +213,9 @@ export function MorePopover({
       <div className={styles.popLabel}>{t("reading.title")}</div>
       <FontChoice />
       <SizeControl />
+      <AutoSpeech />
       <div className={styles.menuGroup}>
+        {item("speech", "speaker", t("play.speech.settings"))}
         {item("rename", "write", t("reading.renameSave"))}
         {item("world", "world", t("play.world"), "W")}
         {ending !== "ended"

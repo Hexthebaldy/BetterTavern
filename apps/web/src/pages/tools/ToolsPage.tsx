@@ -1,10 +1,12 @@
 /**
  * 外部服务（/settings/tools，设置的子页面；旧地址 /tools 跳过来）：工作台的 agent 查资料、读网页、生成封面时用的服务，
- * 分三种，宽屏时三栏并排（每栏一个描边的格子）：
+ * 以及阅读页朗读用的语音服务。分四种，宽屏时三栏并排（每栏一个描边的格子）：
  * - 网页搜索：Tavily、Brave、博查要 Key，SearXNG 填自己架的地址；
  * - 读网页：默认由服务器自己读，不用配；可选 Jina，读不出来的网页换它再读；
- * - 生成封面：按接口协议接（OpenAI Images、对话接口出图、Gemini），填地址、模型名和 Key。
- * 每一种可以配几个，其中一个是默认；可以测试（真的搜一个词、读一个页面或者出一张小图）、设为默认、换 Key、删除。
+ * - 生成封面：按接口协议接（OpenAI Images、对话接口出图、Gemini），填地址、模型名和 Key；
+ * - 朗读：按接口协议接（OpenAI 语音接口、Gemini、ElevenLabs），填地址、模型名和 Key，可以填默认声音。
+ * 每一种可以配几个，其中一个是默认；可以测试（真的搜一个词、读一个页面、出一张小图或者读一句话）、设为默认、换 Key、删除。
+ * 朗读服务测试成功时把试听的那句话放出来。
  * Key 只在添加和更换时输入一次，之后只显示后四位。
  */
 
@@ -32,7 +34,7 @@ import { KeyField } from "../settings/parts.tsx";
 import { StatusPill } from "../settings/StatusPill.tsx";
 import tools from "./tools.module.css";
 
-const KINDS: ToolKind[] = ["search", "fetch", "image"];
+const KINDS: ToolKind[] = ["search", "fetch", "image", "speech"];
 
 function providerLabel(id: string): string {
   return i18n.t(`tools.providers.${id as "tavily"}`, { defaultValue: id });
@@ -56,6 +58,7 @@ function AddDialog({
   const [key, setKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
+  const [voice, setVoice] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +81,7 @@ function AddDialog({
         api_key: key.trim() || null,
         base_url: baseUrl.trim() || null,
         model: model.trim() || null,
+        ...(kind === "speech" && voice.trim() ? { params: { voice: voice.trim() } } : {}),
       });
       onAdded(created);
     } catch (e) {
@@ -121,6 +125,16 @@ function AddDialog({
             {selected.needs_model ? (
               <Field label={t("tools.model")} value={model} onChange={(e) => setModel(e.target.value)} />
             ) : null}
+            {kind === "speech" ? (
+              <Field
+                label={t("tools.voice")}
+                optional
+                hint={t("tools.voiceHint")}
+                value={voice}
+                maxLength={200}
+                onChange={(e) => setVoice(e.target.value)}
+              />
+            ) : null}
             <Field
               label={t("tools.label")}
               optional
@@ -161,6 +175,13 @@ function RouteRow({ route, onChanged }: { route: ToolRoute; onChanged: () => voi
       overlay.toast(next.status === "ok" ? t("tools.testOk", { detail }) : t("tools.testFailed", { detail }), {
         icon: next.status === "ok" ? "check" : "alert",
       });
+      if (route.kind === "speech" && next.status === "ok") {
+        const { data, mime } = await api.speech.synthesize({ text: t("play.speech.sample"), route_id: route.id });
+        const url = URL.createObjectURL(new Blob([data], { type: mime || "audio/mpeg" }));
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        await audio.play();
+      }
     } catch (e) {
       overlay.toast(describeError(e), { icon: "alert" });
     } finally {

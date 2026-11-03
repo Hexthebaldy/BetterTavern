@@ -11,6 +11,7 @@
  * 多角色的局（docs/cast.md）按 segments 一段一段排：角色那一段前面是头像和名字，旁白那一段和普通叙述一样（CastPicker.tsx）。
  * 配图（docs/illustrations.md）：正文下面是这一回合的图（TurnPicture.tsx）；“回到这里”旁边多一个“画这一幕”，
  * 最新一段也有（它没有“回到这里”）。
+ * 朗读（docs/speech.md）：同一排最前面多一个“朗读”，读这一回合时写“朗读中”（点一下停），读到的那一段左边一条墨线。
  */
 
 import { memo, type CSSProperties, type ReactNode } from "react";
@@ -29,6 +30,7 @@ import {
   type StoryTurn,
 } from "@bettertavern/core/play/turnMachine";
 import { lineHeightFor, readingSize, type ReadingPrefs } from "@bettertavern/core/play/reading";
+import { readingSpot } from "@bettertavern/core/play/speech";
 
 import { Panel } from "../../components/comic.tsx";
 import { cx } from "../../components/controls.tsx";
@@ -36,6 +38,7 @@ import { Icon } from "../../components/Icon.tsx";
 import { CastSegments } from "./CastPicker.tsx";
 import styles from "./play.module.css";
 import { TurnPicture, type PictureActions } from "./TurnPicture.tsx";
+import type { SpeechControls } from "./useSpeech.ts";
 
 function paragraphs(text: string): string[] {
   return text
@@ -86,8 +89,14 @@ function Narrative({
   dim,
   caret,
   interrupted,
+  segment = 0,
+  spot,
 }: StoryLang & {
   text: string;
+  /** 多角色的局里这是第几个人写的那一段 */
+  segment?: number;
+  /** 朗读读到哪一段（readingSpot）：那一段左边标一条墨线 */
+  spot?: string | null;
   dim?: boolean;
   /** 光标：live 是蓝色，waiting 是灰色（重连、等结果）；不传就不画 */
   caret?: "live" | "waiting";
@@ -109,7 +118,11 @@ function Narrative({
       {parts.map((p, i) => {
         const last = i === parts.length - 1;
         return (
-          <p key={i} className={cx(styles.narrative, "narrative")} lang={lang}>
+          <p
+            key={i}
+            className={cx(styles.narrative, "narrative", spot === readingSpot(segment, i) && styles.spoken)}
+            lang={lang}
+          >
             {p}
             {last ? caretNode : null}
             {last && interrupted ? <span className={styles.cut}>{t("play.interrupted")}</span> : null}
@@ -137,6 +150,10 @@ const TurnBlock = memo(function TurnBlock({
   onRollback,
   images,
   pictures,
+  speaking,
+  spot,
+  onRead,
+  onStopReading,
 }: {
   turn: StoryTurn;
   cast: readonly CastMember[];
@@ -144,6 +161,11 @@ const TurnBlock = memo(function TurnBlock({
   onRollback?: (turnId: string) => void;
   images: TurnImage[] | undefined;
   pictures?: PictureActions;
+  /** 朗读正在读这一回合 */
+  speaking: boolean;
+  spot: string | null;
+  onRead?: (turn: StoryTurn) => void;
+  onStopReading?: () => void;
 } & StoryLang) {
   // “写结局”这类说明随界面语言：切换语言时这一块要跟着重画（它是 memo 的）
   const { t } = useTranslation();
@@ -158,14 +180,27 @@ const TurnBlock = memo(function TurnBlock({
             <CastSegments
               segments={turn.segments}
               cast={cast}
-              render={(segment) => <Narrative text={segment.text} lang={lang} />}
+              render={(segment, _last, index) => (
+                <Narrative text={segment.text} lang={lang} segment={index} spot={spot} />
+              )}
             />
           ) : narrative ? (
-            <Narrative text={turn.narrative} lang={lang} />
+            <Narrative text={turn.narrative} lang={lang} spot={spot} />
           ) : null}
           {pictures ? <TurnPicture turnId={turn.id} images={images} actions={pictures} /> : null}
-          {(rollback && onRollback) || pictures ? (
+          {(rollback && onRollback) || pictures || (onRead && narrative) ? (
             <div className={styles.turnTools}>
+              {onRead && narrative ? (
+                <button
+                  type="button"
+                  className={cx(styles.drawTool, speaking && styles.readingTool)}
+                  aria-pressed={speaking}
+                  onClick={() => (speaking ? onStopReading?.() : onRead(turn))}
+                >
+                  <Icon name="speaker" size={14} strokeWidth={2.2} />
+                  {speaking ? t("play.speech.reading") : t("play.speech.read")}
+                </button>
+              ) : null}
               {pictures ? (
                 <button type="button" className={styles.drawTool} onClick={() => pictures.draw(turn.id)}>
                   <Icon name="image" size={14} strokeWidth={2.2} />
@@ -218,7 +253,8 @@ function PendingBlock({
   phase,
   cast,
   lang,
-}: { pending: PendingTurn; phase: Phase; cast: readonly CastMember[] } & StoryLang) {
+  spot,
+}: { pending: PendingTurn; phase: Phase; cast: readonly CastMember[]; spot: string | null } & StoryLang) {
   const failed = phase === "failed";
   const opening = pending.action?.source === "opening";
   const note = actionNote(pending.action);
@@ -238,10 +274,12 @@ function PendingBlock({
             <CastSegments
               segments={pending.segments}
               cast={cast}
-              render={(segment, last) => (
+              render={(segment, last, index) => (
                 <Narrative
                   text={segment.text}
                   lang={lang}
+                  segment={index}
+                  spot={spot}
                   dim={failed}
                   caret={last ? caret : undefined}
                   interrupted={last && failed && segment.text.length > 0}
@@ -252,6 +290,7 @@ function PendingBlock({
             <Narrative
               text={pending.narrative}
               lang={lang}
+              spot={spot}
               dim={failed}
               caret={caret}
               interrupted={failed && pending.narrative.length > 0}
@@ -279,6 +318,7 @@ export function StoryFeed({
   footer,
   onRollback,
   pictures,
+  speech,
 }: {
   state: PlayState;
   /** 接在最后一段后面的行动区 */
@@ -287,6 +327,8 @@ export function StoryFeed({
   onRollback?: (turnId: string) => void;
   /** 配图的几个操作（同样要稳定）；不给时不显示“画这一幕” */
   pictures?: PictureActions;
+  /** 朗读（docs/speech.md）；不给时不显示“朗读” */
+  speech?: SpeechControls;
 }) {
   const { t } = useTranslation();
   const missingOpening = state.turns.length === 0 && state.phase === "idle";
@@ -303,10 +345,20 @@ export function StoryFeed({
           onRollback={onRollback}
           images={state.images[turn.id]}
           pictures={pictures}
+          speaking={speech?.state.turnId === turn.id}
+          spot={speech?.state.turnId === turn.id ? speech.state.spot : null}
+          onRead={speech?.read}
+          onStopReading={speech?.stop}
         />
       ))}
       {state.pending ? (
-        <PendingBlock pending={state.pending} phase={state.phase} cast={state.cast} lang={lang} />
+        <PendingBlock
+          pending={state.pending}
+          phase={state.phase}
+          cast={state.cast}
+          lang={lang}
+          spot={speech && speech.state.turnId === state.pending.turnId ? speech.state.spot : null}
+        />
       ) : null}
       {missingOpening ? <OpeningMissing /> : null}
       {isEnded(state) ? (

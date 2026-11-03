@@ -100,7 +100,7 @@ export const settings: MessagesOtherOnly<typeof source> = {
       search: "ウェブ検索",
       fetch: "ページの読み込み",
       image: "画像の生成",
-      speech: "読み上げ",
+      speech: "音声サービス",
     },
     kindNotes: {
       search: "Tavily、Brave、Bocha はキーが必要です。SearXNG は自前で動かすもので、アドレスを入れるだけです",
@@ -121,7 +121,7 @@ export const settings: MessagesOtherOnly<typeof source> = {
       elevenlabs: "ElevenLabs",
     },
     voice: "既定の音声",
-    voiceHint: "空欄でもかまいません。一覧にない音声（自分でクローンしたものなど）はここに入れてください",
+    voiceHint: "一覧にない音声（自分でクローンしたものなど）はここに入れてください",
     none: "未設定",
     add: "追加",
     addTitle: "{{kind}}を追加",

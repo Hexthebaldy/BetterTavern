@@ -11,6 +11,7 @@
  * - 标签页标题：“书名 · BetterTavern”，生成中在前面加“● ”。
  * - 配图（docs/illustrations.md）：每一回合的“画这一幕”打开小框（TurnPicture.tsx），画好的图点开看大图；
  *   删掉画好的图先确认，关掉没画出来的记录不确认。
+ * - 朗读（docs/speech.md）：每一回合的“朗读”，读的时候底部一条播放条；“更多”里有自动朗读和朗读设置。
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -49,10 +50,12 @@ import { MorePopover, type MoreAction } from "./MorePopover.tsx";
 import styles from "./play.module.css";
 import { CastColumn, RecapColumn } from "./PlaySides.tsx";
 import { draftKey, nextFollow, parseDraft, type Follow } from "./reading.ts";
+import { SpeechBar, SpeechDialog } from "./SpeechParts.tsx";
 import { narrativeVars, StoryFeed } from "./StoryFeed.tsx";
 import { TurnActions } from "./TurnActions.tsx";
 import { DrawDialog, ImageViewer, type PictureActions } from "./TurnPicture.tsx";
 import { usePlaySession } from "./usePlaySession.ts";
+import { useSpeech } from "./useSpeech.ts";
 import { useWorld } from "./useWorld.ts";
 import { WorldPanel } from "./WorldPanel.tsx";
 
@@ -174,6 +177,16 @@ function PlayPage({ id }: { id: string }) {
     [drawImage, removeImage, overlay, t],
   );
 
+  // ---- 朗读 ----
+  const speech = useSpeech(state, id);
+  const [speechOpen, setSpeechOpen] = useState(false);
+  const spokenTurn = speech.state.turnId;
+  const spokenSeq =
+    state.turns.find((turn) => turn.id === spokenTurn)?.seq ??
+    (state.pending?.turnId === spokenTurn
+      ? (state.pending.seq ?? (state.pending.action?.source === "opening" ? 0 : (headTurn(state)?.seq ?? -1) + 1))
+      : null);
+
   // ---- 世界状态：从右侧滑出（手机宽度是底部面板），只在这一页里开关；右栏的人物和刚记下的也取它。
   // 闪电模式没有世界状态：不取，也不显示“世界”按钮、W 键和右栏 ----
   const lightning = state.mode === "lightning";
@@ -270,6 +283,7 @@ function PlayPage({ id }: { id: string }) {
   const onMore = async (action: MoreAction): Promise<void> => {
     setMoreOpen(false);
     if (action === "world") toggleWorld();
+    if (action === "speech") setSpeechOpen(true);
     if (action === "shortcuts") window.dispatchEvent(new CustomEvent("bt:shortcuts"));
     if (action === "delete") {
       await actions.remove({ id, title: shownTitle });
@@ -434,7 +448,13 @@ function PlayPage({ id }: { id: string }) {
   ];
 
   return (
-    <div className={styles.page} style={frame} data-narr-font={reading.font} data-wide={wide || undefined}>
+    <div
+      className={styles.page}
+      style={frame}
+      data-narr-font={reading.font}
+      data-wide={wide || undefined}
+      data-speaking={speech.state.status !== "idle" || undefined}
+    >
       {header}
       {syncing ? (
         <div className={styles.syncing} role="alert">
@@ -459,6 +479,7 @@ function PlayPage({ id }: { id: string }) {
               state={state}
               onRollback={rollbackTo}
               pictures={pictures}
+              speech={speech}
               footer={
                 <TurnActions
                   state={state}
@@ -518,6 +539,15 @@ function PlayPage({ id }: { id: string }) {
         />
       ) : null}
       {viewing ? <ImageViewer image={viewing} onClose={() => setViewing(null)} /> : null}
+      <SpeechBar speech={speech} seq={spokenSeq} />
+      {speechOpen ? (
+        <SpeechDialog
+          language={state.language}
+          playthroughId={id}
+          cast={state.cast}
+          onClose={() => setSpeechOpen(false)}
+        />
+      ) : null}
       {moreOpen && moreButton.current ? (
         <MorePopover
           anchor={moreButton.current}

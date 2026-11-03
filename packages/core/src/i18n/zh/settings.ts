@@ -99,7 +99,7 @@ export const settings = {
       search: "网页搜索",
       fetch: "读网页",
       image: "生成图片",
-      speech: "朗读",
+      speech: "语音服务",
     },
     kindNotes: {
       search: "Tavily、Brave、博查要 Key；SearXNG 是自己架的，填地址就行",
@@ -120,7 +120,7 @@ export const settings = {
       elevenlabs: "ElevenLabs",
     },
     voice: "默认声音",
-    voiceHint: "可以不填。列表里没有的声音（比如自己克隆的）填在这里",
+    voiceHint: "列表里没有的声音（比如自己克隆的）填在这里",
     none: "没有配置",
     add: "添加",
     addTitle: "添加{{kind}}",

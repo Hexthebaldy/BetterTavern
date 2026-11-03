@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 import type { LanguageSetting } from "@bettertavern/core/i18n/index";
 import type { ReadingPrefs } from "@bettertavern/core/play/reading";
+import type { SpeechPrefs } from "@bettertavern/core/play/speech";
 import type { ThemeSetting } from "@bettertavern/design/themes";
 
 import { localStore } from "../storage/local.ts";
@@ -16,6 +17,7 @@ import { parsePrefs, PREFS_KEY, type WebPrefs } from "./prefs.ts";
 
 type PrefsValue = WebPrefs & {
   setReading: (reading: ReadingPrefs) => void;
+  setSpeech: (change: (current: SpeechPrefs) => SpeechPrefs) => void;
   setTheme: (theme: ThemeSetting) => void;
   setLanguage: (language: LanguageSetting) => void;
   setWheel: (spot: WheelSpot) => void;
@@ -45,6 +47,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     return {
       ...prefs,
       setReading: (reading) => set({ reading }),
+      setSpeech: (change) => setPrefs((current) => ({ ...current, speech: change(current.speech) })),
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
       setWheel: (wheel) => set({ wheel }),

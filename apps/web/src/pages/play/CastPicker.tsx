@@ -30,15 +30,15 @@ export function CastSegments({
 }: {
   segments: readonly Segment[];
   cast: readonly CastMember[];
-  /** 一段的正文（叙述的样子由调用方决定：光标、变暗、“中断”） */
-  render: (segment: Segment, last: boolean) => ReactNode;
+  /** 一段的正文（叙述的样子由调用方决定：光标、变暗、“中断”）；index 是第几段 */
+  render: (segment: Segment, last: boolean, index: number) => ReactNode;
 }) {
   return (
     <>
       {segments.map((segment, i) => {
         const last = i === segments.length - 1;
         const member = speakerOf(cast, segment);
-        if (!member) return <div key={i}>{render(segment, last)}</div>;
+        if (!member) return <div key={i}>{render(segment, last, i)}</div>;
         return (
           <div key={i} className={styles.segment}>
             <Portrait
@@ -52,7 +52,7 @@ export function CastSegments({
             />
             <div className={styles.segmentBody}>
               <span className={styles.segmentName}>{member.name}</span>
-              {render(segment, last)}
+              {render(segment, last, i)}
             </div>
           </div>
         );

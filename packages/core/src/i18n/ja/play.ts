@@ -66,7 +66,7 @@ export const play: MessagesOtherOnly<typeof source> = {
         rate_limited: "リクエストが多すぎます。少し待ってからお試しください",
         offline: "サーバーに接続できません",
         device: "この端末では読み上げられませんでした",
-        autoplay: "ブラウザがページからの自動再生を許可していません。「もう一度」を押してください",
+        autoplay: "ブラウザがページからの自動再生を許可していません。「再試行」を押してください",
       },
     },
     drawScene: "この場面を描く",

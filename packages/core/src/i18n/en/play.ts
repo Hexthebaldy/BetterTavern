@@ -66,7 +66,7 @@ export const play: Messages<typeof source> = {
         rate_limited: "Too many requests. Try again in a moment",
         offline: "Can't reach the server",
         device: "This device couldn't read it",
-        autoplay: "Your browser won't let the page start playing by itself. Tap Try again",
+        autoplay: "Your browser won't let the page start playing by itself. Tap Retry",
       },
     },
     drawScene: "Draw this scene",
