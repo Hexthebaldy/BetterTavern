@@ -538,7 +538,7 @@ export type WorkbenchEvent =
 
 // ---- 外部服务 ----------------------------------------------------------------------------
 
-export type ToolKind = "search" | "fetch" | "image";
+export type ToolKind = "search" | "fetch" | "image" | "speech";
 
 export type ToolProvider = {
   id: string;
@@ -568,6 +568,8 @@ export type ToolRoute = {
   created_at: string;
   updated_at: string;
 };
+
+export type SpeechVoice = { id: string; name: string };
 
 export type NewToolRoute = {
   kind: ToolKind;

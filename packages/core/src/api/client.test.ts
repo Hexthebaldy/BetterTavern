@@ -367,3 +367,68 @@ describe("错误说明按错误码翻译", () => {
     }
   });
 });
+
+describe("二进制内容（requestBytes）", () => {
+  const bytes = new TextEncoder().encode("ID3").buffer as ArrayBuffer;
+
+  function binaryReply(status: number, init: { text?: string; mime?: string } = {}): HttpResponse {
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      headers: { get: () => init.mime ?? null },
+      text: async () => init.text ?? "",
+      arrayBuffer: async () => bytes,
+    };
+  }
+
+  it("成功时返回内容和类型，用 fetchBytes 发", async () => {
+    const seen: HttpRequestInit[] = [];
+    const client = new ApiClient({
+      baseUrl: () => "https://x",
+      clientVersion: "t",
+      fetch: async () => {
+        throw new Error("不该走普通 fetch");
+      },
+      fetchBytes: async (_url, init) => {
+        seen.push(init);
+        return binaryReply(200, { mime: "audio/mpeg; charset=binary" });
+      },
+    });
+    const audio = await createApi(client).speech.synthesize({ text: "你好", voice: "v" });
+    assert.equal(audio.mime, "audio/mpeg");
+    assert.equal(audio.data, bytes);
+    assert.equal(seen[0]?.method, "POST");
+    assert.deepEqual(JSON.parse(String(seen[0]?.body)), { text: "你好", voice: "v" });
+  });
+
+  it("出错时和 JSON 请求一样变成 ApiError", async () => {
+    const problem = JSON.stringify({ code: "SPEECH_FAILED", title: "x", status: 502, reason: "auth" });
+    const client = new ApiClient({
+      baseUrl: () => "https://x",
+      clientVersion: "t",
+      fetch: async () => binaryReply(502, { text: problem }),
+    });
+    await assert.rejects(createApi(client).speech.synthesize({ text: "你好" }), (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.code, "SPEECH_FAILED");
+      assert.equal(error.field("reason"), "auth");
+      return true;
+    });
+  });
+
+  it("令牌过期时刷新一次再试", async () => {
+    let calls = 0;
+    const client = new ApiClient({
+      baseUrl: () => "https://x",
+      clientVersion: "t",
+      auth: { accessToken: async () => "t", refresh: async () => true },
+      fetch: async () => {
+        calls += 1;
+        return calls === 1 ? binaryReply(401) : binaryReply(200, { mime: "audio/wav" });
+      },
+    });
+    const audio = await createApi(client).speech.synthesize({ text: "你好" });
+    assert.equal(audio.mime, "audio/wav");
+    assert.equal(calls, 2);
+  });
+});

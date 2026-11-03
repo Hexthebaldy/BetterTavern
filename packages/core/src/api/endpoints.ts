@@ -43,6 +43,7 @@ import type {
   ToolProvider,
   ToolRoute,
   ToolRoutePatch,
+  SpeechVoice,
   Transcript,
   WorkbenchMessage,
   DrawImage,
@@ -305,8 +306,19 @@ export function createApi(client: ApiClient, options: { authMode?: AuthMode } = 
       create: (body: NewToolRoute) => client.post<ToolRoute>("/v1/tool-routes", body),
       update: (id: string, body: ToolRoutePatch) => client.patch<ToolRoute>(`/v1/tool-routes/${enc(id)}`, body),
       remove: (id: string) => client.delete<void>(`/v1/tool-routes/${enc(id)}`),
-      /** 真的搜一个词、读一个页面或者出一张小图，最多 60 秒 */
+      /** 真的搜一个词、读一个页面、出一张小图或者读一句话，最多 60 秒 */
       test: (id: string) => client.post<ToolRoute>(`/v1/tool-routes/${enc(id)}/test`, undefined, { timeoutMs: 90_000 }),
+      /** 这个朗读服务有哪些声音 */
+      voices: (id: string) => client.get<SpeechVoice[]>(`/v1/tool-routes/${enc(id)}/voices`),
+    },
+    speech: {
+      /** 让语音服务读一小段文字（docs/speech.md），回的是声音文件；服务端最多等 60 秒 */
+      synthesize: (body: { text: string; route_id?: string; voice?: string }, signal?: AbortSignal) =>
+        client.requestBytes("POST", "/v1/speech", {
+          body,
+          timeoutMs: 90_000,
+          ...(signal ? { signal } : {}),
+        }),
     },
     playthroughs: {
       create: (body: NewPlaythrough) => client.post<PlaythroughCreated>("/v1/playthroughs", body),

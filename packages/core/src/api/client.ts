@@ -25,6 +25,8 @@ export type HttpResponse = {
   status: number;
   headers: { get(name: string): string | null };
   text(): Promise<string>;
+  /** 取声音（requestBytes）时才用 */
+  arrayBuffer?(): Promise<ArrayBuffer>;
 };
 
 export type HttpFetch = (url: string, init: HttpRequestInit) => Promise<HttpResponse>;
@@ -143,6 +145,8 @@ export type RequestOptions = {
 export type ApiClientOptions = {
   baseUrl: () => string;
   fetch: HttpFetch;
+  /** 取二进制内容（requestBytes）用的 fetch：React Native 自带的 fetch 读不了 arrayBuffer，App 传 expo/fetch */
+  fetchBytes?: HttpFetch;
   clientVersion: string;
   auth?: AuthHooks;
   timeoutMs?: number;
@@ -152,7 +156,16 @@ export type ApiClientOptions = {
   newRequestId?: () => string;
 };
 
-type RawResponse = { status: number; ok: boolean; text: string; requestId: string; durationMs: number };
+type RawResponse = {
+  status: number;
+  ok: boolean;
+  text: string;
+  bytes?: BinaryBody;
+  requestId: string;
+  durationMs: number;
+};
+
+export type BinaryBody = { data: ArrayBuffer; mime: string };
 
 export class ApiClient {
   private readonly options: ApiClientOptions;
@@ -181,6 +194,36 @@ export class ApiClient {
       this.report(method, path, raw, error instanceof ApiError ? error.code : "UNKNOWN");
       throw error;
     }
+  }
+
+  /** 回的是二进制内容（比如声音）的请求：成功时返回内容和类型，出错和 request 一样 */
+  async requestBytes(method: string, path: string, options: RequestOptions = {}): Promise<BinaryBody> {
+    const auth = options.auth === false ? undefined : this.options.auth;
+    let raw = await this.send(method, path, options, auth, true);
+    if (raw.status === 401 && auth) {
+      this.report(method, path, raw, "UNAUTHENTICATED");
+      const refreshed = await auth.refresh().catch(() => false);
+      if (refreshed) raw = await this.send(method, path, options, auth, true);
+    }
+    if (raw.ok && raw.bytes) {
+      this.report(method, path, raw, null);
+      return raw.bytes;
+    }
+    const error = (() => {
+      try {
+        parse(raw);
+      } catch (failure) {
+        return failure;
+      }
+      return new ApiError("Unreadable response", {
+        status: raw.status,
+        code: "BAD_RESPONSE",
+        retryable: false,
+        requestId: raw.requestId,
+      });
+    })();
+    this.report(method, path, raw, error instanceof ApiError ? error.code : "UNKNOWN");
+    throw error;
   }
 
   private report(method: string, path: string, raw: RawResponse, code: string | null): void {
@@ -219,6 +262,7 @@ export class ApiClient {
     path: string,
     options: RequestOptions,
     auth: AuthHooks | undefined,
+    binary = false,
   ): Promise<RawResponse> {
     const requestId = (this.options.newRequestId ?? newRequestId)();
     const headers: Record<string, string> = {
@@ -255,9 +299,17 @@ export class ApiClient {
     try {
       const init: HttpRequestInit = { method, headers, signal: controller.signal };
       if (body !== undefined) init.body = body;
-      const response = await this.options.fetch(`${this.options.baseUrl()}${path}`, init);
+      const fetcher = binary ? (this.options.fetchBytes ?? this.options.fetch) : this.options.fetch;
+      const response = await fetcher(`${this.options.baseUrl()}${path}`, init);
+      const durationMs = (): number => Date.now() - started;
+      if (binary && response.ok && response.arrayBuffer) {
+        const data = await response.arrayBuffer();
+        const mime = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+        const bytes = { data, mime };
+        return { status: response.status, ok: true, text: "", bytes, requestId, durationMs: durationMs() };
+      }
       const text = response.status === 204 ? "" : await response.text();
-      return { status: response.status, ok: response.ok, text, requestId, durationMs: Date.now() - started };
+      return { status: response.status, ok: response.ok, text, requestId, durationMs: durationMs() };
     } catch (error) {
       if (outer?.aborted) throw error; // 调用方主动取消：原样抛出，由调用方忽略
       // 界面上一律显示“连不上服务器”；原始异常的类型和说明记进诊断日志，便于区分真断网和请求没发出去
