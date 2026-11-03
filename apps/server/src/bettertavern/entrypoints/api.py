@@ -198,6 +198,7 @@ def create_app(
         auth=RateLimiter(settings.rate_limit_auth_per_min),
         turns=RateLimiter(settings.rate_limit_turns_per_min),
         probe=RateLimiter(settings.rate_limit_probe_per_min),
+        speech=RateLimiter(settings.rate_limit_speech_per_min),
         workbench=RateLimiter(settings.rate_limit_workbench_per_min),
         # 发验证码按 IP：一小时 20 封（同一个邮箱的次数在 AuthService 里另算）
         mail=RateLimiter(20, 3600.0),

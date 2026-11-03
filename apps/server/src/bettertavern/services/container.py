@@ -44,6 +44,7 @@ from .quotas import Quotas
 from .recall_store import PgRecallStore
 from .route_service import RouteService
 from .scenario_service import ScenarioService
+from .speech_service import SpeechService
 from .state_store import PgStateStore
 from .tool_route_service import ToolRouteService
 from .turn_service import TurnService
@@ -68,6 +69,7 @@ class Services:
     drafts: DraftService
     workbench: WorkbenchService
     tool_routes: ToolRouteService
+    speech: SpeechService
     covers: CoverService
     illustrations: IllustrationService
     http: httpx.AsyncClient  # 联网和出图的出站请求（走防内网访问的网络层）
@@ -154,6 +156,7 @@ def build_services(
         drafts=DraftService(engine, scenarios, quotas),
         workbench=WorkbenchService(engine, quotas=quotas, credits=credits),
         tool_routes=tool_routes,
+        speech=SpeechService(tool_routes, http),
         covers=CoverService(engine, tool_routes, http, quotas),
         illustrations=IllustrationService(engine, routes, tool_routes, quotas, credits),
         http=http,

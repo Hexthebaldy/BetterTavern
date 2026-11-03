@@ -19,6 +19,7 @@ class Limiters:
     auth: RateLimiter  # 注册、登录、验证码、找回密码，按 IP
     turns: RateLimiter  # 提交行动，按用户
     probe: RateLimiter  # 测试模型连接，按用户
+    speech: RateLimiter  # 朗读一小段文字，按用户
     workbench: RateLimiter  # 工作台里会花钱、占地方的操作，按用户
     mail: RateLimiter  # 发验证码，按 IP（一小时）
 

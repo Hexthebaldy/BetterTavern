@@ -1,9 +1,10 @@
-"""外部服务的配置（docs/workbench.md 第 3.12、5、6 节）：搜索、读网页、文生图。
+"""外部服务的配置（docs/workbench.md 第 3.12、5、6 节，docs/speech.md）：搜索、读网页、出图、朗读。
 
-- 合法的服务商（搜索、读网页）和接口协议（文生图）由 providers 里的注册表决定；
+- 合法的服务商（搜索、读网页）和接口协议（文生图、朗读）由 providers 里的注册表决定；
 - Key 和模型路由一样用信封加密存，行 id 绑进附加数据；接口只返回后四位；
 - 地址写入前做防内网访问检查；文生图“并进请求体的自定义字段”最大 8 KB；
-- 每种第一次添加的自动设为默认；“测试”真的搜一个词、读一个页面或者出一张小图，结果记进 probe。
+- 每种第一次添加的自动设为默认；“测试”真的搜一个词、读一个页面、出一张小图或者读一句话，
+  结果记进 probe。
 - worker 通过 resolve_tools 拿到解密后的默认配置（ToolResolver）。
 """
 
@@ -33,6 +34,7 @@ from bettertavern.providers.image import (
     ImageConfig,
     ImageError,
 )
+from bettertavern.providers.speech import SPEECH_PROTOCOLS, SpeechConfig, SpeechError
 from bettertavern.providers.web import WEB_PROVIDERS, WebConfig, WebError
 from bettertavern.runtime.ports import ResolvedTools, ToolConfig
 
@@ -40,9 +42,10 @@ from .errors import AppError, Invalid, NotFound
 
 log = structlog.get_logger(__name__)
 
-Kind = Literal["search", "fetch", "image"]
+Kind = Literal["search", "fetch", "image", "speech"]
 MAX_LABEL = 60
 MAX_PARAMS_BYTES = 8 * 1024
+MAX_VOICE = 200
 TEST_TIMEOUT_S = 60.0
 
 
@@ -130,6 +133,20 @@ def providers() -> list[ToolProviderInfo]:
         )
         for p in IMAGE_PROTOCOLS.values()
     ]
+    items += [
+        ToolProviderInfo(
+            id=p.id,
+            kinds=["speech"],
+            can_search=False,
+            can_images=False,
+            can_fetch=False,
+            needs_key=True,
+            needs_base_url=p.needs_base_url,
+            needs_model=p.needs_model,
+            max_references=0,
+        )
+        for p in SPEECH_PROTOCOLS.values()
+    ]
     return items
 
 
@@ -161,6 +178,10 @@ def _check_provider(kind: str, provider: str) -> None:
         if provider not in IMAGE_PROTOCOLS:
             raise Invalid(f"Unknown image protocol: {provider}", field="provider")
         return
+    if kind == "speech":
+        if provider not in SPEECH_PROTOCOLS:
+            raise Invalid(f"Unknown speech protocol: {provider}", field="provider")
+        return
     web = WEB_PROVIDERS.get(provider)
     if web is None:
         raise Invalid(f"Unknown service: {provider}", field="provider")
@@ -175,6 +196,9 @@ def _needs(kind: str, provider: str) -> tuple[bool, bool, bool]:
     if kind == "image":
         protocol = IMAGE_PROTOCOLS[provider]
         return True, protocol.needs_base_url, True
+    if kind == "speech":
+        speech = SPEECH_PROTOCOLS[provider]
+        return True, speech.needs_base_url, speech.needs_model
     web = WEB_PROVIDERS[provider]
     return web.needs_key, web.needs_base_url, False
 
@@ -190,6 +214,9 @@ def _params(value: Mapping[str, Any] | None) -> dict[str, Any]:
             raise Invalid("extra_body must be an object", field="params")
         if len(json.dumps(extra).encode()) > MAX_EXTRA_BODY_BYTES:
             raise Invalid("extra_body is larger than 8 KB", field="params")
+    voice = params.get("voice")
+    if voice is not None and (not isinstance(voice, str) or len(voice) > MAX_VOICE):
+        raise Invalid(f"voice must be text of at most {MAX_VOICE} characters", field="params")
     return params
 
 
@@ -384,8 +411,21 @@ class ToolRouteService:
     async def default_image(self, user_id: str) -> ToolConfig | None:
         return (await self.resolve_tools(user_id)).image
 
+    async def speech_config(self, user_id: str, route_id: str | None) -> ToolConfig | None:
+        """朗读用的服务：指定了就用那个（不存在或不是朗读服务时 404），没指定用默认的。
+
+        没配时是 None；解不开 Key 时报 CREDENTIAL_UNREADABLE。"""
+        if route_id is None:
+            async with self._engine.connect() as conn:
+                row = await repo.get_default(conn, user_id, "speech")
+            return self.config(row) if row is not None else None
+        row = await self._row(user_id, route_id)
+        if row.kind != "speech":
+            raise NotFound("Service not found")
+        return self.config(row)
+
     async def test(self, user_id: str, route_id: str) -> ToolRouteView:
-        """搜一个词、读一个页面，或者出一张小图。结果记进 probe，状态变成 ok 或 invalid。"""
+        """搜一个词、读一个页面、出一张小图或者读一句话。结果记进 probe，状态变成 ok 或 invalid。"""
         row = await self._row(user_id, route_id)
         config = self.config(row)
         client = self._client
@@ -396,7 +436,7 @@ class ToolRouteService:
         try:
             async with asyncio.timeout(TEST_TIMEOUT_S):
                 ok, detail = await self._probe(client, row, config)
-        except (WebError, ImageError) as exc:
+        except (WebError, ImageError, SpeechError) as exc:
             detail = f"{exc.kind}: {exc.message}"
         except httpx.HTTPError as exc:
             detail = f"network: {type(exc).__name__}"
@@ -441,6 +481,22 @@ class ToolRouteService:
                 count=1,
             )
             return bool(images), f"{len(images)} image"
+        if row.kind == "speech":
+            speech = SPEECH_PROTOCOLS[row.provider]
+            speech_config = SpeechConfig(
+                model=config.model,
+                api_key=config.api_key,
+                base_url=config.base_url,
+                params=config.params,
+            )
+            voice = config.params.get("voice")
+            if not voice:
+                voices = await speech.voices(client, speech_config)
+                if not voices:
+                    raise SpeechError("bad_response", "The service lists no voices")
+                voice = voices[0].id
+            audio = await speech.synthesize(client, speech_config, text="Hello.", voice=str(voice))
+            return True, f"{len(audio.data)} bytes"
         web = WebConfig(api_key=config.api_key, base_url=config.base_url, params=config.params)
         provider = WEB_PROVIDERS[row.provider]
         if row.kind == "search":

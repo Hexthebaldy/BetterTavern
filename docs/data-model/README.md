@@ -15,7 +15,7 @@
 | [accounts.md](accounts.md) | 账户与令牌 | `users`、`refresh_tokens` |
 | [models.md](models.md) | 模型路由（玩家配好的模型，含 Key 和端点；官方模型） | `model_routes` |
 | [credits.md](credits.md) | 点数和官方服务的用量（官方模型的余额、账本、体验额度；官方搜索的次数） | `credit_ledger`、`credit_grants`、`platform_usage` |
-| [tools.md](tools.md) | 外部服务（搜索、读网页、文生图）和读过的网页 | `tool_routes`、`web_pages` |
+| [tools.md](tools.md) | 外部服务（搜索、读网页、文生图、朗读）和读过的网页 | `tool_routes`、`web_pages` |
 | [library.md](library.md) | 角色卡仓库、剧本仓库与世界书仓库 | `blobs`、`cards`、`card_revisions`、`scenarios`、`scenario_cards`、`lorebooks`、`scenario_lorebooks` |
 | [personas.md](personas.md) | 人设库：玩家扮演的“我” | `personas` |
 | [workbench.md](workbench.md) | 工作台 | `workbench_drafts`、`workbench_messages`、`workbench_events`、`workbench_assets`、`workbench_notes` |

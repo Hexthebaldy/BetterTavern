@@ -1,4 +1,4 @@
-"""外部服务：搜索、读网页、文生图的配置（Key 加密存），以及“测试”。"""
+"""外部服务：搜索、读网页、文生图、朗读的配置（Key 加密存），“测试”，以及朗读一小段文字。"""
 
 from __future__ import annotations
 
@@ -6,10 +6,12 @@ from fastapi import APIRouter, Response, status
 
 from bettertavern.api.deps import LimitersDep, ServicesDep, UserId, check_rate
 from bettertavern.api.schemas.tools import (
+    SpeechIn,
     ToolProviderOut,
     ToolRouteIn,
     ToolRouteOut,
     ToolRoutePatchIn,
+    VoiceOut,
 )
 from bettertavern.services.tool_route_service import ToolRouteInput, ToolRoutePatch, providers
 
@@ -78,3 +80,25 @@ async def test_tool_route(
 ) -> ToolRouteOut:
     check_rate(limiters.probe, f"tool:{user_id}")
     return ToolRouteOut.model_validate(await services.tool_routes.test(user_id, route_id))
+
+
+@router.get("/tool-routes/{route_id}/voices")
+async def list_voices(route_id: str, user_id: UserId, services: ServicesDep) -> list[VoiceOut]:
+    return [VoiceOut.model_validate(v) for v in await services.speech.voices(user_id, route_id)]
+
+
+@router.post(
+    "/speech",
+    response_class=Response,
+    responses={200: {"content": {"audio/mpeg": {}, "audio/wav": {}}}},
+)
+async def synthesize_speech(
+    body: SpeechIn, user_id: UserId, services: ServicesDep, limiters: LimitersDep
+) -> Response:
+    check_rate(limiters.speech, f"speech:{user_id}")
+    audio = await services.speech.synthesize(
+        user_id, text=body.text, route_id=body.route_id, voice=body.voice
+    )
+    return Response(
+        content=audio.data, media_type=audio.mime, headers={"Cache-Control": "no-store"}
+    )

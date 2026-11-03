@@ -27,7 +27,9 @@ import argparse
 import base64
 import io
 import json
+import math
 import re
+import wave
 from dataclasses import dataclass
 from typing import Any
 
@@ -186,6 +188,25 @@ def scene_png(n: int) -> bytes:
     return _png_bytes(image)
 
 
+def speech_wav(chars: int) -> bytes:
+    """一段听得出在读的假声音：每个字一声短促的音，最长 8 秒（本地开发时听播放和换段）。"""
+    rate = 16000
+    frames = bytearray()
+    for index in range(min(max(chars, 1), 50)):
+        pitch = (220, 262, 196, 247)[index % 4]
+        for sample in range(int(rate * 0.16)):
+            level = 0.3 if sample < rate * 0.12 else 0.0
+            value = int(level * 32767 * math.sin(2 * math.pi * pitch * sample / rate))
+            frames += value.to_bytes(2, "little", signed=True)
+    out = io.BytesIO()
+    with wave.open(out, "wb") as file:
+        file.setnchannels(1)
+        file.setsampwidth(2)
+        file.setframerate(rate)
+        file.writeframes(bytes(frames))
+    return out.getvalue()
+
+
 def _png_bytes(image: Image.Image) -> bytes:
     out = io.BytesIO()
     image.save(out, format="PNG")
@@ -206,12 +227,22 @@ class StoryScript:
     compress_calls: int = 0
     image_calls: int = 0
     image_delay: float = 4.0  # 出一张图等几秒，看得到“正在画”
+    speech_calls: int = 0
+    speech_delay: float = 0.5  # 合成一小段等多久
 
     def reply(self, request: RecordedRequest) -> Reply:
         if request.path.endswith(("/images/generations", "/images/edits")):
             self.image_calls += 1
             data = base64.b64encode(scene_png(self.image_calls)).decode()
             return JsonReply({"data": [{"b64_json": data}]}, headers_delay=self.image_delay)
+        if request.path.endswith("/audio/speech"):
+            self.speech_calls += 1
+            spoken = request.body.get("input", "") if isinstance(request.body, dict) else ""
+            return StreamReply(
+                items=[speech_wav(len(spoken))],
+                content_type="audio/wav",
+                headers_delay=self.speech_delay,
+            )
         body = request.body if isinstance(request.body, dict) else {}
         messages = body.get("messages") or [{}]
         if (

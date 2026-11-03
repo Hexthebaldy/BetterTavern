@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     rate_limit_auth_per_min: int = Field(default=5, ge=1)
     rate_limit_turns_per_min: int = Field(default=30, ge=1)
     rate_limit_probe_per_min: int = Field(default=5, ge=1)
+    rate_limit_speech_per_min: int = Field(default=60, ge=1)
 
     # 工作台（按用户）：开始、发消息、接着写、导入、上传、生成封面、测试外部服务合在一起，每分钟次数
     rate_limit_workbench_per_min: int = Field(default=20, ge=1)

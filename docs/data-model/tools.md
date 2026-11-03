@@ -4,7 +4,7 @@
 >
 > 数据模型：[说明与约定](README.md) · [账户与令牌](accounts.md) · [模型路由](models.md) · [点数](credits.md) · [外部服务](tools.md) · [角色卡与剧本](library.md) · [人设库](personas.md) · [工作台](workbench.md) · [游玩与回合](story.md) · [世界状态](world.md) · [记忆](memory.md) · [运行基础设施](infra.md)
 
-工作台的 agent 联网和出图用的外部服务（搜索、读网页、文生图）的配置，以及读过的网页。接口见 [api/tools.md](../api/tools.md)。
+工作台的 agent 联网和出图、故事配图、朗读用的外部服务（搜索、读网页、文生图、朗读）的配置，以及读过的网页。接口见 [api/tools.md](../api/tools.md)。
 
 ## 表
 
@@ -16,18 +16,18 @@
 | --- | --- | --- | --- | --- |
 | `id` | uuid | 否 |  | 主键，由应用生成：加密时要把行 ID 绑进附加数据（`tool:{id}:api_key`），和 `model_routes` 一样 |
 | `user_id` | uuid | 否 |  | → `users.id`，级联删除 |
-| `kind` | text | 否 |  | `search`（网页搜索，含搜图）/ `fetch`（读网页的服务商，可选）/ `image`（文生图） |
-| `provider` | text | 否 |  | 搜索和读网页填服务商名，文生图填接口协议；合法值由 `providers/web`、`providers/image` 的注册表决定 |
+| `kind` | text | 否 |  | `search`（网页搜索，含搜图）/ `fetch`（读网页的服务商，可选）/ `image`（文生图）/ `speech`（朗读，[speech.md](../speech.md)） |
+| `provider` | text | 否 |  | 搜索和读网页填服务商名，文生图和朗读填接口协议；合法值由 `providers/web`、`providers/image`、`providers/speech` 的注册表决定 |
 | `label` | text | 否 | `''` | 显示名，最多 60 字 |
 | `base_url` | text | 是 |  | 接口地址；SearXNG 和 `openai_chat` 必填，其他为空时用服务商的默认地址。写入前做防内网访问检查 |
 | `api_key_enc` | text | 是 |  | 加密后的 Key，格式同 `model_routes.api_key_enc`；SearXNG、Jina 可以没有 Key |
 | `key_id` | text | 是 |  | 加密用的主密钥编号 |
 | `key_last4` | text | 否 | `''` | Key 的后四位，显示用 |
-| `model` | text | 是 |  | 文生图的模型名 |
-| `params` | jsonb | 否 | `'{}'` | 搜索：`country`、`language`、`search_lang`、`safesearch`；文生图：`sizes`（画幅对应的尺寸）、`extra_body`（并进请求体的自定义字段）。整体最大 8 KB |
+| `model` | text | 是 |  | 文生图、朗读的模型名 |
+| `params` | jsonb | 否 | `'{}'` | 搜索：`country`、`language`、`search_lang`、`safesearch`；文生图：`sizes`（画幅对应的尺寸）、`extra_body`（并进请求体的自定义字段）；朗读：`voice`（默认声音，最多 200 字）、`extra_body`。整体最大 8 KB |
 | `status` | text | 否 | `'unverified'` | `unverified` / `ok` / `invalid`：添加和改 Key、地址、模型名以后是 `unverified`，测试以后按结果变 |
 | `probe` | jsonb | 否 | `'{}'` | 最近一次测试：`{"ok", "detail", "latency_ms", "tested_at"}` |
-| `is_default` | boolean | 否 | `false` | 同一种 `kind` 里默认用哪一个：agent 和封面面板用它 |
+| `is_default` | boolean | 否 | `false` | 同一种 `kind` 里默认用哪一个：agent、封面面板和朗读用它 |
 | `created_at` | timestamptz | 否 | `now()` |  |
 | `updated_at` | timestamptz | 否 | `now()` |  |
 

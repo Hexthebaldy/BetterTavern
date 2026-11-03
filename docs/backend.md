@@ -630,7 +630,7 @@ Hugging Face 的一个模型有几家后端时，模型名指定了后端就用�
 | 剧本库 | `GET /scenarios`、`POST /scenarios`、`GET/PATCH/DELETE /scenarios/{id}` | 剧本从角色卡仓库选卡新建（可以几张，群像剧本）；导入和编辑角色卡在工作台（[workbench.md](workbench.md)） |
 | 角色卡 | `GET /cards`、`GET/DELETE /cards/{id}`、版本历史、导出 | 角色卡仓库 |
 | 工作台 | `/workbench/drafts*` | 草稿（导入、手动、agent 对话）、保存进角色卡仓库 |
-| 外部服务 | `/tool-providers`、`/tool-routes*` | 工作台联网和出图的服务 |
+| 外部服务 | `/tool-providers`、`/tool-routes*`、`/speech` | 工作台联网、出图、朗读的服务 |
 | 游玩 | `POST /playthroughs` | 选剧本、主角、设置；202，后台跑 WorldBuilder 与开场 |
 | 游玩 | `GET /playthroughs`、`GET/PATCH/DELETE /playthroughs/{id}` |  |
 | 回合 | `GET /playthroughs/{id}/turns?after_seq=&limit=` | 历史分页，默认不含已归档回合 |

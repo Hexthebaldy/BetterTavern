@@ -1,4 +1,4 @@
-"""外部服务（搜索、读网页、文生图）的配置。"""
+"""外部服务（搜索、读网页、文生图、朗读）的配置，以及朗读。"""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ class ToolProviderOut(Out):
 
 
 class ToolRouteIn(BaseModel):
-    kind: Literal["search", "fetch", "image"]
+    kind: Literal["search", "fetch", "image", "speech"]
     provider: str = Field(max_length=40)
     label: str = Field(default="", max_length=60)
     api_key: str | None = Field(default=None, max_length=4096)
@@ -60,3 +60,16 @@ class ToolRouteOut(Out):
     is_default: bool
     created_at: datetime
     updated_at: datetime
+
+
+class VoiceOut(Out):
+    id: str
+    name: str
+
+
+class SpeechIn(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+    # 用哪个朗读服务；不传用默认的
+    route_id: str | None = Field(default=None, max_length=64)
+    # 不传时依次用服务设置里的默认声音、服务的第一个声音
+    voice: str | None = Field(default=None, max_length=200)

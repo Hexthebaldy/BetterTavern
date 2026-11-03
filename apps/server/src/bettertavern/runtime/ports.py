@@ -601,8 +601,8 @@ class ToolConfig:
     """一个配置好的外部服务（tool_routes 的一行，Key 已解密，只活在一次运行里）。"""
 
     route_id: str
-    kind: Literal["search", "fetch", "image"]
-    provider: str  # 搜索、读网页是服务商名；文生图是接口协议
+    kind: Literal["search", "fetch", "image", "speech"]
+    provider: str  # 搜索、读网页是服务商名；文生图、朗读是接口协议
     label: str
     api_key: str = field(repr=False, default="")
     base_url: str = ""

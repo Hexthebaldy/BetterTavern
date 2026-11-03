@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | [auth.md](auth.md) | 认证与账户 | `/v1/auth/*`、`/v1/me` |
 | [models.md](models.md) | 服务商与模型路由（玩家配好的模型，含 Key 和端点） | `/v1/providers*`、`/v1/model-routes*` |
-| [tools.md](tools.md) | 外部服务：搜索、读网页、文生图的配置 | `/v1/tool-providers`、`/v1/tool-routes*` |
+| [tools.md](tools.md) | 外部服务：搜索、读网页、文生图、朗读的配置，以及朗读一小段文字 | `/v1/tool-providers`、`/v1/tool-routes*`、`/v1/speech` |
 | [library.md](library.md) | 角色卡仓库、剧本仓库与世界书仓库 | `/v1/cards*`、`/v1/scenarios*`、`/v1/lorebooks*`、`/v1/blobs/*` |
 | [personas.md](personas.md) | 人设库：玩家扮演的“我” | `/v1/personas*` |
 | [workbench.md](workbench.md) | 工作台：草稿、图片、保存到角色卡仓库 | `/v1/workbench/*` |
@@ -94,6 +94,7 @@
 | 用户 | 5（`RATE_LIMIT_AUTH_PER_MIN`） | `POST /v1/me/password` |
 | 用户 | 30（`RATE_LIMIT_TURNS_PER_MIN`），两个接口共用一个计数 | `POST /v1/playthroughs`、`POST /v1/playthroughs/{playthrough_id}/turns` |
 | 用户 | 30（`RATE_LIMIT_TURNS_PER_MIN`），单独计数 | `POST /v1/turns/{turn_id}/images` |
+| 用户 | 60（`RATE_LIMIT_SPEECH_PER_MIN`） | `POST /v1/speech` |
 | 用户 | 5（`RATE_LIMIT_PROBE_PER_MIN`），三个接口各自计数 | `POST /v1/model-routes/{route_id}/probe`、`POST /v1/providers/{provider}/models`、`POST /v1/tool-routes/{route_id}/test` |
 | 用户 | 20（`RATE_LIMIT_WORKBENCH_PER_MIN`），十个接口共用一个计数 | `POST /v1/workbench/drafts`、`POST /v1/workbench/drafts/import`、`POST /v1/workbench/drafts/{draft_id}/assets`、`POST /v1/workbench/drafts/{draft_id}/covers`、`POST /v1/workbench/drafts/{draft_id}/messages`、`POST /v1/workbench/drafts/{draft_id}/continue`、`POST /v1/lorebooks`、`POST /v1/lorebooks/import`、`POST /v1/personas/import`、`PUT /v1/personas/{persona_id}/avatar` |
 
@@ -178,6 +179,8 @@
 | `TURN_NOT_SETTLED` | 409 | 画这一幕时，回合还没写完（生成中、失败、被回退掉） |  |
 | `IMAGE_PENDING` | 409 | 画这一幕时，这一回合已经在画了 |  |
 | `TOO_MANY_IMAGES` | 429 | 画这一幕时，同时在画的已经到上限（3 张） | `limit` |
+| `SPEECH_NOT_CONFIGURED` | 409 | 朗读时，没指定服务，也没有默认的朗读服务 |  |
+| `SPEECH_FAILED` | 502 | 朗读时，语音服务出错 | `reason`：`auth`、`quota`、`blocked`、`http`、`network`、`bad_response`、`unsupported`、`timeout` |
 | `PAYLOAD_TOO_LARGE` | 413 | 请求体或文件超过限制 |  |
 | `VALIDATION_ERROR` | 422 | 参数不符合要求 | `errors`（模型校验）或 `field`（业务校验）；行动本身的校验错误两个都不带；探针接口用 `detail` |
 | `ENDPOINT_NOT_ALLOWED` | 422 | 接口地址没有通过 SSRF 校验 | `reason` |
