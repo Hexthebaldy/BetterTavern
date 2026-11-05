@@ -88,4 +88,8 @@ export const shell: MessagesOtherOnly<typeof source> = {
     siteSame: "いまこのサーバーを使っています",
     open: "開く",
   },
+  updateNotice: {
+    upcoming: "{{time}} に更新します。最大 1 分ほど接続できず、生成中のターンはやり直しが必要になることがあります。",
+    updating: "更新中です。最大 1 分ほど接続できず、生成中のターンはやり直しが必要になることがあります。",
+  },
 };

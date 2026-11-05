@@ -1,0 +1,30 @@
+/* 更新横幅：浮在页面顶部居中，比提示浮条低一层（对话框在浏览器的顶层，总在它上面） */
+.banner {
+  position: fixed;
+  z-index: 65;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(560px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border: var(--bw) solid var(--frame);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--x4);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.icon {
+  flex: none;
+  color: var(--warn);
+}
+.text {
+  flex: 1;
+  min-width: 0;
+}

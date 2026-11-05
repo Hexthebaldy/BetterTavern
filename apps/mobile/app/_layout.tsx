@@ -16,6 +16,7 @@ import { I18nextProvider } from "react-i18next";
 import { i18n } from "@bettertavern/core/i18n/index";
 
 import { OverlayProvider } from "../src/components/ui.tsx";
+import { UpdateBanner } from "../src/components/UpdateBanner.tsx";
 import { installDiagnostics } from "../src/observability/setup.ts";
 import { AppProvider, useApp } from "../src/state/AppProvider.tsx";
 import { PrefsProvider, usePrefs } from "../src/state/PrefsProvider.tsx";
@@ -45,6 +46,7 @@ export default function RootLayout() {
           <Themed>
             <OverlayProvider>
               <RootNavigator />
+              <UpdateBanner />
             </OverlayProvider>
           </Themed>
         </PrefsProvider>

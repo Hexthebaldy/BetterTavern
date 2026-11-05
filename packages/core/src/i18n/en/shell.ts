@@ -90,4 +90,8 @@ export const shell: Messages<typeof source> = {
     siteSame: "You're already on this server",
     open: "Open",
   },
+  updateNotice: {
+    upcoming: "Update at {{time}}: the service may be unreachable for up to a minute, and a turn in progress may need a retry.",
+    updating: "Updating: the service may be unreachable for up to a minute, and a turn in progress may need a retry.",
+  },
 };

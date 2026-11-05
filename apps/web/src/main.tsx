@@ -15,6 +15,7 @@ import { i18n } from "@bettertavern/core/i18n/index";
 
 import { router } from "./app/router.tsx";
 import { installDiagnostics } from "./observability/setup.ts";
+import { UpdateBanner } from "./shell/UpdateBanner.tsx";
 import { localStore } from "./storage/local.ts";
 import { AppProvider } from "./state/AppProvider.tsx";
 import { applyLanguageSetting } from "./state/language.ts";
@@ -50,6 +51,7 @@ createRoot(root).render(
           <ThemeProvider>
             <AppProvider>
               <RouterProvider router={router} />
+              <UpdateBanner />
             </AppProvider>
           </ThemeProvider>
         </PrefsProvider>

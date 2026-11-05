@@ -153,6 +153,12 @@ apps/mobile/
 **令牌**：访问令牌 15 分钟，提前一分钟刷新，多个请求同时需要刷新时只发一次；刷新被服务端拒绝就退出登录（路由守卫 `Stack.Protected` 随即切回登录页）。
 令牌和自定义的服务器地址存在 expo-secure-store；模型的 API Key 不在设备上保存。
 
+### 更新横幅
+
+线上更新前 10 分钟开始，网页和 App 的所有页面顶部浮一条横幅，到点后换成“正在更新”，可以关掉（这一次不再显示）。
+数据来自 `/notice.json`（[接口](api/ops.md)），只在页面可见、App 在前台时每分钟读一次，回到前台时马上读一次；过了更新时间 15 分钟还在就不再显示，防止部署任务中断后文件没撤掉。
+共用逻辑在 `packages/core/src/notice/updateNotice.ts`，界面在 `apps/web/src/shell/UpdateBanner.tsx`、`apps/mobile/src/components/UpdateBanner.tsx`，都挂在路由外面，不占布局。
+
 ### 页面（实际的路由）
 
 | 路由 | 页面 |

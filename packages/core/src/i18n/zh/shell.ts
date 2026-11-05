@@ -86,4 +86,8 @@ export const shell = {
     siteSame: "你现在就在这个服务器上",
     open: "打开",
   },
+  updateNotice: {
+    upcoming: "{{time}} 更新，最长约 1 分钟连不上，正在生成的回合可能要重试",
+    updating: "正在更新，最长约 1 分钟连不上，正在生成的回合可能要重试",
+  },
 };
