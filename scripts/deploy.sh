@@ -15,6 +15,8 @@
 #   6. 换上新的 index.html（网页切到新版本），从外网检查一次 https://bettertavern.com/health
 #
 # 脚本里没有服务器地址和密钥：地址从 BT_DEPLOY_HOST 读，密钥只在服务器的 .env 里。
+# 每天的定时部署也跑这个脚本（.github/workflows/deploy.yml）。回滚和上线失败会在服务器上留下 deploy-hold，
+# 定时部署据此不再上那个版本（scripts/deploy-gate.sh）；手动部署不受影响，往前部署时会清掉它。
 
 set -euo pipefail
 
@@ -62,6 +64,17 @@ ssh_opts=(-o BatchMode=yes -o ControlMaster=auto -o "ControlPath=$HOME/.ssh/bt-d
 remote() { ssh "${ssh_opts[@]}" "$host" "$@"; }
 upload() { scp -q "${ssh_opts[@]}" "$1" "$host:$2"; }
 sync_dir() { rsync -a -e "ssh ${ssh_opts[*]}" "$@"; }
+# 服务端的输出（迁移、api 日志）。仓库公开，GitHub Actions 的日志所有人都能看，所以在那边只写到服务器上的文件里
+server_output() {
+  if [[ -n ${GITHUB_ACTIONS:-} ]]; then
+    remote "cd $REMOTE_DIR && mkdir -p -m 700 logs && { $1; } >> logs/deploy-$sha.log 2>&1"
+  else
+    remote "cd $REMOTE_DIR && $1"
+  fi
+}
+log_hint() {
+  if [[ -n ${GITHUB_ACTIONS:-} ]]; then echo "服务端的输出在服务器的 $REMOTE_DIR/logs/deploy-$sha.log" >&2; fi
+}
 
 if [[ $web -eq 1 ]]; then
   step "1. 构建网页"
@@ -121,13 +134,21 @@ fi
 
 step "5. 迁移数据库，换成新版本"
 previous=$(remote "grep -E '^BT_IMAGE=' $REMOTE_DIR/.env | cut -d= -f2-" || true)
+previous_sha=${previous##*:sha-}
+rolling_back=0
+if [[ $previous_sha != "$sha" ]] && git merge-base --is-ancestor "$sha" "$previous_sha" 2> /dev/null; then
+  rolling_back=1
+fi
 set_image() {
   remote "cd $REMOTE_DIR && if grep -q '^BT_IMAGE=' .env; then sed -i 's|^BT_IMAGE=.*|BT_IMAGE=$1|' .env; else echo 'BT_IMAGE=$1' >> .env; fi"
 }
+hold_commit() { remote "echo '$1' > $REMOTE_DIR/deploy-hold"; }
 set_image "$image"
-if ! remote "cd $REMOTE_DIR && docker compose run --rm migrate"; then
+if ! server_output "docker compose run --rm migrate"; then
   echo "迁移失败：api 还在跑旧版本，没有重启。.env 里的 BT_IMAGE 已经换回去" >&2
+  log_hint
   [[ -n $previous ]] && set_image "$previous"
+  hold_commit "$sha"
   exit 1
 fi
 remote "cd $REMOTE_DIR && docker compose up -d --remove-orphans api worker"
@@ -142,22 +163,31 @@ for _ in $(seq 1 30); do
 done
 if [[ $healthy -eq 0 ]]; then
   echo "新版本 60 秒内没有起来，最近的日志：" >&2
-  remote "cd $REMOTE_DIR && docker compose logs --tail 60 api" >&2 || true
+  server_output "docker compose logs --tail 60 api" >&2 || true
+  log_hint
   if [[ -n $previous ]]; then
     echo "换回上一个版本：$previous" >&2
     set_image "$previous"
     remote "cd $REMOTE_DIR && docker compose up -d api worker"
   fi
+  hold_commit "$sha"
   echo "迁移已经跑过、不会自动撤回；如果需要回到部署前的数据，见 docs/ops.md 的“从备份恢复”" >&2
   exit 1
 fi
 echo "api 已经是 $sha"
+if [[ $rolling_back -eq 1 ]]; then
+  # 回滚：记下回滚前线上的提交，连续回滚时留着最早记下的那个
+  remote "cd $REMOTE_DIR && test -s deploy-hold || echo '$previous_sha' > deploy-hold"
+else
+  remote "rm -f $REMOTE_DIR/deploy-hold"
+fi
 
 step "6. 网页切到新版本"
 if [[ $web -eq 1 ]]; then
   sync_dir --exclude assets apps/web/dist/ "$host:$REMOTE_DIR/web/"
 fi
 remote "docker image prune -f > /dev/null"
+remote "cd $REMOTE_DIR && ls -1t logs/deploy-*.log 2> /dev/null | tail -n +11 | xargs -r rm --"
 if curl -fsS --max-time 10 "$SITE/health" | grep -q "\"build\":\"$sha\""; then
   echo "$SITE 已经是 $sha"
 else

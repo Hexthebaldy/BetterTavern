@@ -3,7 +3,7 @@
 # 推送到 m1 并且都通过时，构建服务端镜像推到 GHCR：
 #   ghcr.io/hexthebaldy/bettertavern-server:sha-<提交号前 12 位>   ← scripts/deploy.sh 部署的就是它
 #   ghcr.io/hexthebaldy/bettertavern-server:m1                     ← 这个分支最新的一版
-# 服务器上不构建，只拉镜像（docs/ops.md）。
+# 服务器上不构建，只拉镜像（docs/ops.md）。上线由 deploy.yml 负责：每天定时，或者手动运行。
 
 name: CI
 

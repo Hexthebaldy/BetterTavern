@@ -1,0 +1,145 @@
+# 把 m1 上通过检查的提交部署到线上（bettertavern.com），部署的就是 scripts/deploy.sh。规则和配置见 docs/ops.md 第 3 节。
+#   每天：北京时间 06:00 上线，05:50 在客户端显示更新横幅。没有新版本就什么都不做；带数据库迁移的版本不自动上，这次运行报错，GitHub 发邮件提醒。
+#   手动：在 Actions 页面运行，同样先提示 10 分钟。填提交号就是回滚或部署指定版本。
+#
+# 仓库公开，这里的日志所有人都能看：不要打印服务器地址和服务端的输出。
+# 服务器地址和登录密钥存在 GitHub 的 production 环境里，只有 m1 能取用。
+
+name: 部署
+
+on:
+  schedule:
+    # 北京时间 05:30。GitHub 的定时可能晚点，所以提前启动，到 05:50 才开始做事
+    - cron: "30 21 * * *"
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 要部署的提交号（回滚时填）；不填就是 m1 上最新通过检查的提交
+        type: string
+        required: false
+
+# 同时只跑一个部署，也不打断正在跑的
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: 部署到线上
+    if: github.repository == 'Hexthebaldy/BetterTavern' && github.ref == 'refs/heads/m1'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 60
+    env:
+      BT_DEPLOY_HOST: ${{ secrets.BT_DEPLOY_HOST }}
+      NOTICE: /srv/bettertavern/web/notice.json
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: 准备 SSH
+        env:
+          SSH_KEY: ${{ secrets.BT_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.BT_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          echo "::add-mask::${BT_DEPLOY_HOST#*@}"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: 等到 05:50
+        if: github.event_name == 'schedule'
+        run: |
+          wait=$(( $(TZ=Asia/Shanghai date -d 05:50 +%s) - $(date +%s) ))
+          if [ "$wait" -gt 0 ]; then sleep "$wait"; fi
+
+      - name: 决定部署哪个提交
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ inputs.commit }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ -n "$COMMIT" ]; then
+            target=$(git rev-parse --verify "$COMMIT^{commit}")
+            decision=go
+          else
+            target=$(gh run list --workflow ci.yml --branch m1 --event push --status success --limit 1 --json headSha --jq '.[0].headSha')
+            deployed=$(ssh "$BT_DEPLOY_HOST" 'curl -fsS --max-time 10 http://127.0.0.1:8000/health' | jq -r .build)
+            hold=$(ssh "$BT_DEPLOY_HOST" 'cat /srv/bettertavern/deploy-hold 2> /dev/null || true')
+            decision=$(scripts/deploy-gate.sh "$deployed" "$target" "$hold")
+            echo "线上 $deployed，最新通过检查的 $target：$decision"
+          fi
+          case "$decision:$EVENT" in
+            none:*)
+              echo "线上已经是最新，不用部署"
+              exit 0
+              ;;
+            held:schedule)
+              echo "线上回滚过或上线失败过，等新的提交；要现在上就手动运行"
+              exit 0
+              ;;
+            migration:schedule)
+              echo "::error::这个版本带数据库迁移，定时任务不自动上线。确认后在 Actions 页面手动运行这个部署"
+              exit 1
+              ;;
+          esac
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "go=true" >> "$GITHUB_OUTPUT"
+
+      - name: 发出更新提示
+        id: notice
+        if: steps.gate.outputs.go == 'true'
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          at=$(( $(date +%s) + 600 ))
+          if [ "$EVENT" = schedule ]; then
+            six=$(TZ=Asia/Shanghai date -d 06:00 +%s)
+            if [ "$six" -gt "$at" ]; then at=$six; fi
+          fi
+          printf '{"kind":"update","at":"%s"}\n' "$(date -u -d "@$at" +%Y-%m-%dT%H:%M:%SZ)" |
+            ssh "$BT_DEPLOY_HOST" "cat > $NOTICE.new && chmod 644 $NOTICE.new && mv $NOTICE.new $NOTICE"
+          echo "at=$at" >> "$GITHUB_OUTPUT"
+
+      # 回滚到旧提交时，配置和网页用那个提交的，部署脚本还是用现在这一版
+      - name: 切到要部署的提交
+        if: steps.gate.outputs.go == 'true'
+        env:
+          TARGET: ${{ steps.gate.outputs.target }}
+        run: |
+          cp scripts/deploy.sh "$RUNNER_TEMP/deploy.sh"
+          git checkout -q "$TARGET"
+
+      - uses: actions/setup-node@v7
+        if: steps.gate.outputs.go == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        if: steps.gate.outputs.go == 'true'
+        run: npm ci
+
+      - name: 到点部署
+        if: steps.gate.outputs.go == 'true'
+        env:
+          AT: ${{ steps.notice.outputs.at }}
+        run: |
+          wait=$(( AT - $(date +%s) ))
+          if [ "$wait" -gt 0 ]; then sleep "$wait"; fi
+          "$RUNNER_TEMP/deploy.sh"
+
+      - name: 撤掉更新提示
+        if: always() && steps.notice.outcome != 'skipped'
+        run: ssh "$BT_DEPLOY_HOST" "rm -f $NOTICE"

@@ -34,8 +34,10 @@ Cloudflare（代理、HTTPS、挡攻击）
 | --- | --- |
 | `/srv/bettertavern/compose.yml` | 跑哪几个容器（每次部署从 `deploy/compose.prod.yml` 复制过来，不要在服务器上改） |
 | `/srv/bettertavern/.env` | 私密配置：数据库密码、主密钥、令牌密钥、Resend 的 key、当前镜像（`BT_IMAGE`，部署脚本改写）。只在服务器上，权限 600 |
-| `/srv/bettertavern/web/` | 网页的静态文件 |
+| `/srv/bettertavern/web/` | 网页的静态文件。更新前 10 分钟到更新结束，这里还有一个 `notice.json`（第 3 节） |
 | `/srv/bettertavern/backups/` | 每次部署前的数据库备份，只留最近 3 份 |
+| `/srv/bettertavern/deploy-hold` | 回滚或上线失败时记下的提交号，定时部署不再上它和更早的提交（第 3 节）。平时没有这个文件 |
+| `/srv/bettertavern/logs/` | 从 GitHub 部署时服务端的输出（迁移、起不来时的 api 日志），只留最近 10 份 |
 | `/srv/bettertavern/cloudflare-ips.sh` | 更新 Cloudflare 的 IP 段（第 7 节） |
 | `/etc/nginx/sites-available/bettertavern` | nginx 配置（每次部署从 `deploy/nginx.bettertavern.conf` 复制过来） |
 | `/etc/ssl/bettertavern/origin.key`、`origin.pem` | 源站证书的私钥和证书（私钥只在这台服务器上） |
@@ -96,9 +98,19 @@ Cloudflare（代理、HTTPS、挡攻击）
 
 ## 3 日常部署
 
+推到 `m1` 以后，CI 跑检查、测试、构建镜像（大约几分钟）。上线有三种办法，做的事都是 `scripts/deploy.sh`：
+
+| 办法 | 怎么做 | 提前提示用户 | 带数据库迁移的版本 |
+| --- | --- | --- | --- |
+| 每天定时 | 不用管，北京时间 06:00 上线 `m1` 上最新通过检查的提交 | 05:50 开始 | 不自动上 |
+| 手动运行 | GitHub 的 Actions → “部署” → Run workflow。不填提交号就是最新通过检查的提交 | 运行后 10 分钟 | 照上 |
+| 本机命令 | 见下面 | 没有 | 照上 |
+
+本机命令（要紧急修复、等不了 10 分钟时用）：
+
 ```bash
 git push                                          # 推到 m1
-gh run watch                                      # 等 CI 跑完（检查、测试、构建镜像，大约几分钟）
+gh run watch                                      # 等 CI 跑完
 BT_DEPLOY_HOST=linuxuser@服务器 scripts/deploy.sh   # 部署当前提交
 ```
 
@@ -112,16 +124,57 @@ BT_DEPLOY_HOST=linuxuser@服务器 scripts/deploy.sh   # 部署当前提交
 新的 api 再用几秒启动。这段时间里接口连不上，网页和 App 会提示连接失败，过一会儿再操作就好。
 所以有人在玩的时候尽量别部署，或者挑人少的时候。开着的网页继续能用（旧版本的静态文件不删），刷新以后换成新版本。
 
+### 每天定时部署
+
+`.github/workflows/deploy.yml`：
+
+1. 北京时间 05:30 启动，等到 05:50。GitHub 的定时可能晚点，所以提前启动；晚过了 05:50 就不等，后面的时间往后顺延，提前 10 分钟不变。
+2. 比较线上的版本（`/health` 的 `build`）和 `m1` 上最新通过检查的提交（`scripts/deploy-gate.sh`）：
+   - 没有新版本：结束，不提示，也不重启；
+   - 线上回滚过或上线失败过，这个提交没有比当时的版本新（`deploy-hold`）：结束，等新的提交；
+   - 两个版本之间改了 `apps/server/migrations/versions`（要跑数据库迁移）：这次运行报错，GitHub 发邮件提醒。迁移不能自动撤回，所以等人醒着时手动运行。在这之前，后面的新版本也都上不了；
+   - 其他情况：继续。
+3. 放上 `notice.json`，客户端开始显示横幅。
+4. 06:00 运行部署脚本。不管成败都撤掉 `notice.json`；失败时 GitHub 发邮件提醒。
+
+`deploy-hold` 由部署脚本维护：回滚时记下回滚前线上的提交，迁移失败或新版本起不来时记下这次的提交，往前部署成功时删掉。手动运行和本机命令不看它。
+
+仓库连续 60 天没有提交时 GitHub 会停掉定时任务，到 Actions 页面重新打开。
+
+仓库是公开的，Actions 的日志所有人都能看：工作流不打印服务器地址（用 `add-mask` 遮住），在 GitHub 上运行时部署脚本把服务端的输出写到服务器的 `logs/`，不打印。
+
+### 更新横幅
+
+更新前 10 分钟，部署任务把 `{"kind":"update","at":"2026-11-05T22:00:00Z"}` 写到 `/srv/bettertavern/web/notice.json`，更新结束后删掉。
+nginx 直接返回这个文件（不缓存，api 重启时也读得到），平时没有文件时回 204。开着的网页和 App 每分钟读一次（`packages/core/src/notice/updateNotice.ts`），文字由客户端按界面语言显示。
+
+只有打开着的客户端看得到，不发手机系统通知：没打开的人不受更新影响。本机命令不放这个文件。
+
+### GitHub 上的配置
+
+Settings → Environments 里有一个 `production` 环境，部署分支只允许 `m1`，里面三个 Secret：
+
+| Secret | 是什么 |
+| --- | --- |
+| `BT_DEPLOY_HOST` | `linuxuser@服务器` |
+| `BT_DEPLOY_SSH_KEY` | GitHub 专用的登录私钥，公钥在服务器 `linuxuser` 的 `~/.ssh/authorized_keys` 里，备注是 `github-actions-deploy` |
+| `BT_DEPLOY_KNOWN_HOSTS` | 服务器的 SSH 指纹（`ssh-keyscan` 的结果，核对过再存），不信任没见过的服务器 |
+
+`linuxuser` 能免密使用 sudo，所以这把私钥等于服务器的最高权限；GitHub 账号要开两步验证。
+怀疑泄露时：删掉服务器 `authorized_keys` 里那一行，再新生成一把，公钥装上去，私钥用 `gh secret set BT_DEPLOY_SSH_KEY --env production` 换掉。
+
 ## 4 回滚
 
-- **自动**：新版本 60 秒内没有在 `/health` 报出新的提交号，脚本会把 api 和 worker 换回上一个镜像。
-- **手动换回某个版本**：在仓库里切到那个提交再部署（网页也会一起换回去）：
+- **自动**：新版本 60 秒内没有在 `/health` 报出新的提交号，脚本会把 api 和 worker 换回上一个镜像，定时部署也不再上这个版本。
+- **手动换回某个版本**：在 Actions 手动运行“部署”并填提交号（先提示 10 分钟），或者在仓库里切到那个提交再部署（网页也会一起换回去）。
+  两种办法都会留下 `deploy-hold`，定时部署等有了新提交才继续：
 
   ```bash
   git checkout <提交号> && BT_DEPLOY_HOST=linuxuser@服务器 scripts/deploy.sh --no-backup; git checkout m1
   ```
 
   只想换服务端、最快的办法：在服务器上把 `.env` 里的 `BT_IMAGE` 改成上一个标签，再 `docker compose up -d api worker`。
+  这样换不会留下 `deploy-hold`，要自己写一下（`echo <回滚前的提交号> > /srv/bettertavern/deploy-hold`），否则第二天 06:00 会再上回去。
 - **迁移不会撤回**。迁移一般只加表、加列，旧版本的代码照样能用；真的不能用时，从部署前的备份恢复（第 5 节）。
 
 ## 5 备份和恢复

@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && node --test scripts/deploy-gate.test.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present"
   }
 }
