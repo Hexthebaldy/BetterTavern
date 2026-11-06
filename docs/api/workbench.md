@@ -214,7 +214,7 @@ PNG 卡的图片会重新编码一遍（去掉卡片数据和 EXIF），当作�
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `prompt` | string | 是 | 画面描述，1 到 4000 个字符 |
-| `style` | string | 否 | 风格：`ink`（水墨）、`oil`（油画）、`film`（胶片）、`flat`（平涂）之一（换成英文说法拼进提示词），或者自己写一个；默认不加 |
+| `style` | string | 否 | 风格：`anime`（动漫）、`realistic`（写实）、`ink`（水墨）、`oil`（油画）、`film`（胶片）、`flat`（平涂）之一（换成英文说法拼进提示词），或者自己写一个；默认不加 |
 | `count` | integer | 否 | 几张，1 到 4，默认 4 |
 | `aspect` | string | 否 | 画幅：`portrait`（竖版，默认）/ `square` / `landscape` |
 

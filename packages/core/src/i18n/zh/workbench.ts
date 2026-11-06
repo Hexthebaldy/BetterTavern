@@ -240,6 +240,8 @@ export const workbench = {
       style: "风格",
       styles: {
         none: "不指定",
+        anime: "动漫",
+        realistic: "写实",
         ink: "水墨",
         oil: "油画",
         film: "胶片",

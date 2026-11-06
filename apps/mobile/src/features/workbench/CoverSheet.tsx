@@ -17,7 +17,7 @@ import { useApp } from "../../state/AppProvider.tsx";
 import { comicRadius, comicStroke, space, useComic } from "../../theme/index.ts";
 import { AssetTile, BlobImage, type CoverActions } from "./assets.tsx";
 
-const STYLES = ["none", "ink", "oil", "film", "flat"] as const;
+const STYLES = ["none", "anime", "realistic", "ink", "oil", "film", "flat"] as const;
 const COUNTS = [1, 2, 3, 4] as const;
 
 export function CoverSheet({
@@ -148,7 +148,7 @@ export function CoverSheet({
                 onPress={() => void generate()}
               />
               <Text style={{ fontSize: 12, color: c.mut }}>
-                {t("workbench.cover.using", { service: service.label || service.provider })}
+                {t("workbench.cover.using", { service: service.label || service.model || service.provider })}
               </Text>
             </>
           ) : routes.loading ? null : (

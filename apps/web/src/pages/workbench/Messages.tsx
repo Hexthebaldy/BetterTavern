@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import type { Asset, WorkbenchMessage } from "@bettertavern/core/api/types";
 import { i18n } from "@bettertavern/core/i18n/index";
 import { answersSummary } from "@bettertavern/core/workbench/questionnaire";
-import { fieldList, runErrorText } from "@bettertavern/core/workbench/labels";
+import { fieldList, plainAgentText, runErrorText } from "@bettertavern/core/workbench/labels";
 
 import { Notice } from "../../components/controls.tsx";
 import { Icon } from "../../components/Icon.tsx";
@@ -175,7 +175,7 @@ function AgentContent({ message, actions }: { message: WorkbenchMessage; actions
   const active = actions.awaitedSeq === message.seq;
   switch (message.kind) {
     case "text":
-      return <div className={styles.agentText}>{message.content.text}</div>;
+      return <div className={styles.agentText}>{plainAgentText(message.content.text)}</div>;
     case "questions":
       return (
         <QuestionsCard

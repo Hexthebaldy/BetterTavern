@@ -8,8 +8,19 @@ import { i18n } from "../i18n/index.ts";
 import { describeField } from "../scenario/cardEdit.ts";
 
 /** 封面的几种画风（和服务端 providers/image 的 STYLE_HINTS 一致） */
-export const STYLE_IDS = new Set(["ink", "oil", "film", "flat"]);
-export type StyleId = "ink" | "oil" | "film" | "flat";
+export const STYLE_IDS = new Set(["anime", "realistic", "ink", "oil", "film", "flat"]);
+export type StyleId = "anime" | "realistic" | "ink" | "oil" | "film" | "flat";
+
+/**
+ * agent 说的话按纯文字显示：模型有时还是会写 Markdown，去掉加粗（**字**、__字__）和行首的标题记号（# ），
+ * 列表的“- ”留着（纯文字里也读得通）。
+ */
+export function plainAgentText(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/^#{1,6}[ \t]+/gm, "");
+}
 
 /** 改动的位置：备选开场白的编号从 1 起，世界书条目的编号从 0 起（见 docs/api/workbench.md 的 Hunk） */
 export function hunkTargetLabel(target: HunkTarget): string {

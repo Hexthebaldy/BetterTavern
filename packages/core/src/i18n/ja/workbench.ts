@@ -240,6 +240,8 @@ export const workbench: MessagesOtherOnly<typeof source> = {
       style: "画風",
       styles: {
         none: "指定しない",
+        anime: "アニメ",
+        realistic: "リアル",
         ink: "水墨",
         oil: "油絵",
         film: "フィルム写真",

@@ -251,6 +251,8 @@ export const workbench: Messages<typeof source> = {
       style: "Style",
       styles: {
         none: "Any",
+        anime: "Anime",
+        realistic: "Realistic",
         ink: "Ink wash",
         oil: "Oil painting",
         film: "Film photo",

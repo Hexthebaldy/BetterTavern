@@ -18,7 +18,7 @@ import { AssetTile, BlobImage, type CoverActions } from "./assets.tsx";
 import chat from "./chat.module.css";
 import styles from "./preview.module.css";
 
-const STYLES = ["none", "ink", "oil", "film", "flat"] as const;
+const STYLES = ["none", "anime", "realistic", "ink", "oil", "film", "flat"] as const;
 const COUNTS = [1, 2, 3, 4] as const;
 
 export function CoverDialog({
@@ -153,7 +153,7 @@ export function CoverDialog({
                   onClick={() => void generate()}
                 />
                 <span className={styles.service}>
-                  {t("workbench.cover.using", { service: service.label || service.provider })}
+                  {t("workbench.cover.using", { service: service.label || service.model || service.provider })}
                 </span>
               </div>
             </>

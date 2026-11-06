@@ -10,7 +10,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Asset, WorkbenchMessage } from "@bettertavern/core/api/types";
 import { i18n } from "@bettertavern/core/i18n/index";
-import { fieldList, runErrorText } from "@bettertavern/core/workbench/labels";
+import { fieldList, plainAgentText, runErrorText } from "@bettertavern/core/workbench/labels";
 import { answersSummary } from "@bettertavern/core/workbench/questionnaire";
 
 import { Icon, Notice, type IconName } from "../../components/ui.tsx";
@@ -192,7 +192,7 @@ function AgentContent({ message, actions }: { message: WorkbenchMessage; actions
     case "text":
       return (
         <Text selectable style={[chat.agentText, { color: c.ink }]}>
-          {message.content.text}
+          {plainAgentText(message.content.text)}
         </Text>
       );
     case "questions":
