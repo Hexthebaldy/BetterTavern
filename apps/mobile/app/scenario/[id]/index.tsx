@@ -212,7 +212,9 @@ export default function ScenarioScreen() {
         // 提示词按当前的界面语言（docs/i18n.md 第 4 节）
         language: currentLanguage(),
       });
-      router.replace({ pathname: "/play/[id]", params: { id: created.playthrough.id } });
+      // 阅读页下面垫存档列表：返回（按钮、侧滑、安卓返回键）都回存档，不回剧本详情或来时的工作台
+      router.dismissTo("/playthroughs");
+      router.push({ pathname: "/play/[id]", params: { id: created.playthrough.id } });
     } catch (e) {
       setStartError(e instanceof Error ? e : new Error(describeError(e)));
       setStarting(false);
