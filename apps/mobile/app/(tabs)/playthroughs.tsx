@@ -339,7 +339,7 @@ export default function PlaythroughsScreen() {
           ) : null}
           {stories.length === 0 ? (
             <View style={{ marginLeft: column.left - sides.left, marginRight: column.right - sides.right }}>
-              <Empty onImport={() => router.navigate("/library")} />
+              <Empty onImport={() => router.navigate("/workbench")} />
             </View>
           ) : (
             <StoryGrid
@@ -380,7 +380,7 @@ export default function PlaythroughsScreen() {
             ) : null}
           </>
         }
-        ListEmptyComponent={<Empty onImport={() => router.navigate("/library")} />}
+        ListEmptyComponent={<Empty onImport={() => router.navigate("/workbench")} />}
         ItemSeparatorComponent={() => <View style={{ height: ROW_GAP }} />}
         renderItem={({ item }) => (
           <SwipeRow actions={swipeActions(item)}>

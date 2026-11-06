@@ -6,7 +6,7 @@ export const stories: Messages<typeof source> = {
     cardHint: "Opens the save. Long-press to rename or delete.",
     emptyTitle: "No saves yet",
     emptyText:
-      "Import a character card in Library and choose who you'll play. The first part of the story will be written for you.",
+      "Import a character card in Workbench and choose who you'll play. The first part of the story will be written for you.",
     emptyAction: "Import a character card",
     renameTitle: "Rename save",
     nameLabel: "Save name",

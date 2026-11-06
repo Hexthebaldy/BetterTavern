@@ -6,7 +6,7 @@ export const stories: MessagesOtherOnly<typeof source> = {
     cardHint: "セーブを開きます。長押しで名前の変更や削除ができます",
     emptyTitle: "セーブはまだありません",
     emptyText:
-      "「シナリオ」でキャラクターカードを読み込み、自分が演じる人物を決めると、最初の場面が書かれます。",
+      "「ワークベンチ」でキャラクターカードを読み込み、自分が演じる人物を決めると、最初の場面が書かれます。",
     emptyAction: "キャラクターカードを読み込む",
     renameTitle: "セーブの名前を変更",
     nameLabel: "セーブ名",

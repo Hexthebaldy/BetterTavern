@@ -4,7 +4,7 @@ export const stories = {
   stories: {
     cardHint: "打开存档；长按可以重命名或删除",
     emptyTitle: "还没有存档",
-    emptyText: "去“剧本”导入一张角色卡，设定你扮演的角色，第一段故事就会写出来。",
+    emptyText: "去“工作台”导入一张角色卡，设定你扮演的角色，第一段故事就会写出来。",
     emptyAction: "去导入角色卡",
     renameTitle: "重命名存档",
     nameLabel: "存档名",
