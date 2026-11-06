@@ -329,7 +329,10 @@ function ModelList({ routes, selected }: { routes: ModelRoute[]; selected: strin
         const sub = [
           official ? t("models.officialKey") : providerName(route.provider, providers.data),
           official ? null : t("settings.keyTail", { last4: route.key_last4 }),
-          t("settings.workingWindow", { size: formatTokens(route.window.model_window) }),
+          // 工作窗口取模型窗口和工作窗口上限里小的那个（和 App 设置页的导演卡片一样）
+          t("settings.workingWindow", {
+            size: formatTokens(Math.min(route.window.model_window, route.window.working_cap)),
+          }),
         ]
           .filter(Boolean)
           .join(" · ");
