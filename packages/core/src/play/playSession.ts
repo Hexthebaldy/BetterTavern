@@ -248,6 +248,17 @@ export class PlaySession {
     }
   }
 
+  /** 多角色的局的角色是开场搭世界时才写进去的：刚进阅读页时还没有，世界建好以后补取一次 */
+  private async refreshCast(): Promise<void> {
+    try {
+      const detail = await this.deps.api.detail(this.playthroughId);
+      if (this.disposed) return;
+      this.dispatch({ type: "cast", cast: detail.cast ?? [] });
+    } catch {
+      // 取不到就算了：下次进阅读页时会带上
+    }
+  }
+
   /**
    * 画这一幕：服务端马上返回一张“正在画”的图，之后隔几秒查一次。带了画风就记成这一局的画风。
    * 失败（没配出图服务、这一回合已经在画等）返回原因，界面用提示条显示。
@@ -374,7 +385,9 @@ export class PlaySession {
     this.detach();
     const handlers: TurnStreamHandlers = {
       onEvent: (event) => {
-        if (this.stream === stream) this.dispatch({ type: "stream", event });
+        if (this.stream !== stream) return;
+        this.dispatch({ type: "stream", event });
+        if (event.event === "world.ready") void this.refreshCast();
       },
       onState: (state) => {
         if (this.stream === stream) this.dispatch({ type: "connection", state });

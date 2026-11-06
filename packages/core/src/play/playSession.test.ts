@@ -393,6 +393,28 @@ describe("PlaySession", () => {
     assert.equal(state.title, "雨夜");
   });
 
+  it("多角色的局刚开场：进来时还没有角色，世界建好以后补取一次", async () => {
+    const { api, streams, session } = setup();
+    const opening = makeTurn(0, { status: "generating", narrative: "", options: [] });
+    const cast = [
+      { position: 0, name: "沈知微", cover_blob_id: null, muted: false },
+      { position: 1, name: "老周", cover_blob_id: null, muted: false },
+    ];
+    api.detailQueue = [detail(null, { active_turn: opening, cast: [] }), detail(null, { cast })];
+    api.historyQueue = [[]];
+    await session.load();
+    assert.deepEqual(session.getState().cast, []);
+    const stream = streams[0]!;
+    stream.emit({ event: "world.building", data: {} });
+    stream.emit({ event: "world.ready", data: { source: "world_builder", entities: 3 } });
+    await tick();
+    assert.equal(api.detailCalls, 2);
+    assert.deepEqual(
+      session.getState().cast.map((m) => m.name),
+      ["沈知微", "老周"],
+    );
+  });
+
   it("历史分页拉全", async () => {
     const api = new FakeApi();
     const session = new PlaySession("p1", {

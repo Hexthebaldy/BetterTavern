@@ -44,6 +44,14 @@ from .turn_store import load_world
 from .views import CastView, PlaythroughDetail, PlaythroughView, TurnView
 
 log = structlog.get_logger(__name__)
+EXCERPT_CHARS = 120
+
+
+def excerpt_of(narrative: str, segments: list[dict[str, Any]]) -> str:
+    """列表和详情里的叙述开头：多角色的局按段取正文，不带每段前面那行名字（“【阿苓】”）。"""
+    if segments:
+        narrative = "\n\n".join(str(s.get("text") or "") for s in segments)
+    return narrative[:EXCERPT_CHARS]
 
 
 @dataclass(frozen=True, slots=True)
@@ -269,7 +277,7 @@ class PlaythroughService:
             playthrough=self._view(
                 pt,
                 head_seq=head.seq if head else None,
-                head_excerpt=head.narrative[:120] if head else "",
+                head_excerpt=excerpt_of(head.narrative, head.segments) if head else "",
             ),
             head=TurnView.of(head, images.get(head.id)) if head else None,
             active_turn=TurnView.of(active) if active else None,

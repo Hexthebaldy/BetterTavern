@@ -142,7 +142,12 @@ async def list_playthroughs(conn: AsyncConnection, user_id: str, limit: int = 10
         conn,
         f"""
         SELECT {", ".join("p." + c.strip() for c in _PT_COLS.split(","))},
-               h.seq AS head_seq, left(h.narrative, 120) AS head_excerpt
+               h.seq AS head_seq,
+               -- 多角色的局按段取正文，不带每段前面那行名字（同 excerpt_of）
+               left(CASE WHEN jsonb_array_length(coalesce(h.segments, '[]'::jsonb)) > 0
+                    THEN (SELECT string_agg(e.seg->>'text', E'\n\n' ORDER BY e.ord)
+                          FROM jsonb_array_elements(h.segments) WITH ORDINALITY AS e(seg, ord))
+                    ELSE h.narrative END, 120) AS head_excerpt
         FROM playthroughs AS p
         LEFT JOIN turns AS h ON h.id = p.head_turn_id
         WHERE p.user_id = :u
