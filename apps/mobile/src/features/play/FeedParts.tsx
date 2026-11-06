@@ -9,7 +9,7 @@
 
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View, type TextStyle } from "react-native";
+import { Platform, StyleSheet, Text, View, type TextStyle } from "react-native";
 
 import type { Persona } from "@bettertavern/core/api/types";
 import { BASE_SIZE, lineHeightFor, MAX_SIZE, readingSize, type ReadingPrefs } from "@bettertavern/core/play/reading";
@@ -50,7 +50,9 @@ export function useNarrativeStyle(
       style: {
         fontFamily: prefs.font === "serif" ? serifFor(language) : undefined,
         fontSize,
-        lineHeight: lineHeightFor(fontSize),
+        // iOS 上不定行高：RN 在 iOS 上排定了行高的长段落，偶尔量出来的高度比画出来的矮一点，
+        // 最后一行就被吞掉、挤进上一行（2026-11 在 iOS 27 模拟器上复现）。这里用字体自己的行距。
+        lineHeight: Platform.OS === "ios" ? undefined : lineHeightFor(fontSize),
         letterSpacing: fontSize * 0.01,
         color: c.ink,
         textAlign: "justify",
@@ -159,7 +161,7 @@ export function Narrative({
   const caretHeight = Math.round((narr.style.fontSize ?? 17) * 1.2);
   if (parts.length === 0) {
     return caret ? (
-      <View style={[styles.caretOnly, { height: narr.style.lineHeight }]}>
+      <View style={[styles.caretOnly, { height: narr.style.lineHeight ?? lineHeightFor(narr.style.fontSize ?? BASE_SIZE) }]}>
         <Caret color={caret} height={caretHeight} />
       </View>
     ) : null;
