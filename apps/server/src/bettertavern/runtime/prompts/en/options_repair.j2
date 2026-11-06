@@ -1,4 +1,4 @@
-{# version: 2 #}
+{# version: 3 #}
 {% if content_policy == "sfw" %}
 {% include "_content_boundary.j2" %}
 
@@ -17,5 +17,5 @@ Existing choices (the new ones must not repeat them):
 {% endfor %}
 {% endif %}
 
-Requirements: give {{ count }} choices with intentions that don't overlap; each is a concrete action the protagonist can take right now, phrased as a first-person action, no longer than 10 words; don't spoil what comes later.
+Requirements: give {{ count }} choices with intentions that don't overlap; each is a concrete action the protagonist can take right now, phrased as a first-person action, no longer than 10 words; don't spoil what comes later; write them in English.
 Output only one JSON object in the form {"options": ["Choice one", "Choice two"]}, with no other text.

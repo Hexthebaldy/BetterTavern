@@ -5,7 +5,7 @@
  */
 
 import type { Preferences } from "../api/types.ts";
-import { i18n } from "../i18n/index.ts";
+import { currentLanguage, i18n, LANGUAGE_NAMES, type Language } from "../i18n/index.ts";
 
 export const NAME_MAX = 40;
 export const SUMMARY_MAX = 400;
@@ -86,15 +86,17 @@ export function composeBoundaries(items: string[]): string {
   return joinWithin(items, BOUNDARIES_MAX);
 }
 
-/** 表单底部的摘要，每段一个小胶囊：林川 / 适中 / 克制 · 白描 / 避开 2 项 */
+/** 表单底部的摘要，每段一个小胶囊：林川 / 适中 / 克制 · 白描 / 避开 2 项；故事语言和界面语言不同时再加一段 English */
 export function summaryParts(form: {
   name: string;
   length: Preferences["length"];
   styles: string[];
   boundaries: number;
+  language?: Language;
 }): string[] {
   const parts = [form.name.trim() || i18n.t("start.noName"), lengthLabel(form.length)];
   if (form.styles.length > 0) parts.push(form.styles.join(" · "));
   if (form.boundaries > 0) parts.push(i18n.t("start.avoid", { count: form.boundaries }));
+  if (form.language && form.language !== currentLanguage()) parts.push(LANGUAGE_NAMES[form.language]);
   return parts;
 }

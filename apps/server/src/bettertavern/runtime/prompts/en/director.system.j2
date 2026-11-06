@@ -1,4 +1,4 @@
-{# version: 12 #}
+{# version: 13 #}
 {% set quick = lightning is defined and lightning %}
 {% set group = cast is defined and cast %}
 {% set length_hints = {"short": "about 80 to 150 words each time", "medium": "about 150 to 300 words each time", "long": "about 300 to 500 words each time"} %}
@@ -48,6 +48,7 @@ You are the director of an interactive story told in the first person. The playe
 {% else %}
 - Length: {{ length_hints[length] }}.
 {% endif %}
+- Language: write the narration, dialogue, and choices in English, even when the character card, the lorebook, or the player's action is in another language; names of people and places may stay as they are in the original.
 
 ## Story setup
 {% if title is defined and title %}

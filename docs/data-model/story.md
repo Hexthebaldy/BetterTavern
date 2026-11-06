@@ -20,7 +20,7 @@
 | `scenario_id` | uuid | 是 |  | → `scenarios.id`，被删除时置空 |
 | `title` | text | 否 |  | 标题，默认用剧本名，最多 80 字 |
 | `status` | text | 否 | `'building'` | `building` 表示世界还没建好，`active` 表示开局构建已完成，`ended` 表示已经写完结局（见下文“状态”） |
-| `language` | text | 否 | `'zh'` | 给 agent 的提示词用哪种语言：`zh` / `en` / `ja`。开局时由客户端按界面语言传来，之后不变（见 [i18n.md](../i18n.md) 第 4 节） |
+| `language` | text | 否 | `'zh'` | 故事语言：正文、对白、选项和世界状态用哪种语言写，给 agent 的提示词也用这种语言：`zh` / `en` / `ja`。开局时玩家在表单里选（默认是界面语言），之后不变（见 [i18n.md](../i18n.md) 第 1、4 节） |
 | `mode` | text | 否 | `'standard'` | 怎么玩：`standard`（导演加后台整理世界状态、章节摘要、大纲）/ `lightning`（闪电模式：和普通模式一样开局、写叙述，只是后台不整理世界状态、不写章节摘要和大纲，原文超过阈值时压成一版梗概，见 [agent-runtime.md 的“闪电模式”](../agent-runtime.md#闪电模式)）。开局时从剧本的 `setup.lightning` 拷过来，之后不变。迁移 `0024` 加的，已有的存档都是 `standard` |
 | `settings` | jsonb | 否 | `'{}'` | 主角和偏好设置，结构见下文“JSON 列” |
 | `seed` | jsonb | 是 |  | 开局设定（WorldBuilder 或最小 Seed 的输出），结构见下文“JSON 列”；世界建好时写入 |

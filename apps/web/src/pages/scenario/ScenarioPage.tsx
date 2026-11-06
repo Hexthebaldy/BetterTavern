@@ -16,7 +16,7 @@ import { Link, useNavigate, useParams } from "react-router";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
-import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
+import { i18n } from "@bettertavern/core/i18n/index";
 import { lorebookSummary } from "@bettertavern/core/scenario/lorebook";
 import { choiceName, startChoice, startFields } from "@bettertavern/core/scenario/persona";
 import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
@@ -188,8 +188,8 @@ export function ScenarioPage() {
         scenario_id: scenario.id,
         ...who,
         preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
-        // 提示词按当前的界面语言（docs/i18n.md 第 4 节）
-        language: currentLanguage(),
+        // 故事语言：表单里选的，默认是界面语言（docs/i18n.md 第 1 节）
+        language: values.language,
       });
       void queries.invalidateQueries({ queryKey: storiesKey });
       navigate(`/play/${encodeURIComponent(created.playthrough.id)}`, { replace: true });

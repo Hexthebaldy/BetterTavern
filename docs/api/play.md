@@ -53,7 +53,7 @@
 | `protagonist` | [`ProtagonistIn`](#protagonistin) / null | 否 | 临时填的主角（不进人设库）；和 `persona_id` 都不传时按上面的顺序取 |
 | `title` | string / null | 否 | 标题，最多 80 个字符；不填时用剧本名 |
 | `preferences` | [`PreferencesIn`](#preferencesin) / null | 否 | 叙述偏好；不传时用剧本设置里的偏好 |
-| `language` | string | 否 | 这一局给 agent 的提示词用哪种语言：`zh`（默认）/ `en` / `ja`。客户端传当前的界面语言；之后不能改，也不影响故事正文用什么语言（见 [i18n.md](../i18n.md) 第 4 节） |
+| `language` | string | 否 | 故事语言：这一局的正文、对白、选项和世界状态用哪种语言写，给 agent 的提示词也用这种语言：`zh`（默认）/ `en` / `ja`。客户端传开局表单里选的（默认是当前的界面语言）；之后不能改（见 [i18n.md](../i18n.md) 第 1、4 节） |
 
 #### `ProtagonistIn`
 
@@ -353,7 +353,7 @@
 | `title` | string | 标题 |
 | `status` | string | `building`（世界还没建好）/ `active` / `ended`（已经写完结局，不能再提交行动） |
 | `scenario_id` | string / null | 剧本；剧本被删除后为 null |
-| `language` | string | 提示词的语言：`zh` / `en` / `ja`，开局时定下 |
+| `language` | string | 故事语言（提示词也用它）：`zh` / `en` / `ja`，开局时定下 |
 | `mode` | string | `standard` / `lightning`（闪电模式：没有世界状态，客户端不显示世界状态的入口）。开局时按剧本的 `setup.lightning` 定下，之后不变 |
 | `protagonist_name` | string | 主角的名字 |
 | `persona_id` | string / null | 开局时用的人设，客户端用它显示头像（人设删了就找不到，不显示）；临时填的主角、人设功能上线前开的局为 null |

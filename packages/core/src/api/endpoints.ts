@@ -105,7 +105,7 @@ export type NewPlaythrough = {
   protagonist?: { name: string; summary?: string };
   title?: string;
   preferences?: Partial<Preferences>;
-  /** 这一局给 agent 的提示词用哪种语言：传当前的界面语言（docs/i18n.md 第 4 节）；不传按 zh */
+  /** 故事语言（正文和给 agent 的提示词都用它）：开局表单里选的，默认是界面语言（docs/i18n.md 第 1 节）；不传按 zh */
   language?: "zh" | "en" | "ja";
 };
 

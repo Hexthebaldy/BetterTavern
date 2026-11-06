@@ -1,4 +1,4 @@
-{# version: 12 #}
+{# version: 13 #}
 {% set quick = lightning is defined and lightning %}
 {% set group = cast is defined and cast %}
 {% set length_hints = {"short": "1回あたり200〜400字程度", "medium": "1回あたり400〜800字程度", "long": "1回あたり800〜1400字程度"} %}
@@ -48,6 +48,7 @@
 {% else %}
 - 分量：{{ length_hints[length] }}。
 {% endif %}
+- 言語：地の文・セリフ・選択肢はすべて日本語で書く。キャラクターカード、ワールドブック、プレイヤーの行動がほかの言語で書かれていても同じ。人名・地名は原文のままでもよい。
 
 ## 物語の設定
 {% if title is defined and title %}

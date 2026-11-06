@@ -1,13 +1,14 @@
 /**
- * “开始新的故事”的四步表单：你扮演谁（人设库里选一个，或者临时填名字和描述，见 PersonaStep.tsx）、
- * 篇幅（行数图示）、文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）。只有第 1 步必填。
+ * “开始新的故事”的表单：你扮演谁（人设库里选一个，或者临时填名字和描述，见 PersonaStep.tsx）、
+ * 篇幅（行数图示）、文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）、故事语言（默认是界面语言）。
+ * 只有第 1 步必填。
  * 选择最终拼回接口的字段，见 @bettertavern/core 的 scenario/startForm.ts、scenario/persona.ts。
  * 宽屏的剧本详情两栏里（wide）：名字建议排在输入框右侧。
  * initial：按剧本设置预填（先选哪个人设、偏好）；不在内置标签里的文风、不想看到的内容当作自定义的项。
  * 也用在新建、编辑剧本（app/scenario/form.tsx，mode = scenario）里填剧本的默认设置：第 1 步是默认人设，可以不选。
  *
  * 漫画风（docs/design/comic/mobile/png/16–17）：每一步一个白底墨线的格子，步骤号是墨底方块白字；
- * 篇幅是三格的切换（选中墨底），不想看到的内容是两列复选框。
+ * 篇幅和故事语言是三格的切换（选中墨底），不想看到的内容是两列复选框。
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -16,6 +17,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import type { Persona, Preferences } from "@bettertavern/core/api/types";
+import { currentLanguage, LANGUAGE_NAMES, LANGUAGES, type Language } from "@bettertavern/core/i18n/index";
 import { choiceName, type ProtagonistChoice } from "@bettertavern/core/scenario/persona";
 import {
   boundaryItems,
@@ -39,6 +41,8 @@ export type StartValues = {
   length: Preferences["length"];
   style: string;
   boundaries: string;
+  /** 故事用哪种语言写（只有开新故事时有这一步，剧本设置里不用） */
+  language: Language;
 };
 
 export type StartInitial = {
@@ -122,6 +126,8 @@ export function StartForm({
   const [customBounds, setCustomBounds] = useState<string[]>(() =>
     splitJoined(initial.boundaries ?? "").filter((item) => !avoidItems.includes(item)),
   );
+  // 故事语言默认是界面语言（界面语言默认跟系统）
+  const [language, setLanguage] = useState<Language>(currentLanguage);
 
   // 选择变了就把拼好的值报给父组件
   const onChangeRef = useRef(onChange);
@@ -133,11 +139,19 @@ export function StartForm({
       length,
       style: composeStyle(styles_),
       boundaries: composeBoundaries(bounds),
+      language,
     };
     const name = choiceName(choice, personas);
-    onChangeRef.current(values, summaryParts({ name, length, styles: styles_, boundaries: bounds.length }));
+    const summary = summaryParts({
+      name,
+      length,
+      styles: styles_,
+      boundaries: bounds.length,
+      language: mode === "start" ? language : undefined,
+    });
+    onChangeRef.current(values, summary);
     // 换了界面语言，底部摘要（“还没起名”“适中”）也要换
-  }, [choice, tile, saveToLibrary, personas, length, styles_, bounds, i18n.language]);
+  }, [choice, tile, saveToLibrary, personas, length, styles_, bounds, language, mode, i18n.language]);
 
   const toggle = (list: string[], item: string): string[] =>
     list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
@@ -259,6 +273,39 @@ export function StartForm({
           </View>
         </View>
       </Step>
+
+      {mode === "start" ? (
+        <Step n="5" title={t("start.stepLanguage")}>
+          <Text style={[styles.note, { color: c.mut }]}>{t("start.languageNote")}</Text>
+          <View
+            style={[styles.lengths, { borderColor: c.ink, backgroundColor: c.paper }]}
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t("start.stepLanguage")}
+          >
+            {LANGUAGES.map((value, i) => {
+              const on = language === value;
+              return (
+                <Pressable
+                  key={value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => setLanguage(value)}
+                  style={({ pressed }) => [
+                    styles.language,
+                    i > 0 ? { borderLeftWidth: comicStroke.control, borderLeftColor: c.ink } : null,
+                    { backgroundColor: on ? c.ink : pressed ? c.grey : "transparent" },
+                  ]}
+                >
+                  {/* 每种语言用它自己的文字写，看不懂当前界面的人也找得到 */}
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: on ? c.paper : c.ink }}>
+                    {LANGUAGE_NAMES[value]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Step>
+      ) : null}
     </View>
   );
 }
@@ -285,6 +332,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   length: { flex: 1, alignItems: "center", gap: 6, paddingTop: 12, paddingBottom: 10 },
+  language: { flex: 1, alignItems: "center", paddingVertical: 12 },
+  note: { fontSize: 13, lineHeight: 20, marginTop: -6 },
   checks: { flexDirection: "row", flexWrap: "wrap", columnGap: 10 },
   checkCell: { width: "47%" },
 });

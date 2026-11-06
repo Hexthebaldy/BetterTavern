@@ -47,6 +47,13 @@ describe("开始新故事的表单", () => {
       "还没起名",
       "短",
     ]);
+    // 故事语言和界面一样时不占一格，不一样时用那种语言自己的名字
+    assert.deepEqual(summaryParts({ name: "林川", length: "short", styles: [], boundaries: 0, language: "zh" }), ["林川", "短"]);
+    assert.deepEqual(summaryParts({ name: "林川", length: "short", styles: [], boundaries: 0, language: "ja" }), [
+      "林川",
+      "短",
+      "日本語",
+    ]);
   });
 
   it("日文界面：日文名字、读点分隔、日文摘要", () => {

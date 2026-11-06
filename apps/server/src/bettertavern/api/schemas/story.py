@@ -32,7 +32,7 @@ class PlaythroughIn(BaseModel):
     protagonist: ProtagonistIn | None = None
     title: str | None = Field(default=None, max_length=80)
     preferences: PreferencesIn | None = None
-    # 这一局给 agent 的提示词用哪种语言：客户端传当前的界面语言；之后不变
+    # 故事语言（正文和给 agent 的提示词都用它）：客户端传开局表单里选的，默认是界面语言；之后不变
     language: PromptLanguage = DEFAULT_LANGUAGE
 
 

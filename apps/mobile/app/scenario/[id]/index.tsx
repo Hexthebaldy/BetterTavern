@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ApiError, describeError } from "@bettertavern/core/api/client";
 import type { Scenario } from "@bettertavern/core/api/types";
-import { currentLanguage, i18n } from "@bettertavern/core/i18n/index";
+import { i18n } from "@bettertavern/core/i18n/index";
 import { lorebookSummary } from "@bettertavern/core/scenario/lorebook";
 import { choiceName, startChoice, startFields } from "@bettertavern/core/scenario/persona";
 import { lengthLabel, splitJoined } from "@bettertavern/core/scenario/startForm";
@@ -209,8 +209,8 @@ export default function ScenarioScreen() {
         scenario_id: scenario.id,
         ...who,
         preferences: { length: values.length, style: values.style, boundaries: values.boundaries },
-        // 提示词按当前的界面语言（docs/i18n.md 第 4 节）
-        language: currentLanguage(),
+        // 故事语言：表单里选的，默认是界面语言（docs/i18n.md 第 1 节）
+        language: values.language,
       });
       // 阅读页下面垫存档列表：返回（按钮、侧滑、安卓返回键）都回存档，不回剧本详情或来时的工作台
       router.dismissTo("/playthroughs");

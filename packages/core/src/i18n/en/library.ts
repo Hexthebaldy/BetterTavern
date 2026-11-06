@@ -197,6 +197,8 @@ export const library: Messages<typeof source> = {
     customStyleLabel: "Style",
     customStylePlaceholder: "e.g. More scenery",
     stepAvoid: "Content to avoid",
+    stepLanguage: "Story language",
+    languageNote: "The story, dialogue, and options are written in this language, even if the card is in another one",
     customAvoidTitle: "Other content to avoid",
     customAvoidLabel: "Content to avoid",
     customAvoidPlaceholder: "e.g. School bullying",

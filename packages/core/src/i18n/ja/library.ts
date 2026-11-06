@@ -190,6 +190,8 @@ export const library: MessagesOtherOnly<typeof source> = {
     customStyleLabel: "文体",
     customStylePlaceholder: "例：情景描写を多めに",
     stepAvoid: "見たくない内容",
+    stepLanguage: "物語の言語",
+    languageNote: "本文・セリフ・選択肢をこの言語で書きます。キャラクターカードが別の言語でも同じです",
     customAvoidTitle: "ほかに見たくない内容",
     customAvoidLabel: "見たくない内容",
     customAvoidPlaceholder: "例：学校でのいじめ",

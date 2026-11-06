@@ -1,4 +1,4 @@
-{# version: 4 #}
+{# version: 5 #}
 {% if content_policy == "sfw" %}
 {% include "_content_boundary.j2" %}
 
@@ -80,6 +80,7 @@
 5. facts：重要的设定事实，每条一句话；主角一开始不知道的标 secret 为 true，并在 known_by 里写知道它的人物。
 6. opening：location 是开场地点（必须是 locations 里的名字）；present 是在场的人物（不含主角）；situation 写开场情境；hook 写推动故事的第一个钩子。
 7. 直接写名字，不要出现 {{ "{{" }}user{{ "}}" }}、{{ "{{" }}char{{ "}}" }} 之类的占位符。
+8. 所有文字用中文写，角色卡是别的语言时也一样；人名、地名可以保留原文。
 {% if schema %}
 
 只输出一个 JSON 对象，符合下面的 JSON Schema，不要输出其他文字：

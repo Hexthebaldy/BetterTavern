@@ -189,6 +189,8 @@ export const library = {
     customStyleLabel: "文风",
     customStylePlaceholder: "例如：多写环境",
     stepAvoid: "不想看到的内容",
+    stepLanguage: "故事语言",
+    languageNote: "正文、对白和选项都用这种语言写，角色卡是别的语言也一样",
     customAvoidTitle: "其他不想看到的内容",
     customAvoidLabel: "不想看到的内容",
     customAvoidPlaceholder: "例如：校园霸凌",

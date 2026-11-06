@@ -1,4 +1,4 @@
-{# version: 3 #}
+{# version: 4 #}
 {% if content_policy == "sfw" %}
 {% include "_content_boundary.j2" %}
 
@@ -80,6 +80,7 @@
 5. facts：設定上の重要な事実を一文ずつ書く。主人公が最初は知らないものは secret を true にし、それを知っている人物を known_by に書く。
 6. opening：location は冒頭の場所（locations にある名前であること）。present はその場にいる人物（主人公を除く）。situation は冒頭の状況。hook は物語を動かす最初のきっかけ。
 7. 名前はそのまま書き、{{ "{{" }}user{{ "}}" }}、{{ "{{" }}char{{ "}}" }} のようなプレースホルダーを残さない。
+8. 文章はすべて日本語で書く。キャラクターカードがほかの言語でも同じ。人名・地名は原文のままでもよい。
 {% if schema %}
 
 次の JSON Schema に合う JSON オブジェクトを一つだけ出力し、ほかの文章は出力しないこと：

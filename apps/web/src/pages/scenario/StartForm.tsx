@@ -1,6 +1,7 @@
 /**
- * “开始新的故事”的四步表单（同 App 的 StartForm.tsx）：你扮演谁（人设库里选一个，或者临时填名字和描述，见 PersonaStep.tsx）、
- * 篇幅（行数图示）、文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）。只有第 1 步必填。
+ * “开始新的故事”的表单（同 App 的 StartForm.tsx）：你扮演谁（人设库里选一个，或者临时填名字和描述，见 PersonaStep.tsx）、
+ * 篇幅（行数图示）、文风（多选标签 + 自定义）、不想看到的内容（勾选清单 + 其他）、故事语言（默认是界面语言）。
+ * 只有第 1 步必填。
  * 选择最终拼回接口的字段，见 @bettertavern/core 的 scenario/startForm.ts、scenario/persona.ts。
  * 宽屏（wide）：名字建议排在输入框右边。
  * initial：按剧本设置预填（先选哪个人设、偏好）；不在内置标签里的文风、不想看到的内容当作自定义的项。
@@ -11,6 +12,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Persona, Preferences } from "@bettertavern/core/api/types";
+import { currentLanguage, LANGUAGE_NAMES, LANGUAGE_TAGS, LANGUAGES, type Language } from "@bettertavern/core/i18n/index";
 import { choiceName, type ProtagonistChoice } from "@bettertavern/core/scenario/persona";
 import {
   boundaryItems,
@@ -35,6 +37,8 @@ export type StartValues = {
   length: Preferences["length"];
   style: string;
   boundaries: string;
+  /** 故事用哪种语言写（只有开新故事时有这一步，剧本设置里不用） */
+  language: Language;
 };
 
 export type StartInitial = {
@@ -110,6 +114,8 @@ export function StartForm({
   const [customBounds, setCustomBounds] = useState<string[]>(() =>
     splitJoined(initial.boundaries ?? "").filter((item) => !avoidItems.includes(item)),
   );
+  // 故事语言默认是界面语言（界面语言默认跟系统）
+  const [language, setLanguage] = useState<Language>(currentLanguage);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -121,11 +127,18 @@ export function StartForm({
         length,
         style: composeStyle(styleTags),
         boundaries: composeBoundaries(bounds),
+        language,
       },
-      summaryParts({ name: choiceName(choice, personas), length, styles: styleTags, boundaries: bounds.length }),
+      summaryParts({
+        name: choiceName(choice, personas),
+        length,
+        styles: styleTags,
+        boundaries: bounds.length,
+        language: mode === "start" ? language : undefined,
+      }),
     );
     // 换了界面语言，底部摘要（“还没起名”“适中”）也要换
-  }, [choice, tile, saveToLibrary, personas, length, styleTags, bounds, i18n.language]);
+  }, [choice, tile, saveToLibrary, personas, length, styleTags, bounds, language, mode, i18n.language]);
 
   const toggle = (list: string[], item: string): string[] =>
     list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
@@ -220,6 +233,28 @@ export function StartForm({
           <Checkbox label={t("start.other")} checked={false} plus onToggle={() => void addCustom("bound")} />
         </div>
       </Step>
+
+      {mode === "start" ? (
+        <Step n="5" title={t("start.stepLanguage")}>
+          <p className={styles.languageNote}>{t("start.languageNote")}</p>
+          <div className={styles.lengths} role="radiogroup" aria-label={t("start.stepLanguage")}>
+            {LANGUAGES.map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={language === value}
+                lang={LANGUAGE_TAGS[value]}
+                className={cx(styles.length, styles.language, language === value && styles.lengthOn)}
+                onClick={() => setLanguage(value)}
+              >
+                {/* 每种语言用它自己的文字写，看不懂当前界面的人也找得到 */}
+                {LANGUAGE_NAMES[value]}
+              </button>
+            ))}
+          </div>
+        </Step>
+      ) : null}
     </div>
   );
 }

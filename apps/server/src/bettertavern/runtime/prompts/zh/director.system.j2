@@ -1,4 +1,4 @@
-{# version: 13 #}
+{# version: 14 #}
 {% set quick = lightning is defined and lightning %}
 {% set group = cast is defined and cast %}
 {% set length_hints = {"short": "每次 100 到 200 字", "medium": "每次 200 到 400 字", "long": "每次 400 到 700 字"} %}
@@ -48,6 +48,7 @@
 {% else %}
 - 篇幅：{{ length_hints[length] }}。
 {% endif %}
+- 语言：叙述、对白和选项都用中文写；角色卡、世界书或玩家的行动用的是别的语言时也一样，人名、地名可以保留原文。
 
 ## 故事设定
 {% if title is defined and title %}

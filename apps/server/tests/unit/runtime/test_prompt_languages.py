@@ -1,5 +1,5 @@
 """每种语言一套提示词（docs/i18n.md 第 4 节）：文件一一对应、模板用到的变量相同、数据文件的键相同；
-两种语言都能渲染，英文的一局拿到的上下文是英文的。"""
+每种语言都能渲染，英文、日文的一局拿到的上下文是各自的语言，故事正文也要求用这一局的语言写。"""
 
 from __future__ import annotations
 
@@ -14,11 +14,13 @@ from jinja2 import meta
 from bettertavern.domain.story.language import PROMPT_LANGUAGES
 from bettertavern.domain.world.seed import Seed
 from bettertavern.runtime.agents.outline_writer import OutlineDecision
+from bettertavern.runtime.agents.world_builder import render_prompt_context
 from bettertavern.runtime.context.assembler import ContextAssembler
 from bettertavern.runtime.context.state_block import render_state_block
 from bettertavern.runtime.prompts import PROMPTS_ROOT, PromptBook, PromptLibrary
 from bettertavern.runtime.protocol.structured import schema_of
 from tests.unit.runtime.test_context import WORLD, context
+from tests.unit.runtime.test_ensemble import WEN, inp
 
 
 def files(language: str) -> list[str]:
@@ -227,3 +229,25 @@ def test_content_boundary_only_on_the_hosted_service(language: str) -> None:
     assert card.endswith(
         PromptLibrary(language).render("_content_boundary_card", **card_values).text
     )
+
+
+# 故事语言（docs/i18n.md 第 1 节）：玩家看得到的文字——叙述、对白、选项、世界状态面板里的人物和事实——
+# 都按这一局的语言写，角色卡是别的语言也一样
+STORY_LANGUAGE = {
+    "zh": ("用中文写", "所有文字用中文写", "都用中文写"),
+    "en": ("in English", "Write all text in English", "in English"),
+    "ja": ("日本語で書く", "すべて日本語で書く", "日本語で書いて"),
+}
+
+
+@pytest.mark.parametrize("language", PROMPT_LANGUAGES)
+def test_story_text_follows_the_playthrough_language(language: str) -> None:
+    director, world, state = STORY_LANGUAGE[language]
+    library = PromptLibrary(language)
+    system = ContextAssembler(library).assemble(context(history=2), 64_000).messages[0].content
+    assert director in system
+    repair = library.render("options_repair", narrative="rain", existing=[], count=2).text
+    assert director in repair
+    seed_values = render_prompt_context(WEN, inp())
+    assert world in library.render("world_builder", schema="", **seed_values).text
+    assert state in library.render("state_keeper.system").text

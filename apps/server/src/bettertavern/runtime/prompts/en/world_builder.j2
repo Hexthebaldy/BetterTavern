@@ -1,4 +1,4 @@
-{# version: 3 #}
+{# version: 4 #}
 {% if content_policy == "sfw" %}
 {% include "_content_boundary.j2" %}
 
@@ -80,6 +80,7 @@ Requirements:
 5. facts: important facts about the setting, one sentence each; set secret to true for the ones the protagonist doesn't know at first, and list the characters who know them in known_by.
 6. opening: location is the opening location (must be a name in locations); present lists the characters present (not the protagonist); situation describes the opening situation; hook is the first hook that sets the story moving.
 7. Use names directly; don't leave placeholders such as {{ "{{" }}user{{ "}}" }} or {{ "{{" }}char{{ "}}" }}.
+8. Write all text in English, even if the character card is in another language; names of people and places may stay as they are in the original.
 {% if schema %}
 
 Output only one JSON object that matches the JSON Schema below, with no other text:
