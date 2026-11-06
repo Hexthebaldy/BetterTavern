@@ -1,7 +1,8 @@
 /**
  * 外部服务（同网页端 pages/settings/ToolsBody.tsx）：工作台的 agent 查资料、读网页、生成封面时用的服务，分三种：
  * 网页搜索、读网页（默认服务器自己读，可选 Jina）、生成封面（按接口协议接）。
- * 每一种可以配几个，其中一个是默认；可以测试、设为默认、换 Key、删除。添加用底部面板，加好就测一次。
+ * 每一种可以配几个，其中一个是默认；可以测试、设为默认、编辑、删除。添加和编辑用同一个底部面板：
+ * 编辑时服务商不能换，Key 留空表示不换；加好、或者换了 Key、地址、模型名，就测一次。
  * 路由页面是 app/settings/tools.tsx；宽屏设置两栏时嵌在右栏里（见 ../nav.tsx）。
  */
 
@@ -13,6 +14,7 @@ import { describeError } from "@bettertavern/core/api/client";
 import type { ToolKind, ToolProvider, ToolRoute } from "@bettertavern/core/api/types";
 import { currentLanguage } from "@bettertavern/core/i18n/index";
 import { i18n } from "@bettertavern/core/i18n/index";
+import { newToolRoute, toolFormFrom, toolFormReady, toolPatch, type ToolForm } from "@bettertavern/core/settings/tools";
 
 import { KeyField } from "../../../components/KeyParts.tsx";
 import {
@@ -41,135 +43,163 @@ function providerLabel(id: string): string {
   return i18n.t(`tools.providers.${id as "tavily"}`, { defaultValue: id });
 }
 
-function AddSheet({
-  kind,
+/** 底部面板：添加一个服务（target 只有 kind），或者编辑一个（带 route：服务商不能换，Key 留空表示不换） */
+type SheetTarget = { kind: ToolKind; route?: ToolRoute };
+
+function RouteSheet({
+  target,
   providers,
   onClose,
   onAdded,
+  onEdited,
 }: {
-  kind: ToolKind | null;
+  target: SheetTarget | null;
   providers: ToolProvider[];
   onClose: () => void;
   onAdded: (route: ToolRoute) => void;
+  onEdited: (route: ToolRoute, retest: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const kind = target?.kind;
+  const route = target?.route;
+  const title = route
+    ? t("tools.editTitle", { name: route.label || providerLabel(route.provider) })
+    : t("tools.addTitle", { kind: kind ? t(`tools.kinds.${kind}`) : "" });
+  return (
+    <Sheet visible={target !== null} onClose={onClose} title={title}>
+      {/* 换一个要编辑的服务时整个表单重来，初始值取这一个的 */}
+      <RouteForm
+        key={route?.id ?? kind ?? "closed"}
+        kind={kind}
+        route={route}
+        providers={providers}
+        onAdded={onAdded}
+        onEdited={onEdited}
+      />
+    </Sheet>
+  );
+}
+
+function RouteForm({
+  kind,
+  route,
+  providers,
+  onAdded,
+  onEdited,
+}: {
+  kind: ToolKind | undefined;
+  route: ToolRoute | undefined;
+  providers: ToolProvider[];
+  onAdded: (route: ToolRoute) => void;
+  onEdited: (route: ToolRoute, retest: boolean) => void;
 }) {
   const { t } = useTranslation();
   const { api } = useApp();
-  const options = kind ? providers.filter((p) => p.kinds.includes(kind)) : [];
+  const options = route
+    ? providers.filter((p) => p.id === route.provider)
+    : kind
+      ? providers.filter((p) => p.kinds.includes(kind))
+      : [];
   const [provider, setProvider] = useState<string | null>(null);
-  const [key, setKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
-  const [model, setModel] = useState("");
-  const [voice, setVoice] = useState("");
-  const [label, setLabel] = useState("");
+  const [form, setForm] = useState(() => toolFormFrom(route));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selected = options.find((p) => p.id === provider) ?? options[0];
-  const ready =
-    !!selected &&
-    (!selected.needs_key || key.trim() !== "") &&
-    (!selected.needs_base_url || baseUrl.trim() !== "") &&
-    (!selected.needs_model || model.trim() !== "");
-
-  const close = (): void => {
-    setProvider(null);
-    setKey("");
-    setBaseUrl("");
-    setModel("");
-    setVoice("");
-    setLabel("");
-    setError(null);
-    setBusy(false);
-    onClose();
-  };
+  const ready = toolFormReady(selected, form, route);
+  const edit = (patch: Partial<ToolForm>): void => setForm((old) => ({ ...old, ...patch }));
 
   const save = async (): Promise<void> => {
     if (!selected || !kind) return;
     setBusy(true);
     setError(null);
     try {
-      const created = await api.tools.create({
-        kind,
-        provider: selected.id,
-        label: label.trim() || undefined,
-        api_key: key.trim() || null,
-        base_url: baseUrl.trim() || null,
-        model: model.trim() || null,
-        ...(kind === "speech" && voice.trim() ? { params: { voice: voice.trim() } } : {}),
-      });
-      onAdded(created);
-      close();
+      if (route) {
+        const { patch, retest } = toolPatch(route, form);
+        onEdited(Object.keys(patch).length ? await api.tools.update(route.id, patch) : route, retest);
+      } else {
+        onAdded(await api.tools.create(newToolRoute(kind, selected.id, form)));
+      }
     } catch (e) {
       setError(describeError(e));
       setBusy(false);
     }
   };
 
-  const kindName = kind ? t(`tools.kinds.${kind}`) : "";
   return (
-    <Sheet visible={kind !== null} onClose={close} title={t("tools.addTitle", { kind: kindName })}>
-      <ScrollView contentContainerStyle={styles.sheet} keyboardShouldPersistTaps="handled">
-        <View style={styles.chips}>
-          {options.map((p) => (
-            <Chip
-              key={p.id}
-              small
-              label={providerLabel(p.id)}
-              selected={p.id === selected?.id}
-              onPress={() => {
-                setProvider(p.id);
-                setError(null);
-              }}
-            />
-          ))}
-        </View>
-        {selected ? (
-          <>
-            <KeyField
-              label={selected.needs_key ? t("tools.apiKey") : t("tools.apiKeyOptional")}
-              value={key}
-              onChangeText={setKey}
-            />
+    <ScrollView contentContainerStyle={styles.sheet} keyboardShouldPersistTaps="handled">
+      <View style={styles.chips}>
+        {options.map((p) => (
+          <Chip
+            key={p.id}
+            small
+            label={providerLabel(p.id)}
+            selected={p.id === selected?.id}
+            onPress={() => {
+              setProvider(p.id);
+              setError(null);
+            }}
+          />
+        ))}
+      </View>
+      {selected ? (
+        <>
+          <KeyField
+            label={route?.has_key ? t("tools.apiKeyKeep") : selected.needs_key ? t("tools.apiKey") : t("tools.apiKeyOptional")}
+            hint={route?.has_key ? t("tools.keyTail", { last4: route.key_last4 }) : undefined}
+            value={form.key}
+            onChangeText={(key) => edit({ key })}
+          />
+          <Field
+            label={selected.needs_base_url ? t("tools.baseUrl") : t("tools.baseUrlOptional")}
+            value={form.baseUrl}
+            placeholder="https://"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            onChangeText={(baseUrl) => edit({ baseUrl })}
+          />
+          {selected.needs_model ? (
             <Field
-              label={selected.needs_base_url ? t("tools.baseUrl") : t("tools.baseUrlOptional")}
-              value={baseUrl}
-              placeholder="https://"
+              label={t("tools.model")}
+              value={form.model}
               autoCapitalize="none"
               autoCorrect={false}
-              keyboardType="url"
-              onChangeText={setBaseUrl}
+              onChangeText={(model) => edit({ model })}
             />
-            {selected.needs_model ? (
-              <Field
-                label={t("tools.model")}
-                value={model}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={setModel}
-              />
-            ) : null}
-            {kind === "speech" ? (
-              <Field
-                label={t("tools.voice")}
-                optional
-                hint={t("tools.voiceHint")}
-                value={voice}
-                maxLength={200}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={setVoice}
-              />
-            ) : null}
-            <Field label={t("tools.label")} optional value={label} maxLength={60} onChangeText={setLabel} />
-          </>
-        ) : null}
-        {error ? <Notice message={error} /> : null}
-        <Button label={t("tools.add")} busy={busy} disabled={!ready} onPress={() => void save()} />
-      </ScrollView>
-    </Sheet>
+          ) : null}
+          {kind === "speech" ? (
+            <Field
+              label={t("tools.voice")}
+              optional
+              hint={t("tools.voiceHint")}
+              value={form.voice}
+              maxLength={200}
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={(voice) => edit({ voice })}
+            />
+          ) : null}
+          <Field
+            label={t("tools.label")}
+            optional
+            value={form.label}
+            maxLength={60}
+            onChangeText={(label) => edit({ label })}
+          />
+        </>
+      ) : null}
+      {error ? <Notice message={error} /> : null}
+      <Button
+        label={route ? t("common.save") : t("tools.add")}
+        busy={busy}
+        disabled={!ready}
+        onPress={() => void save()}
+      />
+    </ScrollView>
   );
 }
 
-function RouteCard({ route, onChanged }: { route: ToolRoute; onChanged: () => void }) {
+function RouteCard({ route, onChanged, onEdit }: { route: ToolRoute; onChanged: () => void; onEdit: () => void }) {
   const c = useComic();
   const { t } = useTranslation();
   const { api } = useApp();
@@ -198,11 +228,6 @@ function RouteCard({ route, onChanged }: { route: ToolRoute; onChanged: () => vo
       await engine.speak(line, 1, () => undefined).finally(() => engine.dispose());
     });
     setTesting(false);
-  };
-
-  const replaceKey = async (): Promise<void> => {
-    const key = await overlay.prompt({ title: t("tools.replaceKey"), label: t("tools.apiKey") });
-    if (key?.trim()) await run(() => api.tools.update(route.id, { api_key: key.trim() }));
   };
 
   const remove = async (): Promise<void> => {
@@ -249,7 +274,7 @@ function RouteCard({ route, onChanged }: { route: ToolRoute; onChanged: () => vo
         {route.is_default ? null : (
           <Chip small label={t("tools.makeDefault")} onPress={() => void run(() => api.tools.update(route.id, { default: true }))} />
         )}
-        {route.has_key ? <Chip small label={t("tools.replaceKey")} onPress={() => void replaceKey()} /> : null}
+        <Chip small label={t("tools.edit")} onPress={onEdit} />
         <Chip small label={t("common.delete")} onPress={() => void remove()} />
       </View>
     </View>
@@ -262,7 +287,7 @@ export function ToolsBody() {
   const column = useColumnStyle();
   const overlay = useOverlay();
   const { t } = useTranslation();
-  const [adding, setAdding] = useState<ToolKind | null>(null);
+  const [sheet, setSheet] = useState<SheetTarget | null>(null);
   const { data, error, loading, reload } = useAsync(async () => {
     const [providers, routes] = await Promise.all([api.tools.providers(), api.tools.list()]);
     return { providers, routes };
@@ -296,11 +321,18 @@ export function ToolsBody() {
             <View key={kind} style={{ gap: space.s }}>
               <SectionHeader
                 title={t(`tools.kinds.${kind}`)}
-                meta={<Chip small icon="plus" label={t("tools.add")} onPress={() => setAdding(kind)} />}
+                meta={<Chip small icon="plus" label={t("tools.add")} onPress={() => setSheet({ kind })} />}
               />
               <Text style={[styles.note, { color: c.mut }]}>{t(`tools.kindNotes.${kind}`)}</Text>
               {list.length ? (
-                list.map((route) => <RouteCard key={route.id} route={route} onChanged={() => void reload()} />)
+                list.map((route) => (
+                  <RouteCard
+                    key={route.id}
+                    route={route}
+                    onChanged={() => void reload()}
+                    onEdit={() => setSheet({ kind, route })}
+                  />
+                ))
               ) : (
                 <Text style={[styles.note, { color: c.mut }]}>{t("tools.none")}</Text>
               )}
@@ -308,13 +340,24 @@ export function ToolsBody() {
           );
         })}
       </ScrollView>
-      <AddSheet
-        kind={adding}
+      <RouteSheet
+        target={sheet}
         providers={data.providers}
-        onClose={() => setAdding(null)}
+        onClose={() => setSheet(null)}
         onAdded={(route) => {
+          setSheet(null);
           overlay.toast(t("tools.saved"));
           // 加好就测一次，马上知道能不能用
+          void api.tools
+            .test(route.id)
+            .catch(() => undefined)
+            .finally(() => void reload());
+        }}
+        onEdited={(route, retest) => {
+          setSheet(null);
+          overlay.toast(t("tools.updated"));
+          // 换了 Key、地址或模型名：再测一次
+          if (!retest) return void reload();
           void api.tools
             .test(route.id)
             .catch(() => undefined)

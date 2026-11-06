@@ -144,7 +144,10 @@ export const settings: Messages<typeof source> = {
     deleteTitle: "Delete “{{name}}”?",
     deleteMessage: "The Workbench won't be able to use it anymore.",
     saved: "Added",
-    replaceKey: "Replace key",
+    edit: "Edit",
+    editTitle: "Edit “{{name}}”",
+    apiKeyKeep: "API key (leave blank to keep it)",
+    updated: "Saved",
   },
   models: {
     title: "Models",

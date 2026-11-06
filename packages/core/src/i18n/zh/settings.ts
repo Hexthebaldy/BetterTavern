@@ -142,7 +142,10 @@ export const settings = {
     deleteTitle: "删除“{{name}}”？",
     deleteMessage: "删除以后工作台就不能用它了。",
     saved: "已添加",
-    replaceKey: "更换 Key",
+    edit: "编辑",
+    editTitle: "编辑“{{name}}”",
+    apiKeyKeep: "API Key（不换就留空）",
+    updated: "已保存",
   },
   models: {
     title: "模型",

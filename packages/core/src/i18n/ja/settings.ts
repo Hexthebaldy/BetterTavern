@@ -143,7 +143,10 @@ export const settings: MessagesOtherOnly<typeof source> = {
     deleteTitle: "「{{name}}」を削除しますか？",
     deleteMessage: "削除するとワークベンチで使えなくなります。",
     saved: "追加しました",
-    replaceKey: "キーを変更",
+    edit: "編集",
+    editTitle: "「{{name}}」を編集",
+    apiKeyKeep: "API キー（変えないなら空欄のまま）",
+    updated: "保存しました",
   },
   models: {
     title: "モデル",
