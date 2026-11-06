@@ -234,3 +234,15 @@ async def test_elevenlabs_voice_list_errors() -> None:
             with pytest.raises(SpeechError) as raised:
                 await SPEECH_PROTOCOLS["elevenlabs"].voices(http, SpeechConfig(api_key="k"))
             assert raised.value.kind == kind
+
+
+async def test_http_error_keeps_what_the_service_said() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"message": "Invalid voice"})
+
+    async with client(handler) as http:
+        with pytest.raises(SpeechError) as raised:
+            await SPEECH_PROTOCOLS["openai_speech"].synthesize(
+                http, SpeechConfig(model="m", api_key="k"), text="t", voice="v"
+            )
+    assert raised.value.kind == "http" and "Invalid voice" in raised.value.message

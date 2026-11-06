@@ -14,6 +14,8 @@ from typing import Any, Literal, Protocol
 
 import httpx
 
+from ..errors import short_error_text
+
 Aspect = Literal["portrait", "square", "landscape"]
 
 # 画幅默认对应的尺寸；tool_routes.params.sizes 可以覆盖
@@ -114,7 +116,10 @@ def raise_for(response: httpx.Response, vendor: str) -> None:
         )
     if response.status_code == 400 and "safety" in response.text.lower():
         raise ImageError("blocked", f"{vendor} refused the prompt (content policy)")
-    raise ImageError("http", f"{vendor} returned HTTP {response.status_code}")
+    said = short_error_text(response.text)
+    raise ImageError(
+        "http", f"{vendor} returned HTTP {response.status_code}" + (f": {said}" if said else "")
+    )
 
 
 def json_of(response: httpx.Response, vendor: str) -> Any:

@@ -147,6 +147,24 @@ async def test_download_image_checks_type() -> None:
             await download_image(http, "https://img.example/page")
 
 
+async def test_download_image_accepts_untyped_image_bytes() -> None:
+    """有的图床（硅基流动）把图片标成 application/octet-stream：看文件开头认得出是图就收。"""
+    out = io.BytesIO()
+    Image.new("RGB", (4, 4)).save(out, format="PNG")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = out.getvalue() if request.url.path == "/a" else b"PK\x03\x04 not an image"
+        return httpx.Response(
+            200, content=body, headers={"content-type": "application/octet-stream"}
+        )
+
+    async with client(handler) as http:
+        assert (await download_image(http, "https://s3.example/a")).startswith(b"\x89PNG")
+        with pytest.raises(WebError) as info:
+            await download_image(http, "https://s3.example/b")
+        assert info.value.kind == "binary"
+
+
 async def test_tavily_search_images_and_extract() -> None:
     seen: list[dict[str, object]] = []
 

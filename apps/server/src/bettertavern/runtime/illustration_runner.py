@@ -37,7 +37,7 @@ from bettertavern.providers.image import (
     Reference,
 )
 from bettertavern.providers.limiter import LimiterTimeout
-from bettertavern.providers.web import WebError, download_image
+from bettertavern.providers.web import WebError, download_image, unusable_reason
 
 from .agent import StepLog
 from .agents.illustrator import AGENT, NoScene, Scene, write_scene
@@ -241,7 +241,8 @@ class IllustrationRunner:
                     else await download_image(self._http, result.url or "")
                 )
                 clean = await asyncio.to_thread(scene_image, data)
-            except (WebError, CleanError, httpx.HTTPError):
+            except (WebError, CleanError, httpx.HTTPError) as exc:
+                log.warning("illustration.image_unusable", reason=unusable_reason(exc))
                 continue
             return NewImage(
                 data=clean.data,

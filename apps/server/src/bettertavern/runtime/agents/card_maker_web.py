@@ -44,6 +44,7 @@ from bettertavern.providers.web import (
     fetch_page,
     read_lines,
     secret_in_url,
+    unusable_reason,
 )
 from bettertavern.runtime.agent import Tool
 from bettertavern.runtime.ports import (
@@ -411,6 +412,7 @@ async def generate_image(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
     except httpx.HTTPError as exc:
         raise ctx.fail("image_failed", detail=type(exc).__name__) from exc
     ids: list[str] = []
+    last_problem = ""
     for result in results[:count]:
         try:
             data = (
@@ -419,7 +421,8 @@ async def generate_image(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
                 else await download_image(web.client, result.url or "")
             )
             image = await asyncio.to_thread(_new_image, data)
-        except (WebError, CleanError, httpx.HTTPError):
+        except (WebError, CleanError, httpx.HTTPError) as exc:
+            last_problem = unusable_reason(exc)
             continue
         try:
             asset = await web.store.add_image(
@@ -444,7 +447,10 @@ async def generate_image(args: Mapping[str, Any], ctx: CardMakerContext) -> str:
         ctx.assets[asset.id] = asset
         ids.append(asset.id)
     if not ids:
-        raise ctx.fail("image_failed", detail="no usable image came back")
+        detail = "no usable image came back"
+        if last_problem:
+            detail = f"{detail} ({last_problem})"
+        raise ctx.fail("image_failed", detail=detail)
     return ctx.messages["images_generated"].format(ids=", ".join(ids))
 
 

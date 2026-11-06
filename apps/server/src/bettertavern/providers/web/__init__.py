@@ -11,7 +11,7 @@ from __future__ import annotations
 from .base import ImageHit, Page, SearchHit, WebConfig, WebError, WebProvider
 from .bocha import Bocha
 from .brave import Brave
-from .download import MAX_DOWNLOAD_BYTES, download_image
+from .download import MAX_DOWNLOAD_BYTES, download_image, unusable_reason
 from .jina import Jina
 from .local import fetch_page
 from .pagetext import clip_page, read_lines, secret_in_url, strip_inline_images
@@ -40,4 +40,5 @@ __all__ = [
     "read_lines",
     "secret_in_url",
     "strip_inline_images",
+    "unusable_reason",
 ]

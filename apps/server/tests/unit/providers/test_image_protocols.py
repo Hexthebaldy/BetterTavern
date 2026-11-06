@@ -140,3 +140,31 @@ async def test_errors() -> None:
                 http, ImageConfig(model="m", api_key="k"), prompt="p", aspect="square", count=1
             )
     assert info.value.kind == "quota"
+
+
+async def test_http_error_keeps_what_the_service_said() -> None:
+    """硅基流动模型名不对时回 400 加一句说明：说明要带出来，不能只剩“HTTP 400”。"""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.startswith("/page/"):
+            return httpx.Response(500, text="<html><body>Bad Gateway</body></html>")
+        return httpx.Response(
+            400, json={"code": 20012, "message": "Model does not exist.", "data": None}
+        )
+
+    async with client(handler) as http:
+        with pytest.raises(ImageError) as info:
+            await IMAGE_PROTOCOLS["openai_images"].generate(
+                http, ImageConfig(model="m", api_key="k"), prompt="p", aspect="square", count=1
+            )
+        assert info.value.kind == "http"
+        assert "HTTP 400" in info.value.message and "Model does not exist." in info.value.message
+        with pytest.raises(ImageError) as page:
+            await IMAGE_PROTOCOLS["openai_images"].generate(
+                http,
+                ImageConfig(model="m", api_key="k", base_url="https://x.example/page"),
+                prompt="p",
+                aspect="square",
+                count=1,
+            )
+    assert page.value.message == "Image service returned HTTP 500"

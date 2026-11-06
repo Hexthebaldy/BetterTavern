@@ -265,6 +265,12 @@ def extract_error_text(body: str | bytes | Mapping[str, Any] | None) -> str:
     return " ".join(p for p in parts if p)[:2000]
 
 
+def short_error_text(body: str | bytes | None, limit: int = 160) -> str:
+    """错误体里对方给的说明，压成一行截短，接在“返回 HTTP 400”后面；HTML 错误页不要。"""
+    text = " ".join(extract_error_text(body).split())
+    return "" if text.startswith("<") else text[:limit]
+
+
 def parse_retry_after(headers: Mapping[str, str] | httpx.Headers | None) -> float | None:
     if not headers:
         return None

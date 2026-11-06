@@ -20,7 +20,7 @@ from bettertavern.infra.db.repositories import drafts as drafts_repo
 from bettertavern.infra.db.repositories import library as library_repo
 from bettertavern.infra.db.sqlutil import is_uuid
 from bettertavern.providers.image import IMAGE_PROTOCOLS, STYLE_HINTS, ImageConfig, ImageError
-from bettertavern.providers.web import WebError, download_image
+from bettertavern.providers.web import WebError, download_image, unusable_reason
 
 from .draft_service import AssetView, asset_view
 from .errors import AppError, Invalid, NotFound
@@ -112,7 +112,8 @@ class CoverService:
                     else await download_image(self._client, result.url or "")
                 )
                 image = await asyncio.to_thread(clean_image, data)
-            except (WebError, CleanError, httpx.HTTPError):
+            except (WebError, CleanError, httpx.HTTPError) as exc:
+                log.warning("cover.image_unusable", draft_id=draft_id, reason=unusable_reason(exc))
                 continue
             async with self._engine.begin() as conn:
                 await lock_user(conn, user_id)

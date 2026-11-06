@@ -11,6 +11,8 @@ from typing import Any, Protocol
 
 import httpx
 
+from ..errors import short_error_text
+
 # 一小段最多 1000 字，读出来几分钟；wav 也不会超过这个大小
 MAX_AUDIO_BYTES = 32 * 1024 * 1024
 
@@ -69,7 +71,8 @@ def raise_for_status(status: int, body: str, vendor: str) -> None:
         raise SpeechError("quota", f"{vendor} is out of quota or rate-limiting ({status})")
     if status == 400 and "safety" in body.lower():
         raise SpeechError("blocked", f"{vendor} refused the text (content policy)")
-    raise SpeechError("http", f"{vendor} returned HTTP {status}")
+    said = short_error_text(body)
+    raise SpeechError("http", f"{vendor} returned HTTP {status}" + (f": {said}" if said else ""))
 
 
 async def fetch_audio(
